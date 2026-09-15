@@ -4,11 +4,23 @@ The pre-L1 errand is money. ``OverworldPathController`` crosses a screen on
 one lane and only scoops a drop that lands beside it, so the wave two lanes
 north is never fought and never pays. This module is the opposite policy:
 close to wooden-sword reach of every live body in the interior box, kill it,
-and walk onto what it leaves behind. Four collaborators, one rule each:
-:class:`CombatLedger` (the census), :class:`ShieldPolicy` (blockable shots, as
-a *modifier* — it never stands Link still while a body closes on him),
-:class:`TargetBook` (which body is held, written off, or unhittable now), and
+and walk onto what it leaves behind. Five collaborators, one rule each:
+:class:`CombatLedger` (the census), :class:`ShotPolicy` (blockable shots as a
+*modifier* — it never stands Link still while a body closes on him — and the
+step out from under the unblockable ones), :class:`~zelda_i.overworld.prey.PreyPolicy`
+(what a body pays and how far that is worth walking), :class:`TargetBook`
+(which body is held, written off, declined or unhittable now), and
 :class:`ScreenHunter` (screen lifecycle, strike ladder, lane return).
+
+**Not every wave is worth fighting, and not every body in one is.** The
+per-screen bill (``docs/PRE_L1.md``) says the pre-L1 corridor loses on two
+choices this module used to make blind: it chased the *nearest* body rather
+than the richest, and it fought every screen the hop table crossed. Nine red
+octoroks (ROM drop row 0) cost 0.00 hearts and paid almost nothing; ``0x59``
+— peahats and a Zora, row 3 — cost a whole heart, 533 frames and the 5-kill
+streak for one kill. ``prey`` answers the first, ``transit_screens`` the
+second, and neither of them can stop the blade answering a body that walks
+into it.
 
 Three budgets keep it off the route: ``screen_max_frames``, ``target_max_frames``
 and the interior box :data:`HUNT_BOX` (a chase that walks a scroll line changes
@@ -42,15 +54,23 @@ from zelda_i.combat import (
     direction_to_facing,
     floor_pickups,
     in_sword_hitbox,
+    live_enemies,
+    manhattan,
     nearest_to,
 )
 from zelda_i.dungeon.behaviors import EnemyKind, face_toward, kind_for_type
 from zelda_i.dungeon.ids import OBJECT_NAMES
 from zelda_i.dungeon.postmortem import DamageLog, HitEvent
-from zelda_i.dungeon.threat import MIN_DODGE_BODY, assess, off_line_step
+from zelda_i.dungeon.threat import (
+    MIN_DODGE_BODY,
+    MIN_DODGE_SHOT,
+    assess,
+    off_line_step,
+)
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import LEAVE_GOALS, FarmOccupancy
+from zelda_i.overworld.prey import PreyPolicy, prey_name
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
 __all__ = [
@@ -58,6 +78,7 @@ __all__ = [
     "HUNT_LANE_MAX_FRAMES",
     "HUNT_LANE_TOL",
     "HUNT_MIN_HEARTS",
+    "HUNT_MUZZLE_ALARM",
     "HUNT_OFF_LINE_MAX_FRAMES",
     "HUNT_SCREEN_MAX_FRAMES",
     "HUNT_SETTLE_FRAMES",
@@ -67,13 +88,16 @@ __all__ = [
     "MUZZLE_PENALTY",
     "PEAHAT_LANDED_SPEED",
     "SHIELD_CLOSING_PAD",
+    "SHOT_DWELL_SPEED",
     "ScreenHunter",
     "ShieldPolicy",
+    "ShotPolicy",
     "TargetBook",
     "attackable",
     "hit_cause",
     "hop_exit_goal",
     "hop_lane",
+    "perpendicular",
     "sword_stand",
 ]
 
@@ -136,6 +160,19 @@ PEAHAT_LANDED_SPEED = 0.35
 # Extra walk (px) the hunt will pay to attack a shooter from a side it is not
 # facing. Roughly one body length: worth a rock, not worth a lap of the screen.
 MUZZLE_PENALTY = 32
+# A Zora's spit sits on its muzzle for ``ZORA_MUZZLE_DWELL`` (17) frames
+# before it moves, so the tracker measures it at zero velocity and
+# ``threat.assess`` calls it safe for the whole window in which it could
+# still be walked away from. Anything slower than this is dwelling, not
+# travelling; a launched shot runs at ``ZORA_SHOT_SPEED`` (1.75).
+SHOT_DWELL_SPEED = 0.5
+# How far away a dwelling muzzle is still worth stepping away from. The shot
+# crosses ~1.75 px/frame against Link's 1.0, so past this the ball arrives
+# with more warning than the dwell was worth and ``threat.assess`` — which
+# can see it once it moves — is the better answer. Measured: the ``0x59``
+# fireball that took the walk's only whole heart was fired 165 px down Link's
+# own row while he walked east into it (``scratch/zora1.json`` f2888).
+HUNT_MUZZLE_ALARM = 176
 # ``TrackedObject.approach_side`` names the side a shot was fired from; Link
 # blocks by facing it.
 _SIDE_FACE = {"N": "UP", "S": "DOWN", "E": "RIGHT", "W": "LEFT"}
@@ -171,6 +208,51 @@ def _box_step(
     if xlo <= nx <= xhi and ylo <= ny <= yhi:
         return direction
     return None
+
+
+def perpendicular(
+    lx: int,
+    ly: int,
+    mx: int,
+    my: int,
+    box: tuple[int, int, int, int],
+    bodies: tuple[ZeldaObject, ...] = (),
+) -> str | None:
+    """Step that opens the angle to a muzzle at ``(mx, my)``, or ``None``.
+
+    The Zora's aim is quantized at launch and is not a clean bearing to Link
+    (``behaviors.ZORA_SHOT_SPEED``), so there is no line to solve — but every
+    one of the measured shots left along roughly the bearing it had, and
+    walking across that bearing is the only thing that changes it. Never the
+    two steps that close the gap: walking *into* the muzzle is how ``0x59``
+    spent the walk's only whole heart.
+
+    ``bodies`` is the same rule :meth:`ShotPolicy.face` keeps for the shield:
+    a shot is not a reason to walk into an octorok. Without it the dodge is
+    ``evade_no_gain``'s mistake with the sign flipped — it buys distance from
+    the thing that has not fired yet by spending it on the thing that is
+    already touching Link.
+    """
+    dx, dy = int(mx) - int(lx), int(my) - int(ly)
+    # Cross the *major* axis of the bearing: that is the one a step actually
+    # rotates. On a shared row (dy == 0) the answer is UP/DOWN.
+    if abs(dx) >= abs(dy):
+        options = ("DOWN", "UP") if dy <= 0 else ("UP", "DOWN")
+    else:
+        options = ("RIGHT", "LEFT") if dx <= 0 else ("LEFT", "RIGHT")
+    for direction in options:
+        if _box_step(lx, ly, direction, box) is None:
+            continue
+        nx, ny = lx + _STEP[direction][0] * MIN_DODGE_BODY, ly + _STEP[direction][1] * MIN_DODGE_BODY
+        if any(
+            chebyshev(nx, ny, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
+        ):
+            continue
+        return direction
+    return None
+
+
+_STEP = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 
 def link_busy(snap: ZeldaSnapshot) -> bool:
@@ -308,8 +390,8 @@ def attackable(obj: ZeldaObject, track: TrackedObject | None) -> bool:
 
 
 @dataclass
-class ShieldPolicy:
-    """What to do about a blockable shot. A modifier, never a mode.
+class ShotPolicy:
+    """What to do about a shot. A modifier, never a mode.
 
     The small shield eats an octorok rock for free while Link faces it and is
     not attacking, and half the contacts on this corridor are rocks. The first
@@ -320,18 +402,31 @@ class ShieldPolicy:
     (Link already faces the shot and the nearest body is not closing, so the A
     press is the only thing dropping the shield — ``0x58`` ``f=2056``) and
     :meth:`face` (no body closing at all — ``0x58`` ``f=2275``).
+
+    :meth:`duck` is the other half, and the one this class was missing.
+    ``behaviors.shield_blocks`` says a Zora's ``0x55`` spit needs the Magical
+    Shield, so every shield rule above correctly passes on it — and nothing
+    replaced them. A fireball is not blocked, not parried and not killed; it
+    is walked away from, and the only window to do that in is the
+    ``ZORA_MUZZLE_DWELL`` frames it spends motionless on the Zora's mouth,
+    which is exactly the window a velocity tracker reports as safe.
     """
 
     enabled: bool = True
     window: int = HUNT_SHIELD_WINDOW
     closing_pad: int = SHIELD_CLOSING_PAD
+    # Dodging an unblockable shot is on by its own switch: the shield can be
+    # ablated without also ablating the only answer to a fireball.
+    duck_enabled: bool = True
+    muzzle_alarm: int = HUNT_MUZZLE_ALARM
     turns: int = 0
     holds: int = 0
     swings_held: int = 0
+    ducks: int = 0
 
     @property
     def frames(self) -> int:
-        return self.turns + self.holds + self.swings_held
+        return self.turns + self.holds + self.swings_held + self.ducks
 
     def _shot(
         self, link: tuple[int, int], tracked: tuple[TrackedObject, ...]
@@ -404,8 +499,66 @@ class ShieldPolicy:
         self.holds += 1
         return (None, "hunt_shield")
 
+    def duck(
+        self,
+        snap: ZeldaSnapshot,
+        tracked: tuple[TrackedObject, ...],
+        box: tuple[int, int, int, int],
+        bodies: tuple[ZeldaObject, ...] = (),
+    ) -> tuple[str, str] | None:
+        """``(direction, reason)`` to leave the line of a shot the shield cannot eat.
+
+        Two sources, one answer. A **dwelling** shot (speed below
+        :data:`SHOT_DWELL_SPEED`) has not chosen its line yet and is the whole
+        point of this method: it is motionless, so ``assess`` scores it safe,
+        and it is about to travel at ~1.75 px/frame at a Link who walks at 1.
+        A **launched** one inside ``MIN_DODGE_SHOT`` frames of contact is the
+        late case — the caller's evader owns it first, and this only speaks
+        when that layer has already yielded the frame.
+
+        A surfaced Zora with no shot on screen yet is deliberately *not* a
+        reason to move, even though ``behaviors.zora_shot_eta`` can see the
+        launch 34 frames out. The shot is aimed when it leaves, not when the
+        mouth opens (the four measured ones left at 180.0, 180.0, -171.1 and
+        -124.2 degrees against bearings to Link of 180.0, -172.7, -162.9 and
+        -119.3), so walking early only moves the target. The dwell is the
+        window where the line is already fixed and Link is not yet on it.
+        """
+        if not self.enabled or not self.duck_enabled:
+            return None
+        link = (int(snap.link_x), int(snap.link_y))
+        shot = self._unblockable(link, tracked)
+        if shot is None:
+            return None
+        step = perpendicular(
+            link[0], link[1], int(shot.x), int(shot.y), box, bodies
+        )
+        if step is None:
+            return None
+        self.ducks += 1
+        return (step, "hunt_duck")
+
+    def _unblockable(
+        self, link: tuple[int, int], tracked: tuple[TrackedObject, ...]
+    ) -> TrackedObject | None:
+        """The unblockable shot worth stepping away from, nearest muzzle first."""
+        best: TrackedObject | None = None
+        best_range = 10**9
+        for track in tracked:
+            if track.hazard is not HazardClass.PROJECTILE or track.blockable:
+                continue
+            gap = chebyshev(link[0], link[1], int(track.x), int(track.y))
+            if track.speed < SHOT_DWELL_SPEED:
+                if gap > self.muzzle_alarm:
+                    continue
+            elif not assess(link, (track,), horizon=MIN_DODGE_SHOT).imminent:
+                continue
+            if gap < best_range:
+                best, best_range = track, gap
+        return best
+
     def reset(self) -> None:
-        self.turns = self.holds = self.swings_held = 0
+        self.turns = self.holds = self.swings_held = self.ducks = 0
 
     def report(self) -> dict[str, Any]:
         return {
@@ -413,7 +566,13 @@ class ShieldPolicy:
             "shield_turns": self.turns,
             "shield_holds": self.holds,
             "shield_swings_held": self.swings_held,
+            "duck_frames": self.ducks,
         }
+
+
+#: The name before :meth:`ShotPolicy.duck` existed. Kept so an ablation probe
+#: that pokes ``ShieldPolicy`` field defaults still names the same class.
+ShieldPolicy = ShotPolicy
 
 
 # ---------------------------------------------------------------------- #
@@ -423,28 +582,45 @@ class ShieldPolicy:
 
 @dataclass
 class TargetBook:
-    """Which body the hunt holds, and which it has written off.
+    """Which body the hunt holds, which it has written off, and which it declines.
 
     Re-picking the nearest body every frame makes Link oscillate between two
     equidistant octoroks; the budget is what stops a body the wooden sword
     cannot reach from owning the screen. A body that is *currently* unhittable
     (a Peahat in flight) spends no budget — it is passed over and picked up
     again when it lands.
+
+    ``prey`` is what turned "nearest" into "worth it". Manhattan-nearest reads
+    a red octorok (ROM drop row 0, 0.156 R/kill) and a blue tektite (row 1,
+    0.891 and the only table with two 5-rupees) as the same body, so the walk
+    spent its budget on whichever happened to be closer and arrived at
+    ``0x4A``'s six tektites with 1.49 hearts and no frames. See
+    :mod:`zelda_i.overworld.prey`: the gate is ``worth_chasing`` (how far the
+    drop row is worth walking) and the order is ``score`` (value over the walk
+    that buys it). Neither can stop the hunt swinging at a body already in the
+    blade box — that ladder is in :meth:`ScreenHunter.step`, and a cheap kill
+    at Link's feet is still a streak tick.
     """
 
     max_frames: int = HUNT_TARGET_MAX_FRAMES
+    prey: PreyPolicy = field(default_factory=PreyPolicy)
     slot: int | None = None
     frames: int = 0
     skipped: set[int] = field(default_factory=set)
     skips: int = 0
+    # Bodies declined on value, by type name. The census has to be able to
+    # show what the policy walked past, or "fewer kills" cannot be read.
+    passed: dict[str, int] = field(default_factory=dict)
 
     def pick(
         self,
         snap: ZeldaSnapshot,
         prey: tuple[ZeldaObject, ...],
         tracks: dict[int, TrackedObject],
+        budget_left: int = 10**6,
     ) -> tuple[ZeldaObject | None, str | None]:
         """``(target, note)``. ``target`` None means nothing is worth holding."""
+        lx, ly = int(snap.link_x), int(snap.link_y)
         live = tuple(o for o in prey if int(o.slot) not in self.skipped)
         hittable = tuple(o for o in live if attackable(o, tracks.get(int(o.slot))))
         note: str | None = None
@@ -457,7 +633,9 @@ class TargetBook:
             self.skips += 1
             note = f"slot{int(held.slot)}"
             hittable = tuple(o for o in hittable if int(o.slot) != int(held.slot))
-        chosen = nearest_to(int(snap.link_x), int(snap.link_y), hittable)
+        chosen = self._best(
+            lx, ly, hittable, int(snap.whole_hearts), int(budget_left)
+        )
         if chosen is None:
             self.slot = None
             self.frames = 0
@@ -465,6 +643,38 @@ class TargetBook:
         self.slot = int(chosen.slot)
         self.frames = 1
         return (chosen, note)
+
+    def _best(
+        self,
+        lx: int,
+        ly: int,
+        hittable: tuple[ZeldaObject, ...],
+        hearts: int,
+        budget_left: int,
+    ) -> ZeldaObject | None:
+        """Richest body per pixel of walk, among those worth walking to."""
+        worth = []
+        for obj in hittable:
+            # Chebyshev gates (contact is a square pad, as everywhere else
+            # here); manhattan orders, because the order is a *walk* cost and
+            # ``combat.nearest_to`` — what this replaced — measured walking
+            # distance. Ranking cheap prey on chebyshev silently re-picked a
+            # different octorok than the baseline on every off-axis wave.
+            reach = chebyshev(lx, ly, int(obj.x), int(obj.y))
+            if self.prey.worth_chasing(
+                obj, reach, hearts=hearts, budget_left=budget_left
+            ):
+                worth.append((obj, manhattan(lx, ly, int(obj.x), int(obj.y))))
+            else:
+                name = prey_name(int(obj.type_id))
+                self.passed[name] = self.passed.get(name, 0) + 1
+        if not worth:
+            return None
+        # Ties break on the slot number, not on iteration order, so the same
+        # wave picks the same body twice and the chase does not oscillate.
+        return max(
+            worth, key=lambda pair: (self.prey.score(*pair), -int(pair[0].slot))
+        )[0]
 
     def clear(self) -> None:
         self.slot = None
@@ -504,6 +714,17 @@ class ScreenHunter:
     collect_max_frames: int = HUNT_LANE_MAX_FRAMES
     shield: bool = True
     shield_window: int = HUNT_SHIELD_WINDOW
+    # Step out from under a shot the small shield cannot eat (a Zora's
+    # ``0x55``). Separate from ``shield`` so an ablation can turn one off.
+    duck: bool = True
+    # Screens to cross rather than clear. The hunt still strikes a body in
+    # the blade box, still ducks a fireball and still scoops a drop it walks
+    # past — it just never *chases*, and never spends the screen budget.
+    # ``0x59`` is the measured case: peahat x4 plus a Zora is ROM drop row 3
+    # (0.081 R/kill, the corridor's cheapest), and one pass of it cost the
+    # walk 533 hunt frames, its only whole heart and the 5-kill streak for
+    # one kill and no rupees (``docs/PRE_L1.md``, ``tables1``).
+    transit_screens: frozenset[int] = frozenset()
     # Pre-emptive: leave a shooter's axis on the way in, and attack from a
     # side it is not facing. ``sword_stand`` puts Link on the muzzle axis by
     # construction, which is what 0x58 f=2056 and f=2069 both measured.
@@ -515,18 +736,22 @@ class ScreenHunter:
     _stand_side: str | None = field(default=None, repr=False)
     box: tuple[int, int, int, int] = HUNT_BOX
 
+    # Which drop row a body is on, and how far that is worth walking.
+    prey: PreyPolicy = field(default_factory=PreyPolicy)
+
     ledger: CombatLedger = field(default_factory=CombatLedger)
     # Magnitude and *cause* per screen. The ledger watches the health
     # bytes; only the tracker knows which body or shot was there a frame
     # before the knockback moved Link away from it.
     damage: DamageLog = field(default_factory=DamageLog, repr=False)
     hits_by_screen: dict[int, dict[str, int]] = field(default_factory=dict)
-    shield_policy: ShieldPolicy = field(default_factory=ShieldPolicy)
+    shield_policy: ShotPolicy = field(default_factory=ShotPolicy)
     targets: TargetBook = field(default_factory=TargetBook)
 
     hunt_frames: int = 0
     guard_frames: int = 0
     peel_frames: int = 0
+    transit_frames: int = 0
     collect_frames: int = 0
     off_line_frames: int = 0
     screens_cleared: int = 0
@@ -550,7 +775,9 @@ class ScreenHunter:
     def __post_init__(self) -> None:
         self.shield_policy.enabled = bool(self.shield)
         self.shield_policy.window = int(self.shield_window)
+        self.shield_policy.duck_enabled = bool(self.duck)
         self.targets.max_frames = int(self.target_max_frames)
+        self.targets.prey = self.prey
 
     # -- census ---------------------------------------------------------
 
@@ -618,6 +845,19 @@ class ScreenHunter:
         block = self._shield_action(snap, close, pad)
         if block is not None:
             return block
+
+        duck = self._duck_action(snap)
+        if duck is not None:
+            return duck
+
+        if screen in self.transit_screens:
+            # Crossed, not cleared. Everything above this line still runs —
+            # a body in the blade box, a rock to block, a fireball to step
+            # out from under — so declining the wave is not the same as
+            # standing in it.
+            self.transit_frames += 1
+            self._note_once(f"hunt_transit_{screen:02x}")
+            return self._collect(snap, frames, lane, heal_only=False)
 
         if int(snap.whole_hearts) <= self.min_hearts:
             # Guard, do not chase. The baseline handed three live waves to a
@@ -750,6 +990,23 @@ class ScreenHunter:
             return FrameAction(nes_idle_action(), reason)
         return FrameAction(nes_action(face), reason)
 
+    def _duck_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Walk out of a fireball's way. There is no other answer to one.
+
+        Ordered after the blade and the shield and before everything else: a
+        body already in the hitbox dies this frame, but a chase, a lane
+        return and a drop scoop are all walks, and any of them will happily
+        walk Link down the line of a shot he could have stepped off.
+        """
+        verdict = self.shield_policy.duck(
+            snap, self._tracked, self.box, live_enemies(snap)
+        )
+        if verdict is None:
+            return None
+        direction, reason = verdict
+        self._freeze_occ()
+        return FrameAction(nes_action(direction), reason)
+
     def _approach(
         self,
         snap: ZeldaSnapshot,
@@ -833,7 +1090,12 @@ class ScreenHunter:
                 self._retire(screen, "budget")
                 return self._collect(snap, frames, lane, heal_only=True)
             held = self.targets.slot
-            target, note = self.targets.pick(snap, prey, self._tracks_by_slot())
+            target, note = self.targets.pick(
+                snap,
+                prey,
+                self._tracks_by_slot(),
+                budget_left=self.screen_max_frames - self.screen_frames,
+            )
             if self.targets.slot != held:
                 self._stand_side = None
             if note is not None:
@@ -992,9 +1254,11 @@ class ScreenHunter:
         self.shield_policy.reset()
         self.targets.clear()
         self.targets.skips = 0
+        self.targets.passed.clear()
         self.hunt_frames = 0
         self.guard_frames = 0
         self.peel_frames = 0
+        self.transit_frames = 0
         self.collect_frames = 0
         self.off_line_frames = 0
         self.screens_cleared = 0
@@ -1030,6 +1294,7 @@ class ScreenHunter:
                     "hunt_frames": self.frames_by_screen.get(screen, 0),
                     "peak_prey": self.prey_by_screen.get(screen, 0),
                     "cleared": screen in self.done,
+                    "transit": screen in self.transit_screens,
                     "hits_by_cause": dict(self.hits_by_screen.get(screen, {})),
                 }
             )
@@ -1048,8 +1313,14 @@ class ScreenHunter:
             "hunt_frames": self.hunt_frames,
             "guard_frames": self.guard_frames,
             "peel_frames": self.peel_frames,
+            "transit_frames": self.transit_frames,
             "off_line_frames": self.off_line_frames,
             "target_skips": self.targets.skips,
+            # Bodies declined on drop row, by type. Read this beside
+            # ``kills_by_type``: fewer kills is the *intent* when the ones
+            # not taken are row 0 and the ones taken are row 1.
+            "prey_passed": dict(self.targets.passed),
+            "transit_screens": sorted(self.transit_screens),
             "screens_cleared": self.screens_cleared,
             "screens_retired": self.screens_retired,
             "screens_done": sorted(self.done),

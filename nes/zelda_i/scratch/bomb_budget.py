@@ -17,27 +17,34 @@ keys on the ROM row and prints both aliases.
 from __future__ import annotations
 
 from zelda_i.overworld.locations import Q1_SPAWNS, grid_name
+from zelda_i.overworld.prey import (
+    BOMB,
+    CLOCK,
+    DROP_ROWS,
+    FAIRY,
+    FIVE_RUPEE,
+    HEART,
+    RUPEE,
+    drop_row,
+    random_rupees,
+)
 
 BOMB_PACK_PRICE = 20  # overworld.bomb_shop.BOMB_SHOP_PRICE
 
-BOMB, FIVE_RUPEE, RUPEE, CLOCK, HEART, FAIRY = 0x00, 0x0F, 0x18, 0x21, 0x22, 0x23
 VALUE = {RUPEE: 1, FIVE_RUPEE: 5}
 NAME = {BOMB: "bomb", FIVE_RUPEE: "5R", RUPEE: "1R", CLOCK: "clock", HEART: "heart",
         FAIRY: "fairy"}
 
-# row -> (DropItemRates byte, Types<row> 10-column table, Baxter letter,
-#         locations.py letter, ObjTypes that select the row)
+# The tables live in ``overworld.prey`` now, because policy reads them too and
+# a reporting CLI is the wrong owner for a number the hunt targets on. This
+# only adds the two letter aliases, which are a documentation trap rather than
+# ROM: ``drop_mechanics_rom.md`` follows Baxter (row 1 = B, the two-5-rupee
+# table) and ``overworld/locations.py`` calls that same table C.
+_LETTERS = {0: ("A", "A"), 1: ("B", "C"), 2: ("C", "B"), 3: ("D", "D")}
 ROWS = {
-    0: (0x50, (HEART, RUPEE, HEART, RUPEE, FAIRY, RUPEE, HEART, HEART, RUPEE, RUPEE),
-        "A", "A", (0x07, 0x08, 0x0E, 0x04, 0x0F)),
-    1: (0x98, (FIVE_RUPEE, RUPEE, HEART, RUPEE, FIVE_RUPEE, HEART, CLOCK, RUPEE, RUPEE, RUPEE),
-        "B", "C", (0x0D, 0x10, 0x21, 0x22, 0x13, 0x28, 0x2A)),
-    2: (0x68, (HEART, BOMB, RUPEE, CLOCK, RUPEE, HEART, BOMB, RUPEE, BOMB, HEART),
-        "C", "B", (0x09, 0x0A, 0x03, 0x01)),
-    3: (0x68, (HEART, HEART, FAIRY, RUPEE, HEART, FAIRY, HEART, HEART, HEART, RUPEE),
-        "D", "D", ()),
+    row: (rate, table, _LETTERS[row][0], _LETTERS[row][1], types)
+    for row, (rate, table, types) in DROP_ROWS.items()
 }
-_ROW_BY_TYPE = {t: row for row, (_, _, _, _, types) in ROWS.items() for t in types}
 
 # A "grouped" spawn byte carries a group index, not an ObjType: 0x49 reads
 # ``group_28`` and 0x28 is also Rope (row 1), which would credit the screen
@@ -53,18 +60,14 @@ WALK = (0x78, 0x68, 0x58, 0x59, 0x49, 0x4A)
 NEAR = (0x48,)
 
 
-def row_of(type_id: int) -> int:
-    """``Types0..3`` row for an ObjType. Anything unlisted falls to row 3."""
-    return _ROW_BY_TYPE.get(int(type_id), 3)
+row_of = drop_row
 
 
 def per_kill(row: int) -> tuple[float, float]:
     """(expected rupees, expected bomb packs) for one random-table kill."""
     rate, table = ROWS[row][0], ROWS[row][1]
-    p = rate / 256
-    rupees = sum(VALUE.get(item, 0) for item in table) / len(table)
     bombs = sum(1 for item in table if item == BOMB) / len(table)
-    return p * rupees, p * bombs
+    return random_rupees(row), (rate / 256) * bombs
 
 
 def clean_run(kills: int, row: int = 0) -> list[tuple[int, str, float]]:

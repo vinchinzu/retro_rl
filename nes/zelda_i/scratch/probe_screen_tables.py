@@ -79,10 +79,14 @@ def _rows_of(screen_row: dict) -> str:
 def table_bill(screens: list[dict]) -> str:
     head = (
         "| screen | frames | hunt f | hearts in -> out | damage | hits | cause"
-        " | R | kills | spawned | streak | cleared |"
+        " | R | kills | spawned | streak | verdict |"
     )
     out = [head, "|" + "---|" * 12]
     for r in screens:
+        if r.get("transit"):
+            verdict = "transit"
+        else:
+            verdict = "cleared" if r["cleared"] else "open"
         out.append(
             f"| `{r['screen']}` | {r['frames']} | {r['hunt_frames']} | "
             f"{_hearts(r, 'hearts_in')} -> {_hearts(r, 'hearts_out')} | "
@@ -90,7 +94,7 @@ def table_bill(screens: list[dict]) -> str:
             f"{r['rupees']} | {r['kills']} | {r['spawned']} | "
             f"{r['streak_in']}->{r['streak_out']}"
             f"{' (' + str(r['streak_resets']) + ' reset)' if r['streak_resets'] else ''}"
-            f" | {'yes' if r['cleared'] else 'no'} |"
+            f" | {verdict} |"
         )
     return "\n".join(out)
 
@@ -173,6 +177,11 @@ def render(payload: dict) -> str:
         f" ({h['hurt_events']} iframe arms)",
         f"- streak best {h['streak_best']}, resets {h['streak_resets']}",
         f"- hits by cause: {h['hits_by_cause']}",
+        # What the value policy walked past, and what it never stood under.
+        f"- prey passed on value: {h.get('prey_passed', {})}",
+        f"- transit screens: {[hex(s) for s in h.get('transit_screens', [])]}"
+        f" ({h.get('transit_frames', 0)}f)",
+        f"- duck frames: {h.get('duck_frames', 0)}, shield {h.get('shield_frames', 0)}",
         "- stages: " + ", ".join(
             f"{s['name']} {s['frames']}f ok={s['ok']}" for s in payload["stages"]
         ),

@@ -519,3 +519,175 @@ peak prey 0, 0 hunt frames). Unchanged, and still correct.
 One caveat: `hunt.py` is 1064 LOC, over the ~1000 soft max, from the damage
 log wiring and `screen_table`. `ShieldPolicy`/`TargetBook` are the seam if it
 grows again.
+
+## This sitting (2026-09-15d) — the zora has a clock, and the corridor has a price list
+
+Three of the four open rows above are one sitting's work, because all three
+are the same mistake: the hunt knew *where* things were and nothing about
+what they were **worth** or **when** they fire.
+
+### The zora fires on a 195-frame clock, and the shot waits 17 frames to move
+
+`scratch/probe_zora.py` logs every frame a zora (`0x11`) or a fireball
+(`0x55`) holds a slot on the live walk. Four surfacings on `0x59`
+(`scratch/zora1.json`), **identical to the frame every time**. `ObjState`
+(`$00AC`) is the cycle; the zora does not move inside one and picks a new tile
+for the next.
+
+| ObjState | frames | what it is |
+|---|---|---|
+| `0x00` | 2 | surfacing begins |
+| `0x01` | 32 | rising |
+| `0x02` | 15 | surfaced, mouth open — **the tell** |
+| `0x03` | 34 | firing; the `0x55` slot appears 2f in |
+| `0x04` | 16 | submerging |
+| `0x05` | 96 | submerged |
+
+Two numbers matter, and the second is the bug:
+
+1. The shot is born **2 frames into `0x03`**, so the `0x01 -> 0x02` edge is
+   **~50 frames** of warning.
+2. **The shot then sits on the muzzle for 17 frames before it moves at all.**
+   Measured 17/17/17/17.
+
+That dwell is why nothing dodged it. `ObjectTracker` measures a motionless
+slot at zero velocity, so `threat.assess` scores it *safe* for the entire
+window in which a 1 px/frame Link could still walk out of its way — and by
+the time it has a velocity (1.65-1.76 px/frame, closing on Link's 1.0) the
+dodge window is gone. `behaviors.shield_blocks` correctly says `0x55` needs
+the Magical Shield, so every shield rule passed on it, and nothing replaced
+them. `threat.off_line_step` could not help either: **a zora's facing byte
+reads `0x03`**, which is in no `_FACING_AXIS` entry, so `in_firing_line` has
+never once returned True for one.
+
+`0x59` f2888 is the whole heart: the ball spawned at (196,157) and held there
+while Link walked **east from x=31 to x=100 along y=157** — straight down its
+line, into it.
+
+The aim is quantized at launch, not a clean bearing: the four shots left at
+180.0, 180.0, -171.1 and -124.2 degrees against bearings to Link of 180.0,
+-172.7, -162.9 and -119.3. So there is no line to solve and **no pre-emptive
+rule worth having** — walking before the launch only moves the target. The
+dwell is the one window where the line is fixed and Link is not yet on it.
+`ShotPolicy.duck` steps perpendicular to the muzzle bearing for exactly that
+window (`hunt_duck`), and never along it.
+
+### The price list: a kill is a drop row plus a streak tick
+
+`overworld/prey.py` is `scratch/bomb_budget.py`'s arithmetic promoted to
+where policy can read it (the scratch CLI now imports the tables instead of
+keeping a second copy).
+
+| ROM row | prey on this corridor | random R/kill | + streak | total |
+|---|---|---|---|---|
+| 0 | red octorok, red tektite, blue leever | 0.156 | 0.385 | **0.541** |
+| 1 | **blue tektite**, red leever, ghini | 0.891 | 0.385 | **1.275** |
+| 2 | blue octorok, blue moblin | 0.122 | 0.385 | **0.507** |
+| 3 | peahat, armos, zora | 0.081 | 0.385 | **0.466** |
+
+The streak column is the one the old policy could not see. Ten unbroken kills
+force a 5-rupee and sixteen force a fairy, so **every kill is worth ~0.385R
+on top of its own table** — more than row 0's entire drop. It also prices the
+damage: a contact at streak 7 throws away 2.7R of forced-drop progress, which
+is more than all five octorok screens' random drops put together.
+
+### A red octorok is worth chasing. The arithmetic is not close.
+
+This is where the sitting's instinct and the numbers disagreed, so the numbers
+won. One chase frame costs 0.00137R of walk time (8.4R billed over 6117 live
+frames) plus 0.00101R of streak risk (4 hits over those frames at the mean
+streak) = **0.0024R/frame**. Against a red octorok's 0.541R that pays back a
+**227 px** walk; `HUNT_BOX` is 182 px wide. There is no distance on the screen
+at which walking away from a red is the better trade, and `tables1` measured
+nine of them landing 0.00 hearts.
+
+What *is* true is that the same chase stops paying at **113 px on short
+health**, because a contact then costs the streak *and* a heart — and the
+measured price of that heart is `0x4a`: Link arrived on 1.49, spent 808 of
+2401 frames guarding, and left two of six row-1 tektites alive. 808 frames
+plus two row-1 bodies is 3.66R, which triples the cost of a chase frame.
+
+So the gate is **health, not distance** (`PreyPolicy.thrifty_below_hearts`),
+and the drop row's real job is the **order**: at equal range the blue tektite
+is held over the red octorok, every time. The bodies that are simply never
+targets are the ones that are not kills — a zora submerges via
+`DestroyMonster` with no `HandleMonsterDied`, so its slot vanishing is not
+even a streak tick (`prey.SKIP_TYPES`, with armos and boulder).
+
+### `0x59` is crossed, not cleared
+
+`ShopP7WalkController.hunt_transit_screens = {0x59}`. On a transit screen the
+hunt still strikes a body in the blade box, still blocks a rock, still ducks a
+fireball and still scoops a drop it walks past — it never *chases* and never
+spends the screen budget. Declining the wave is not the same as standing in
+it, which is what the reverted 2026-09-15 skip experiment could not express.
+
+### Measured: `tables1` -> `tables3`
+
+| screen | `tables1` (baseline) | `tables3` (this sitting) |
+|---|---|---|
+| `0x68` | 566f / 322 hunt / 2 kills | **566f / 322 hunt / 2 kills** — byte-identical |
+| `0x58` | 646f / 397 hunt / 3 kills | **646f / 397 hunt / 3 kills** — byte-identical |
+| `0x59` | 739f, **1.00 heart**, 2 hits, streak 5->0 | **203f, 0.00 hearts, 0 hits, streak 5->5** |
+| `0x49` | in on 1.99 hearts / streak 0; 6 kills, 1 hit | in on **3.00 hearts / streak 5**; 4 kills, 2 hits |
+| `0x4a` | 2618f, 4 of 6 tektites, 1R | 2554f, 2 of 6 tektites, 0R |
+| run | 16 kills, 2R, 2.01 hearts, streak best 7 | 11 kills, 1R, 2.01 hearts, streak best 5 |
+| stop | `bomb_buy` `shop_need_20_have_2` | `bomb_buy` `shop_need_20_have_1` |
+
+Read that table by screen, not by total.
+
+**The two screens the policy touched are unambiguous.** `0x59` went from the
+walk's single largest loss to 203 frames and nothing else; the fireball landed
+no hit in either run with `duck` wired (22 duck frames). And `0x68`/`0x58` came
+back **byte-identical to the baseline**, which is the check that matters for
+the value ordering: `PreyPolicy` changed no decision on a wave of four
+identical red octoroks, exactly as the arithmetic above says it should not.
+
+**The two screens after it are a reshuffle, not a regression.** Link now
+enters `0x49` 536 frames earlier, on a full 3 hearts and a live 5-kill streak
+instead of 1.99 and 0 — a completely different wave state — and `prey_passed`
+is empty for the whole run, so no rule this sitting declined a single body
+there. `0x4a` spent the same full 2400-frame budget for 2 kills instead of 4.
+The corridor is chaotic with respect to entry timing (this is the same
+sensitivity `L1` has), so **a single deterministic trajectory cannot grade a
+policy change end to end** — which is exactly how the first skip-`0x59`
+experiment got reverted on a bad total. Grade per screen; the totals move for
+reasons no rule chose.
+
+### Two defects the first live run found
+
+`tables2` **died on `0x49`** (5 contacts, `link_death`). Both causes were
+real, both are fixed and pinned:
+
+1. **`duck` stepped into a body.** `ShotPolicy.face` has refused to stand
+   still while a body closes since `0x49` killed three shield walks; the new
+   dodge shipped without the same rule, so it bought distance from a shot
+   that had not fired by spending it on an octorok that was already touching
+   Link. `perpendicular` now takes the live bodies and skips a step whose
+   landing cell is inside `MIN_DODGE_BODY` of one.
+2. **The target order used chebyshev.** `combat.nearest_to` — what the value
+   order replaced — measures *manhattan*, because the order is a walk cost
+   and contact is the square pad. Ranking on chebyshev silently re-picked a
+   different octorok on every off-axis wave, which is what reshuffled
+   `0x58` from 646 frames to 1407. The gate still uses chebyshev; only the
+   order changed back.
+
+### Next
+
+1. **`0x49` is the new whole loss.** Link now arrives there on a 5-kill
+   streak with full health — the exact setup for the forced 5-rupee at ten —
+   and two `octorok_fast` contacts (E and S) take it back to 0. That is the
+   only screen between this walk and the first forced drop it has ever
+   earned.
+2. Hearts before `0x4a` is still open, and still the richest wave fought on
+   the least health.
+3. The drop rate is still 18% against 36% billed. One pass cannot fund 20R.
+4. `PreyPolicy.thrifty_below_hearts` has **not fired live yet** (whole hearts
+   never reached 2 on a chase frame), so the short-health chase cap is
+   unit-tested arithmetic, not a measured result.
+
+Standing caveat, now larger: `hunt.py` is **1335 LOC** against the ~1000 soft
+max (was 1064). `overworld/prey.py` took the value model out; `ShotPolicy` is
+the next seam if it grows again, and `dungeon/threat.py` already owns the
+shot-timing vocabulary it would land in.
+
