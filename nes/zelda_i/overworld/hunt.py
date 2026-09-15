@@ -26,13 +26,17 @@ despawns on its own (a Zola submerging) and under-counts nothing.
 
 ``kills_counter`` reads the ROM's own forced-drop counters — ``$0627`` (16
 kills force a fairy) and ``$0050`` (10 force a rupee). Both increment once per
-kill and both get cleared, so only positive deltas are banked: a reset is
-never a kill. Measured on the live walk they move in lockstep and reset
-together, so reading both is one number, not two independent ones — it does
-not cover a wrap the way a truly separate counter would.
+kill. ``Link_BeHarmed`` (aldonunez) zeros them on Link-enemy *collision*,
+including 0-damage bubbles — not on a ``$066F`` change. A wooden octorok
+chip is ``$0670`` only; Survival assist writes that byte back to ``$FF``
+before the next ``observe``, so ``damage_taken`` can stay 0 while the
+streak resets. ``hurt_events`` watches ``$04F0`` (Link iframes) instead:
+that timer survives the refill. Live 2026-09-15: 6 resets, each with
+iframes 24 / knockback 32 / hp still ``0x22``/``$FF``.
 
-Both censuses are reported. Agreement is the evidence; a gap is a measurement
-to chase, not a number to quote. The 2026-09-14 walk reads 14 and 13.
+Both kill censuses are reported. Agreement is the evidence; a gap is a
+measurement to chase, not a number to quote. The 2026-09-14 walk reads 14
+and 13.
 """
 
 from __future__ import annotations
@@ -239,6 +243,7 @@ class ScreenHunter:
     kills_counter: int = 0
     rupees_banked: int = 0
     damage_taken: int = 0
+    hurt_events: int = 0
     streak_best: int = 0
     streak_resets: int = 0
     hunt_frames: int = 0
@@ -261,6 +266,7 @@ class ScreenHunter:
     _census_screen: int = field(default=-1, repr=False)
     _world: int = field(default=-1, repr=False)
     _hp: int = field(default=-1, repr=False)
+    _iframes: int = field(default=-1, repr=False)
     _rupees: int = field(default=-1, repr=False)
     _help: int = field(default=-1, repr=False)
     _occ: FarmOccupancy = field(default_factory=FarmOccupancy, repr=False)
@@ -299,11 +305,17 @@ class ScreenHunter:
         self._rupees = rupees
         # Chip damage, which ``hits_taken`` cannot see: a half-heart lands in
         # ``$0670`` and never touches the whole-hearts byte the hop controller
-        # watches, so a run can read 0 hits and still be bleeding.
+        # watches. Survival assist refills ``$0670`` before the next observe,
+        # so this census is empty on an assisted walk — ``hurt_events`` is
+        # the one that still fires.
         hp = int(snap.filled_hearts) * 256 + int(snap.heart_partial)
         if self._hp >= 0 and hp < self._hp:
             self.damage_taken += 1
         self._hp = hp
+        iframes = int(getattr(snap, "link_iframes", 0))
+        if self._iframes >= 0 and iframes > 0 and self._iframes == 0:
+            self.hurt_events += 1
+        self._iframes = iframes
         world, help_ = int(snap.world_kill_count), int(snap.help_drop_count)
         if self._world >= 0:
             # A negative delta is a reset, never a kill. The two counters
@@ -313,10 +325,10 @@ class ScreenHunter:
             self.kills_counter += gained
             # The streak is the only forced rupee on this corridor: ten kills
             # force a 5-rupee ($0050), sixteen force a fairy ($0627). Every
-            # reset below those thresholds is money not paid. What clears it
-            # is NOT damage — the 2026-09-14 walk took 0 damage by both
-            # censuses and still reset 6 times, peaking at 4. Unexplained;
-            # this counter is how the next sitting finds out.
+            # reset below those thresholds is money not paid. Link_BeHarmed
+            # (collision, $04F0 0→24) is what zeros them — not a $066F
+            # change, and not a screen scroll. Live 2026-09-15: 6 resets,
+            # 6 hurt_events, damage_taken 0 on an assisted walk.
             if world == 0 and self._world > 0:
                 self.streak_resets += 1
         self.streak_best = max(self.streak_best, world)
@@ -493,6 +505,7 @@ class ScreenHunter:
         self.kills_counter = 0
         self.rupees_banked = 0
         self.damage_taken = 0
+        self.hurt_events = 0
         self.streak_best = 0
         self.streak_resets = 0
         self.hunt_frames = 0
@@ -516,6 +529,7 @@ class ScreenHunter:
         self._help = -1
         self._rupees = -1
         self._hp = -1
+        self._iframes = -1
         self._occ.reset()
 
     def report(self) -> dict[str, Any]:
@@ -524,6 +538,7 @@ class ScreenHunter:
             "kills_counter": self.kills_counter,
             "rupees_banked": self.rupees_banked,
             "damage_taken": self.damage_taken,
+            "hurt_events": self.hurt_events,
             "streak_best": self.streak_best,
             "streak_resets": self.streak_resets,
             "hunt_frames": self.hunt_frames,

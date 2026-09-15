@@ -2,6 +2,19 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
+## This sitting (2026-09-15) — pre-L1 rupee streak is contact, not "no drops"
+
+`rr-doua.1` still in_progress (20R bombs). Hunt walk 1/1 green, 14 kills, 0
+rupees, `streak_best` 4, `streak_resets` 6. Cause is measured: hunt
+occupancy-walks onto the sprite; `Link_BeHarmed` zeros `$50`/`$627` and
+grants `$04F0=24`; a wooden octorok chip is `$0670` `$80`; Survival assist
+writes `$0670` back to `$FF` the same frame, so `damage_taken` and
+`assist.damage_events` stay 0. Probe `scratch/probe_kill_streak.py`: every
+real reset has iframes 24 / knockback 32 / hp `0x22`/`$FF`. Random table on
+this corridor is Baxter A (red octorok 31%), not group B. `hurt_events` is
+the census. Next: sword-reach hunt so the 10-kill 5-rupee can fire. Do not
+STATUS. Do not overwrite M5 18909f.
+
 ## This sitting (2026-09-14) — Gathering 4.5.1 (`rr-ps7.4` / `pre_l1`)
 
 Occupied-lane LEFT/RIGHT + 0x48 `align_x=120` closed the named 0x37→0x4A

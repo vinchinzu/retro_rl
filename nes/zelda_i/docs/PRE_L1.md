@@ -130,19 +130,31 @@ wired by `OverworldPathController.hunt` (off by default, on for
 M5 Clean re-measured after the change: `--natural-entry --trials 2` 2/2,
 TF `0x01`, **18909f** both trials. Unchanged.
 
-### The corridor does not pay
+### The corridor's random table is thin; the forced 5-rupee died to contact
 
-Fourteen kills produced **two** floor drops in the whole walk — a fairy on
-`0x58`, a heart on `0x49` — and **no rupee**. Killing everything between
-`0x77` and `0x4A` does not fund the 20R bombs. It is not a pickup bug: every
-`0x60` slot that appeared was logged and those two are all there were.
+Fourteen kills produced **two** floor drops — a fairy on `0x58`, a heart on
+`0x49` — and **no rupee**. Not a pickup bug: every `0x60` slot that appeared
+was logged. Red octoroks (`0x07`/`0x08`) are drop-table row 0 (Baxter A,
+31%): hearts and 1-rupees. That is not CLEANUP_PLAN 4.5.1's group B (blue
+octorok `0x09` / blue moblin `0x03`, 41%, bombs). Random drops will not
+fund 20R here.
 
-The forced drop is the other rupee on this corridor (`$0050` forces a 5-rupee
-at 10 kills, `$0627` a fairy at 16) and it never fires: **streak_best 4,
-streak_resets 6**. `ram.py` says a hit clears the counters, but this walk took
-**zero** damage by both censuses and still reset six times, so something else
-clears them. The two counters also move in lockstep, so they are one number.
-That is the next measurement, and `hunt.report()` now carries it.
+The forced 5-rupee at 10 consecutive kills is the reliable money, and it
+never fired because **Link walked onto the bodies**. `Link_BeHarmed`
+(aldonunez `Z_01.asm`) zeros `$50`/`$51`/`$627` on collision, *then*
+subtracts damage. A wooden octorok chip is `$0670` `$80` — `$066F` does not
+move. Survival assist writes `$0670` back to `$FF` the same frame, so
+`hits_taken`, `damage_taken`, and `assist.damage_events` all read 0.
+
+Re-measured 2026-09-15 (`scratch/probe_kill_streak.py`, assist on, 1/1
+green, 14/13 kills, 0 rupees): **6 streak resets, each with `$04F0=24` and
+knockback 32**, health still `0x22`/`$FF`. Peak 4 is the 0x68 three-kill
+plus the first 0x58 kill, then contact. Two more iframe arms on 0x59 peahats
+after the streak was already 0. `hunt.report()["hurt_events"]` watches
+`$04F0`; that is the census that agrees with the resets.
+
+Next: stop the hunt at sword reach instead of occupancy-walking onto the
+sprite, then the 10-streak can survive. Do not STATUS.
 
 ### Two traps this sitting paid for
 

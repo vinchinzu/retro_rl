@@ -212,6 +212,7 @@ RAM_SYMBOLS: dict[int, str] = {
     ram.ADDR_HELP_DROP_COUNT: "help_drop_count",
     ram.ADDR_HELP_DROP_VALUE: "help_drop_value",
     ram.ADDR_WORLD_KILL_COUNT: "world_kill_count",
+    ram.ADDR_LINK_IFRAMES: "link_iframes",
     ram.ADDR_HEALTH: "health",
     ram.ADDR_HEART_PARTIAL: "heart_partial",
     ram.ADDR_TRIFORCE: "triforce",

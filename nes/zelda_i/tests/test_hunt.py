@@ -1,8 +1,9 @@
 """On-route screen clearing: prey selection, the kill census, the budgets.
 
 No emulator. The census is the part worth pinning: ``kills`` is inferred from
-slot transitions and ``kills_counter`` from two ROM counters that a hit
-clears, so both have a way to lie and both are asserted here.
+slot transitions and ``kills_counter`` from two ROM counters that
+``Link_BeHarmed`` (collision, ``$04F0``) clears, so both have a way to lie
+and both are asserted here.
 """
 
 from __future__ import annotations
@@ -143,7 +144,7 @@ def test_counter_census_banks_gains_and_ignores_a_hit_reset() -> None:
     hunter.observe(_snap(world_kill_count=1, help_drop_count=1))
     hunter.observe(_snap(world_kill_count=2, help_drop_count=2))
     assert hunter.kills_counter == 2
-    hunter.observe(_snap(world_kill_count=0, help_drop_count=0))  # took a hit
+    hunter.observe(_snap(world_kill_count=0, help_drop_count=0))  # Link_BeHarmed
     assert hunter.kills_counter == 2
     hunter.observe(_snap(world_kill_count=1, help_drop_count=1))
     assert hunter.kills_counter == 3
@@ -332,6 +333,25 @@ def test_a_streak_reset_short_of_the_forced_drop_is_recorded() -> None:
     hunter.observe(_snap(world_kill_count=0, help_drop_count=0))
     assert hunter.streak_resets == 1
     assert hunter.streak_best == 4
+
+
+def test_a_collision_is_a_hurt_even_when_assist_has_already_refilled() -> None:
+    """``Link_BeHarmed`` grants $04F0=24 and zeros $50/$627. Survival assist
+    writes $0670 back to $FF before the next observe, so damage_taken stays
+    0; iframes are what still fire."""
+    hunter = ScreenHunter()
+    hunter.observe(_snap(health=0x22, heart_partial=0xFF, link_iframes=0))
+    hunter.observe(
+        _snap(
+            health=0x22,
+            heart_partial=0xFF,
+            link_iframes=24,
+            world_kill_count=0,
+            help_drop_count=0,
+        )
+    )
+    assert hunter.hurt_events == 1
+    assert hunter.damage_taken == 0
 
 
 # ----------------------------------------------- wiring into the hop path ---

@@ -11,8 +11,14 @@ ADDR_SUBMODE        = 0x0013  # mode-local phase (see Level 9 ending note)
 ADDR_DIALOG_TIMER   = 0x0029  # dialog countdown
 ADDR_HELP_DROP_COUNT= 0x0050  # 10 kills → forced 5-rupee (or bomb)
 ADDR_HELP_DROP_VALUE= 0x0051  # nonzero → that force is a bomb
-ADDR_WORLD_KILL_COUNT=0x0627  # 16 kills → forced fairy; all three clear on hit
+ADDR_WORLD_KILL_COUNT=0x0627  # 16 kills → forced fairy
+ADDR_LINK_IFRAMES     =0x04F0  # ObjInvincibilityTimer[0]; 24 on Link_BeHarmed
+ADDR_WORLD_KILL_CYCLE =0x052A  # 0-9 random-drop column (not the streak)
+                              # $50/$51/$627 zero on Link-enemy *collision*
+                              # (aldonunez Link_BeHarmed), not on a $066F
+                              # change. Half-heart chip is $0670 ($80).
                               # ZeldaSnapshot: world_kill_count / help_drop_*
+                              # / link_iframes
 ADDR_LINK_X         = 0x0070  # 0..240 screen X
 ADDR_LINK_Y         = 0x0084  # ~61..221 screen Y
 ADDR_LINK_FACING    = 0x0098  # $08 N, $04 S, $01 E, $02 W
