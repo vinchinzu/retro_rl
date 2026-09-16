@@ -3,13 +3,15 @@
     uv run python nes/zelda_i/scripts/run_survival_spine.py --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1
+    uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --headed --no-video --trials 1
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
-unless ``--no-video``. Heart assist is on by default; ``--no-infinite-life``
-turns it off for combat practice. ``--through pre-l1`` forces it off: the
-refill hides the ``$0670`` chip that zeros the 10-kill 5-rupee. Inventory
-pokes stay on unless ``--no-pokes``; ``--clean`` is both off. Does not
-overwrite Clean M5.
+unless ``--no-video``. ``--headed`` opens a pygame window (``[ ]`` speed,
+TAB turbo, ESC quit) and skips dummy SDL. Heart assist is on by default;
+``--no-infinite-life`` turns it off for combat practice. ``--through pre-l1``
+forces it off: the refill hides the ``$0670`` chip that zeros the 10-kill
+5-rupee. Inventory pokes stay on unless ``--no-pokes``; ``--clean`` is both
+off. Does not overwrite Clean M5.
 No ``--from-state``. Stop at first failed stage.
 """
 
@@ -19,10 +21,17 @@ import argparse
 
 from retro_harness.audit import AuditCapabilities, AuditedEnv
 from retro_harness.env import make_env, reset_obs
+from retro_harness.headed import (
+    HEADED_ATTR,
+    add_headed_flag,
+    attach_headed,
+    idle_headed,
+)
 from retro_harness.segment_runner import configure_headless, save_rgb_png, write_json_report
 from zelda_i.assist import UnlimitedHealthAssist
+from zelda_i.combat import facing_to_direction
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
-from zelda_i.ram import read_snapshot
+from zelda_i.ram import ADDR_HELP_DROP_COUNT, ADDR_WORLD_KILL_COUNT, read_snapshot
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
 from zelda_i.spine.survival import (
     SPINE_THROUGH,
@@ -42,6 +51,25 @@ def _spine_kills(payload: dict) -> int:
     return sum(
         int((stage.get("controller") or {}).get("kills", 0))
         for stage in payload.get("stages", [])
+    )
+
+
+def _headed_hud(env) -> str:
+    ram = env.get_ram()
+    snap = read_snapshot(ram)
+    headed = getattr(env, HEADED_ATTR, None)
+    frame = int(getattr(headed, "frame", 0) or 0)
+    try:
+        face = facing_to_direction(int(snap.facing))[0]
+    except ValueError:
+        face = "?"
+    assist = getattr(env, "_zelda_assist", "?")
+    return (
+        f"f{frame} assist={assist} "
+        f"0x{snap.screen:02x} ({snap.link_x},{snap.link_y}) {face} "
+        f"{snap.rupees}R {snap.whole_hearts}/{snap.heart_containers}H "
+        f"b{snap.bombs} k{int(ram[ADDR_HELP_DROP_COUNT])}/"
+        f"s{int(ram[ADDR_WORLD_KILL_COUNT])}"
     )
 
 
@@ -76,9 +104,12 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     add_video_args(parser, default_on=True)
+    add_headed_flag(parser)
     args = parser.parse_args(argv)
 
-    configure_headless()
+    headed = bool(args.headed)
+    if not headed:
+        configure_headless()
     results: list[dict] = []
     for trial in range(args.trials):
         tag = args.tag if args.trials == 1 else f"{args.tag}_t{trial}"
@@ -99,17 +130,27 @@ def main(argv: list[str] | None = None) -> int:
         if args.through == "pre-l1":
             # Survival refill writes $0670 back to $FF the same frame
             # Link_BeHarmed zeros $50/$627. The bomb walk is a Clean farm.
+            # No heart assist, no inventory pokes. Ever.
             infinite_life = False
+            allow_pokes = False
         assist = (
             UnlimitedHealthAssist(enabled=True) if infinite_life else None
         )
         payload: dict | None = None
+        pygame_mod = None
         try:
             obs, _ = reset_obs(env)
             env = AuditedEnv(
                 env,
                 capabilities=AuditCapabilities.all("zelda_i.survival_spine"),
             )
+            env._zelda_assist = "off" if assist is None else "on"
+            if headed:
+                pygame_mod = attach_headed(
+                    env,
+                    title=f"Zelda I BOT: {args.through} (no assist)",
+                    hud=_headed_hud,
+                )
             tap.attach(env, obs)
             # VideoTap wraps env.step; do not also pass on_frame (double encode).
             run = run_survival_spine(
@@ -143,6 +184,11 @@ def main(argv: list[str] | None = None) -> int:
                     "gameplay_frames": tap.frame,
                     "transitions": list(tap.transitions),
                 }
+            if pygame_mod is not None:
+                try:
+                    idle_headed(env, pygame_mod)
+                except KeyboardInterrupt:
+                    pass
             env.close()
         if payload is None:
             raise RuntimeError("survival spine trial ended before a report")

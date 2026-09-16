@@ -25,7 +25,7 @@ distinct screens against six history slots, so the smallest thing that does
 work is a full lap to ``0x77`` and back -- walking onto 0x77 evicts 0x78, and
 each screen after that evicts the next one in front of Link.
 
-The lap table itself is ``gathering.PRE_L1_LAP_HOPS`` and the arithmetic is
+The lap table itself is ``shop_p7.PRE_L1_LAP_HOPS`` and the arithmetic is
 ``overworld.respawn``; this probe is the live check on both. It prints, per
 screen *visit*: the live wave, the kill-count flags on arrival and departure,
 and the history at the moment the ROM made its decision. A respawn is
@@ -44,7 +44,7 @@ from retro_harness.segment_runner import configure_headless, write_json_report
 from zelda_i.combat import live_enemies
 from zelda_i.dungeon.ids import OBJECT_NAMES
 from zelda_i.overworld import gathering as gathering_mod
-from zelda_i.overworld.gathering import make_shop_p7_walk_controller
+from zelda_i.overworld.shop_p7 import make_shop_p7_walk_controller
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.overworld.respawn import read_room_history
 from zelda_i.ram import PLAY_MODE, read_snapshot, world_flag

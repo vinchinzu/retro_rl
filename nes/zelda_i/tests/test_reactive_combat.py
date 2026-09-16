@@ -586,3 +586,68 @@ def test_l1_0x33_still_chases_a_stalfos_that_is_not_inbound() -> None:
     action = ctl.step(snap)
     assert action.reason.startswith("combat_")
     assert ctl.report()["tuning"]["evades"] == 0
+
+
+# --- the Zora muzzle hold ---------------------------------------------
+
+
+ZORA_SPIT_TYPE = 0x55  # dungeon.ids.FIREBALL_OBJECT_TYPE
+
+
+def _muzzle_then_fly(hold: int, fly: int, speed: int = 2):
+    """A 0x55 sitting on the muzzle, then leaving west at ``speed`` px/frame.
+
+    Measured shape (``scratch/probe_zora.py``, tag ``zora1``): the shot
+    occupies a slot in state 0x10 for ~16 frames without moving a pixel, then
+    travels in a straight line at ~2 px/frame.
+    """
+    frames = [
+        _snap((60, 157), ((10, ZORA_SPIT_TYPE, 196, 157, 0, 0x10, 0x0A),))
+        for _ in range(hold)
+    ]
+    frames += [
+        _snap(
+            (60, 157),
+            ((10, ZORA_SPIT_TYPE, 196 - speed * (i + 1), 157, 0, 0x10, 0x0A),),
+        )
+        for i in range(fly)
+    ]
+    return frames
+
+
+def _spit(tracked):
+    return next(t for t in tracked if t.slot == 10)
+
+
+def test_the_long_window_reads_a_just_fired_spit_as_nearly_standing() -> None:
+    """Why the knob exists: six samples of a sixteen-frame hold average the
+    shot's own speed down by five sixths on the frame it starts moving."""
+    tracker = ObjectTracker()
+    shot = _spit(_drive(tracker, _muzzle_then_fly(hold=16, fly=1)))
+    assert shot.vx == -0.4
+
+
+def test_shot_history_reads_the_spit_at_its_real_speed_at_once() -> None:
+    tracker = ObjectTracker(shot_history=2)
+    shot = _spit(_drive(tracker, _muzzle_then_fly(hold=16, fly=1)))
+    assert shot.vx == -2.0
+
+
+def test_shot_history_leaves_a_shot_still_on_the_muzzle_at_zero() -> None:
+    """Only ever faster, never slower: a spawn frame that read as inbound
+    would put the evader on every muzzle in the room."""
+    tracker = ObjectTracker(shot_history=2)
+    shot = _spit(_drive(tracker, _muzzle_then_fly(hold=16, fly=0)))
+    assert shot.vx == 0.0 and shot.vy == 0.0
+
+
+def test_shot_history_does_not_touch_a_body() -> None:
+    """Walkers move on a 2-4 frame cadence; a two-sample read of one is
+    mostly zeros and spikes. The knob is shots only."""
+    tracker = ObjectTracker(shot_history=2)
+    frames = [
+        _snap((120, 141), ((1, WIZZROBE_TYPE, 80 + (i // 2), 141, 64, 0, 0),))
+        for i in range(6)
+    ]
+    body = _drive(tracker, frames)[0]
+    assert body.vx == 0.4

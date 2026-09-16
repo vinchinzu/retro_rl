@@ -100,7 +100,7 @@ def test_pre_l1_is_dedicated_gathering_not_l1_tf() -> None:
     gather_names = [name for name, _, _ in pre_l1_stages()]
     tf_names = [name for name, _, _ in level1_survival_tf_stages()]
     assert gather_names[0] == "sword_cave"
-    assert gather_names[1:] == ["bomb_walk", "bomb_buy"]
+    assert gather_names[1:] == ["bomb_walk", "bomb_topup", "bomb_buy"]
     assert not set(gather_names) & set(tf_names)
     continue_src = inspect.getsource(_continue_level1_spine)
     assert "_L1_DEDICATED_HOPS" in continue_src
@@ -131,9 +131,11 @@ def test_pre_l1_forces_assist_off() -> None:
     lib = inspect.getsource(run_survival_spine)
     pre_l1 = lib.split('if through == "pre-l1":', 1)[1].split("else:", 1)[0]
     assert "assist = None" in pre_l1
+    assert "allow_pokes = False" in pre_l1
     cli_src = inspect.getsource(cli.main)
     assert 'args.through == "pre-l1"' in cli_src
     assert "infinite_life = False" in cli_src
+    assert "allow_pokes = False" in cli_src
 
 
 def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
@@ -414,6 +416,11 @@ def test_survival_spine_cli_wraps_audited_env() -> None:
     assert "infinite_life" in src
     assert "--no-pokes" in src
     assert "--clean" in src
+    assert "add_headed_flag" in src
+    assert "attach_headed" in src
+    assert "idle_headed" in src
+    assert "if not headed:" in src
+    assert "configure_headless" in src
 
 
 def test_video_tap_close_and_abort_without_writer() -> None:

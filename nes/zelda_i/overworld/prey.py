@@ -1,14 +1,12 @@
 """What a body pays, what a hit costs, and whether either is worth a walk.
 
 ``overworld.hunt`` picked the manhattan-nearest live slot and chased it to a
-per-target budget. On the pre-L1 corridor that is the wrong question twice
-over, and the per-screen bill (``docs/PRE_L1.md``, ``tables1``) says so in
-both directions:
+per-target budget. That is the wrong question twice:
 
 * **Not every body is worth the same.** A blue tektite is ROM drop row 1
   (0.891 R/kill, the only table with two 5-rupees); a red octorok is row 0
-  (0.156). Six of ``0x4A``'s tektites are 5.3R of the corridor's 8.4R, and
-  the walk spent its health on the row-0 screens before it got there.
+  (0.156). The live pre-L1 walk is ``overworld.shop_p7`` (south coast to
+  0x6F), not the old inland ``0x4A`` prefix.
 * **The streak is the actual wage.** Ten unbroken kills force a 5-rupee and
   sixteen force a fairy (``scratch/drop_mechanics_rom.md``), so *any* kill is
   worth :data:`STREAK_RUPEES` on top of its own table — which is more than

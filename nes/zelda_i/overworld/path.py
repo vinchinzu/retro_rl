@@ -2,10 +2,13 @@
 
 Level modules (L2/L3/L5/L6/L8) keep geometry and stop predicates locally;
 this module owns the common hop-advance / stuck / swing / maze / door core.
-Level 1 remains on the phase-machine in ``overworld_nav.py``.
+Level 1 remains on the phase-machine in ``overworld/nav.py``. Pre-L1 coast
+bombs are ``overworld/shop_p7.py``; the later 0x4A cave is ``bomb_shop.py``.
 """
 
 from __future__ import annotations
+
+import re
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -14,14 +17,24 @@ from typing import Any, Callable
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import (
+    BOMB_DROP_OBJECT_TYPE,
+    BOMB_DROP_STATES,
     direction_to_facing,
+    heal_wanted,
     in_sword_hitbox,
     overworld_threat_objects,
 )
 from zelda_i.dungeon.behaviors import is_projectile
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
-from zelda_i.dungeon.threat import MIN_DODGE_BODY, ReactiveEvader, assess, dodgeable
-from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
+from zelda_i.dungeon.threat import (
+    MIN_DODGE_BODY,
+    TRIGGER_TTC,
+    Impact,
+    ReactiveEvader,
+    assess,
+    dodgeable,
+)
+from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
 from zelda_i.overworld.common import (
     EDGE_EAST_X,
     EDGE_NORTH_Y,
@@ -45,6 +58,7 @@ from zelda_i.overworld.heart_farm import (
     BAND_SWEEP_WAYPOINTS,
     HeartFarmController,
     HeartFarmPhase,
+    owns_bombs,
 )
 from zelda_i.overworld.graph import (
     MAZE_WAYPOINT_TOL,
@@ -63,45 +77,56 @@ DEFAULT_SWING_HOLD = 3
 DEFAULT_STUCK_THRESHOLD = 50
 DEFAULT_MAX_FRAMES = 30000
 DEFAULT_SCOOP_RADIUS = 48
+# Hearts and fairies only. Half the play area, so a heal that landed across
+# the room is still reachable: a fairy is a full refill and, because one
+# ``$0670`` chip takes the sword beam away (``zelda_i.beam``), the heal is
+# also the weapon coming back. Rupees keep the short reach — walking 96 px
+# for one rupee is how a hop table turns into a farm loop.
+DEFAULT_SCOOP_HEAL_RADIUS = 96
 _OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
 # Dungeon OccupancyGrid xmax=216 traps OW east-mouth leftover x≈240.
 _OW_OCC_BOUNDS = (0, 255, 0, 239)
 _ALIGN_X_TOL = 5
-# Evade box. NOT ``_OW_OCC_BOUNDS``: the walkable band is the playfield
-# inside the four scroll lines (the HUD owns y<62), and a step past one of
-# them does not bump a wall — it changes screen under the hop table. One
-# pixel inside each EDGE_* keeps every candidate step on this screen.
-_EVADE_BOUNDS = (
-    EDGE_WEST_X + 1,
-    EDGE_EAST_X - 1,
-    EDGE_NORTH_Y + 1,
-    EDGE_SOUTH_Y - 1,
-)
-# ``_can_move`` only looks one pixel ahead, but a committed escape runs for
-# ``commit_frames`` at ~1 px/frame. Ban a direction this far from its scroll
-# line so a 10-frame commit cannot walk the screen out from under the hop.
+# One pixel inside each EDGE_* so every evade step stays on this screen.
+_EVADE_BOUNDS = (EDGE_WEST_X + 1, EDGE_EAST_X - 1, EDGE_NORTH_Y + 1, EDGE_SOUTH_Y - 1)
+# Ban dirs this far from a scroll line so a 10-frame commit cannot leave.
 _EVADE_EDGE_MARGIN = 12
-# A body inside the contact pad is normally the sword's problem, not the
-# evader's: an unconditional in-pad peel turned an open screen into a 1 px
-# shuffle beside a body that kept chasing (measured 4 hits, 2x the frames,
-# and a death two screens off-route). The one case that is the evader's is
-# a dead stand — ``stuck`` identical for this long means no hop rule is
-# moving Link off whatever he is standing on.
+# Evader only peels an in-pad body after this many stuck frames.
+_HEXISH = re.compile(r"(?:0x)?[0-9a-f]{2}")
+_TRAILING_DIGITS = re.compile(r"(?<=[a-z])\d+")
 _WEDGE_STUCK_FRAMES = 24
-_OCCUPIED_LANE_STAND_CAP = 8  # then yield the hop; a long stand timed out 0x48
-# Frames of perpendicular walk allowed before the parallel lane is written off.
-# A lane sits ~``MIN_DODGE_BODY`` px off the blocked one and Link walks ~1
-# px/frame, so a peel that pays off lands inside ~16 frames; 3x that is slack
-# for knockback and a body that drifts. Past it, fall back to the old ladder
-# (travel on Link's own row if it is clear, then stand, then yield the hop) so
-# a body camping the hop lane cannot hold the hop forever.
+# Frames one hop may spend on one screen before the optional rungs are
+# switched off and the push is all that is left. Crossing a coast screen is
+# ~220 frames of walking, so this is an order of magnitude of slack for
+# fighting, scooping and dodging — and still an order of magnitude below the
+# 30000 frame stage cap that used to be the only thing to hit.
+DEFAULT_HOP_SCREEN_MAX_FRAMES = 4000
+# How close an inbound shot has to be before it outranks a body already in
+# the blade box. ``threat.TRIGGER_TTC`` is the evader's own trigger, so
+# anything looser would drop the swing for a shot the evader is not yet
+# acting on; anything tighter and the sidestep cannot finish (Link walks
+# 1 px/frame and the pad is ``LINK_HALF + SHOT_HALF``).
+_SHOT_OVER_SWORD_TTC = TRIGGER_TTC
+_OCCUPIED_LANE_STAND_CAP = 8  # then yield the hop
+# Perp walk before writing off the parallel lane; then own-row / stand / yield.
 _OCCUPIED_LANE_STEER_CAP = 48
-# A stall escape is committed, not consulted. ``stuck`` resets the instant the
-# escape moves Link one pixel, which hands the frame straight back to the hop
-# rule that wedged him — measured as 27,809 ``band_down`` frames against 531
-# ``hop3_escape`` frames at 0x58 (56,125), Link never leaving the pocket. Once
-# an escape starts it owns the screen until the hop scrolls or this runs out.
+# Committed stall escape; ``stuck`` reset must not hand the frame back to hop.
 _STALL_ESCAPE_COMMIT_FRAMES = 600
+
+
+def _reason_key(reason: str) -> str:
+    """Stem of a ``FrameAction.reason``, so a census has ~20 rows not ~2000.
+
+    Reasons carry the hop index and the screen id (``hop4``, ``hunt_7b``,
+    ``79_skirt_beach``) — exactly the detail a *per-screen* census already
+    supplies, and enough to shatter every row into a singleton if it is kept.
+    Both are dropped: trailing digits on a token, and a whole token that is
+    just two hex digits.
+    """
+    stem = str(reason or "none").split("|", 1)[0]
+    stem = _TRAILING_DIGITS.sub("", stem)
+    kept = [p for p in stem.split("_") if p and not _HEXISH.fullmatch(p)]
+    return "_".join(kept) or stem or "none"
 
 
 def _ow_hop_grid() -> OccupancyGrid:
@@ -120,23 +145,10 @@ def _lane_blocked(x: int, y: int, direction: str, hazards: tuple[TrackedObject, 
 
 
 def _parallel_lane(
-    x: int,
-    y: int,
-    direction: str,
-    hazards: tuple[TrackedObject, ...],
-    banned: set[str],
-    *,
-    toward: tuple[int, int] | None = None,
+    x: int, y: int, direction: str, hazards: tuple[TrackedObject, ...],
+    banned: set[str], *, toward: tuple[int, int] | None = None,
 ) -> tuple[int, int] | None:
-    """Nearest cell on a lane parallel to ``direction`` whose travel is clear.
-
-    ``(x, y)`` is the lane the hop *wants* (``align_x`` / ``align_y`` when the
-    hop names one), not necessarily where Link stands: the answer is then a
-    measured offset from the hop lane instead of whatever row Link drifted
-    onto. ``toward`` is Link's own pose and only breaks the side tie, so a
-    peel prefers the side he is already on; every candidate is still rejected
-    when it sits in a body pad or its travel cells do.
-    """
+    """Nearest clear parallel-lane cell. ``toward`` only breaks the side tie."""
     xmin, xmax, ymin, ymax = _EVADE_BOUNDS
     near = min(hazards, key=lambda h: abs(int(h.x) - x) + abs(int(h.y) - y))
     if direction in ("LEFT", "RIGHT"):
@@ -153,15 +165,15 @@ def _parallel_lane(
                 continue
             px, py = WALK_DELTA[name]
             nx, ny = x + px * dist, y + py * dist
-            if xmin <= nx <= xmax and ymin <= ny <= ymax:
-                if not _pad_hits(nx, ny, hazards) and not _lane_blocked(nx, ny, direction, hazards):
-                    return (nx, ny)
+            if (xmin <= nx <= xmax and ymin <= ny <= ymax
+                    and not _pad_hits(nx, ny, hazards)
+                    and not _lane_blocked(nx, ny, direction, hazards)):
+                return (nx, ny)
     return None
 
 
 class PathNavPhase(Enum):
-    """Generic hop-path phases. Level modules may use their own enums with
-    at least HOP / DONE / FAILED members (and often DOOR)."""
+    """Generic hop-path phases. Levels may use their own HOP/DONE/FAILED/DOOR."""
 
     HOP = auto()
     DOOR = auto()
@@ -174,8 +186,7 @@ class OverworldPathController:
     """Frame policy: walk a ``ScreenHop`` table, optional maze, optional door.
 
     Subclasses override ``_at_stop``, ``_after_hops``, ``_before_play``, and
-    ``_extra_hop_action`` for level-specific phases (Lost Hills, burn bush, …).
-    Phase enums may differ per level; helpers resolve members by name.
+    ``_extra_hop_action``. Phase enums may differ; helpers resolve by name.
     """
 
     hops: tuple[ScreenHop, ...] = ()
@@ -201,7 +212,7 @@ class OverworldPathController:
         default_factory=lambda: frozenset({PLAY_MODE, 8, 11})
     )
 
-    # Maze (0x5C → 0x5D style). Default pred is is_5c_maze_hop when waypoints set.
+    # Maze. Default pred is is_5c_maze_hop when waypoints set.
     maze_hop_pred: Callable[[ScreenHop], bool] | None = None
     maze_waypoints: tuple[tuple[int, int], ...] = ()
     maze_wp_index: int = 0
@@ -217,9 +228,7 @@ class OverworldPathController:
     require_dungeon: bool = False
     require_entrance_screen: bool = False
 
-    # Low-heart recovery (Phase 4.9). Default 3 farms when assist is off;
-    # Survival health assist keeps ``filled_hearts`` full so the hook stays
-    # inert. ``farm_below_hearts=0`` restores the old run-to-death hop.
+    # Low-heart recovery. ``farm_below_hearts=0`` disables (old run-to-death).
     farm_below_hearts: int = 3
     farm_min_filled: int = 3
     farm_max_frames: int = 3600
@@ -227,10 +236,14 @@ class OverworldPathController:
     farm_attempts: int = 0
     _farm: HeartFarmController | None = field(default=None, repr=False)
 
-    # Walk onto nearby type-0x60 drops while short of a later shop price.
-    # 0 keeps the old hop (ignore drops). Shops set this to ``price``.
+    # Restock-farm target. 0 disables the farm loop. Floor scoop is
+    # ``scoop_rupees`` or (need_rupees > 0 and still short).
     need_rupees: int = 0
+    scoop_rupees: bool = False
+    scoop_bombs: bool = False
+    hop_screen_max_frames: int = DEFAULT_HOP_SCREEN_MAX_FRAMES
     scoop_radius: int = DEFAULT_SCOOP_RADIUS
+    scoop_heal_radius: int = DEFAULT_SCOOP_HEAL_RADIUS
     # In-route kill+restock so we arrive at the shop closer to ``need_rupees``.
     rupee_farm_attempts: int = 0
     _rupee_farm: RupeeFarmController | None = field(default=None, repr=False)
@@ -238,13 +251,19 @@ class OverworldPathController:
     _hop_walker: OccupancyWalker | None = field(default=None, repr=False)
     _hop_walker_key: tuple[int, int] | None = field(default=None, repr=False)
 
-    # Reactive threat step (``CombatTuning.evade`` shape). Off by default: a
-    # repo-wide overworld evade timed out ``exit42``, and every hop table but
-    # Level 2's is measured without one. On, it runs *ahead* of the hop rules.
+    # Off by default. On, it runs *ahead* of the hop rules.
     evade: bool = False
     evades: int = 0
     parries: int = 0
     evade_reasons: dict[str, int] = field(default_factory=dict)
+    # Frames per behaviour per screen, keyed by the stem of the action's
+    # ``reason``. Accounting only; nothing reads it to decide anything.
+    reason_by_screen: dict[str, dict[str, int]] = field(default_factory=dict)
+    # Shorter velocity window for shots only (``ObjectTracker.shot_history``).
+    # ``None`` keeps the six-sample read every other hop table is measured
+    # against; the hunting walk sets 2 because the Zora's muzzle hold smears
+    # its own spit into a standing object for the length of the dodge window.
+    shot_history: int | None = None
     _tracker: ObjectTracker | None = field(default=None, repr=False)
     _evader: ReactiveEvader | None = field(default=None, repr=False)
     _tracked: tuple[TrackedObject, ...] = field(default=(), repr=False)
@@ -252,42 +271,33 @@ class OverworldPathController:
     occupied_lane: bool = False  # L2 on; travel cell in a body pad → parallel lane
     _lane_stand: int = 0
     _lane_steer: int = 0
+    _hop_screen: tuple[int, int] | None = field(default=None, repr=False)
+    _hop_screen_frames: int = field(default=0, repr=False)
 
-    # Clear each screen on the way instead of crossing it (``overworld.hunt``).
-    # Off by default: it trades frames for drops, which only a shopping leg
-    # wants. The hunt runs *after* the evader and after the edge recovery, so
-    # it never answers a frame the reactive layer wanted and never chases Link
-    # back onto an arrival edge.
-    hunt: bool = False
-    # Also hunt the screen the hop table ends on: the table finishes the frame
-    # Link scrolls onto it, so its wave is the one a hunting walk never sees.
+    # Off by default. Hunt runs *after* evade and *after* edge recovery.
+    # The hunter is a collaborator, not a flag bundle: whoever builds the path
+    # decides which screens it crosses and whether a re-entry reopens them
+    # (``ScreenHunter.transit_screens`` / ``reopen_on_enter``), because those
+    # are answers about the fight, not about the hop table. ``None`` is a path
+    # that never fights, which is every hop table but ``shop_p7``'s.
+    hunter: ScreenHunter | None = None
+    # Also hunt the screen the hop table ends on (scroll-in wave). This one is
+    # path policy, not hunter config — it decides whether the hop table running
+    # out ends the walk or starts one more fight — so it stays here with
+    # ``_wants_post_hop`` / ``_final_hunt`` and off ``ScreenHunter``.
     hunt_destination: bool = False
-    # Screens the hunt crosses instead of clearing. Still blade, shield and
-    # duck; never a chase and never the screen budget. See
-    # ``hunt.ScreenHunter.transit_screens`` for what makes a screen one.
-    hunt_transit_screens: frozenset[int] = frozenset()
-    # A screen re-entered is a fresh fight. Only a lapped route wants this;
-    # see ``hunt.ScreenHunter.reopen_on_enter``.
-    hunt_reopen: bool = False
-    _hunter: ScreenHunter | None = field(default=None, repr=False)
     escape_commit_frames: int = _STALL_ESCAPE_COMMIT_FRAMES
     stall_escapes: int = 0
     _escape_frames: int = field(default=0, repr=False)
     _escape_screen: int = field(default=-1, repr=False)
 
-    # Default hop-complete stop extras
     require_sword: bool = False
     require_triforce_bit: int | None = None
     stop_y_lo: int = 40
     stop_y_hi: int = 210
 
-    # ------------------------------------------------------------------ #
-    # Phase helpers
-    # ------------------------------------------------------------------ #
-
     def _phase_member(self, name: str) -> Any:
-        enum_cls = type(self.phase)
-        return enum_cls[name]
+        return type(self.phase)[name]
 
     def _set_phase(self, phase: Any, note: str = "") -> None:
         if phase is not self.phase:
@@ -301,7 +311,6 @@ class OverworldPathController:
         self._set_phase(self._phase_member(name), note)
 
     def _swing(self, direction: str, reason: str) -> FrameAction:
-        # Gate A on nearby threats (``_nav_snap`` set each ``step``).
         return walk_or_swing(
             self.phase_frames,
             direction,
@@ -320,37 +329,30 @@ class OverworldPathController:
         self._set_phase_name("FAILED", note)
         return FrameAction(nes_idle_action(), note)
 
-    # ------------------------------------------------------------------ #
-    # Reset / report
-    # ------------------------------------------------------------------ #
-
     def reset(self) -> None:
         self.hop_index = 0
         self.phase = self._phase_member("HOP")
-        self.frames = 0
-        self.phase_frames = 0
-        self.stuck = 0
-        self.last_x = -1
-        self.last_y = -1
-        self.last_screen = -1
-        self.last_health = -1
+        self.frames = self.phase_frames = self.stuck = 0
+        self.last_x = self.last_y = self.last_screen = self.last_health = -1
         self.hits_taken = 0
-        self.farm_attempts = 0
-        self._farm = None
-        self.rupee_farm_attempts = 0
-        self._rupee_farm = None
-        self._hop_walker = None
-        self._hop_walker_key = None
-        self.evades = 0
-        self.parries = 0
+        self.farm_attempts = self.rupee_farm_attempts = 0
+        self._farm = self._rupee_farm = None
+        self._hop_walker = self._hop_walker_key = None
+        self.evades = self.parries = 0
         self.evade_reasons = {}
-        self._tracker = None
-        self._evader = None
+        self.reason_by_screen = {}
+        self._tracker = self._evader = None
         self._tracked = ()
         self._evade_room = None
-        self._lane_stand = 0
-        self._lane_steer = 0
-        self._hunter = None
+        self._lane_stand = self._lane_steer = 0
+        self._hop_screen = None
+        self._hop_screen_frames = 0
+        if self.hunter is not None:
+            # The hunter was handed in, so it is not ours to drop: dropping it
+            # would silence the fight, where rebuilding it from the old flags
+            # only cleared its census. ``ScreenHunter.reset`` leaves the
+            # transit/reopen policy alone, which is the same thing.
+            self.hunter.reset()
         self.stall_escapes = 0
         self._escape_frames = 0
         self._escape_screen = -1
@@ -382,10 +384,13 @@ class OverworldPathController:
             "rupee_farm_attempts": self.rupee_farm_attempts,
             "need_rupees": self.need_rupees,
         }
-        if self.hunt:
-            hunter = self._hunter
-            out["hunt"] = hunter.report() if hunter is not None else {}
-            out["kills"] = hunter.kills if hunter is not None else 0
+        out["reason_by_screen"] = {
+            screen: dict(sorted(rows.items(), key=lambda kv: -kv[1]))
+            for screen, rows in self.reason_by_screen.items()
+        }
+        if self.hunter is not None:
+            out["hunt"] = self.hunter.report()
+            out["kills"] = self.hunter.kills
             out["stall_escapes"] = self.stall_escapes
         if self.evade:
             out["evades"] = self.evades
@@ -398,21 +403,13 @@ class OverworldPathController:
             out["require_entrance_screen"] = self.require_entrance_screen
         return out
 
-    # ------------------------------------------------------------------ #
-    # Stop / post-hop policy (override in subclasses)
-    # ------------------------------------------------------------------ #
-
     def _wants_post_hop(self) -> bool:
-        """True when hops complete should continue (door hunt / dungeon enter).
+        """True when hops complete should continue (door hunt / dest hunt).
 
-        ``hunt_destination`` counts: without it ``_on_hop_advanced`` finishes
-        the controller on the frame the table empties — the frame Link scrolls
-        onto the destination, so its wave is never fought.
+        Without ``hunt_destination``, ``_on_hop_advanced`` finishes on scroll-in.
         """
-        return (
-            self.require_dungeon
-            or self.require_entrance_screen
-            or (self.hunt and self.hunt_destination)
+        return self.require_dungeon or self.require_entrance_screen or (
+            self.hunter is not None and self.hunt_destination
         )
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
@@ -423,11 +420,8 @@ class OverworldPathController:
                 return False
             return True
         if self.require_entrance_screen and self.door_screen is not None:
-            if not (
-                snap.level == 0
-                and snap.mode == PLAY_MODE
-                and snap.screen == self.door_screen
-            ):
+            if not (snap.level == 0 and snap.mode == PLAY_MODE
+                    and snap.screen == self.door_screen):
                 return False
             if self.require_sword and not snap.has_sword:
                 return False
@@ -436,19 +430,14 @@ class OverworldPathController:
                     return False
             return True
         end_screen = (
-            self.hops[-1].target
-            if self.hops
+            self.hops[-1].target if self.hops
             else (self.door_screen if self.door_screen is not None else -1)
         )
         if end_screen < 0:
             return False
-        if not (
-            self.hop_index >= len(self.hops)
-            and snap.level == 0
-            and snap.mode == PLAY_MODE
-            and snap.screen == end_screen
-            and self.stop_y_lo < snap.link_y < self.stop_y_hi
-        ):
+        if not (self.hop_index >= len(self.hops) and snap.level == 0
+                and snap.mode == PLAY_MODE and snap.screen == end_screen
+                and self.stop_y_lo < snap.link_y < self.stop_y_hi):
             return False
         if self.require_sword and not snap.has_sword:
             return False
@@ -467,18 +456,31 @@ class OverworldPathController:
         return self._swing(self.door_dir, "door_hunt")
 
     def destination_hunted(self, snap: ZeldaSnapshot) -> bool:
-        """True when the hunt has finished (or never wanted) this screen."""
-        if not self.hunt or not self.hunt_destination or self._hunter is None:
+        """True when the last screen's wave no longer holds the stage open.
+
+        The guard clause is not an optimisation. ``_after_hops`` answers a
+        declining hunt with an *idle*, and ``ScreenHunter.step`` declines for
+        the whole guard branch once Link is at ``min_hearts`` — so on the
+        destination screen those two meet as a stand, for
+        ``HUNT_DESTINATION_FRAMES`` (2400). ``pre_l1_anyrow1`` reached 0x6F
+        for the first time and died there on frame 593 of that stand, to the
+        screen's own Zora, with the cave mouth two tiles away. The
+        destination wave is a rupee errand; at one heart it is not worth a
+        2400 frame stand, and the stage after this one is the buy.
+        """
+        if self.hunter is None or not self.hunt_destination:
             return True
-        return int(snap.screen) in self._hunter.done
+        if int(snap.whole_hearts) <= int(self.hunter.min_hearts):
+            return True
+        return int(snap.screen) in self.hunter.done
 
     def _final_hunt(self, snap: ZeldaSnapshot) -> FrameAction | None:
         """Clear the destination screen before the post-hop policy drives."""
-        if not self.hunt or not self.hunt_destination or self._hunter is None:
+        if self.hunter is None or not self.hunt_destination:
             return None
         if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
             return None
-        return self._hunter.take_destination(snap, self.frames)
+        return self.hunter.take_destination(snap, self.frames)
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         final = self._final_hunt(snap)
@@ -503,14 +505,8 @@ class OverworldPathController:
 
     def _handle_transition(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.hop_index < len(self.hops):
-            return FrameAction(
-                nes_action(self.hops[self.hop_index].direction), "scroll"
-            )
+            return FrameAction(nes_action(self.hops[self.hop_index].direction), "scroll")
         return FrameAction(nes_idle_action(), "scroll_idle")
-
-    # ------------------------------------------------------------------ #
-    # Hop advance + maze
-    # ------------------------------------------------------------------ #
 
     def _is_maze_hop(self, hop: ScreenHop) -> bool:
         pred = self.maze_hop_pred
@@ -530,14 +526,9 @@ class OverworldPathController:
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
         """If arrived off the entry edge, advance hop index. Return action if handled."""
-        if (
-            snap.screen != hop.target
-            or snap.mode not in (PLAY_MODE, 8)
-            or snap.transitioning
-            or on_arrival_edge(hop.direction, snap)
-        ):
+        if (snap.screen != hop.target or snap.mode not in (PLAY_MODE, 8)
+                or snap.transitioning or on_arrival_edge(hop.direction, snap)):
             return None
-
         self.notes.append(f"hop_{self.hop_index}_{hop.target:02x}")
         self._escape_frames = 0
         if self._is_maze_hop(hop):
@@ -560,28 +551,21 @@ class OverworldPathController:
     def _follow_maze(self, snap: ZeldaSnapshot) -> FrameAction:
         if not self.maze_waypoints:
             return self._swing("RIGHT", "maze_no_waypoints")
-
         if "maze_start" not in self.notes:
             self.notes.append("maze_start")
-
         if self.maze_wp_index >= len(self.maze_waypoints):
             return self._swing("RIGHT", "maze_exit")
-
         tx, ty = self.maze_waypoints[self.maze_wp_index]
-        if (
-            abs(snap.link_x - tx) <= self.maze_tol
-            and abs(snap.link_y - ty) <= self.maze_tol
-        ):
+        if (abs(snap.link_x - tx) <= self.maze_tol
+                and abs(snap.link_y - ty) <= self.maze_tol):
             self.maze_wp_index += 1
             self.stuck = 0
             if self.maze_wp_index >= len(self.maze_waypoints):
                 return self._swing("RIGHT", "maze_exit")
             tx, ty = self.maze_waypoints[self.maze_wp_index]
-
         if self.stuck > self.stuck_threshold:
             action, self.stuck = unstick_wiggle(self.stuck, reason="maze_unstick")
             return action
-
         dx = tx - snap.link_x
         dy = ty - snap.link_y
         if abs(dx) > self.maze_tol:
@@ -595,10 +579,8 @@ class OverworldPathController:
     def _farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
         """Divert into a heart farm while low, then hand the hop back.
 
-        Fail-soft on both sides: the farm gives up on its own timeout or when
-        Link leaves the screen, and ``max_farm_attempts`` stops a farm/starve
-        loop from replacing the hop entirely. Keep control through restock
-        phases (anything other than DONE/FAILED), not only ``FARM``.
+        Fail-soft on timeout / left-screen / ``max_farm_attempts``. Keep
+        control through restock phases, not only ``FARM``.
         """
         if self._farm is not None:
             action = self._farm.step(snap)
@@ -649,8 +631,7 @@ class OverworldPathController:
     def _rupee_farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
         """Kill+restock on a farmable screen while short of ``need_rupees``.
 
-        Fail-soft: a farm timeout or left-screen hands the hop back. Does not
-        run after hops complete (door hunt / shop farm-after-hops owns that).
+        Fail-soft. Does not run after hops complete.
         """
         if self._rupee_farm is not None:
             action = self._rupee_farm.step(snap)
@@ -695,12 +676,10 @@ class OverworldPathController:
         return self._rupee_farm.step(snap)
 
     def _rupee_scoop(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        """Walk onto a nearby drop. Hearts when not full; rupees when short.
+        """Walk onto a nearby drop. Hearts when not full; rupees/bombs when asked.
 
-        Stays on the current screen and refuses a drop that sits on the
-        hop's opposite edge (would scroll away). Does not swing — pickup
-        is contact. ``need_rupees=0`` (default) never diverts for rupees.
-        Does not start a heart farm.
+        Stays on-screen; refuses a drop on the hop's opposite edge. Contact
+        pickup, no swing. ``need_rupees`` is the restock-farm target only.
         """
         if snap.mode != PLAY_MODE or snap.level != 0:
             return None
@@ -709,20 +688,43 @@ class OverworldPathController:
             types=HEART_FAIRY_DROP_TYPES,
             states=HEART_FAIRY_DROP_STATES,
             travel_dir=hop.direction,
-            radius=self.scoop_radius,
+            # A heart is worth crossing a screen for and a rupee is not, so
+            # the heal reach is its own number. 0x7B dropped a heart *and* a
+            # fairy on the pass that then died two screens later with
+            # ``heal_hearts`` 0.0 (``pre_l1_beam4``): at 48 px both sat
+            # outside the only layer that walks to a drop while travelling.
+            radius=self.scoop_heal_radius,
             reason="scoop_heart",
-            want=snap.filled_hearts < snap.heart_containers,
+            # Not ``filled_hearts < heart_containers``: that nibble is whole
+            # hearts minus one, so it is true at full health and the walk
+            # detours for a heart it cannot bank. ``combat.heal_wanted`` is
+            # the honest test and it also catches the ``$0670`` chip that
+            # takes the sword beam away.
+            want=heal_wanted(snap),
         )
         if heart is not None:
             return heart
-        return scoop_floor_drop(
+        rupee = scoop_floor_drop(
             snap,
             types=(RUPEE_DROP_OBJECT_TYPE,),
             states=RUPEE_DROP_STATES,
             travel_dir=hop.direction,
             radius=self.scoop_radius,
             reason="scoop_rupee",
-            want=self.need_rupees > 0 and snap.rupees < self.need_rupees,
+            want=self.scoop_rupees or (
+                self.need_rupees > 0 and snap.rupees < self.need_rupees
+            ),
+        )
+        if rupee is not None:
+            return rupee
+        return scoop_floor_drop(
+            snap,
+            types=(BOMB_DROP_OBJECT_TYPE,),
+            states=BOMB_DROP_STATES,
+            travel_dir=hop.direction,
+            radius=self.scoop_radius,
+            reason="scoop_bomb",
+            want=self.scoop_bombs and owns_bombs(snap) and int(snap.bombs) < 4,
         )
 
     def _occupancy_align_action(
@@ -733,11 +735,7 @@ class OverworldPathController:
         East-mouth leftover (x≈240): LEFT toward the door column; occupancy
         miss → block cell → y-peel; no path → stand. Do not RIGHT-scroll.
         """
-        if (
-            hop.direction not in ("UP", "DOWN")
-            or hop.align_x is None
-            or hop.y_band is not None
-        ):
+        if hop.direction not in ("UP", "DOWN") or hop.align_x is None or hop.y_band is not None:
             return None
         ax = int(hop.align_x)
         x, y = int(snap.link_x), int(snap.link_y)
@@ -758,8 +756,7 @@ class OverworldPathController:
         walker = self._hop_walker
         xy = (x, y)
         direction = walker.next_dir(xy, (ax, y))
-        # RIGHT at x≥232 scrolls to 0x4D; LEFT at west edge leaves the screen.
-        # Hop UP/DOWN stays a legal y-peel after a LEFT miss (0x4C corridor).
+        # RIGHT at east mouth scrolls; LEFT at west edge leaves. UP/DOWN y-peel ok.
         forbidden: set[str] = set()
         if x >= EDGE_EAST_X:
             forbidden.add("RIGHT")
@@ -782,35 +779,20 @@ class OverworldPathController:
             hold=self.swing_hold,
         )
 
-    # ------------------------------------------------------------------ #
-    # Reactive threat step (opt-in)
-    # ------------------------------------------------------------------ #
-
     def _observe_threats(self, snap: ZeldaSnapshot) -> None:
-        """Feed the tracker every frame.
-
-        Velocity is a mean over a history window, so a tracker that is only
-        observed on the frames we intend to evade reads every body as still.
-        """
+        """Feed the tracker every frame so velocity is not always zero."""
         if self._tracker is None:
-            self._tracker = ObjectTracker()
+            self._tracker = ObjectTracker(shot_history=self.shot_history)
             self._evader = ReactiveEvader(bounds=_EVADE_BOUNDS)
         self._tracked = self._tracker.observe(snap)
         room = (int(snap.level), int(snap.screen))
         if room != self._evade_room:
             self._evade_room = room
             if self._evader is not None:
-                # A new screen reuses the slots for unrelated objects; a
-                # commit carried across the scroll is aimed at nothing.
-                self._evader.reset()
+                self._evader.reset()  # slots reuse; drop a cross-scroll commit
 
     def _evade_blocked_dirs(self, snap: ZeldaSnapshot) -> set[str]:
-        """Directions that would scroll Link off this screen.
-
-        A wrong step in a dungeon bumps a wall; here it changes screen, and
-        the hop table then advances against the wrong arrival edge. Bans are
-        margin-wide because an escape is committed for several frames.
-        """
+        """Directions that would scroll Link off this screen (commit-wide)."""
         blocked: set[str] = set()
         if snap.link_y >= EDGE_SOUTH_Y - _EVADE_EDGE_MARGIN:
             blocked.add("DOWN")
@@ -837,47 +819,69 @@ class OverworldPathController:
             return (int(snap.link_x), (int(lo) + int(hi)) // 2)
         return None
 
+    def _shot_first(self, snap: ZeldaSnapshot) -> bool:
+        """True when an unblockable shot lands inside the dodge window.
+
+        Assessed against the *shots alone*, never against ``assess`` over
+        every hazard: a body close enough to be in the blade box is by
+        construction close enough to own ``Impact.source``, so asking the
+        combined impact whether the next thing to land is a shot answers
+        "no" on exactly the frames this rule exists for.
+
+        Zora spit (``0x55``) is the live case — unkillable, and
+        ``behaviors.shield_blocks`` says the small shield does not stop it —
+        so no swing shortens that contact, and ``dodgeable`` is the other
+        half: a shot already inside the pad is a hit, not a decision.
+        """
+        shots = tuple(
+            t
+            for t in self._tracked
+            if t.hazard is HazardClass.PROJECTILE and not t.blockable
+        )
+        if not shots:
+            return False
+        impact = assess(
+            (int(snap.link_x), int(snap.link_y)), shots, bounds=_EVADE_BOUNDS
+        )
+        return impact.within(_SHOT_OVER_SWORD_TTC) and dodgeable(impact)
+
     def _threat_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop | None
     ) -> FrameAction | None:
         """Reactive first, before any hop rule answers this frame.
 
-        Every rule below this one — align, band, occupancy peel, push — is
-        blind to what is inbound, so running one ahead of the evader silences
-        it for that frame. That is the shape of all three fixed L1 dungeon
-        rooms. The evader yields (``None``) whenever standing is safe, so the
-        hop keeps driving on every quiet frame.
+        Yields ``None`` when standing is safe so the hop drives quiet frames.
         """
         if not self.evade or self._evader is None:
             return None
         if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
             return None
-        if (
-            self.hunt
-            and self._hunter is not None
-            and self._hunter.striking(snap)
-        ):
-            # The blade already reaches: a step away trades a one-hit kill
-            # for a frame of separation, and the hunt's own ladder is
-            # answering this frame. Two reactive layers is one too many.
-            self.evade_reasons["evade_yield_to_sword"] = (
-                self.evade_reasons.get("evade_yield_to_sword", 0) + 1
-            )
-            self._evader.reset()
-            return None
         hazards = tuple(t for t in self._tracked if t.is_hazard)
         stand = assess(
             (int(snap.link_x), int(snap.link_y)), hazards, bounds=_EVADE_BOUNDS
         )
-        if not dodgeable(stand) and self.stuck < _WEDGE_STUCK_FRAMES:
-            # Inside the pad already, and the hop is still moving: no
-            # sidestep clears this, so yield — ``walk_or_swing`` still faces
-            # and slashes contact-range bodies. ``stuck`` is deliberately the
-            # strict counter here. The 0x48 leever wedge (159 frames at
-            # (112,205), Link flipping 112<->113 against the wall) does *not*
-            # trip it, and a tolerant "no net progress" wedge detector that
-            # did peel him off cost a hit further down the column: 3 hits
-            # and 1/4 hearts, against 2 and 3/4 without it.
+        shot_first = self._shot_first(snap)
+        if self.hunter is not None and self.hunter.striking(snap):
+            # Blade already reaches; hunt owns this frame — unless what is
+            # about to land is a *shot*. ``evade_yield_to_sword`` was the
+            # largest single evade reason on the coast walk (383 frames of
+            # 6552, ``pre_l1_beam4``) and the leever screens 0x7B/0x7C keep a
+            # body in the blade box almost continuously, so the Zora sharing
+            # those screens fired into an evader that had been handed off for
+            # the whole window. The sword is not an answer to 0x55: it is not
+            # killable and the small shield does not block it, so trading the
+            # dodge for the swing spends a heart to save a frame.
+            if not shot_first:
+                self.evade_reasons["evade_yield_to_sword"] = (
+                    self.evade_reasons.get("evade_yield_to_sword", 0) + 1
+                )
+                self._evader.reset()
+                return None
+            self.evade_reasons["evade_shot_over_sword"] = (
+                self.evade_reasons.get("evade_shot_over_sword", 0) + 1
+            )
+        if not dodgeable(stand) and not shot_first and self.stuck < _WEDGE_STUCK_FRAMES:
+            # In-pad while hop still moves: yield; ``stuck`` is the strict counter.
             self.evade_reasons["evade_in_pad"] = (
                 self.evade_reasons.get("evade_in_pad", 0) + 1
             )
@@ -898,25 +902,18 @@ class OverworldPathController:
                 if parry is not None:
                     return parry
                 self.evades += 1
-                # Do not slash-walk the escape: the A frames stop Link inside
-                # the pad he is leaving.
+                # Do not slash-walk: A frames stop Link inside the pad.
                 return FrameAction(nes_action(decision.direction), f"evade_{reason}")
             if decision.shield:
                 return FrameAction(nes_idle_action(), f"evade_{reason}")
-            # ``evade_no_gain`` / ``evade_boxed_in``: no step buys a frame.
-            # Hand the frame back to the hop rules (they still slash and still
-            # make progress) instead of idling in the pad.
+            # ``evade_no_gain`` / ``evade_boxed_in``: hop still slashes.
         return None
 
     def _parry(self, snap: ZeldaSnapshot, slot: int | None) -> FrameAction | None:
-        """Answer the inbound body with the sword when the blade already reaches it.
+        """Sword the inbound body when the blade already reaches it.
 
-        The evader reasons about feet only, and no frame it owns presses A.
-        On an open overworld screen that is worse than it sounds: a 0x38
-        octorok matched Link's peel for 45 frames at 1 px/frame, stayed inside
-        the pad the whole time, and hit him anyway. Inside blade range the
-        cheapest dodge is the kill. ``slot`` keeps the sword on *the* inbound
-        threat instead of turning Link into some other body.
+        Evader reasons about feet only. ``slot`` keeps the sword on *the*
+        inbound threat.
         """
         if slot is None:
             return None
@@ -940,9 +937,7 @@ class OverworldPathController:
             return None
         self.parries += 1
         if int(snap.facing) != direction_to_facing(face):
-            # Link has no turn in place; the pixel that buys the facing is
-            # worth it, because the swing that follows removes the threat.
-            return FrameAction(nes_action(face), "evade_parry_face")
+            return FrameAction(nes_action(face), "evade_parry_face")  # no turn in place
         if self.phase_frames % self.swing_period < self.swing_hold:
             return FrameAction(nes_action("A"), "evade_parry")
         return FrameAction(nes_idle_action(), "evade_parry_recover")
@@ -958,9 +953,7 @@ class OverworldPathController:
             self._lane_steer = 0
             return None
         travel = hop.direction
-        # RIGHT/LEFT only. A DOWN peel left the 0x38/0x48 columns and added
-        # hits; the 0x49 case is the y=141 RIGHT hop. Parallel-x for DOWN
-        # hops stays off until a sitting owns that column.
+        # RIGHT/LEFT only; DOWN peels stay off until a sitting owns that column.
         if travel not in ("LEFT", "RIGHT"):
             self._lane_stand = 0
             self._lane_steer = 0
@@ -972,18 +965,9 @@ class OverworldPathController:
             self._lane_steer = 0
             return None
         reason = f"hop{self.hop_index}_lane"
-        # Walk a lane *parallel to the hop lane*, not Link's accidental row.
-        # Dropping ``align_y`` here (the old "own row is clear, just travel"
-        # shortcut) crossed the screen edge on an unmeasured pose, and the
-        # arrival check then advanced the hop from it. The anchor is the hop
-        # lane; ``toward`` only picks which side of it to use.
+        # Parallel to the hop lane (not Link's row); ``toward`` picks the side.
         goal = _parallel_lane(
-            lx,
-            iy,
-            travel,
-            hazards,
-            self._evade_blocked_dirs(snap),
-            toward=(lx, ly),
+            lx, iy, travel, hazards, self._evade_blocked_dirs(snap), toward=(lx, ly),
         )
         step = None
         if goal is not None:
@@ -1002,8 +986,7 @@ class OverworldPathController:
             self._lane_steer = 0 if step == travel else self._lane_steer + 1
             if self._lane_steer <= _OCCUPIED_LANE_STEER_CAP:
                 return FrameAction(nes_action(step), reason)
-        # Last resort ladder (unchanged): Link's own row if its travel is
-        # clear, then a short stand, then yield the hop.
+        # Own row if clear, then stand, then yield.
         if not _lane_blocked(lx, ly, travel, hazards):
             self._lane_stand = 0
             return FrameAction(nes_action(travel), f"{reason}_row")
@@ -1015,19 +998,12 @@ class OverworldPathController:
         return FrameAction(nes_idle_action(), f"{reason}_stand")
 
     def _stall_escape(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        """Route out of a pocket toward this hop's exit, on a learned grid.
+        """Committed route out of a pocket toward this hop's exit.
 
-        Started by the stall, not by a condition a green run meets: ``stuck``
-        has to be past ``stuck_threshold``, which means every hop rule has
-        failed to move Link for 50 frames and the next step is
-        ``unstick_wiggle``'s permanent wait. Only wired where the hunt is on —
-        the hunt is what walks Link off the lane, and it is the thing holding
-        the grid that learned this screen's walls.
-
-        Once started it keeps the frame until the screen scrolls (the hop got
-        what it wanted), the grid runs out of route, or the commit expires.
+        Starts only past ``stuck_threshold``. Hunt-only: the hunter holds
+        the learned grid. Holds until scroll, no route, or commit expiry.
         """
-        if not self.hunt or self._hunter is None:
+        if self.hunter is None:
             return None
         screen = int(snap.screen)
         if self._escape_frames <= 0:
@@ -1041,7 +1017,7 @@ class OverworldPathController:
             self._escape_frames = 0
             return None
         self._escape_frames -= 1
-        act = self._hunter.escape_for(
+        act = self.hunter.escape_for(
             snap, self.frames, hop, f"hop{self.hop_index}_escape"
         )
         if act is None:
@@ -1049,57 +1025,72 @@ class OverworldPathController:
         return act
 
     def _hunt_action(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
-        """Clear this screen before crossing it. ``None`` hands the hop back.
-
-        Ordered after ``recover_off_edge`` on purpose: a chase that starts
-        while Link is still standing on the arrival edge walks him back
-        through it, and ``_advance_hop`` then reads the wrong screen.
-        """
-        if not self.hunt or self._hunter is None:
+        """Clear this screen before crossing it. After ``recover_off_edge``."""
+        if self.hunter is None:
             return None
         if on_arrival_edge(hop.direction, snap):
             return None
-        return self._hunter.step(snap, self.frames, lane=hop_lane(hop))
+        return self.hunter.step(snap, self.frames, lane=hop_lane(hop))
+
+    def _grinding(self, snap: ZeldaSnapshot) -> bool:
+        """True once this hop has spent its budget on this screen.
+
+        The optional rungs each have their own local cap and none of them
+        compose: on 0x7C the occupied-lane steer and the plain push alternated
+        one frame each for 24914 frames (``pre_l1_wedge1``: ``hop`` 12459,
+        ``hop_lane`` 12455) because every steer reset the steer counter the
+        moment it chose the travel direction, and ``track_stuck`` saw a Link
+        who was moving. Only the frames actually spent on this screen, under
+        this hop, are proof against that — and the answer to a hop that has
+        spent them is to stop being clever and push.
+        """
+        key = (int(self.hop_index), int(snap.screen))
+        if key != self._hop_screen:
+            self._hop_screen = key
+            self._hop_screen_frames = 0
+        self._hop_screen_frames += 1
+        if self._hop_screen_frames == self.hop_screen_max_frames + 1:
+            self.notes.append(f"hop_grind_{self.hop_index}_{int(snap.screen):02x}")
+        return self._hop_screen_frames > self.hop_screen_max_frames
 
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
         advanced = self._advance_hop(snap, hop)
         if advanced is not None:
             return advanced
-
+        grinding = self._grinding(snap)
         extra = self._extra_hop_action(snap, hop)
         if extra is not None:
             return extra
-
         if self._in_maze_phase(snap, hop):
             return self._follow_maze(snap)
-
+        if self.hunter is not None:
+            shot = self.hunter.take_beam(snap)
+            if shot is not None:
+                return shot
+        if not grinding:
+            scoop = self._rupee_scoop(snap, hop)
+            if scoop is not None:
+                return scoop
         occ = self._occupancy_align_action(snap, hop)
         if occ is not None:
             return occ
-
         escape = self._stall_escape(snap, hop)
         if escape is not None:
             return escape
-
         if self.stuck > self.stuck_threshold:
             action, self.stuck = unstick_wiggle(self.stuck)
             return action
-
         edge = recover_off_edge(snap, hop.direction, swing=self._swing)
         if edge is not None:
             return edge
-
-        hunted = self._hunt_action(snap, hop)
-        if hunted is not None:
-            return hunted
-
-        scoop = self._rupee_scoop(snap, hop)
-        if scoop is not None:
-            return scoop
-        lane = self._occupied_lane_action(snap, hop)
-        if lane is not None:
-            return lane
+        if not grinding:
+            hunted = self._hunt_action(snap, hop)
+            if hunted is not None:
+                return hunted
+            lane = self._occupied_lane_action(snap, hop)
+            if lane is not None:
+                return lane
         return align_and_push(
             snap,
             direction=hop.direction,
@@ -1113,23 +1104,29 @@ class OverworldPathController:
             align_x_at_wall=hop.align_x_at_wall,
         )
 
-    # ------------------------------------------------------------------ #
-    # Main step
-    # ------------------------------------------------------------------ #
-
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Decide the frame, then record which rung decided it.
+
+        The census is the only way to answer "where did 1759 frames on one
+        transit screen go": the ladder is source-line order (see
+        ``overworld.arbiter``), so a run report can otherwise name the
+        *hop index* it stalled on and nothing about the behaviour that owned
+        the frames. Counting is free and changes no decision.
+        """
+        act = self._decide(snap)
+        screen = f"{int(snap.screen):#04x}"
+        by_screen = self.reason_by_screen.setdefault(screen, {})
+        reason = _reason_key(act.reason)
+        by_screen[reason] = by_screen.get(reason, 0) + 1
+        return act
+
+    def _decide(self, snap: ZeldaSnapshot) -> FrameAction:
         self._nav_snap = snap
         if self.evade or self.occupied_lane:
             self._observe_threats(snap)
-        if self.hunt:
-            if self._hunter is None:
-                self._hunter = ScreenHunter(
-                    transit_screens=frozenset(self.hunt_transit_screens),
-                    reopen_on_enter=bool(self.hunt_reopen),
-                )
-            # Census first, and on every frame: kills land during evades,
-            # farms and plain hop swings, not only while the hunt drives.
-            self._hunter.observe(snap)
+        if self.hunter is not None:
+            # Census every frame: kills land during evades/farms/hop swings too.
+            self.hunter.observe(snap)
         self.frames += 1
         self.phase_frames += 1
         self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
@@ -1145,44 +1142,33 @@ class OverworldPathController:
             hits=self.hits_taken,
             stuck=self.stuck,
         )
-
         if self.frames >= self.max_frames:
             return self._fail("timeout")
-
         if snap.mode == 17:
             return self._fail("link_death")
-
         if self._at_stop(snap):
             return self._finish("path_stop")
-
         early = self._before_play(snap)
         if early is not None:
             return early
-
         # Active farms own their own scroll/mode handling (restock leave/return).
         farm_busy = self._farm is not None or self._rupee_farm is not None
         if snap.transitioning and not farm_busy:
             return self._handle_transition(snap)
-
         if snap.mode not in self.allowed_modes and not farm_busy:
             return wake_or_wait_mode(self.phase_frames, snap.mode)
-
         farm = self._farm_action(snap)
         if farm is not None:
             return farm
-
         rupee = self._rupee_farm_action(snap)
         if rupee is not None:
             return rupee
-
         hop = self.hops[self.hop_index] if self.hop_index < len(self.hops) else None
         threat = self._threat_action(snap, hop)
         if threat is not None:
             return threat
-
         if hop is None:
             return self._after_hops(snap)
-
         return self._do_hop(snap)
 
 
@@ -1191,7 +1177,9 @@ __all__ = [
     "DEFAULT_SWING_HOLD",
     "DEFAULT_STUCK_THRESHOLD",
     "DEFAULT_MAX_FRAMES",
+    "DEFAULT_HOP_SCREEN_MAX_FRAMES",
     "DEFAULT_SCOOP_RADIUS",
+    "DEFAULT_SCOOP_HEAL_RADIUS",
     "PathNavPhase",
     "OverworldPathController",
     "is_5c_maze_hop",

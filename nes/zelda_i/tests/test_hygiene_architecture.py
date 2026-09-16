@@ -36,12 +36,13 @@ _ALLOWED_ROOT_PY = frozenset(
         "runner.py",
         "screen_glance.py",
         "combat.py",
+        "beam.py",
         "anchors.py",
         "room_timer.py",
     }
 )
 _ENGINE_DIRS = ("walk", "overworld", "dungeon", "door_graph")
-_ENGINE_ROOT_FILES = ("ram.py", "combat.py", "anchors.py")
+_ENGINE_ROOT_FILES = ("ram.py", "combat.py", "beam.py", "anchors.py")
 _LEVEL_EXITS_ALLOWLIST = frozenset(f"level{n}_exits.py" for n in range(1, 10))
 _GONE_FLAT_MODULES = (
     "zelda_i.level6_hops",

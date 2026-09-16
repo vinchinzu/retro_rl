@@ -224,6 +224,17 @@ def test_need_rupees_zero_ignores_drops() -> None:
     assert "scoop" not in act.reason
 
 
+def test_scoop_rupees_walks_onto_nearby_drop_when_need_is_zero() -> None:
+    ctrl = OverworldPathController(
+        hops=(ScreenHop(0x78, "RIGHT", align_y=140),),
+        scoop_rupees=True,
+        need_rupees=0,
+    )
+    act = ctrl.step(_snap_drop(rupees=0, drop_x=140, drop_y=140, x=100, y=140))
+    assert act.reason == "scoop_rupee"
+    assert act.action == nes_action("RIGHT")
+
+
 def test_need_rupees_walks_onto_nearby_drop() -> None:
     ctrl = OverworldPathController(
         hops=(ScreenHop(0x78, "RIGHT", align_y=140),),
@@ -783,3 +794,117 @@ def test_occupied_lane_stand_cap_still_yields_the_hop() -> None:
     assert yields_, reasons
     assert min(yields_) > max(stands[:_OCCUPIED_LANE_STAND_CAP]), reasons
     assert min(yields_) <= _OCCUPIED_LANE_STAND_CAP + 1, reasons
+
+
+# ------------------------------------------------- shot over the sword ---
+
+
+def _fireball_snap(*, shot_x: int, leever_x: int) -> ZeldaSnapshot:
+    """Link on 0x7C between a leever at contact and inbound Zora spit."""
+    from zelda_i.dungeon.ids import FIREBALL_OBJECT_TYPE
+
+    return ZeldaSnapshot(
+        mode=PLAY_MODE, level=0, screen=0x7C, next_screen=0x7C,
+        link_x=120, link_y=141, facing=0x01, sword=1, bombs=0, rupees=0, keys=0,
+        health=0x22, heart_partial=0xFF, triforce=0, compass=0, dialog_timer=0,
+        colliding_tile=0, room_item_id=0, room_all_dead=0, room_obj_count=0,
+        cur_opened_doors=0, open_doorway_mask=0,
+        objects=(
+            # 0x0E leever in the blade box (reach 20) but outside the
+            # contact pad (16): exactly the geometry ``hunter.striking``
+            # claims a frame for.
+            ZeldaObject(slot=1, type_id=0x0E, x=leever_x, y=141, facing=0x02,
+                        hp=0x20, state=1),
+            ZeldaObject(slot=10, type_id=FIREBALL_OBJECT_TYPE, x=shot_x, y=141,
+                        facing=0x0A, hp=0, state=0x10),
+        ),
+    )
+
+
+def _drive_shot(controller, *, frames: int = 8, step: int = 2) -> str | None:
+    """Walk the spit west toward Link a frame at a time, return the last reason."""
+    reason = None
+    for i in range(frames):
+        snap = _fireball_snap(shot_x=200 - step * i, leever_x=139)
+        controller._observe_threats(snap)
+        controller.hunter.observe(snap)
+        act = controller._threat_action(snap, None)
+        reason = None if act is None else act.reason
+    return reason
+
+
+def test_an_inbound_spit_outranks_a_body_in_the_blade_box() -> None:
+    """``evade_yield_to_sword`` was 383 of 6552 frames on the coast walk and
+    the leever screens keep a body in the box almost continuously, so the
+    Zora fired into an evader that had been handed off for the whole window.
+    0x55 is neither killable nor small-shield blockable: the swing cannot
+    answer it."""
+    from zelda_i.overworld.shop_p7 import ShopP7WalkController
+
+    ctl = ShopP7WalkController()
+    _drive_shot(ctl, frames=40, step=2)
+    assert ctl.evade_reasons.get("evade_shot_over_sword", 0) > 0
+
+
+def test_a_body_in_the_blade_box_still_owns_a_quiet_frame() -> None:
+    """The yield is the right default: with no shot inbound the hunt keeps
+    the frame and swings."""
+    from zelda_i.overworld.shop_p7 import ShopP7WalkController
+
+    ctl = ShopP7WalkController()
+    snap = ZeldaSnapshot(
+        mode=PLAY_MODE, level=0, screen=0x7C, next_screen=0x7C,
+        link_x=120, link_y=141, facing=0x01, sword=1, bombs=0, rupees=0, keys=0,
+        health=0x22, heart_partial=0xFF, triforce=0, compass=0, dialog_timer=0,
+        colliding_tile=0, room_item_id=0, room_all_dead=0, room_obj_count=0,
+        cur_opened_doors=0, open_doorway_mask=0,
+        objects=(
+            ZeldaObject(slot=1, type_id=0x0E, x=139, y=141, facing=0x02,
+                        hp=0x20, state=1),
+        ),
+    )
+    for _ in range(6):
+        ctl._observe_threats(snap)
+        ctl.hunter.observe(snap)
+        assert ctl._threat_action(snap, None) is None
+    assert ctl.evade_reasons.get("evade_yield_to_sword", 0) > 0
+    assert "evade_shot_over_sword" not in ctl.evade_reasons
+
+
+# --------------------------------------------- the hop grinds to a push ---
+
+
+def _grind_ctl():
+    from zelda_i.overworld.shop_p7 import ShopP7WalkController
+
+    return ShopP7WalkController()
+
+
+def test_a_hop_that_spends_its_screen_budget_stops_being_clever() -> None:
+    """The optional rungs each have a local cap and none of them compose:
+    ``pre_l1_wedge1`` alternated the occupied-lane steer and the plain push
+    one frame each for 24914 frames on 0x7C (``hop`` 12459, ``hop_lane``
+    12455), because a steer that picks the travel direction resets the steer
+    counter and ``track_stuck`` sees a Link who is moving."""
+    from zelda_i.ram import read_snapshot
+
+    ctl = _grind_ctl()
+    snap = read_snapshot(_ram(screen=0x7C, x=120, y=141, health=0x22))
+    for _ in range(ctl.hop_screen_max_frames):
+        assert ctl._grinding(snap) is False
+    assert ctl._grinding(snap) is True
+    assert any(note.startswith("hop_grind_") for note in ctl.notes)
+
+
+def test_the_budget_is_per_hop_and_per_screen() -> None:
+    """Crossing a screen, or advancing the hop, is progress and resets it."""
+    from zelda_i.ram import read_snapshot
+
+    ctl = _grind_ctl()
+    here = read_snapshot(_ram(screen=0x7C, x=120, y=141, health=0x22))
+    for _ in range(ctl.hop_screen_max_frames + 1):
+        ctl._grinding(here)
+    assert ctl._grinding(here) is True
+    next_screen = read_snapshot(_ram(screen=0x7D, x=20, y=141, health=0x22))
+    assert ctl._grinding(next_screen) is False
+    assert ctl._grinding(here) is False  # a different key, counted afresh

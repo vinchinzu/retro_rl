@@ -13,126 +13,6 @@ Tracker: `bd ready -l zelda_i -l spine`.
 are not Clean STATUS. Planner owns STATUS. Clean M5 =
 `run_level1_complete` without `--infinite-life`. Do not overwrite.
 
-## Immediate goal
-
-**Survival power-on → credits is green** (2026-09-07): `--through
-level9-credits` 1/1, 354346f, `set_state=0`, mode 19, TF `0xFF`, deaths 0.
-Not Clean STATUS. M5 Clean is still L1 only.
-
-**M5 Clean is GREEN as of 2026-09-14 at 18909f** — measured, not inherited.
-`run_level1_complete --natural-entry --trials 2` both `ok=True`,
-`triforce=0x01`, end 18909, ~26s. That run is 3 containers and the wooden
-sword. **19416f is dead**: it was the pre-`6ca2a9a0` tree. `6ca2a9a0` landed
-the `shortest_path` goal guard on unit tests alone and took M5 red (death in
-0x23 at f1453, then a 9000f collect stall in 0x45) — re-measure the live
-oracle after *any* change under the walker, never the suite alone. Next Clean prefix is Zelda Dungeon The Gathering **before** L1
-([`docs/PRE_L1.md`](docs/PRE_L1.md)): bombs at 0x6F (bypass 0x79), two bomb
-hearts, candle at 0x0C, White Sword around Lost Hills, burn heart, then 0x37.
-`--through pre-l1` forces assist off and hunts at wooden-sword reach. It is
-now **sword -> hunting walk -> buy**, and the stop is the 4-pack
-(`ADDR_BOMBS >= 1`), not arrival on `0x4A` — so it is **red on purpose** and
-the last stage says why. Live 2026-09-15 `rel1` 1/1, `assist=None`,
-`set_state=0`: **17/17 kills**, `streak_best` **17**, **0 resets**, **8
-rupees**, `damage_taken` **0**, **3 of 3 hearts** at the shop,
-`failed=bomb_buy` `shop_need_20_have_8`. Was 11 kills / best 5 / 3 resets /
-1 rupee / 2.01 hearts at `2906a12f`.
-
-**The sword was not swinging.** `Link_HandleInput` (`Z_05.asm`) wields on
-`ButtonsPressed AND #$80`, and `ButtonsPressed` is the *edge* (`Z_07.asm`:
-`new EOR ButtonsDown AND new`), so a **held** A swings once and never again.
-`ScreenHunter._strike` held `nes_action(face, "A")` every frame it owned:
-A down starts no swing, a swing that never starts never sets `$00AC`, and
-`$00AC` is the only thing `link_busy` released A on. All four contacts of the
-old walk are that loop — `0x49` f3509-f3532 is **24 straight `hunt_49_slash`
-frames of UP+A with Link's state 0**, walking 1.4 px/f into an
-`octorok_fast` 8 px off his shoulder. One idle frame after each press fixes
-it; the release frame is an idle, never the direction. The measured drop rate
-came back with it: **47% on 17 kills against 42% billed**, so there was never
-anything wrong with `DropItemRates`.
-
-One pass still pays only 8R of 20R. The supply is a second wave, and
-[`overworld/respawn.py`](overworld/respawn.py) is the ROM rule:
-`ModifyObjCountByHistoryOW` clears a screen's kill flags only when it is
-**absent from the six-entry `RoomHistory` ($621)** and those flags read 7
-(cleared), and `RunCrossRoomTasksAndBeginUpdateMode` appends a room **only if
-it is not already in the history**. So an out-and-back evicts nothing at any
-depth — that is why `rupee_farm`'s `0x4A<->0x49` restock never was a farm.
-The corridor has **seven** distinct screens against six slots, so the lap
-(`gathering.PRE_L1_LAP_HOPS`, `laps=N`) respawns the whole eastbound leg —
-measured live (`lap2`, 2026-09-15): `0x68` came back 2 of 4, then 4 of 4 once
-its flags hit 7. **`laps` stays 0 by default**: one lap is 33 kills against a
-clean pass's 17 and banks the *same* 8R, because 15R of drops hit the floor
-and only 8 were scooped, and the westbound `0x59` costs an 11-streak. **The
-scoop is now the biggest line on this errand.** Details in
-[`docs/PRE_L1.md`](docs/PRE_L1.md).
-
-**The per-screen bill is the tool for this leg** (`combat.ScreenTally` /
-`ScreenHunter.screen_table`, rendered by `scratch/probe_screen_tables.py`).
-Read it before tuning the walk, and **grade a policy change per screen, not
-on the run total**: the corridor is chaotic with respect to entry timing, so
-one deterministic trajectory moves everywhere downstream of the first change.
-Damage is measured in 1/256 of a heart; a whole-heart census reads this
-corridor's chips as zero.
-
-`0x59` was the walk's largest single loss (739f, a whole heart, the 5-kill
-streak, for one kill) and is now **transit, not cleared** — 203f, 0 hits,
-streak kept (`tables3`). Its wave is peahat x4 **plus a zora**, which the ROM
-spawn table does not list. The zora's spit is the hole that cost the heart:
-`scratch/probe_zora.py` measured a deterministic 195-frame surfacing cycle on
-`$00AC` and — the actual bug — **the shot sits motionless on the muzzle for
-17 frames**, so `ObjectTracker` reads zero velocity and `threat.assess` calls
-it safe for the whole dodge window. `0x55` is not small-shield blockable, so
-every shield rule correctly passed and nothing replaced them;
-`hunt.ShotPolicy.duck` is the replacement. A zora's facing byte reads `0x03`,
-which is in no `threat._FACING_AXIS` entry, so `in_firing_line` has never
-returned True for one.
-
-**Value, not body count.** `overworld/prey.py` owns the ROM drop rows
-(`Z_04.asm Types0..3`) and prices a kill as its table *plus* ~0.385R of
-streak progress — more than row 0's whole drop, which is why "skip the red
-octoroks" cannot mean "walk past them": at full health a red pays back a
-227 px chase and `HUNT_BOX` is 182 px wide. The drop row buys the *order*
-(blue tektite over red octorok at equal range) and a short-health cap
-(`thrifty_below_hearts`, not yet fired live). Bodies that are not kills at
-all — zora, armos, boulder — are never targets. `scratch/bomb_budget.py`
-imports these tables; do not keep a second copy.
-Do not overwrite the 18909f claim; re-measure L1 after the prefix greens. `clear45_key` 1568f 0 hits (was
-death 828f `{0x27_S}`, then a 9000f collect stall). Planner owns
-STATUS; this is the ROM claim, not a STATUS rewrite.
-
-Per-stage health ledger is the tool. Read it before tuning any room
-(`in`/`out` hearts + `hits_by_cause` per stage). Current spend:
-`clear52` 1 (`0x1b_E`), `clear23_key` 1 (`0x5c_W`), `clear44` 2
-(`0x06_N`, `0x5c_E`). 0x33, 0x43, 0x45 are 0-hit. Link still arrives
-at 0x45 on half a heart; the key hunt now finishes anyway. Hearts on
-the floor in 0x23/0x44 are still unbanked.
-
-Three fixed root causes, all the same shape: a position rule that
-silences the reactive layer. The 0x23 low-health mask replaced the
-planner's only wanted direction with an idle frame; `_off_wall_step`
-and the 0x44 west-mouth table ran ahead of `threat.decide`. Reactive
-now runs first in `_combat`. Rooms measure walls from `$6530`
-(`occupancy_from_tilemap`). `OccupancyGrid.shortest_path` is
-minimum-turn (Link snaps off-axis on every turn). `_scoop_heart`
-yields on an unreachable drop instead of idling, with a 20-frame
-cached BFS verdict. Collect skips a waypoint when manhattan to it
-has not dropped in 48 frames (0x45 sat at (144,141) for 7666f in a
-3px y-loop that never tripped in-place stuck).
-
-Do not feed the occupancy grid into `ReactiveEvader._can_move`: every
-variant that changed 0x23 evade buttons capped `clear23_key` at 6000f.
-Ladder: `uv run python nes/zelda_i/scripts/clean_tip.py`.
-
-Remaining spine: strip Survival pokes. `bd ready -l zelda_i -l spine`.
-Living residual: [`docs/tasks/rr-8t4.4-residual.md`](docs/tasks/rr-8t4.4-residual.md)
-(Food poke; shop hop wired. `rr-ps7.3` leftover is Clean 0x4A
-`(155,141)` hp `0x31` 1/4 `hits_taken=0`. Gathering 4.5.1 leftover is
-play `0x68` `(48,198)` hp `0x22` 3/3 hits 0 — west-column east is dead;
-next is `0x59` SOUTH onto `0x69`).
-Clean lanes: [`docs/tasks/rr-npv-clean-parallel.md`](docs/tasks/rr-npv-clean-parallel.md)
-(`rr-npv.1`–`.7` fixture-live; not spine). Also open: `rr-wabn`, `rr-doua`,
-`rr-sz8.8` (optional; leftover was 10 HC). Do not add pokes.
-
 ## Commands
 
 ```bash
@@ -158,152 +38,45 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-vi
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level2-entry --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7-bait-shop --no-video --trials 1
 
-# Clean M5 (do not overwrite) — 2/2 TF 0x01 @ 18909f, see Immediate goal
+# Clean M5 (do not overwrite) — 2/2 TF 0x01 @ 18909f
 uv run python zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 
-# Clean ladder: tip, next open hop, blockers grouped by root cause
 uv run python nes/zelda_i/scripts/clean_tip.py
-# Which levels run the shared engine mechanisms (measured off the live specs)
 uv run python nes/zelda_i/scripts/clean_tip.py --adoption
-# Every level-entrance pin's $066F. Exit 1 if any is incoherent.
 uv run python nes/zelda_i/scripts/audit_pins.py
 
 uv run pytest zelda_i/tests -q
 ```
 
 `--no-video` on spine CLIs. Leave proof is RAM + `zelda_i.screen_glance`,
-not an MP4. Segment CLIs (L2–L9, TAS, lab): `docs/plan.md`.
-
-## Layout
-
-| Path | Role |
-|------|------|
-| `ram.py`, `overworld/graph.py`, `overworld/nav.py` | Snapshots + OW graph / L1 path |
-| `overworld/path.py` | Shared hop engine (L2–L8) |
-| `walk/physics.py`, `walk/predict.py` | OccupancyWalker + RAM claims |
-| `dungeon/engine.py` + `level*/dungeon.py` | Combat + **specs/stop predicates only** |
-| `spine/hops.py` | `SpineHop` rows + `attach_hops` / `ready` |
-| `dungeon/hop_controller.py` | Dest-hop timeout/death/scroll guard |
-| `dungeon/token_path.py` | L4 maze hold-token walker |
-| `level*/path.py`, `level*/spine.py` | Path controllers + dest spine tables |
-| `level*/overworld.py` | Hop tables + thin `overworld.path` subclasses |
-| `runner.py` | Script env/assist/report helpers |
-
-Map a room from the cart-WRAM `$6530` tile map
-(`dungeon/tilemap.py`), never from `$049E` `colliding_tile` sweeps —
-`$049E` is the tile Link walks *into*, so it is direction-sensitive.
-
-Size: [CODING_STANDARDS.md](../../CODING_STANDARDS.md) (~1000 LOC, merge
-or delete). Named pins stay named. Probe PNG / window JSON go gitignored
-scratch — not an AGENTS novel.
+not an MP4. Segment CLIs: `docs/plan.md`.
 
 ## Traps (burned once)
 
-- Sword cave is **NW** of spawn on 0x77. Cave = mode **11**. Pickup x≈120
-  then UP; after cave exit ~(64,77): **DOWN first**.
-- `$066F` low nibble is whole hearts, not `0xF` full. Full is `lo==hi`
-  (`0x22`=3/3) plus `$0670=$FF`.
-- `$50`/`$627` zero on `Link_BeHarmed` (collision), not on a `$066F`
-  change. A wooden octorok chip is `$0670` `$80`; Survival assist heals
-  it the same frame. `$04F0` (Link iframes, 24) is the collision that
-  survives. `hunt.hurt_events` watches that; `damage_taken` does not.
-  `--through pre-l1` forces assist off so that refill cannot hide the
-  chip. Hunt stands at wooden-sword reach; occupancy-walking onto the
-  sprite is the reset.
-- L2 prefix: `37→38→48→58→59→49→4A`; never 0x79.
-- Stuck nav: stand still (`*_wait`). Do not loop LEFT/RIGHT/DOWN wiggle.
-- `$0656` B-item: **1=bombs, 2=arrows, 4=candle**.
-- Do not poke doors/keys/undiscovered items. Do not grant Map/Whistle.
-- L2 entry bombs=0; Survival count top-up until farm `rr-doua`.
-- **Read the pin's `$066F` before quoting a heart.** `hi = containers-1`,
-  `lo = whole hearts`, so a coherent byte has `lo <= hi`
-  (`ram.health_byte_is_coherent`). The ROM does *not* clamp a byte that
-  breaks this. **7 of 14 entrance pins are incoherent** (2026-09-14 audit):
-  `Level2/3/4/5/6Entrance`, `Level5EntranceFromL4`,
-  `Level8EntranceReconFixture` all hold `lo = 0xF`, so every Clean heart
-  number on `l2_tf`-`l8_tf` is against a 2-7x inflated budget.
-  `Level5Entrance` also holds `TF 0x00`, which no L5 arrival can. Rebuild
-  from a measured arrival (`scripts/fixtures/capture_level6_entrance_fixture.py`
-  is the pattern: continuous power-on spine, no state load, save at the stop);
-  do not hand-write the byte.
-- **A BFS goal inside geometry has no path, and standing is never the
-  answer.** `OccupancyWalker(retarget_blocked_goal=True)` moves a blocked goal
-  to `grid.nearest_open` and counts it (`retargets`); `measured_walker`
-  defaults it on. **Off by default, and keep it that way for anything L1
-  touches** — retargeting shifts arrival frames and the L1 chain is
-  frame-perfect: turning it on globally took Clean M5 from a green TF `0x01`
-  to a red `aquamentus_heart` at 18830f. L2 `0x6e` aimed its key-door band
-  walk at `(120,113)`, which is inside a diamond: 3999 of 4000 frames in
-  `band_wait` without moving a pixel. Check a hand-written waypoint against
-  the tile map before adding another one.
-- **A bare `OccupancyWalker()` knows no walls.** It learns each one by
-  bumping it and, non-sticky, forgets it again. Build one with
-  `walk.physics.measured_walker(env.get_ram())` (live `$6530`, sticky by
-  default). That loop is what spent `enter_6f_key`'s whole 4,000f budget in
-  `band_wait`, and what the entry-route replan hit before it was made sticky.
-- **A walled entry route used to be a silent timeout.**
-  `dungeon/route_entry.py` now watches for 24 identical-pose frames on a held
-  `entry_route` button, notes the pose and the leg, then replans off the live
-  `$6530` map (sticky walker) or drops the leg. Below the threshold the axis
-  walk is unchanged, so green chains are frame-identical. Every controller
-  also keeps a records-only `reason_counts` + 30-frame `tail` in `report()`.
-- **Half the pre-L1 streak resets are shots, not bodies.** `Link_BeHarmed`
-  zeroes `$0050`/`$0627` on any collision, and on the `0x77`→`0x4A` walk two
-  of four contacts are `rock_projectile` (slot 11, **hp 0**). A census that
-  filters `hp > 0` cannot see them — `probe_kill_streak.py` could not, and
-  "the hunt walks onto the bodies" was half the story. `scratch/probe_contact.py`
-  ring-buffers 48 frames and dumps them on the `$04F0` arm; use it before
-  attributing a reset.
-- **Drop-group letters collide in this repo.** `scratch/drop_mechanics_rom.md`
-  follows Baxter (row 1 = B, the two-5-rupee 59% table); `overworld/locations.py`
-  calls that table `DROP_C` and the bomb table `DROP_B`. Contents and rates
-  agree. Key on the ROM row (`scratch/bomb_budget.py`), never the letter.
-- **A grouped spawn byte is a group index, not an ObjType.** `0x49` reads
-  `group_28`, and `0x28` is also Rope (row 1); taking it as a type credits the
-  screen 5.3R it does not have. Use the live census for `grouped` screens.
-- **`snap.filled_hearts` is whole hearts MINUS ONE.** It is the raw `$066F`
-  low nibble, and `0x22` is 3/3 — the live pre-L1 walk ended *alive* on
-  `0x20`, which is one heart. Use `ram.whole_hearts` (`lo + 1`) for anything
-  that reasons about how much life is left; `filled_hearts` keeps the raw
-  nibble because the L1 chain is frame-perfect against it. `HUNT_MIN_HEARTS`
-  read it literally and retired `0x58`/`0x59`/`0x49` after one chip hit,
-  while Link still held two of three hearts.
-- **The overworld walk has two reactive layers and the evader wins by
-  default.** `OverworldPathController` runs `ReactiveEvader` ahead of every
-  hop rule, the hunt included. A red octorok is one wooden hit, so a step away
-  from a body already in the blade box trades a kill for a frame it gives
-  straight back. `_threat_action` yields on `evade_yield_to_sword` when
-  `ScreenHunter.striking`; do not re-order the hunt above the aligner instead.
-- **A hop table ends the frame Link scrolls onto its last screen**, so that
-  screen's wave is the one a hunting walk never fights. `hunt_destination` +
-  `ScreenHunter.take_destination` cover it. Without it `_on_hop_advanced`
-  calls `_finish` on that same frame, so `_after_hops` never runs.
-- **The hunt swings off `$00AC` slot 0 (Link's own animation), not a
-  cadence.** `frames % 8 < 3` idled up to five frames per swing with a body
-  closing ~1px a frame. The idle is also the release edge the ROM needs.
-- **`0x48` is not reachable on three containers.** Its four leevers are
-  drop-table row 1 and worth more than the whole octorok corridor, and the
-  there-and-back off `0x58` uses only proven hops — it still killed the run
-  twice (mode 17). Link lands at y≈205, *below* `HUNT_BOX`, and arrives with
-  one heart. Hearts before that detour.
-- **Measured pre-L1 drop rate is ~13%, not 31%.** 53 kills, 7 floor drops
-  across the 2026-09-15 runs, against `scratch/bomb_budget.py`'s
-  `DropItemRates` rows. One pass pays ~2R against the 20R pack, and a perfect
-  26-kill streak would still only reach ~13.5R. `CombatLedger.drops_by_state`
-  separates "rolled nothing" from "walked past it" — read it before adding
-  screens.
-- **20R is 36 unbroken kills.** `$0627 == 16` is tested before `$0050 >= 10`,
-  so a clean streak pays at kills 10, 26, 36, 46 — the fairy spends six kills
-  of 5-rupee progress. Without a streak, row-0 octoroks are 128 kills for 20R.
-- **Overworld waves are one-shot.** `0x4A` is empty after its tektites die
-  and stays empty through depth-1 (`0x49`) *and* depth-2
-  (`0x49`→`0x59`→`0x49`) round trips. `HeartFarmController` restock is a
-  give-up detector (`farm_screen_dead`), not a heart supply. Do not budget
-  hearts against a farm.
+- **M5 Clean 18909f is live.** Re-measure after walker changes. Do not overwrite.
+- Arrive-short top-up is `overworld/topup.py` (`bomb_topup` stage): 0x6F UP→**0x5F** / LEFT→**0x6E**, measured out and back (`scratch/probe_6f_neighbours.py` n4). Never a lap back west — `RoomHistory` is six slots and nothing behind 0x6F respawns inside five screens.
+- Pre-L1 dest is **0x6F** south coast `shop_p7` (`0x77→…→0x7F→0x6F`), not inland **0x4A** (`bomb_shop.py`). Stop is `ADDR_BOMBS>=1`; red on purpose until the 4-pack.
+- **Read `report()["reason_by_screen"]` before tuning anything on a hop table.** It is a per-screen count of the stem of every `FrameAction.reason`. Four separate 20k-frame stalls were found in it in one sitting, none by tuning a number.
+- 0x7B / 0x7C / 0x7D scroll east from **every** row: those three hops carry `SCREEN_ANY_ROW_BAND`, **not** an `align_y`. An align nothing needs is a vertical shuffle in a leever swarm (394 of 0x7B's 1863 frames).
+- Every rung needs a budget. The contact strike had none and one body owned 24877 frames (`ScreenHunter._strike_budget`); local caps do not compose, so the hop carries its own per-screen one (`_grinding`, 4000f) and drops scoop/hunt/occupied-lane past it.
+- `_after_hops` answers a declining hunt with an **idle**, and the hunt declines for the whole guard branch — that pair is a 2400-frame stand on the destination screen. `destination_hunted` is True in guard.
+- `ScreenHunter.cleared` ≠ `done`: a budget retire is `done` with the wave still alive. Only `cleared` scoops money.
+- 0x79 east is **y=165 beach only**. 0x7A east is `y_band (133,141)`. 0x7E east is `y_band (137,145)`. `align_y` + `y_tol=5` accepted the dead rows (27501f stall). Do not BFS `OccupancyWalker` for a lane.
+- ButtonsPressed is an **edge**; held A does not re-swing. Hunt `_a_edge` / travel press then idle.
+- Sword shot is `beam.py`; travelling frames must offer `ScreenHunter.take_beam` above stall-escape (600f commits used to zero the weapon).
+- Zora facing **0x03** is missing from `threat._FACING_AXIS`; `0x55` spit is that hole, not a shop_p7 special case.
+- Scoop vs restock are separate: scoop_rupees vs `need_rupees`. Coast scoops; `need_rupees=0` so no 0x78 farm loop.
+- `laps=0` by default; `RoomHistory` six slots, out-and-back evicts nothing.
+- Do not poke Food/bombs/keys. `--through pre-l1` forces assist and pokes off.
+- Sword cave is **NW** of spawn on 0x77. Cave = mode **11**. Pickup x≈120 then UP; after cave exit ~(64,77): **DOWN first**.
+- `$066F` lo nibble is whole hearts minus one (`0x22`=3/3). Use `ram.whole_hearts`. Read the pin's `$066F` before quoting a heart (`lo <= hi`).
+- Map rooms from `$6530`, never `$049E`. A bare `OccupancyWalker()` knows no walls — `measured_walker(env.get_ram())`. `retarget_blocked_goal` stays off for anything L1 touches.
+- `$0656` B-item: **1=bombs, 2=arrows, 4=candle**. L2 prefix: `37→38→48→58→59→49→4A`; never 0x79.
 
 ## Pointers
 
 [docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
+[docs/PRE_L1.md](docs/PRE_L1.md) ·
+[docs/tasks/rr-8t4.4-residual.md](docs/tasks/rr-8t4.4-residual.md) ·
 [docs/ASSIST_CONTRACT.md](docs/ASSIST_CONTRACT.md) ·
 [docs/HYGIENE.md](docs/HYGIENE.md) · session skill `zelda-session`.
-Clean leftover: [docs/tasks/HANDOFF-2026-09-11-orchestrator.md](docs/tasks/HANDOFF-2026-09-11-orchestrator.md).
