@@ -1,42 +1,11 @@
-"""When an overworld wave comes back, and why no out-and-back can bring it.
+"""Overworld wave respawn: six-slot RoomHistory, no duplicate appends.
 
-One pass of the pre-L1 corridor cannot fund the 20R bomb pack: 32 bodies pay
-~12R of random drops, and the forced 5-rupees want a 26-kill streak
-(``docs/PRE_L1.md``). The only other supply is a *second* wave on screens
-already fought, which every prior sitting left as "untested".
-
-The ROM is exact about it, and it is not "walk two screens away"
-(`aldonunez/zelda1-disassembly`):
-
-* ``ModifyObjCountByHistoryOW`` (``Z_05.asm``) runs inside
-  ``CreateRoomObjects`` on every room load. It clears a room's kill-count
-  flags -- the full respawn -- only when the room is **absent from the
-  six-entry ``RoomHistory``** *and* those flags already read the max, 7.
-  A room that *is* in the history instead has its kill count **subtracted**
-  from the spawn count, which is why a screen comes back thinner.
-* ``SaveKillCountOW`` writes 7 exactly when ``RoomKillCount >= RoomObjCount``
-  -- the screen was cleared of whatever it spawned -- and otherwise adds the
-  partial count in, capped at 7. So partial clears converge on 7 over visits
-  rather than blocking the respawn forever.
-* ``RunCrossRoomTasksAndBeginUpdateMode`` (``Z_07.asm``) appends the room to
-  the history **only when it is not already in it**, and leaves
-  ``CurRoomHistoryIndex`` alone when it is.
-
-That last rule is the one that decides route shape, and it is the reason the
-``0x4A <-> 0x49`` restock in ``overworld.rupee_farm`` was never a rupee
-supply: **every screen on the way back is already in the history, so an
-out-and-back evicts nothing, ever.** Eviction needs *new* rooms. The pre-L1
-corridor has seven distinct screens against six history slots, so the
-smallest thing that works is a full lap -- walking back onto ``0x77`` evicts
-``0x78``, and from there each screen Link enters evicts the next one in front
-of him, so the whole corridor respawns on the way east and every lap after.
-
-Measured live (``scratch/probe_respawn_lap.py``, ``lap1``): the history filled
-``0x77 0x78 0x68 0x58 0x59 0x49`` and ``0x4A`` overwrote ``0x77`` at the wrap,
-exactly as :class:`RoomHistory` models it; re-entering ``0x49`` four kills
-later read flags ``4`` and spawned ``6 - 4 = 2`` bodies.
-
-Pure arithmetic and one RAM read. No emulator.
+ModifyObjCountByHistoryOW (Z_05.asm) clears a screen's kill flags only when
+the screen is absent from RoomHistory ($621, 6 entries) and those flags
+already read 7. RunCrossRoomTasksAndBeginUpdateMode (Z_07.asm) appends a
+room only if it is not already in the history, so an out-and-back evicts
+nothing. ``enter`` / ``respawn_visits`` are the absence half: necessary for
+a full wave, not sufficient (flags 3 still subtracts).
 """
 
 from __future__ import annotations
@@ -83,11 +52,11 @@ class RoomHistory:
     index: int = 0
 
     def enter(self, room: int) -> bool:
-        """Enter ``room``. True when the ROM would clear its kill flags.
+        """Append ``room`` if it is not already in the ring.
 
-        The absence test is the one ``ModifyObjCountByHistoryOW`` makes, and
-        it happens *before* the append — ``CreateRoomObjects`` runs first in
-        ``RunCrossRoomTasksAndBeginUpdateMode``.
+        True when the room was absent (ModifyObjCountByHistoryOW's history
+        miss). Necessary for a full respawn, not sufficient: flags must
+        also read 7.
         """
         room = int(room) & 0xFF
         absent = room not in self.slots

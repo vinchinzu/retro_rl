@@ -319,7 +319,8 @@ def run_controller_stage(
         end_frame=frame_base,
     )
     for frame in range(1, max_frames + 1):
-        action = controller.step(read_snapshot(env.get_ram())).action
+        fa = controller.step(read_snapshot(env.get_ram()))
+        action = fa.action
         obs, *_ = env.step(action)
         result.frames = frame
         result.end_frame = frame_base + frame

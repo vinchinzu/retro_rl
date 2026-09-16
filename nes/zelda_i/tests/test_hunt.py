@@ -15,6 +15,7 @@ from zelda_i.combat import (
     FACING_WEST,
     SWORD_REACH,
     bodies_in_box,
+    chebyshev,
 )
 from zelda_i.dungeon.behaviors import FIREBALL_TYPE as FIREBALL_OBJECT_TYPE
 from zelda_i.dungeon.behaviors import ROCK_PROJECTILE_TYPE
@@ -29,7 +30,13 @@ from zelda_i.dungeon.ids import (
     ZORA_OBJECT_TYPE,
 )
 from zelda_i.dungeon.threat import MIN_DODGE_BODY
-from zelda_i.overworld.hunt import HUNT_BOX, ScreenHunter, sword_stand
+from zelda_i.beam import BeamPolicy
+from zelda_i.overworld.hunt import (
+    HUNT_BOX,
+    HUNT_PICKUP_RADIUS,
+    ScreenHunter,
+    sword_stand,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
 # A real red octorok. The fixture used to be 0x38, which is the Digdogger id:
@@ -76,6 +83,18 @@ def _drop(slot: int = 2, x: int = 80, y: int = 141, state: int = RUPEE_DROP_STAT
     return ZeldaObject(
         slot=slot, type_id=RUPEE_DROP_OBJECT_TYPE, x=x, y=y, facing=0, hp=0, state=state
     )
+
+
+def _blade_only(**kwargs) -> ScreenHunter:
+    """A hunter with the sword shot switched off. These are chase tests.
+
+    ``_snap`` is 3 of 3 with ``$0670 == $FF``, which is exactly the state the
+    full-health shot needs, and every fixture here parks a body on Link's own
+    row — so a default hunter answers with a beam before any chase rule is
+    consulted. That is the right answer live and the wrong one to assert a
+    chase against. The shot has its own tests in ``test_beam``.
+    """
+    return ScreenHunter(beam=BeamPolicy(enabled=False), **kwargs)
 
 
 # ---------------------------------------------------------------- prey ---
@@ -174,7 +193,7 @@ def test_the_larger_counter_delta_is_the_one_banked() -> None:
 
 def test_a_body_outranks_a_drop() -> None:
     """Scooping mid-fight walked onto a heart sitting in an octorok pad."""
-    hunter = ScreenHunter()
+    hunter = _blade_only()
     snap = _snap(objects=(_foe(slot=1, x=160), _drop(slot=2, x=80)))
     act = hunter.step(snap, 1)
     assert act is not None and act.reason == "hunt_78"
@@ -202,10 +221,52 @@ def test_a_heart_is_left_on_the_floor_at_full_hearts() -> None:
 
 
 def test_a_heart_is_taken_once_the_partial_heart_is_chipped() -> None:
+    """``hunt_heal``, not ``hunt_drop``: the heal is its own rung above the
+    beam now, because the chase rung below it never won a frame on a screen
+    with a live wave — which is where a heart actually drops."""
     hunter = ScreenHunter()
     snap = _snap(health=0x22, heart_partial=0x40, objects=(_drop(state=HEART_DROP_STATE),))
     act = hunter.step(snap, 1)
-    assert act is not None and act.reason == "hunt_drop"
+    assert act is not None and act.reason == "hunt_heal"
+
+
+def test_the_heal_outranks_the_beam_when_link_is_chipped() -> None:
+    """One ``$0670`` chip is exactly what takes the beam away, so on every
+    frame the heal can claim, the shot below it is already dead."""
+    hunter = ScreenHunter()
+    snap = _snap(
+        health=0x22, heart_partial=0x7F,
+        objects=(_foe(slot=1, x=200, y=141), _drop(slot=2, x=80, y=141,
+                                                   state=HEART_DROP_STATE)),
+    )
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_heal")
+
+
+def test_a_full_health_link_does_not_walk_to_a_heart() -> None:
+    hunter = _blade_only()
+    snap = _snap(
+        health=0x22, heart_partial=0xFF,
+        objects=(_drop(slot=2, x=80, y=141, state=HEART_DROP_STATE),),
+    )
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is None or not act.reason.startswith("hunt_heal")
+
+
+def test_the_heal_budget_is_not_the_collect_budget() -> None:
+    """A screen that spent its collect budget on rupees must still be able to
+    walk to the fairy that hands the beam back."""
+    hunter = ScreenHunter()
+    hunter.census.collect_frames = hunter.collect_max_frames
+    snap = _snap(
+        health=0x22, heart_partial=0x7F,
+        objects=(_drop(slot=2, x=80, y=141, state=HEART_DROP_STATE),),
+    )
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_heal")
 
 
 def test_a_bomb_drop_is_not_chased() -> None:
@@ -223,13 +284,13 @@ def test_an_empty_screen_retires_after_the_settle_and_spawn_windows() -> None:
     assert hunter.done == set()  # settle is up, the spawn window is not
     assert hunter.step(snap, 6) is None
     assert 0x78 in hunter.done
-    assert hunter.screens_cleared == 1
+    assert hunter.census.screens_cleared == 1
 
 
 def test_a_late_wave_is_still_hunted() -> None:
     """A screen is not written off on an empty first look: a dungeon settle
     spawn runs 80-100f and nothing says the overworld is faster."""
-    hunter = ScreenHunter(settle_frames=1, spawn_wait_frames=50)
+    hunter = _blade_only(settle_frames=1, spawn_wait_frames=50)
     for frame in range(1, 10):
         assert hunter.step(_snap(), frame) is None
     act = hunter.step(_snap(objects=(_foe(),)), 10)
@@ -245,24 +306,24 @@ def test_a_screen_left_before_the_spawn_window_is_not_written_off() -> None:
 
 
 def test_a_retired_screen_is_never_hunted_again() -> None:
-    hunter = ScreenHunter(settle_frames=1, spawn_wait_frames=1)
+    hunter = _blade_only(settle_frames=1, spawn_wait_frames=1)
     hunter.step(_snap(), 1)
     assert 0x78 in hunter.done
     assert hunter.step(_snap(objects=(_foe(),)), 2) is None
 
 
 def test_the_screen_budget_ends_a_hunt_that_will_not_finish() -> None:
-    hunter = ScreenHunter(screen_max_frames=5)
+    hunter = _blade_only(screen_max_frames=5)
     snap = _snap(objects=(_foe(),))
     for frame in range(1, 6):
         assert hunter.step(snap, frame) is not None
     assert hunter.step(snap, 6) is None
-    assert hunter.screens_retired == 1
-    assert any(note.startswith("hunt_budget") for note in hunter.notes)
+    assert hunter.census.screens_retired == 1
+    assert any(note.startswith("hunt_budget") for note in hunter.census.notes)
 
 
 def test_a_body_that_will_not_die_is_skipped_not_chased_to_the_budget() -> None:
-    hunter = ScreenHunter(target_max_frames=3)
+    hunter = _blade_only(target_max_frames=3)
     stubborn = _foe(slot=1, x=200, y=141)
     # Out of the blade box (pad 40): a body at contact is struck, not chased,
     # so the per-target budget is only about the walk.
@@ -282,7 +343,7 @@ def test_sword_stand_is_reach_off_the_body_on_link_s_side() -> None:
 
 
 def test_a_far_body_is_approached_to_sword_stand_not_onto_the_sprite() -> None:
-    hunter = ScreenHunter()
+    hunter = _blade_only()
     foe = _foe(x=160, y=141)
     act = hunter.step(_snap(link_x=100, objects=(foe,)), 1)
     assert act is not None and act.reason == "hunt_78"
@@ -326,7 +387,7 @@ def test_the_swing_faces_the_body_at_every_pad_in_reach() -> None:
 def test_the_nearest_body_is_answered_not_the_held_target() -> None:
     """Live 0x49 f=4500: a 7-kill streak died to slot 4 at 9px on Link's lane
     while the walk was aimed at slot 1 thirty pixels north."""
-    hunter = ScreenHunter()
+    hunter = _blade_only()
     far = _foe(slot=1, x=120, y=141 - 30)
     near = _foe(slot=4, x=120 + 9, y=141)
     # Slot 1 is the held target: it was the only body when the screen opened.
@@ -343,17 +404,7 @@ def test_the_nearest_body_is_answered_not_the_held_target() -> None:
 
 
 def test_every_swing_gets_its_own_release_edge() -> None:
-    """A held A starts no second swing, and a held direction walks into the body.
-
-    ``link_busy`` was the only thing inserting a release, which is circular:
-    A held across frames starts no swing, a swing that never starts never
-    sets ``$00AC``, so ``link_busy`` stays False and the rule holds the
-    direction down forever. Measured on 0x49 (``scratch/c_btn.json``
-    f3509-f3532): 24 consecutive ``hunt_49_slash`` frames of UP+A with Link's
-    state 0 throughout, walking 1.4 px a frame into an ``octorok_fast`` that
-    held 8 px off his shoulder. The release frame is an *idle*, because the
-    held direction is what closes the last 8 px.
-    """
+    """A held A starts no second swing. Release is idle, never the face."""
     foe = _foe(x=160, y=141)
     link_idle = ZeldaObject(slot=0, type_id=0, x=0, y=0, facing=0, hp=0, state=0)
     link_swinging = ZeldaObject(slot=0, type_id=0, x=0, y=0, facing=0, hp=0, state=1)
@@ -373,14 +424,14 @@ def test_every_swing_gets_its_own_release_edge() -> None:
         seen.append((act.reason, pressed_nes_buttons(list(act.action))))
 
     reasons = [r for r, _ in seen]
-    assert reasons == ["hunt_78_slash", "hunt_78_release"] * 4, reasons
+    assert reasons == ["hunt_78_slash", "hunt_78_slash_release"] * 4, reasons
     for (reason, buttons) in seen:
         if reason.endswith("_slash"):
             assert "A" in buttons and "RIGHT" in buttons
         else:
             # No A to re-trigger on, and no direction to close the gap with.
             assert buttons == [] or buttons == ()
-    assert hunter.release_frames == 4
+    assert hunter.census.release_frames == 4
 
     act = hunter.step(
         _snap(
@@ -390,7 +441,7 @@ def test_every_swing_gets_its_own_release_edge() -> None:
         ),
         9,
     )
-    assert act is not None and act.reason == "hunt_78_recover"
+    assert act is not None and act.reason == "hunt_78_slash_recover"
     assert "A" not in pressed_nes_buttons(list(act.action))
 
 
@@ -416,9 +467,98 @@ def test_the_swing_waits_on_links_own_animation_not_a_cadence() -> None:
             ),
             frame,
         )
-        assert act is not None and act.reason == "hunt_78_recover", frame
+        assert act is not None and act.reason == "hunt_78_slash_recover", frame
         assert "A" not in pressed_nes_buttons(list(act.action))
-    assert hunter.release_frames == 0
+    assert hunter.census.release_frames == 0
+
+
+def test_blocked_align_swings_through_the_same_release_edge() -> None:
+    """``_approach`` is the other producer of a ``_slash`` frame.
+
+    In reach, off-axis, and the strafe step leaves the box: that used to
+    hold A every frame the same way ``_strike`` did. Drive ``_approach``
+    directly so a contact-ladder test cannot paper over it.
+    """
+    foe = _foe(x=160, y=157)
+    hunter = ScreenHunter(box=(32, 214, 76, 142))
+    snap = _snap(link_x=160 - SWORD_REACH, link_y=141, facing=FACING_EAST, objects=(foe,))
+    pad = chebyshev(160 - SWORD_REACH, 141, 160, 157)
+    assert pad == SWORD_REACH
+
+    seen = []
+    for frame in (1, 2, 3, 4):
+        act = hunter._approach(snap, frame, foe, foe, pad, "hunt_78")
+        seen.append((act.reason, pressed_nes_buttons(list(act.action))))
+
+    reasons = [r for r, _ in seen]
+    assert reasons == ["hunt_78_slash", "hunt_78_slash_release"] * 2, reasons
+    for reason, buttons in seen:
+        if reason.endswith("_slash"):
+            assert "A" in buttons
+        else:
+            assert buttons == [] or buttons == ()
+    assert hunter.census.release_frames == 2
+
+
+def test_a_hop_inside_the_blade_does_not_spin_the_face() -> None:
+    """Tektite hop that stays in the current hitbox is not an align.
+
+    Live 0x4A (136,111): dx/dy flipped every bounce and Link turned
+    L/R/U/D in place. Keep the covering face and slash.
+    """
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=141 + 6)
+    snap = _snap(
+        link_x=160 - SWORD_REACH,
+        link_y=141,
+        facing=FACING_EAST,
+        objects=(foe,),
+    )
+    pad = chebyshev(160 - SWORD_REACH, 141, 160, 141 + 6)
+    assert pad <= SWORD_REACH
+    act = hunter._approach(snap, 1, foe, foe, pad, "hunt_4a")
+    buttons = pressed_nes_buttons(list(act.action))
+    assert act.reason.endswith("_slash")
+    assert "A" in buttons and "RIGHT" in buttons
+    assert "UP" not in buttons and "DOWN" not in buttons
+
+
+def test_reopen_on_enter_fights_a_cleared_screen_again() -> None:
+    """Contact still answers on a done screen; reopen is the *chase*."""
+    hunter = ScreenHunter(reopen_on_enter=True)
+    hunter.done.add(0x78)
+    hunter.screen = 0x68
+    far = _foe(x=200, y=180)
+    act = hunter.step(_snap(screen=0x78, link_x=120, link_y=141, objects=(far,)), 1)
+    assert 0x78 not in hunter.done
+    assert act is not None
+
+
+def test_one_pass_does_not_reopen_a_cleared_screen() -> None:
+    hunter = ScreenHunter()
+    hunter.done.add(0x78)
+    hunter.screen = 0x68
+    far = _foe(x=200, y=180)
+    act = hunter.step(_snap(screen=0x78, link_x=120, link_y=141, objects=(far,)), 1)
+    assert 0x78 in hunter.done
+    assert act is None
+
+
+def test_report_names_rupees_that_hit_the_floor_and_were_not_banked() -> None:
+    hunter = ScreenHunter()
+    hunter.observe(_snap(rupees=0, objects=(_foe(slot=1),)))
+    hunter.observe(
+        _snap(rupees=0, objects=(_drop(slot=1, state=FIVE_RUPEE_DROP_STATE),))
+    )
+    hunter.observe(_snap(rupees=0, objects=()))
+    hunter.observe(_snap(rupees=0, objects=(_foe(slot=2),)))
+    hunter.observe(_snap(rupees=1, objects=(_drop(slot=2, state=RUPEE_DROP_STATE),)))
+    assert hunter.ledger.rupees_dropped == 6
+    assert hunter.ledger.rupees_banked == 1
+    report = hunter.report()
+    assert report["rupees_dropped"] == 6
+    assert report["rupees_left"] == 5
+    assert report["screens"][0]["rupees_dropped"] == 6
 
 
 def test_off_axis_in_reach_strafes_instead_of_closing() -> None:
@@ -545,7 +685,7 @@ def test_the_last_heart_stops_the_chase_but_not_the_blade() -> None:
     hunter = ScreenHunter()
     far = _snap(health=0x20, objects=(_foe(x=200),))
     assert hunter.step(far, 1) is None
-    assert hunter.guard_frames == 1
+    assert hunter.census.guard_frames == 1
 
     hunter = ScreenHunter()
     near = _snap(health=0x20, link_x=120, link_y=141, objects=(_foe(slot=1, x=129, y=141),))
@@ -651,13 +791,15 @@ def test_a_collision_is_a_hurt_even_when_assist_has_already_refilled() -> None:
 
 
 def _walker(hunt: bool):
-    """A bomb-shop walk parked on its last hop (0x49 --RIGHT y=141--> 0x4A)."""
-    from zelda_i.overworld.gathering import ShopP7WalkController
+    """Stall-escape fixture: the measured 0x49 (56,125) pocket, not shop_p7."""
+    from zelda_i.overworld.graph import ScreenHop
+    from zelda_i.overworld.path import OverworldPathController
 
-    ctl = ShopP7WalkController(hunt=hunt)
-    ctl.hop_index = len(ctl.hops) - 1
-    if hunt:
-        ctl._hunter = ScreenHunter()
+    ctl = OverworldPathController(
+        hops=(ScreenHop(0x4A, "RIGHT", align_y=141),),
+        hunter=ScreenHunter() if hunt else None,
+    )
+    ctl.hop_index = 0
     return ctl
 
 
@@ -733,7 +875,7 @@ def test_a_zora_is_never_a_target() -> None:
 def test_the_richer_drop_row_is_held_over_the_nearer_body() -> None:
     """A blue tektite is row 1 (0.891 R/kill, two 5-rupees); a red octorok is
     row 0 (0.156). Nearest-first read them as the same body."""
-    hunter = ScreenHunter()
+    hunter = _blade_only()
     tektite = _foe(slot=2, x=190, y=141, type_id=TEKTITE_BLUE_OBJECT_TYPE)
     snap = _snap(link_x=120, objects=(_foe(slot=1, x=170, y=141), tektite))
     hunter.observe(snap)
@@ -744,7 +886,7 @@ def test_the_richer_drop_row_is_held_over_the_nearer_body() -> None:
 def test_a_cheap_body_is_still_chased_at_full_health() -> None:
     """Nine red octoroks cost 0.00 hearts live; refusing them on value alone
     would be tuning against the arithmetic (``prey.THRIFTY_CHASE_RADIUS``)."""
-    hunter = ScreenHunter()
+    hunter = _blade_only()
     snap = _snap(health=0x22, link_x=40, objects=(_foe(slot=1, x=200, y=141),))
     hunter.observe(snap)
     act = hunter.step(snap, 1)
@@ -775,7 +917,7 @@ def test_a_rich_body_is_still_chased_on_short_health() -> None:
 
 
 def test_a_chase_longer_than_the_screen_budget_never_starts() -> None:
-    hunter = ScreenHunter(screen_max_frames=60)
+    hunter = _blade_only(screen_max_frames=60)
     snap = _snap(link_x=40, objects=(_foe(slot=1, x=200, y=141),))
     hunter.observe(snap)
     assert hunter.step(snap, 1) is None
@@ -799,7 +941,7 @@ def test_a_dwelling_fireball_is_stepped_away_from() -> None:
     assert act is not None and act.reason == "hunt_duck"
     # Perpendicular to the muzzle bearing, never along it.
     assert pressed_nes_buttons(list(act.action))[0] in ("UP", "DOWN")
-    assert hunter.shield_policy.ducks > 0
+    assert hunter.shield_policy.census.ducks > 0
 
 
 def test_the_duck_can_be_switched_off_without_the_shield() -> None:
@@ -828,12 +970,12 @@ def test_a_fireball_across_the_map_is_left_to_the_evader() -> None:
 def test_a_transit_screen_is_crossed_not_cleared() -> None:
     """0x59 is peahat x4 plus a Zora — ROM drop row 3 — and one live pass cost
     a whole heart, 533 frames and a 5-kill streak for one kill."""
-    hunter = ScreenHunter(transit_screens=frozenset({0x59}))
+    hunter = _blade_only(transit_screens=frozenset({0x59}))
     snap = _snap(screen=0x59, link_x=40, objects=(_foe(slot=1, x=200, y=141),))
     hunter.observe(snap)
     assert hunter.step(snap, 1) is None
-    assert hunter.transit_frames == 1
-    assert hunter.frames_by_screen.get(0x59, 0) == 0
+    assert hunter.census.transit_frames == 1
+    assert hunter.census.frames_by_screen.get(0x59, 0) == 0
 
 
 def test_a_transit_screen_still_answers_a_body_at_contact() -> None:
@@ -880,7 +1022,7 @@ def test_the_target_order_is_a_walk_cost_not_a_contact_pad() -> None:
     """``combat.nearest_to`` — what the value order replaced — measured
     manhattan. Ranking on chebyshev re-picks a different octorok on every
     off-axis wave, which reshuffles a frame-perfect corridor for nothing."""
-    hunter = ScreenHunter()
+    hunter = _blade_only()
     # Equal value (both row 0). Off-axis body is nearer by chebyshev (60) and
     # further by manhattan (120) than the on-axis one (80 either way).
     on_axis = _foe(slot=1, x=200, y=141)
@@ -889,3 +1031,146 @@ def test_the_target_order_is_a_walk_cost_not_a_contact_pad() -> None:
     hunter.observe(snap)
     hunter.step(snap, 1)
     assert hunter.targets.slot == 1
+
+
+# ------------------------------------------------- cleared vs retired ---
+
+
+def test_a_cleared_screen_still_walks_onto_the_rupee_it_dropped() -> None:
+    """The 5R-on-the-floor gap (``pre_l1_beam4``: 24 dropped, 19 banked).
+
+    The kill that empties a screen drops on the same frame the screen goes
+    ``done``, and ``done`` used to collect ``heal_only`` — so the last drop of
+    every screen was only ever banked if it happened to land inside the
+    path's own 48 px ``_rupee_scoop`` radius.
+    """
+    hunter = _blade_only()
+    hunter.done.add(0x78)
+    hunter.cleared.add(0x78)
+    snap = _snap(link_x=120, link_y=141, objects=(_drop(x=160, y=141),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_scoop")
+
+
+def test_a_budget_retired_screen_does_not_chase_money_through_the_wave() -> None:
+    """``_retire`` means the wave outlasted the budget, not that it is gone.
+    Only a heart is worth crossing live bodies for, and that is what
+    ``heal_only`` says."""
+    hunter = _blade_only()
+    hunter._retire(0x78, "budget")
+    assert 0x78 in hunter.done and 0x78 not in hunter.cleared
+    snap = _snap(link_x=120, link_y=141, objects=(_drop(x=160, y=141),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is None or not act.reason.startswith("hunt_scoop")
+
+
+def test_the_screen_table_does_not_call_a_budget_retire_cleared() -> None:
+    """``cleared`` read ``screen in self.done``, so three retires on the
+    2026-09-15 coast walk printed as cleared screens."""
+    hunter = _blade_only()
+    snap = _snap(screen=0x79, objects=(_foe(slot=1, x=200, y=141),))
+    hunter.observe(snap)
+    hunter.step(snap, 1)
+    hunter._retire(0x79, "budget")
+    row = next(r for r in hunter.screen_table() if r["screen"] == "0x79")
+    assert row["cleared"] is False and row["retired"] is True
+
+
+def test_reopening_a_screen_reopens_the_cleared_claim_too() -> None:
+    """A lap re-enters a screen it cleared; leaving it in ``cleared`` would
+    scoop-only a wave that is live again."""
+    hunter = _blade_only(reopen_on_enter=True)
+    hunter.done.add(0x78)
+    hunter.cleared.add(0x78)
+    snap = _snap(objects=(_foe(slot=1, x=200, y=141),))
+    hunter.observe(snap)
+    hunter.step(snap, 1)
+    assert 0x78 not in hunter.done and 0x78 not in hunter.cleared
+
+
+def test_a_drop_across_a_live_screen_is_not_worth_walking_to() -> None:
+    """0x7E is four ``octorok_fast`` plus a Zora. One pass spent 240 frames on
+    ``hunt_heal`` and 179 on ``hunt_scoop`` crossing it for one heart and 2R,
+    and took five of the walk's twelve hits doing it (``pre_l1_anyrow1``)."""
+    hunter = ScreenHunter()
+    far = ZeldaObject(
+        slot=2, type_id=RUPEE_DROP_OBJECT_TYPE, x=210, y=141, facing=0, hp=0,
+        state=HEART_DROP_STATE,
+    )
+    snap = _snap(link_x=40, link_y=141, health=0x22, heart_partial=0x7F,
+                 objects=(far,))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is None or not act.reason.startswith("hunt_heal")
+
+
+def test_a_drop_inside_the_radius_is_still_taken() -> None:
+    hunter = ScreenHunter()
+    near = ZeldaObject(
+        slot=2, type_id=RUPEE_DROP_OBJECT_TYPE, x=40 + HUNT_PICKUP_RADIUS - 8,
+        y=141, facing=0, hp=0, state=HEART_DROP_STATE,
+    )
+    snap = _snap(link_x=40, link_y=141, health=0x22, heart_partial=0x7F,
+                 objects=(near,))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_heal")
+
+
+def test_an_empty_screen_still_walks_the_whole_box_for_a_drop() -> None:
+    """With nothing alive, distance costs frames and nothing else — the
+    radius is about crossing a *wave*, not about reach."""
+    hunter = _blade_only()
+    far = _drop(slot=2, x=210, y=141)
+    snap = _snap(link_x=40, link_y=141, objects=(far,))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason == "hunt_drop"
+
+
+def test_one_body_cannot_hold_the_contact_strike_forever() -> None:
+    """The contact strike was the top of the ladder with no budget on it at
+    all: not the per-target one (``TargetBook`` is three rungs down), not the
+    per-screen one. ``pre_l1_bound1`` spent 24877 of a 30000 frame timeout on
+    0x7C — 3072 A presses at one body that would not die."""
+    hunter = _blade_only()
+    snap = _snap(link_x=120, link_y=141, objects=(_foe(slot=1, x=132, y=141),))
+    reasons = set()
+    for frame in range(1, hunter.strike_slot_max_frames + 40):
+        hunter.observe(snap)
+        act = hunter.step(snap, frame)
+        if act is not None:
+            reasons.add(act.reason)
+    assert any("wedged" in note for note in hunter.census.notes)
+    act = hunter.step(snap, 10**6)
+    assert act is None or "_slash" not in act.reason
+
+
+def test_the_wedge_budget_spends_the_screen_budget_too() -> None:
+    """A screen that burns its whole chase on one wedged body still has to
+    retire and hand the hop back."""
+    hunter = _blade_only()
+    snap = _snap(link_x=120, link_y=141, objects=(_foe(slot=1, x=132, y=141),))
+    for frame in range(1, 60):
+        hunter.observe(snap)
+        hunter.step(snap, frame)
+    assert hunter.screen_frames >= 50
+    assert hunter.census.frames_by_screen.get(0x78, 0) >= 50
+
+
+def test_a_fresh_body_in_the_same_slot_is_still_struck() -> None:
+    """Identity is (slot, type): a slot is reused the moment its occupant
+    dies, and the replacement has not had its turn."""
+    hunter = _blade_only()
+    snap = _snap(link_x=120, link_y=141, objects=(_foe(slot=1, x=132, y=141),))
+    wedged = snap.objects[0]
+    hunter._unkillable.add((int(wedged.slot), int(wedged.type_id)))
+    hunter.observe(snap)
+    assert hunter._strike_budget(0x78, wedged) is False
+    other = ZeldaObject(
+        slot=int(wedged.slot), type_id=int(wedged.type_id) + 1, x=132, y=141,
+        facing=0x02, hp=0x10, state=1,
+    )
+    assert hunter._strike_budget(0x78, other) is True

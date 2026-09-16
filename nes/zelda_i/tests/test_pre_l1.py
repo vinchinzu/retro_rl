@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
-from zelda_i.level8.overworld import LEVEL8_BUSH_HOPS
 from zelda_i.overworld.gathering import (
-    DEAD_68_EAST_Y141,
-    DEAD_6C_EAST_BUSH,
-    SHOP_P7_HOPS,
-    SHOP_P7_HOPS_LIVE_PREFIX,
-    SHOP_P7_PRICE,
-    SHOP_P7_SCREEN,
-    SOURCE_HYPOTHESIS,
     SWORD_MAX,
-    make_shop_p7_walk_controller,
     pre_l1_bomb_shop_success,
     pre_l1_stages,
+)
+from zelda_i.overworld.shop_p7 import (
+    COAST_TEKTITE_SCREEN,
+    PRE_L1_BOMB_HOPS,
+    SCREEN_79_BEACH_Y,
+    SCREEN_7A_EAST_BAND,
+    SCREEN_7E_EAST_BAND,
+    SHOP_P7_HOPS,
+    SHOP_P7_NOT_ON_WALK,
+    SHOP_P7_PRICE,
+    SHOP_P7_SCREEN,
+    SHOP_P7_TRANSIT_SCREENS,
+    make_shop_p7_walk_controller,
+    pre_l1_walk_hops,
     shop_p7_arrived,
     shop_p7_screens,
 )
+from zelda_i.overworld.zd_map import map1_route
 from zelda_i.overworld.graph import (
-    LEVEL2_PATH_HOPS,
     SCREEN_LABELS,
     SCREEN_START,
     ScreenHop,
@@ -34,7 +39,6 @@ from zelda_i.overworld.locations import (
     OPEN_OPEN,
     location,
 )
-from zelda_i.overworld.hunt import ScreenHunter
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES, SwordCaveController
 from zelda_i.ram import CAVE_MODE, PLAY_MODE, read_snapshot
@@ -46,8 +50,8 @@ def _shift(screen: int, *, east: int = 0, north: int = 0) -> int:
     return screen_id(col + east, row - north)
 
 
-def test_zd_bomb_shop_grid_is_0x6f_but_row7_hits_0x79() -> None:
-    """ZD 1.1: right 8, up 1 from start. Dest is shop_p7; the walk is not."""
+def test_zd_bomb_shop_grid_is_0x6f_and_map1_paints_row7() -> None:
+    """ZD 1.1: right 8, up 1 from start. Map-1.png is that walk, dest shop_p7."""
     assert _shift(SCREEN_START, east=8) == 0x7F
     assert _shift(SCREEN_START, east=8, north=1) == 0x6F
     shop = location("shop_p7")
@@ -57,6 +61,7 @@ def test_zd_bomb_shop_grid_is_0x6f_but_row7_hits_0x79() -> None:
     assert SCREEN_LABELS[0x79] == "rocky_deadend_east_of_78"
     east_of_start = _shift(SCREEN_START, east=2)
     assert east_of_start == 0x79
+    assert 0x79 in map1_route().screens
 
 
 def test_zd_heart_l8_is_down1_left4_from_bomb_shop() -> None:
@@ -136,51 +141,72 @@ def _shop_p7_ram(**fields: int):
     return make_ram(_SHOP_P7_RAM, **fields)
 
 
-def test_shop_bomb_path_screens_start_77_end_4a() -> None:
+def test_shop_bomb_path_follows_map1() -> None:
     screens = shop_p7_screens()
+    painted = map1_route()
     assert screens[0] == SCREEN_START == 0x77
-    assert screens[-1] == SHOP_P7_SCREEN == 0x4A
-    assert screens == (0x77, 0x78, 0x68, 0x58, 0x59, 0x49, 0x4A)
-    # 0x48's leevers are richer than anything on this list and still off
-    # it: the live detour died twice on three containers (gathering.py).
+    assert screens[-1] == SHOP_P7_SCREEN == painted.dest == 0x6F
+    assert COAST_TEKTITE_SCREEN == 0x7A
+    assert screens == painted.screens
+    assert 0x7A in screens
+    assert 0x7B in screens
+    assert 0x6B not in screens
     assert 0x48 not in screens
+    assert 0x4A not in screens
+    assert 0x79 in screens
+    assert screens[:4] == (0x77, 0x78, 0x79, 0x7A)
 
 
-def test_shop_bomb_path_bypasses_traps_and_dead_corridors() -> None:
+def test_shop_bomb_path_skips_inland_and_row6_pocket() -> None:
     screens = shop_p7_screens()
-    assert 0x79 not in screens
+    assert 0x79 in screens
     assert SCREEN_LABELS[0x79] == "rocky_deadend_east_of_78"
-    assert 0x67 not in screens
-    assert 0x1B not in screens  # Lost Hills is later; this hop does not go there
-    assert 0x6C not in screens  # row 6 west pocket is bypassed via 0x49 -> 0x4A
+    assert SHOP_P7_NOT_ON_WALK.isdisjoint(screens)
+    assert 0x4A not in screens
+    assert 0x5C not in screens
+    assert 0x5E not in screens
+    assert 0x68 not in screens
 
 
-def test_shop_bomb_hops_match_level2_prefix() -> None:
-    assert SHOP_P7_HOPS[:4] == LEVEL8_BUSH_HOPS[:4]
-    assert SHOP_P7_HOPS == (
-        ScreenHop(0x78, "RIGHT", align_y=140),
-        ScreenHop(0x68, "UP", align_x=48),
-        ScreenHop(0x58, "UP", align_x=48),
-        ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
-        ScreenHop(0x49, "UP", align_x=112),
-        ScreenHop(0x4A, "RIGHT", align_y=141),
+def test_shop_bomb_hops_follow_map1_coast_with_79_beach() -> None:
+    painted = map1_route()
+    assert SHOP_P7_HOPS == PRE_L1_BOMB_HOPS
+    assert shop_p7_screens() == painted.screens
+    assert tuple(h.target for h in SHOP_P7_HOPS) == tuple(
+        h.target for h in painted.hops
     )
-    # The tail is the L2 prefix read forwards from 0x58.
-    assert SHOP_P7_HOPS[3:] == LEVEL2_PATH_HOPS[3:]
-    assert SOURCE_HYPOTHESIS is True
-    assert DEAD_68_EAST_Y141 is True  # 0x68 east is dead
-    assert DEAD_6C_EAST_BUSH is True  # 0x6C east is dead
+    assert tuple(h.direction for h in SHOP_P7_HOPS) == tuple(
+        h.direction for h in painted.hops
+    )
+    assert tuple(h.target for h in SHOP_P7_HOPS) == (
+        0x78,
+        0x79,
+        0x7A,
+        0x7B,
+        0x7C,
+        0x7D,
+        0x7E,
+        0x7F,
+        0x6F,
+    )
+    # Overlay names the screens. It is not the hop generator: three live
+    # lanes replace the painted centre row.
+    by_target = {h.target: h for h in SHOP_P7_HOPS}
+    assert painted.hops[2].align_y != SCREEN_79_BEACH_Y
+    assert by_target[0x7A] == ScreenHop(0x7A, "RIGHT", align_y=SCREEN_79_BEACH_Y)
+    assert by_target[0x7B].y_band == SCREEN_7A_EAST_BAND == (133, 141)
+    assert by_target[0x7F].y_band == SCREEN_7E_EAST_BAND == (137, 145)
+    assert 120 <= int(painted.hops[2].align_y or 0) <= 145
 
 
-def test_shop_p7_arrived_only_on_play_4a_with_sword() -> None:
+def test_shop_p7_arrived_only_on_play_6f_with_sword() -> None:
     play = read_snapshot(_shop_p7_ram())
     assert shop_p7_arrived(play)
-    # Arrival is not the errand: the spine stop is the 4-pack, so a walk that
-    # reached 0x4A with one rupee is red, not green.
+    # Arrival is not the errand: the spine stop is the 4-pack.
     assert not pre_l1_bomb_shop_success(play)
     assert pre_l1_bomb_shop_success(read_snapshot(_shop_p7_ram(bombs=4)))
     assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(mode=CAVE_MODE)))
-    assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(screen=0x68)))
+    assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(screen=0x7A)))
     assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(sword=0)))
     assert not shop_p7_arrived(read_snapshot(_shop_p7_ram(level=1)))
 
@@ -191,6 +217,8 @@ def test_shop_p7_walk_controller_is_walk_only_with_scoop_knobs() -> None:
     assert ctl.hops == SHOP_P7_HOPS
     assert ctl.farm_below_hearts == 0
     assert ctl.need_rupees == 0  # t1 restock-farmed 0x78; price stays 20 for the buy
+    assert ctl.scoop_rupees is True
+    assert ctl.scoop_bombs is True
     assert SHOP_P7_PRICE == 20
     assert ctl.evade is True
     assert ctl.occupied_lane is True
@@ -198,52 +226,110 @@ def test_shop_p7_walk_controller_is_walk_only_with_scoop_knobs() -> None:
     assert ctl.door_x is None
     assert ctl.door_screen is None
     assert not ctl.require_dungeon
+    assert ctl.hunter is not None  # the walk is the rupee farm
+    assert ctl.hunter.transit_screens == SHOP_P7_TRANSIT_SCREENS == {0x7B, 0x7D}
+    assert ctl.hunter.reopen_on_enter is False  # one pass; see the lap test
     play = read_snapshot(_shop_p7_ram())
-    assert ctl._at_stop(play)  # no hunter yet: nothing to wait for
+    ctl.hunter.done.add(SHOP_P7_SCREEN)  # the wave itself is its own test
+    assert ctl._at_stop(play)
     cave = read_snapshot(_shop_p7_ram(mode=CAVE_MODE))
     assert not ctl._at_stop(cave)
-    hop4 = SHOP_P7_HOPS[4]
-    assert hop4.target == 0x49
-    assert hop4.direction == "UP"
-    assert hop4.align_x == 112
-    hop5 = SHOP_P7_HOPS[5]
-    assert hop5.target == 0x4A
-    assert hop5.direction == "RIGHT"
-    assert hop5.align_y == 141
+    hop1 = SHOP_P7_HOPS[1]
+    assert hop1.target == 0x79
+    assert hop1.direction == "RIGHT"
+    hop2 = SHOP_P7_HOPS[2]
+    assert hop2.target == 0x7A
+    assert hop2.direction == "RIGHT"
+    hop8 = SHOP_P7_HOPS[8]
+    assert hop8.target == 0x6F
+    assert hop8.direction == "UP"
 
 
-def test_pre_l1_stages_are_sword_then_walk_then_buy() -> None:
+def test_pre_l1_stages_are_sword_then_walk_then_topup_then_buy() -> None:
     stages = pre_l1_stages()
-    assert len(stages) == 3
+    assert len(stages) == 4
     sword_name, sword_ctl, sword_max = stages[0]
     walk_name, walk_ctl, walk_max = stages[1]
-    buy_name, buy_ctl, _ = stages[2]
+    topup_name, topup_ctl, topup_max = stages[2]
+    buy_name, buy_ctl, _ = stages[3]
+    assert topup_name == "bomb_topup"
+    assert topup_ctl.shop_screen == 0x6F and topup_ctl.price == 20
+    assert topup_ctl.hunter is not None
+    # A lap re-enters a screen it has already fought; a walk must not.
+    assert topup_ctl.hunter.reopen_on_enter is True
+    assert topup_max >= 8000
     assert "sword" in sword_name
     assert "walk" in walk_name
     assert isinstance(sword_ctl, SwordCaveController)
     assert isinstance(walk_ctl, OverworldPathController)
     assert sword_max == SWORD_MAX == SEGMENT_MAX_FRAMES
-    assert walk_ctl.hops == SHOP_P7_HOPS
+    assert walk_ctl.hops == SHOP_P7_HOPS == PRE_L1_BOMB_HOPS
+    assert getattr(walk_ctl, "laps", 0) == 0
+    assert walk_ctl.hunter.reopen_on_enter is False
     assert walk_max >= 30000
-    # The buy starts from the walk's own leftover on 0x4A, so it has no hops
-    # of its own, and no restock farm to hide a shortfall in.
     assert buy_name == "bomb_buy"
     assert buy_ctl.hops == ()
-    assert buy_ctl.shop_screen == 0x4A
+    assert buy_ctl.shop_screen == 0x6F
     assert buy_ctl.price == 20
     assert buy_ctl.farm is None
+    assert buy_ctl.cave_x == 48
+    assert buy_ctl.cave_y == 77
+    from zelda_i.overworld import bomb_shop as inland_bomb_shop
+
+    assert inland_bomb_shop.BOMB_SHOP_SCREEN == 0x4A
+    assert inland_bomb_shop.BOMB_SHOP_HOPS != walk_ctl.hops
 
 
 def test_the_walk_does_not_stop_until_the_destination_wave_is_fought() -> None:
-    """0x4A's six blue tektites are row 1: 5.3R of the corridor's 8.4R."""
+    """0x6F arrival is not enough; the coast shop wave has to be fought."""
     ctl = make_shop_p7_walk_controller()
-    assert ctl.hunt is True and ctl.hunt_destination is True
-    arrived = read_snapshot(_shop_p7_ram())
+    assert ctl.hunter is not None and ctl.hunt_destination is True
+    arrived = read_snapshot(_shop_p7_ram(health=0x22))
     assert shop_p7_arrived(arrived)
-    ctl._hunter = ScreenHunter()
     assert not ctl._at_stop(arrived)
-    ctl._hunter.done.add(0x4A)
+    ctl.hunter.done.add(0x6F)
     assert ctl._at_stop(arrived)
+
+
+def test_the_destination_wave_is_not_worth_a_2400_frame_stand_at_one_heart() -> None:
+    """``_after_hops`` answers a declining hunt with an idle, and the hunt
+    declines for the whole guard branch — so on the destination screen the
+    two meet as a stand for ``HUNT_DESTINATION_FRAMES``. ``pre_l1_anyrow1``
+    reached 0x6F for the first time and died on frame 593 of that stand, to
+    the shop screen's own Zora, with the cave mouth two tiles away."""
+    ctl = make_shop_p7_walk_controller()
+    guarding = read_snapshot(_shop_p7_ram(health=0x20))  # 1 of 3
+    assert guarding.whole_hearts <= ctl.hunter.min_hearts
+    assert 0x6F not in ctl.hunter.done
+    assert ctl.destination_hunted(guarding) is True
+    assert ctl._at_stop(guarding) is True
+
+
+def test_lapped_walk_is_wired_but_composer_stays_one_pass() -> None:
+    ctl = make_shop_p7_walk_controller(laps=1)
+    assert ctl.hops == pre_l1_walk_hops(1)
+    assert ctl.laps == 1
+    assert ctl.hunter.reopen_on_enter is True
+    _, walk, _ = pre_l1_stages()[1]
+    assert walk.laps == 0
+    assert walk.hunter.reopen_on_enter is False
+    assert walk.hops == pre_l1_walk_hops(0)
+
+
+def test_funded_arrival_stops_even_mid_lap() -> None:
+    ctl = make_shop_p7_walk_controller(laps=1)
+    ctl.hop_index = len(PRE_L1_BOMB_HOPS)
+    assert ctl.hop_index < len(ctl.hops)
+    snap = read_snapshot(_shop_p7_ram(rupees=SHOP_P7_PRICE))
+    assert ctl._at_stop(snap)
+
+
+def test_unfunded_mid_lap_does_not_stop_on_6f() -> None:
+    ctl = make_shop_p7_walk_controller(laps=1)
+    ctl.hop_index = len(PRE_L1_BOMB_HOPS)
+    ctl.hunter.done.add(SHOP_P7_SCREEN)
+    snap = read_snapshot(_shop_p7_ram(rupees=8))
+    assert not ctl._at_stop(snap)
 
 
 def test_shop_p7_catalog_row_is_open_arrows_family() -> None:
@@ -253,3 +339,62 @@ def test_shop_p7_catalog_row_is_open_arrows_family() -> None:
     assert shop.cave_id == CAVE_SHOP_ARROWS
     assert shop.open == OPEN_OPEN
     assert shop.kind == "shop"
+
+
+def test_the_travelling_walk_spends_the_edge_on_a_lined_up_body() -> None:
+    """The walk, not only the hunt, must be able to fire the full-health shot.
+
+    Measured (``scratch/probe_beam.py --phase lane``, tag ``b3``): on the live
+    coast walk the shot was up for 807 of 6218 frames and a body stood in a
+    9 px lane on 361 of them, but the hunt's own branch aimed on **0** —
+    while Link travels, the hop table owns the frame and ``walk_or_swing``
+    only presses A at contact range.
+    """
+    from retro_harness.controls import pressed_nes_buttons
+    from zelda_i.dungeon.ids import TEKTITE_BLUE_OBJECT_TYPE
+    from zelda_i.ram import (
+        ADDR_HEART_PARTIAL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_OBJ_HP,
+        ADDR_OBJ_TYPE,
+    )
+
+    ram = _shop_p7_ram(screen=0x78, x=60, y=133, health=0x22, bombs=0, rupees=0)
+    ram[ADDR_HEART_PARTIAL] = 0xFF
+    ram[ADDR_OBJ_TYPE + 1] = TEKTITE_BLUE_OBJECT_TYPE
+    ram[ADDR_LINK_X + 1] = 210
+    ram[ADDR_LINK_Y + 1] = 133
+    ram[ADDR_OBJ_HP + 1] = 1
+    snap = read_snapshot(ram)
+
+    walk = make_shop_p7_walk_controller()
+    walk.hunter.observe(snap)
+    act = walk.hunter.take_beam(snap)
+    assert act is not None and act.reason == "beam_78"
+    assert "A" in pressed_nes_buttons(list(act.action))
+    assert walk.hunter.beam.pressed == 1
+
+
+def test_the_travelling_shot_is_off_when_the_walk_does_not_hunt() -> None:
+    from zelda_i.dungeon.ids import TEKTITE_BLUE_OBJECT_TYPE
+    from zelda_i.ram import (
+        ADDR_HEART_PARTIAL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_OBJ_HP,
+        ADDR_OBJ_TYPE,
+    )
+
+    ram = _shop_p7_ram(screen=0x77, x=60, y=133, health=0x22, bombs=0, rupees=0)
+    ram[ADDR_HEART_PARTIAL] = 0xFF
+    ram[ADDR_OBJ_TYPE + 1] = TEKTITE_BLUE_OBJECT_TYPE
+    ram[ADDR_LINK_X + 1] = 210
+    ram[ADDR_LINK_Y + 1] = 133
+    ram[ADDR_OBJ_HP + 1] = 1
+    snap = read_snapshot(ram)
+
+    walk = make_shop_p7_walk_controller()
+    walk.hunter = None
+    act = walk._do_hop(snap)
+    assert not act.reason.startswith("beam_")

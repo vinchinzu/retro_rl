@@ -2,7 +2,150 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
-## This sitting (2026-09-15) — the 20R budget, and rocks are half the resets
+## This sitting (2026-09-16) — 0x6F arrived once; top-up wired, not run
+
+Six unassisted `--through pre-l1` runs, tags `pre_l1_scoop1` → `pre_l1_topup1`.
+Full detail in [`docs/PRE_L1.md`](../PRE_L1.md) "This sitting (2026-09-16)".
+
+| tag | leftover | R | kills | what it says |
+|-----|----------|---|-------|--------------|
+| `pre_l1_beam4` (before) | died 0x7C | 19 | 24 | baseline |
+| `pre_l1_anyrow1` | died **0x6F** | 14 | 28 | **all nine hops**; died in the destination stand |
+| `pre_l1_bound1` | timeout 0x7C | 11 | 19 | strike wedge, 2 hits all run |
+| `pre_l1_wedge1` | timeout 0x7C | 6 | 19 | lane/push oscillation |
+| `pre_l1_grind1` / `pre_l1_topup1` | died 0x7D | 6 | 21 | grind cap fires, corridor still costs the hearts |
+
+Landed: `reason_by_screen` census; `SCREEN_ANY_ROW_BAND` on the three
+every-row hops; `ScreenHunter._strike_budget`; `_grinding` per-hop-per-screen
+cap; `destination_hunted` True in guard; `cleared` split from `done` so a
+cleared screen scoops money; `combat.heal_wanted`; a `hunt_heal` rung above
+the beam with `HUNT_PICKUP_RADIUS` / `HUNT_HEAL_MAX_FRAMES`;
+`ObjectTracker(shot_history=2)` and `path._shot_first` for the Zora muzzle
+hold; `overworld/topup.py` + the `bomb_topup` stage with both 0x6F neighbours
+measured. 1658 tests green. M5 Clean **not** re-measured — do that before any
+STATUS claim (`AGENTS.md`: a walker change invalidates 18909f).
+
+### Handoff — next, in order
+
+1. **Re-measure M5 Clean.** `run_level1_complete.py --natural-entry --trials 2`.
+   `path.py` and `tracking.py` both changed. Nothing here may be STATUSed
+   until 18909f is reproduced or replaced.
+2. **Run the walk more than once per change.** The emulator is deterministic,
+   so one run *is* the measurement for a config, and any timing change
+   reshuffles the whole corridor (`zelda-l1-chain-frame-perfect`). Rupees went
+   19 → 14 → 11 → 6 across changes that are each individually correct. Judge
+   changes on `reason_by_screen`, not on the rupee count of one run.
+3. **`bomb_topup` has never had a frame.** It needs a pass that survives to
+   0x6F. Easiest proof is the probe's own path: assist ON, hunter off,
+   `ShopP7WalkController` to 0x6F, then drive `RupeeTopUpController` and read
+   `rupees` / `reason_by_screen`. Do that before trusting it unassisted.
+4. **The corridor still costs ~3 hearts.** `hits_by_cause` is still Zora spit
+   first (`fireball_or_statue_projectile_*`). `_shot_first` fired 9 frames in
+   one run: with a body in the pad every candidate step has TTC 0 and
+   `ReactiveEvader` peels from the body instead of the shot. That is a
+   *positioning* problem — the fix is not standing next to a leever while a
+   Zora is surfaced, not a faster reaction.
+5. **0x78 burns a 593-frame `hop_escape`** every run (`stall_escape_78_80_133`).
+   No damage, 10s of wall clock; worth one look at the tree maze lane.
+6. `overworld/arbiter.py` is still unwired. The four stalls above were all
+   "which rung owns this frame", which is exactly what it exists to make
+   assertable.
+
+## Superseded (2026-09-15) — structure pass; leftover still 0x7C
+
+This sitting is a structure pass on the bomb-run, not a new live ROM
+leftover. Census and lanes stay in [`docs/PRE_L1.md`](../PRE_L1.md).
+
+Unassisted `--through pre-l1` (tags `pre_l1_beam3` / `pre_l1_beam4`,
+reproduced 2/2): died **0x7C `(192,85)`** at 7500f hop 5. **19R** /
+24 kills / streak 17 / 2.996 hearts over 6 hits (**4 of 6 from
+`0x55`**). 5R of 24R dropped still on the floor. 0x6F not arrived.
+Stop is `ADDR_BOMBS >= 1`.
+
+M5 Clean 2/2 18909f unregressed. Tests include `beam`.
+
+Next lever (do not implement this sitting): scoop the 5R
+(`scoop_rupees=True`, now above stall-escape); then `0x55` spit
+via `threat._FACING_AXIS` 0x03.
+
+Do not STATUS. Do not overwrite M5 18909f. Do not add Food pokes.
+
+## Superseded (2026-09-15) — retest: shop 0x6F never arrived
+
+`--through pre-l1 --no-video --tag pre_l1_retest` 0/1, assist=None,
+`set_state=0`. Sword cave green 749f. `bomb_walk` **timeout 30000f**
+on hop 3 RIGHT `0x7B`. Glance: play **0x7A `(128,126)`** mode 5 TF
+`0x00` keys 0 bombs 0 rupees **2** health **`0x22` 3/3** lo==hi
+deaths 0. Hunt 8 kills (4 on 0x78, 4 on 0x7A), streak_best 7, 2R
+dropped and banked, 0 left. 0x7A spent 27501f after the 600f hunt
+budget; 53 occupancy misses at overlay y≈126. Buy never started.
+
+Same-day earlier hunting trial (`test_pre_l1`) got further: death
+**0x7D** 15R 18 kills, still 5R short. Hunt-off geometry probe
+(`pre_l1_geo`) cleared 0x7A then **died 0x7B `(65,133)`** mode 17
+1R 1/3. Only hop 0x79→0x7A uses beach y=165; 0x7A→0x7B is still
+overlay `align_y=131`. 0x6F cave mouth is not live. Do not STATUS.
+
+## Superseded (2026-09-15) — Map-1 south coast is the walk
+
+`shop_p7` lives in `overworld/shop_p7.py`. Dest is **0x6F**. Live hops:
+`0x77 → 0x78 → 0x79 → 0x7A → … → 0x7F → 0x6F`. 0x79 east is the beach
+(y≈165), not LEFT out the west mouth and not the L8/candle corridor.
+`overworld/bomb_shop.py` stays the later 0x4A cave. `gathering.py` is
+only the Composer row (sword + walk + buy).
+
+Unassisted leftover: 0x7D, 15R, 18 kills; 5R short of the pack. Do not
+re-join via `0x68` / `0x5C` / `0x5E`.
+
+## Superseded (2026-09-15) — 0x7B join torched; dest is 0x5E south
+
+`rr-doua.1` still in_progress. Older join: Map-1 into the bowl, hunt the
+four blue tektites, LEFT out the same mouth. Coast work has since
+replaced that opening. The other worktrees are different beads (0x4A
+bomb buy, raft heart, burn heart, npv.8), not this join.
+
+The 0x6B leftover was the tree wall, not the bowl. Dest (hunt off):
+bowl out-and-back green; skirt live through `0x68/0x58/0x59/0x69/0x6A`
+RIGHT `0x6B`; `0x6B` DOWN align_x=120 dest-red play **0x6B `(120,189)`**
+mode 5 (`DEAD_6B_SOUTH`). Occupancy from the west mouth missed a south
+cell east of x=176 (`max_x_blocked=175`). `l8_6b_exits` has UP to 0x5B
+and LEFT to 0x6A, no east, no south. 0x7B north is a bomb wall and this
+errand has no bombs yet. 0x6C east is a bush pocket. 0x5E east is a tree
+wall (t2 leftover `(224,141)`).
+
+The 0x69/0x6A/0x6B/0x7B skirt is torched. One path: bowl, then the live
+L8/candle corridor from 0x78 (`LEVEL8_BUSH_HOPS[1:-1]` + 0x5E), then dest
+`0x5E` DOWN `0x6E` RIGHT `0x6F`. Hunt/scoop/respawn/laps unchanged. 0x5C
+is maze transit. 0x6F cave mouth is not live; buy stage is still the
+0x4A factory.
+
+Glance: not re-run live this edit. Next leftover is 0x5E south or 0x6F
+arrival. Do not lead with 0x68.
+
+Do not STATUS. Do not overwrite M5 18909f.
+
+Older sittings below that name `0x4A` as the pre-L1 dest are inland prefix,
+not this walk.
+
+## Superseded (2026-09-15) — A-edge is first-class; scoop is the 20R gap (old inland prefix)
+
+`rr-doua.1` still in_progress. Composer path is `pre_l1_stages`: sword_cave
+→ bomb_walk → bomb_buy. `--through pre-l1` strips assist. `laps=0` on the
+Composer row.
+
+ButtonsPressed is an edge. `ScreenHunter._strike` presses A one frame, then
+idles; `_approach`'s blocked-align fallback goes through the same edge.
+Unit tests pin both producers, plus `hunt_reopen` / `_at_stop` (funded
+mid-lap stops; unfunded mid-lap does not). `CombatLedger.report` now has
+`rupees_dropped` / `rupees_left` so the scoop gap is a census, not a probe.
+
+Live leftover is still `shop_need_20_have_8`: 17/17 kills, 0 hits, 3/3
+hearts, 15R on the floor, 8R banked. A lap is wired and tested and stays
+off: same 8R banked. Next Composer change is the scoop, not more screens.
+
+Do not overwrite M5 18909f. Re-measure L1 after this prefix greens.
+
+## Superseded (2026-09-15) — the 20R budget, and rocks are half the resets (old inland prefix)
 
 `rr-doua.1` still in_progress. Two new scratch tools: `bomb_budget.py` (the
 arithmetic) and `probe_contact.py` (a 48-frame ring buffer dumped on every
@@ -33,7 +176,7 @@ out of hearts on `0x49` (`contact4`..`contact6`, mode 17, byte-identical
 under three gatings). Suite 1518 passed. Do not STATUS. Do not overwrite M5
 18909f.
 
-## This sitting (2026-09-15) — assist off + sword-reach hunt
+## Superseded (2026-09-15) — assist off + sword-reach hunt (old inland prefix)
 
 `rr-doua.1` still in_progress (20R bombs). `--through pre-l1` now strips
 assist even if the caller passed one (CLI too). Live 1/1 green, tag
@@ -51,7 +194,7 @@ peel inside `MIN_DODGE_BODY`, slash in-place, no occupancy walk onto the
 sprite). Remaining contact is the two resets and the 0x49 hurt-retire.
 Do not STATUS. Do not overwrite M5 18909f.
 
-## This sitting (2026-09-15) — pre-L1 rupee streak is contact, not "no drops"
+## Superseded (2026-09-15) — pre-L1 rupee streak is contact, not "no drops" (old inland prefix)
 
 `rr-doua.1` still in_progress (20R bombs). Hunt walk 1/1 green, 14 kills, 0
 rupees, `streak_best` 4, `streak_resets` 6. Cause is measured: hunt
@@ -64,7 +207,7 @@ this corridor is Baxter A (red octorok 31%), not group B. `hurt_events` is
 the census. Next: sword-reach hunt so the 10-kill 5-rupee can fire. Do not
 STATUS. Do not overwrite M5 18909f.
 
-## This sitting (2026-09-14) — Gathering 4.5.1 (`rr-ps7.4` / `pre_l1`)
+## Superseded (2026-09-14) — Gathering 4.5.1 (`rr-ps7.4` / `pre_l1`) (old inland prefix)
 
 Occupied-lane LEFT/RIGHT + 0x48 `align_x=120` closed the named 0x37→0x4A
 prefix deaths. Combined Clean from `Level1ExitOverworld`: **ok 4612f**,

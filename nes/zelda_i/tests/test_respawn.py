@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from zelda_i.overworld.gathering import (
+from zelda_i.overworld.shop_p7 import (
     PRE_L1_BOMB_HOPS,
     PRE_L1_LAP_WEST_HOPS,
     pre_l1_walk_hops,
@@ -74,28 +74,32 @@ def test_an_out_and_back_respawns_nothing() -> None:
 
 
 def test_the_lap_respawns_every_screen_it_fought() -> None:
-    """Seven distinct screens against six history slots is the whole trick.
+    """Seven screens vs six slots: the second eastbound pass is all misses.
 
-    Walking back onto 0x77 is the only new room on the westbound leg, and it
-    evicts 0x78; from there each screen Link enters evicts the next one in
-    front of him, so the entire eastbound leg comes back whole.
+    A miss is the upper bound: a full wave still needs flags==7. Live lap2
+    had 0x68 come back 2 of 4 until its flags hit 7. Pinned on the measured
+    0x4A seven-screen ring, not whatever gathering hops currently walk.
     """
-    route = _route(1)
+    westbound = (0x49, 0x59, 0x58, 0x68, 0x78, 0x77)
+    route = CORRIDOR + westbound + CORRIDOR[1:]
     verdicts = dict(zip(range(len(route)), respawn_visits(route)))
-    west = route.index(0x4A) + 1  # first index of the westbound leg
-    east = len(route) - len(PRE_L1_BOMB_HOPS)  # first index of the second pass
+    west = len(CORRIDOR)
+    east = west + len(westbound)
     assert route[east - 1] == 0x77
     assert not any(verdicts[i] for i in range(west, east - 1)), (
         "the westbound leg is all history; nothing may respawn on it"
     )
     assert all(verdicts[i] for i in range(east, len(route))), (
-        "every screen of the second eastbound pass respawns"
+        "every screen of the second eastbound pass is history-absent"
     )
 
 
 def test_one_pass_has_no_second_wave() -> None:
-    assert all(respawn_visits(_route(0))), "a first pass is all fresh screens"
-    assert len(set(_route(0))) == len(CORRIDOR)
+    one = _route(0)
+    verdicts = tuple(respawn_visits(one))
+    # Map-1 route is all distinct screens along the south coast to 0x6F.
+    assert len(one) == len(set(one))
+    assert all(verdicts)
 
 
 def test_the_lap_is_the_corridor_backwards_then_forwards() -> None:
@@ -103,7 +107,15 @@ def test_the_lap_is_the_corridor_backwards_then_forwards() -> None:
     assert tuple(h.target for h in PRE_L1_LAP_WEST_HOPS) == tuple(
         reversed(east[:-1])
     ) + (SCREEN_START,)
-    assert _route(1)[-len(east) - 1 :] == CORRIDOR
+    assert _route(1)[-len(east) :] == east
+
+
+def test_a_history_miss_is_not_a_full_respawn() -> None:
+    """``enter`` is the absence half. Flags 0 or 3 still subtract."""
+    history = RoomHistory()
+    assert history.enter(0x68) is True
+    assert not cleared(0x00)
+    assert not cleared(0x03)
 
 
 def test_kill_flags_are_the_low_three_bits_not_the_underworld_pair() -> None:

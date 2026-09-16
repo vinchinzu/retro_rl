@@ -199,6 +199,13 @@ HEART_OR_FAIRY_TYPES = frozenset({HEART_DROP_OBJECT_TYPE, FAIRY_DROP_OBJECT_TYPE
 HEART_OR_FAIRY_STATES = frozenset({HEART_DROP_STATE, FAIRY_DROP_STATE})
 RUPEE_DROP_STATES = frozenset({RUPEE_DROP_STATE, FIVE_RUPEE_DROP_STATE})
 BOMB_DROP_STATES = frozenset({BOMB_DROP_STATE})
+# ObjState -> rupees. Same codes as ``prey.RUPEE`` / ``prey.FIVE_RUPEE``.
+_DROP_RUPEES = {RUPEE_DROP_STATE: 1, FIVE_RUPEE_DROP_STATE: 5}
+
+
+def drop_rupees(state: int) -> int:
+    """Rupees a floor drop of this ObjState is worth. 0 if it is not money."""
+    return _DROP_RUPEES.get(int(state), 0)
 
 
 def _in_drop_bounds(obj: ZeldaObject) -> bool:
@@ -337,6 +344,22 @@ MAX_PREY_HP = 200
 PICKUP_STATES = RUPEE_DROP_STATES | HEART_OR_FAIRY_STATES
 
 
+def heal_wanted(snap: ZeldaSnapshot) -> bool:
+    """True when a heart or a fairy on the floor is worth walking to.
+
+    ``filled_hearts < heart_containers`` is the trap, and it is written that
+    way at more than one call site: ``$066F``'s low nibble is whole hearts
+    *minus one*, so the comparison is true at full health on every container
+    count and the scoop chases a heart Link cannot use. The partial byte is
+    the other half — a wooden chip is ``$0670 -= 0x80`` and never moves the
+    whole-heart nibble, so ``health_is_full`` alone reads a chipped Link as
+    full. That chip is also exactly what takes the sword beam away
+    (``zelda_i.beam``), which is why a heart is worth a detour the moment
+    ``$0670`` leaves ``$FF``.
+    """
+    return not snap.health_is_full or int(snap.heart_partial) != 0xFF
+
+
 def live_enemies(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     """Typed, killable, non-drop, non-projectile slots. No position filter.
 
@@ -409,14 +432,14 @@ def floor_pickups(
     full health on every container count.
     """
     xlo, xhi, ylo, yhi = box
-    heal_wanted = not snap.health_is_full or int(snap.heart_partial) != 0xFF
+    heal = heal_wanted(snap)
     return tuple(
         obj
         for obj in snap.objects
         if obj.slot >= 1
         and int(obj.type_id) == RUPEE_DROP_OBJECT_TYPE
         and int(obj.state) in PICKUP_STATES
-        and (heal_wanted or int(obj.state) not in HEART_OR_FAIRY_STATES)
+        and (heal or int(obj.state) not in HEART_OR_FAIRY_STATES)
         and (not heal_only or int(obj.state) in HEART_OR_FAIRY_STATES)
         and xlo <= int(obj.x) <= xhi
         and ylo <= int(obj.y) <= yhi
@@ -492,6 +515,9 @@ class ScreenTally:
             "spawned": sum(self.spawned_by_type.values()),
             "peak_live": self.peak_live,
             "rupees": self.rupees,
+            "rupees_dropped": sum(
+                drop_rupees(s) * n for s, n in self.drops_by_state.items()
+            ),
             "damage_units": self.damage_units,
             "damage_hearts": round(self.damage_units / 256.0, 3),
             "heal_hearts": round(self.heal_units / 256.0, 3),
@@ -566,6 +592,11 @@ class CombatLedger:
             for state, n in tally.drops_by_state.items():
                 _bump(out, state, n)
         return out
+
+    @property
+    def rupees_dropped(self) -> int:
+        """Face value of rupee floor drops this walk has seen."""
+        return sum(drop_rupees(state) * n for state, n in self.drops_by_state.items())
 
     def observe(self, snap: ZeldaSnapshot) -> None:
         screen = int(snap.screen)
@@ -688,7 +719,9 @@ class CombatLedger:
         return {
             "kills": self.kills,
             "kills_counter": self.kills_counter,
+            "rupees_dropped": self.rupees_dropped,
             "rupees_banked": self.rupees_banked,
+            "rupees_left": max(self.rupees_dropped - self.rupees_banked, 0),
             "damage_taken": self.damage_taken,
             "damage_units": self.damage_units,
             "damage_hearts": round(self.damage_units / 256.0, 3),
@@ -722,6 +755,7 @@ __all__ = [
     "HEART_OR_FAIRY_TYPES",
     "HEART_OR_FAIRY_STATES",
     "RUPEE_DROP_STATES",
+    "drop_rupees",
     "BOMB_DROP_OBJECT_TYPE",
     "BOMB_DROP_STATE",
     "BOMB_DROP_STATES",
@@ -750,6 +784,7 @@ __all__ = [
     "closest_body",
     "nearest_to",
     "floor_pickups",
+    "heal_wanted",
     "heart_value",
     "ScreenTally",
     "CombatLedger",

@@ -170,8 +170,20 @@ class ObjectTracker:
     across the door.
     """
 
-    def __init__(self, history: int = TRACK_HISTORY) -> None:
+    def __init__(
+        self, history: int = TRACK_HISTORY, *, shot_history: int | None = None
+    ) -> None:
         self.history = max(2, int(history))
+        # Opt-in shorter window for *shots only*. ``history`` averages a
+        # walker's 2-4 frame cadence, and a shot that has been sitting still
+        # is exactly the case where that average is a lie: Zora spit
+        # (``0x55``) holds on the muzzle for ~16 frames and then leaves at
+        # ~2 px/frame, so the six-sample mean reads 0.4 px/frame on the first
+        # moving frame and does not tell the truth until the shot has already
+        # covered 10 px. At the ranges the coast leever screens fire from
+        # that is the whole dodge window. Off by default: the dungeon chains
+        # are frame-perfect against the current read.
+        self.shot_history = None if shot_history is None else max(2, int(shot_history))
         self.frames = 0
         self._xs: dict[int, list[tuple[int, int]]] = {}
         self._types: dict[int, int] = {}
@@ -237,6 +249,12 @@ class ObjectTracker:
         self._push(hist, xy)
         self._ages[slot] += 1
         vx, vy = _velocity(hist)
+        if self.shot_history is not None and is_projectile(obj):
+            # Never *slower* than the long window: a shot still on the muzzle
+            # must keep reading zero, or every spawn frame looks inbound.
+            fx, fy = _velocity(hist[-self.shot_history :])
+            if max(abs(fx), abs(fy)) > max(abs(vx), abs(vy)):
+                vx, vy = fx, fy
         speed = max(abs(vx), abs(vy))
         kind = kind_for_type(type_id)
         hazard = _hazard_class(

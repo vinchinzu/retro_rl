@@ -5,7 +5,7 @@ Addresses verified against Data Crystal and live fceumm probes (2026-07-27).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -44,6 +44,9 @@ ADDR_ROOM_OBJ_COUNT = 0x034E
 ADDR_OBJ_TYPE = 0x034F  # 16 slots
 ADDR_OBJ_STATE = 0x00AC  # 13 slots; floor-drop item code lives here
 ADDR_OBJ_HP = 0x0485  # 13 gameplay slots used by the engine
+# Link's own weapon slots sit above the 13 the engine hands enemies: $0D is
+# the blade, and at blade state 3 ``Z_07 MakeSwordShot`` puts the shot in $0E.
+SWORD_SHOT_SLOT = 0x0E
 
 # --- Inventory / progress (file slot mirrored in WRAM) ---
 ADDR_SELECTED_ITEM = 0x0656  # B-item slot: 1=bombs, 2=arrows, 4=candle
@@ -160,6 +163,13 @@ class ZeldaSnapshot:
     help_drop_count: int = 0  # ADDR_HELP_DROP_COUNT; 10 → 5-rupee (or bomb)
     help_drop_value: int = 0  # ADDR_HELP_DROP_VALUE; nonzero → bomb at 10
     link_iframes: int = 0  # ADDR_LINK_IFRAMES; 0→24 is the collision that zeros them
+    # Slot $0E, read apart from ``objects``: the 13-slot census is enemies, and
+    # a weapon slot inside it would read as prey (its type byte is not an enemy).
+    sword_shot: ZeldaObject = field(
+        default_factory=lambda: ZeldaObject(
+            slot=SWORD_SHOT_SLOT, type_id=0, x=0, y=0, facing=0, hp=0, state=0
+        )
+    )
 
     @property
     def overworld(self) -> bool:
@@ -259,20 +269,22 @@ def read_u8(ram: np.ndarray, addr: int) -> int:
     return int(ram[addr])
 
 
+def read_object(ram: np.ndarray, slot: int) -> ZeldaObject:
+    """One engine object slot. Weapon slots ($0D/$0E) read the same way."""
+    return ZeldaObject(
+        slot=slot,
+        type_id=read_u8(ram, ADDR_OBJ_TYPE + slot),
+        x=read_u8(ram, ADDR_LINK_X + slot),
+        y=read_u8(ram, ADDR_LINK_Y + slot),
+        facing=read_u8(ram, ADDR_LINK_FACING + slot),
+        hp=read_u8(ram, ADDR_OBJ_HP + slot),
+        state=read_u8(ram, ADDR_OBJ_STATE + slot),
+    )
+
+
 def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
     """Read a routing snapshot from stable-retro NES RAM."""
-    objects = tuple(
-        ZeldaObject(
-            slot=slot,
-            type_id=read_u8(ram, ADDR_OBJ_TYPE + slot),
-            x=read_u8(ram, ADDR_LINK_X + slot),
-            y=read_u8(ram, ADDR_LINK_Y + slot),
-            facing=read_u8(ram, ADDR_LINK_FACING + slot),
-            hp=read_u8(ram, ADDR_OBJ_HP + slot),
-            state=read_u8(ram, ADDR_OBJ_STATE + slot),
-        )
-        for slot in range(13)
-    )
+    objects = tuple(read_object(ram, slot) for slot in range(13))
     return ZeldaSnapshot(
         mode=read_u8(ram, ADDR_MODE),
         level=read_u8(ram, ADDR_LEVEL),
@@ -314,6 +326,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         help_drop_count=read_u8(ram, ADDR_HELP_DROP_COUNT),
         help_drop_value=read_u8(ram, ADDR_HELP_DROP_VALUE),
         link_iframes=read_u8(ram, ADDR_LINK_IFRAMES),
+        sword_shot=read_object(ram, SWORD_SHOT_SLOT),
     )
 
 
