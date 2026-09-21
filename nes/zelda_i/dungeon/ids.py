@@ -39,6 +39,7 @@ OBJECT_NAMES: dict[int, str] = {
     0x1A: "peahat",
     0x1B: "keese",
     0x1C: "vire_split_keese",  # L4 Vire split residual (live rr-5lu; not 0x1b)
+    0x1D: "keese_black",  # third Keese: NoDropMonsterTypes groups $1B/$1C/$1D
     0x1E: "armos",  # awake object; statue is tile $66/$67
     0x20: "boulder",  # falling mountain rock (same updater as Tektite)
     0x21: "ghini",
@@ -103,6 +104,7 @@ LIKE_LIKE_OBJECT_TYPE = 0x17  # L4 0x32 live (rr-resv); avoid contact
 PEAHAT_OBJECT_TYPE = 0x1A
 KEESE_OBJECT_TYPE = 0x1B
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # L4 Vire → red Keese-like split
+KEESE_BLACK_OBJECT_TYPE = 0x1D  # third Keese; ROM HP 0 like 0x1B/0x1C
 ARMOS_OBJECT_TYPE = 0x1E  # awake; statue is tile $66/$67 not an object slot
 BOULDER_OBJECT_TYPE = 0x20  # falling mountain rock
 GHINI_OBJECT_TYPE = 0x21

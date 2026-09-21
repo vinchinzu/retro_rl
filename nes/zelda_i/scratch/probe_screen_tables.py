@@ -145,6 +145,9 @@ def table_drop_rate(screens: list[dict]) -> str:
         )
     total_kills = sum(killed.values())
     expected_drops = sum(ROWS[r][0] / 256 * n for r, n in killed.items())
+    if not total_kills:
+        out.append("\nno kills")
+        return "\n".join(out)
     out.append(
         f"\n{total_kills} kills -> **{drops} floor drops** "
         f"({drops / total_kills:.0%} against {expected_drops / total_kills:.0%} "
@@ -182,6 +185,9 @@ def render(payload: dict) -> str:
         f"- transit screens: {[hex(s) for s in h.get('transit_screens', [])]}"
         f" ({h.get('transit_frames', 0)}f)",
         f"- duck frames: {h.get('duck_frames', 0)}, shield {h.get('shield_frames', 0)}",
+        f"- blade presses {h.get('blade_presses', 0)}, off-face"
+        f" {h.get('blade_presses_off_face', 0)}, turn frames"
+        f" {h.get('turn_frames', 0)}",
         "- stages: " + ", ".join(
             f"{s['name']} {s['frames']}f ok={s['ok']}" for s in payload["stages"]
         ),
@@ -194,8 +200,44 @@ def render(payload: dict) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", default="screen_tables")
+    # The blade's turn-before-swing rung, as an ablation. ``ScreenHunter`` is
+    # built inside ``OverworldPathController``, so the field default is the
+    # only seam a probe has (same trick as ``probe_contact.py``).
+    parser.add_argument(
+        "--turn-first", action=argparse.BooleanOptionalAction, default=None
+    )
+    # Extra screens to cross instead of clear, e.g. ``--transit 0x7c``.
+    parser.add_argument("--transit", default=None)
     args = parser.parse_args(argv)
     configure_headless()
+
+    if args.turn_first is not None:
+        # Wrap ``__init__``, do *not* rewrite the dataclass field default:
+        # ``@dataclass`` bakes each default into the generated ``__init__``
+        # signature at class creation, so ``fields(...)[i].default = v`` and
+        # ``setattr(cls, name, v)`` are both no-ops on every instance built
+        # afterwards. ``probe_contact.py`` has been printing "overrides:"
+        # over exactly that no-op.
+        from zelda_i.overworld import hunt as hunt_mod
+
+        want = bool(args.turn_first)
+        _orig_init = hunt_mod.ScreenHunter.__init__
+
+        def _init(self, *a, **kw):  # type: ignore[no-untyped-def]
+            _orig_init(self, *a, **kw)
+            self.turn_before_swing = want
+
+        hunt_mod.ScreenHunter.__init__ = _init  # type: ignore[assignment]
+        print("turn_before_swing:", want)
+
+    if args.transit:
+        from zelda_i.overworld import shop_p7 as shop_mod
+
+        extra = frozenset(int(v, 0) for v in args.transit.split(","))
+        shop_mod.SHOP_P7_TRANSIT_SCREENS = (
+            shop_mod.SHOP_P7_TRANSIT_SCREENS | extra
+        )
+        print("transit:", sorted(hex(s) for s in shop_mod.SHOP_P7_TRANSIT_SCREENS))
 
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     payload: dict | None = None
@@ -212,7 +254,9 @@ def main(argv: list[str] | None = None) -> int:
         for stage in report.get("stages", []):
             ctl = stage.get("controller") or {}
             nested = ctl.get("hunt") if isinstance(ctl.get("hunt"), dict) else {}
-            if "screens" in nested:
+            if "screens" in nested and stage.get("name") in (None, "bomb_walk"):
+                hunt = nested
+            elif "screens" in nested and not hunt:
                 hunt = nested
             stages.append(
                 {

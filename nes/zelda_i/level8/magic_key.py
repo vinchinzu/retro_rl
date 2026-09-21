@@ -30,12 +30,17 @@ from zelda_i.dungeon.engine import (
     RewardSpec,
 )
 from zelda_i.dungeon.gleeok import FIREBALL_DODGE_DIST, _fireball_dodge_dir
+from zelda_i.dungeon.gohma import (
+    GOHMA_TYPES,
+    advance_eye,
+    arrow_aim_x,
+    eye_fresh_open,
+    read_eye,
+)
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.dungeon.ids import (
     DARKNUT_OBJECT_TYPE,
     FIREBALL_OBJECT_TYPE,
-    GOHMA_BLUE_OBJECT_TYPE,
-    GOHMA_OBJECT_TYPE,
     MANHANDLA_PROJECTILE_TYPE,
     POLS_VOICE_OBJECT_TYPE,
 )
@@ -45,13 +50,8 @@ from zelda_i.level8.cellar import magic_key_cellar_return_step
 from zelda_i.level8.north_column import TYPE_0C, _SWORD_PATROL
 from zelda_i.level6.gohma import (
     ALIGN_TOL,
-    ARROW_SPEED,
-    EYE_ADDR,
-    EYE_EDGE_WINDOW,
-    EYE_SHUT,
     FACE_NORTH,
     FIRE_TOL,
-    LEAD_CLAMP,
     SHOT_COOLDOWN,
     STAND_Y_TOL,
     STUCK_FRAMES,
@@ -70,8 +70,9 @@ GOHMA_ROOM_1E = 0x1E
 GOHMA_DEST_1F = 0x1F
 # Live census in 0x1E (rr-gw0x probe_l8_1e_gohma D1b/D2): one body, RAM type
 # 0x33 HP 96, killed by three connecting wooden arrows.  0x34 is accepted too
-# so a blue re-observation is not a false miss; colour is not asserted.
-GOHMA_BODY_TYPES_1E = frozenset({GOHMA_OBJECT_TYPE, GOHMA_BLUE_OBJECT_TYPE})
+# so a blue re-observation is not a false miss; colour is not asserted.  Same
+# set L6 0x1C uses -- one Gohma, one table (``dungeon.gohma``).
+GOHMA_BODY_TYPES_1E = GOHMA_TYPES
 BLUE_GOHMA_ARROWS_REQUIRED = 3  # walkthrough number; connects, not shots
 BODY_GONE_FRAMES = 45
 # door_graph.core: RIGHT 0x01.  Kill raised cur_opened_doors 0x04 -> 0x0D
@@ -171,21 +172,10 @@ class Level8BlueGohma1EController(HopController):
 
     # -- eye tracker (RAM 0x03C7, shared with L6 0x1C) ----------------------
     def _eye_byte(self) -> int | None:
-        if self._env is None:
-            return None
-        try:
-            return int(self._env.get_ram()[EYE_ADDR])
-        except Exception:  # pragma: no cover - defensive
-            return None
+        return read_eye(self._env)
 
     def _track_eye(self) -> None:
-        byte = self._eye_byte()
-        if byte is None or byte == EYE_SHUT:
-            self.eye_open_since = -1
-        elif self.eye_open_since < 0:
-            self.eye_open_since = 0
-        else:
-            self.eye_open_since = min(9999, self.eye_open_since + 1)
+        self.eye_open_since = advance_eye(self.eye_open_since, self._eye_byte())
 
     def _bodies(self, snap: ZeldaSnapshot) -> list:
         return [
@@ -466,30 +456,18 @@ class Level8BlueGohma1EController(HopController):
 
         self._track_eye()
         body = bodies[0]
-        gx = int(body.x)
-        self.gx_hist.append(gx)
-        del self.gx_hist[:-8]
-        gvx = (
-            (self.gx_hist[-1] - self.gx_hist[0]) / (len(self.gx_hist) - 1)
-            if len(self.gx_hist) >= 4
-            else 0.0
-        )
-
-        flight = max(1.0, (ly - int(body.y)) / ARROW_SPEED)
-        lead = int(round(gvx * flight))
-        lead = max(-LEAD_CLAMP, min(LEAD_CLAMP, lead))
-        lo, hi = (
+        bounds = (
             (COLUMN_X_MIN, COLUMN_X_MAX)
             if self._hold_column(snap)
             else (INLAND_X_MIN, INLAND_X_MAX)
         )
-        target_x = max(lo, min(hi, gx + lead))
+        target_x = arrow_aim_x(self.gx_hist, body, ly, bounds)
         dx = target_x - int(snap.link_x)
 
         if int(snap.rupees) <= 0:
             return self.mark_fail("l8_gohma_out_of_ammo")
         forced = self.frames - self.last_fire >= STUCK_FRAMES
-        fresh = 0 <= self.eye_open_since <= EYE_EDGE_WINDOW
+        fresh = eye_fresh_open(self.eye_open_since)
         if self.cooldown <= 0 and (fresh or forced) and abs(dx) <= FIRE_TOL:
             return self._arrow_fire(snap)
 

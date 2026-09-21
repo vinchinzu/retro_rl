@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import pytest
 
+from retro_harness.controls import pressed_nes_buttons
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.respawn import RoomHistory, respawn_visits
 from zelda_i.overworld.shop_p7 import SHOP_P7_PRICE, SHOP_P7_SCREEN, shop_p7_screens
@@ -190,3 +191,39 @@ def test_the_top_up_reopens_screens_it_re_enters() -> None:
     assert ctl.hunter is not None and ctl.hunter.reopen_on_enter is True
     assert ctl.max_frames == TOPUP_MAX_FRAMES
     assert ctl.evade is True and ctl.scoop_rupees is True
+
+
+def test_the_back_hop_does_not_retrace_before_the_neighbour_is_fought() -> None:
+    """Live t1: hop_index advanced onto the DOWN home hop the first play
+    frame of 0x5F. Hunt then skipped because y>200 is the DOWN arrival
+    edge, recover allowed DOWN, and the hop retraced in 87f with peak_live
+    0. The hold has to sit in extra, above that skip."""
+    ctl = _ctl()
+    ctl.hop_index = 1  # already on the back hop, as live t1 was
+    act = ctl.step(_snap(screen=0x5F, link_x=80, link_y=221, rupees=0))
+    assert ctl.success is False
+    buttons = pressed_nes_buttons(list(act.action))
+    assert "DOWN" not in buttons
+    assert "topup_hold" in act.reason
+    assert "UP" in buttons  # off the south scroll line, into the wave
+
+
+def test_the_west_back_hop_does_not_retrace_either() -> None:
+    ctl = _ctl()
+    ctl.hop_index = 3  # RIGHT home from 0x6E
+    act = ctl.step(_snap(screen=0x6E, link_x=240, link_y=141, rupees=0))
+    assert ctl.success is False
+    buttons = pressed_nes_buttons(list(act.action))
+    assert "RIGHT" not in buttons
+    assert "topup_hold" in act.reason
+    assert "LEFT" in buttons
+
+
+def test_the_back_hop_runs_once_the_neighbour_is_fought() -> None:
+    ctl = _ctl()
+    ctl.hop_index = 1
+    ctl.hunter.done.add(0x5F)
+    ctl.hunter.cleared.add(0x5F)
+    act = ctl.step(_snap(screen=0x5F, link_x=80, link_y=221, rupees=0))
+    assert ctl.success is False
+    assert "DOWN" in pressed_nes_buttons(list(act.action))

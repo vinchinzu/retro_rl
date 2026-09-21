@@ -1,0 +1,888 @@
+{
+  "assist": null,
+  "events": [
+    {
+      "f": 1,
+      "flag_kills": 3,
+      "flags": 255,
+      "help": 255,
+      "help_val": 255,
+      "hp": 255,
+      "iframes": 255,
+      "kind": "count",
+      "knockback": 255,
+      "mode": 255,
+      "objects": [],
+      "partial": 255,
+      "prev_help": -1,
+      "prev_world": -1,
+      "rupees": 255,
+      "rupees_add": 255,
+      "screen": 255,
+      "submode": 255,
+      "world": 255,
+      "xy": [
+        255,
+        255
+      ]
+    },
+    {
+      "f": 8,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 0,
+      "iframes": 0,
+      "kind": "reset",
+      "knockback": 0,
+      "mode": 0,
+      "objects": [],
+      "partial": 0,
+      "prev_help": 255,
+      "prev_world": 255,
+      "rupees": 0,
+      "rupees_add": 0,
+      "screen": 0,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        0,
+        0
+      ]
+    },
+    {
+      "f": 91,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "hp",
+      "knockback": 0,
+      "mode": 2,
+      "objects": [],
+      "partial": 255,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 0,
+      "rupees_add": 0,
+      "screen": 0,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        112,
+        119
+      ]
+    },
+    {
+      "f": 1763,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 24,
+      "kind": "iframe_arm",
+      "knockback": 32,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 1,
+          "state": 0,
+          "type": 7,
+          "x": 139,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 2,
+          "state": 0,
+          "type": 7,
+          "x": 224,
+          "y": 194
+        },
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 3,
+          "state": 0,
+          "type": 7,
+          "x": 129,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 4,
+          "state": 0,
+          "type": 7,
+          "x": 161,
+          "y": 125
+        },
+        {
+          "hp": 240,
+          "name": "unk_0x64",
+          "slot": 11,
+          "state": 0,
+          "type": 100,
+          "x": 32,
+          "y": 160
+        }
+      ],
+      "partial": 127,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 0,
+      "rupees_add": 0,
+      "screen": 104,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        112,
+        125
+      ]
+    },
+    {
+      "f": 1865,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 2,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 2,
+          "state": 0,
+          "type": 7,
+          "x": 224,
+          "y": 182
+        },
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 4,
+          "state": 0,
+          "type": 7,
+          "x": 152,
+          "y": 125
+        },
+        {
+          "hp": 240,
+          "name": "unk_0x64",
+          "slot": 11,
+          "state": 0,
+          "type": 100,
+          "x": 32,
+          "y": 160
+        }
+      ],
+      "partial": 127,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 0,
+      "rupees_add": 0,
+      "screen": 104,
+      "submode": 0,
+      "world": 2,
+      "xy": [
+        101,
+        125
+      ]
+    },
+    {
+      "f": 1968,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 3,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 2,
+          "state": 0,
+          "type": 7,
+          "x": 211,
+          "y": 189
+        },
+        {
+          "hp": 240,
+          "name": "unk_0x64",
+          "slot": 11,
+          "state": 0,
+          "type": 100,
+          "x": 32,
+          "y": 160
+        }
+      ],
+      "partial": 255,
+      "prev_help": 2,
+      "prev_world": 2,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 104,
+      "submode": 0,
+      "world": 3,
+      "xy": [
+        111,
+        125
+      ]
+    },
+    {
+      "f": 2809,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 4,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 1,
+          "state": 0,
+          "type": 8,
+          "x": 30,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok",
+          "slot": 2,
+          "state": 0,
+          "type": 7,
+          "x": 44,
+          "y": 93
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 146,
+          "y": 157
+        }
+      ],
+      "partial": 255,
+      "prev_help": 3,
+      "prev_world": 3,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 88,
+      "submode": 0,
+      "world": 4,
+      "xy": [
+        112,
+        165
+      ]
+    },
+    {
+      "f": 3160,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 5,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 1,
+          "state": 0,
+          "type": 8,
+          "x": 169,
+          "y": 93
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 79,
+          "y": 157
+        }
+      ],
+      "partial": 255,
+      "prev_help": 4,
+      "prev_world": 4,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 88,
+      "submode": 0,
+      "world": 5,
+      "xy": [
+        106,
+        93
+      ]
+    },
+    {
+      "f": 3175,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 6,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 64,
+          "y": 157
+        }
+      ],
+      "partial": 255,
+      "prev_help": 5,
+      "prev_world": 5,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 88,
+      "submode": 0,
+      "world": 6,
+      "xy": [
+        117,
+        93
+      ]
+    },
+    {
+      "f": 4466,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 7,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 0,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 32,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 96,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 144,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 160,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 48,
+          "y": 109
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 6,
+          "state": 0,
+          "type": 8,
+          "x": 80,
+          "y": 157
+        }
+      ],
+      "partial": 255,
+      "prev_help": 6,
+      "prev_world": 6,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 7,
+      "xy": [
+        120,
+        155
+      ]
+    },
+    {
+      "f": 4500,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 34,
+      "iframes": 24,
+      "kind": "reset",
+      "knockback": 32,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 32,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 103,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 150,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 145,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 48,
+          "y": 109
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 6,
+          "state": 0,
+          "type": 8,
+          "x": 80,
+          "y": 157
+        }
+      ],
+      "partial": 127,
+      "prev_help": 7,
+      "prev_world": 7,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        137,
+        157
+      ]
+    },
+    {
+      "f": 4567,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 33,
+      "iframes": 24,
+      "kind": "iframe_arm",
+      "knockback": 32,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 32,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 112,
+          "y": 125
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 160,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 153,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 32,
+          "y": 99
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 6,
+          "state": 0,
+          "type": 8,
+          "x": 97,
+          "y": 157
+        }
+      ],
+      "partial": 254,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        112,
+        154
+      ]
+    },
+    {
+      "f": 4615,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 33,
+      "iframes": 24,
+      "kind": "hp",
+      "knockback": 32,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 112,
+          "y": 89
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 3,
+          "state": 0,
+          "type": 8,
+          "x": 128,
+          "y": 141
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 110,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 64,
+          "y": 103
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 6,
+          "state": 0,
+          "type": 8,
+          "x": 124,
+          "y": 157
+        }
+      ],
+      "partial": 126,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        121,
+        141
+      ]
+    },
+    {
+      "f": 4616,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 1,
+      "help_val": 0,
+      "hp": 33,
+      "iframes": 24,
+      "kind": "count",
+      "knockback": 32,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 112,
+          "y": 90
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 109,
+          "y": 157
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 64,
+          "y": 104
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 6,
+          "state": 0,
+          "type": 8,
+          "x": 125,
+          "y": 157
+        }
+      ],
+      "partial": 126,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 1,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 1,
+      "xy": [
+        121,
+        141
+      ]
+    },
+    {
+      "f": 4732,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 0,
+      "help_val": 0,
+      "hp": 32,
+      "iframes": 24,
+      "kind": "reset",
+      "knockback": 32,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 128,
+          "y": 108
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 39,
+          "y": 189
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 80,
+          "y": 126
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 6,
+          "state": 0,
+          "type": 8,
+          "x": 224,
+          "y": 140
+        }
+      ],
+      "partial": 253,
+      "prev_help": 1,
+      "prev_world": 1,
+      "rupees": 2,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 0,
+      "xy": [
+        200,
+        141
+      ]
+    },
+    {
+      "f": 4746,
+      "flag_kills": 0,
+      "flags": 0,
+      "help": 1,
+      "help_val": 0,
+      "hp": 32,
+      "iframes": 17,
+      "kind": "count",
+      "knockback": 0,
+      "mode": 5,
+      "objects": [
+        {
+          "hp": 16,
+          "name": "octorok_blue",
+          "slot": 1,
+          "state": 0,
+          "type": 9,
+          "x": 128,
+          "y": 109
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 4,
+          "state": 0,
+          "type": 8,
+          "x": 48,
+          "y": 184
+        },
+        {
+          "hp": 16,
+          "name": "octorok_fast",
+          "slot": 5,
+          "state": 0,
+          "type": 8,
+          "x": 67,
+          "y": 125
+        }
+      ],
+      "partial": 253,
+      "prev_help": 0,
+      "prev_world": 0,
+      "rupees": 2,
+      "rupees_add": 0,
+      "screen": 73,
+      "submode": 0,
+      "world": 1,
+      "xy": [
+        224,
+        139
+      ]
+    }
+  ],
+  "failed": null,
+  "final": {
+    "arrows": 0,
+    "bombs": 0,
+    "bow": 0,
+    "candle": 0,
+    "food": 0,
+    "health": 32,
+    "health_full": false,
+    "heart_containers": 3,
+    "keys": 0,
+    "level": 0,
+    "map": 0,
+    "mode": 5,
+    "rod": 0,
+    "room": 74,
+    "rupees": 3,
+    "selected_item": 0,
+    "triforce": 0,
+    "whistle": 0,
+    "x": 0,
+    "y": 141
+  },
+  "hunt": {
+    "damage_taken": 5,
+    "hurt_events": 4,
+    "kills": 11,
+    "kills_by_screen": {
+      "0x49": 3,
+      "0x58": 3,
+      "0x59": 2,
+      "0x68": 3
+    },
+    "kills_counter": 9,
+    "notes": [
+      "hunt_clear_77",
+      "hunt_skip_68_slot3",
+      "hunt_skip_58_slot3",
+      "hunt_clear_58",
+      "hunt_skip_59_slot2",
+      "hunt_hurt_49"
+    ],
+    "rupees_banked": 3,
+    "streak_best": 7,
+    "streak_resets": 2
+  },
+  "ok": true
+}

@@ -421,6 +421,8 @@ def test_survival_spine_cli_wraps_audited_env() -> None:
     assert "idle_headed" in src
     assert "if not headed:" in src
     assert "configure_headless" in src
+    assert "--rollout" in src
+    assert "attach_rollout" in src
 
 
 def test_video_tap_close_and_abort_without_writer() -> None:

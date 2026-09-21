@@ -13,6 +13,7 @@ onto the L6 cave column when the rule was blanket).
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from retro_harness.nes import nes_action, nes_idle_action
 
@@ -82,11 +83,19 @@ def test_level2_0x48_hop_uses_gap_column() -> None:
     assert _cardinal(act) != "DOWN"
 
 
-def test_down_hop_on_column_at_south_wall_still_pushes_down() -> None:
-    """On-column at x=120 y=205 may still push DOWN."""
+@pytest.mark.parametrize(
+    "x,y,expected",
+    [
+        pytest.param(120, 205, "DOWN", id="on_column_at_south_wall_still_pushes_down"),
+        pytest.param(112, 140, "RIGHT", id="off_column_in_interior_still_strafes"),
+    ],
+)
+def test_down_hop_column_behavior(x: int, y: int, expected: str) -> None:
+    """On-column at x=120,y=205 may still push DOWN; the 80<y<205 interior
+    band is unchanged so an off-column DOWN hop there still strafes RIGHT."""
     ctrl = _ctrl()
-    act = ctrl.step(read_snapshot(_ram(screen=0x48, x=120, y=205)))
-    assert _cardinal(act) == "DOWN"
+    act = ctrl.step(read_snapshot(_ram(screen=0x48, x=x, y=y)))
+    assert _cardinal(act) == expected
 
 
 def test_up_hop_off_column_at_north_wall_strafes_right() -> None:
@@ -109,11 +118,6 @@ def test_up_hop_on_column_at_north_wall_still_pushes_up() -> None:
     assert _cardinal(act) == "UP"
 
 
-def test_down_hop_off_column_in_interior_still_strafes() -> None:
-    """The 80<y<205 band is unchanged for a DOWN hop in the interior."""
-    ctrl = _ctrl()
-    act = ctrl.step(read_snapshot(_ram(screen=0x48, x=112, y=140)))
-    assert _cardinal(act) == "RIGHT"
 
 
 def test_right_hop_at_south_wall_does_not_strafe_x() -> None:

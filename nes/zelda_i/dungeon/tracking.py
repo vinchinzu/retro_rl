@@ -1,12 +1,24 @@
 """Frame-to-frame object tracking for Zelda I combat policies.
 
 Room policies only ever saw a single frame of `snap.objects`, so every
-controller that needed motion re-derived it locally (``level5/path.py``,
-``level5/dungeon.py``, ``level6/wizzrobe.py``, ``level6/gohma.py``,
-``level8/magic_key.py`` each keep their own ``prev_xy`` / ``gx_hist``).
-This module is the one place that turns slots into tracks with velocity,
-so ``dungeon.threat`` can reason about *when* something arrives instead of
-where it is right now.
+controller that needed motion re-derived it locally. This module is the one
+place that turns slots into tracks with velocity, so ``dungeon.threat`` can
+reason about *when* something arrives instead of where it is right now.
+
+Two deliberate exceptions remain, both argued and both pinned by
+``tests/test_enemy_motion_seam.py``:
+
+* ``dungeon/gohma.py`` keeps the L6/L8 arrow-lead history. Its samples advance
+  only on the frames the fight reaches an aim decision, not on every observed
+  frame, and both chains are frame-perfect against that cadence.
+* ``level6/wizzrobe.py`` reads a **one-frame** x difference per slot for the
+  waist-beam dodge. This tracker's estimator is a six-sample mean with
+  ``(slot, type_id)`` identity and a respawn guard — a different number on the
+  frame it matters.
+
+A ``prev_xy`` over **Link's** position is not one of these: seventeen modules
+keep one as a did-not-move stall counter, which is walk physics, not an enemy
+model, and a six-sample mean is the wrong instrument for it.
 
 Hazard class is motion-first on purpose. The L6 wizzrobe beam is type
 ``0x59``, which is in no ``dungeon.ids`` projectile table; a small HP-0

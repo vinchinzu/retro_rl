@@ -17,7 +17,9 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy
 from zelda_i.dungeon.behaviors import EnemyKind, engagement_hint
 from zelda_i.dungeon.hop_controller import CELLAR_MODE, HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.ids import GORIYA_BLUE_OBJECT_TYPE, GORIYA_OBJECT_TYPE
 from zelda_i.level7.graph import LEVEL7_ROOM_BY_ID, RED_CANDLE_CELLAR
+from zelda_i.overworld.arbiter import Arbiter, Rung
 from zelda_i.level7.path import (
     DOOR_Y_TOL,
     NORTH_X_TOL,
@@ -32,7 +34,14 @@ from zelda_i.level7.stairs import (
     PRE_BOSS_ROM,
     TIP_OF_NOSE_ROM,
 )
-from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.rollout import Rollout
+from zelda_i.solver import (
+    ClearObjective,
+    RoomSolver,
+    SearchConfig,
+    segment_library,
+)
 
 __all__ = [
     "ALIGN",
@@ -56,8 +65,14 @@ __all__ = [
     "nose_cellar_cross_step",
     "nose_cellar_cross_success",
     "ROOM1A_CANDLE_MAX_FRAMES",
+    "ROOM1A_RUNG_SCRIPTED",
+    "ROOM1A_RUNG_SOLVER",
+    "ROOM1A_SOLVER_CONFIG",
     "Room1ACandleController",
     "cellar_of_room1a_ram_id",
+    "room1a_objective",
+    "room1a_segments",
+    "room1a_unkillable",
 ]
 
 LEVEL7 = 7
@@ -288,6 +303,63 @@ def _in_sealed_centre(obj: Any) -> bool:
     return 104 <= int(obj.x) <= 152 and 118 <= int(obj.y) <= 170
 
 
+_ROOM1A_GORIYA_TYPES = frozenset({GORIYA_BLUE_OBJECT_TYPE, GORIYA_OBJECT_TYPE})
+
+# --- The ladder ----------------------------------------------------------
+# The clear in this room is a *position table*: drift DOWN while the wave
+# spawns, then face the nearest body and swing on ``frames % 8 < 4``. Both
+# halves are plans that were searched once, by hand — and the cadence is the
+# trap ``AGENTS.md`` names outright, because ``nes_action(face, "A")`` from a
+# walking Link keeps the old facing 22 times in 64.
+#
+# ``solver.RoomSolver`` searches that plan instead, so the two are rungs on
+# one ladder rather than two branches of one ``if``. The solver is **off**
+# until ``attach_solver`` binds it, and with nothing bound ``_rung_solver``
+# declines on every frame — so the default ladder is byte-for-byte the chain
+# that was here before, which is the only acceptable shape for a room on a
+# live 2/2 chain.
+ROOM1A_RUNG_SOLVER = 10
+ROOM1A_RUNG_SCRIPTED = 90
+# Narrower than ``segment_library()``'s default: 0x1A is a melee room with no
+# projectile of Link's own, so the search wants the swing and the travel and
+# nothing else. A narrower alphabet is the cheapest way to make a search
+# smaller and the only one that costs no accuracy.
+ROOM1A_SOLVER_CONFIG = SearchConfig()
+
+
+def room1a_unkillable(obj: ZeldaObject) -> bool:
+    """True for a slot this room's sword can never cash in.
+
+    Two kinds. A non-goriya slot is scenery as far as the clear is concerned
+    — the ``0x68`` pushable block sits in the object table with the wave, and
+    a goal of "no live slots" would never fire with it there. And a goriya
+    inside the sealed diamond cross is unreachable by construction
+    (:func:`_in_sealed_centre`): counting it makes the search spend its whole
+    budget walking at a body it cannot hit.
+    """
+    if (int(obj.type_id) & 0xFF) not in _ROOM1A_GORIYA_TYPES:
+        return True
+    return _in_sealed_centre(obj)
+
+
+def room1a_objective() -> ClearObjective:
+    """Clear 0x1A: every reachable goriya dead, Link's hearts intact."""
+    return ClearObjective(unreachable=room1a_unkillable)
+
+
+def room1a_segments() -> tuple:
+    """0x1A's alphabet: the four directions, the four swings, no stand.
+
+    Standing is dropped because the measured failure mode of this room is
+    *passivity* — slots 4/5 spawn at x=128 and descend into the sealed centre
+    if they are not engaged early, and once they are in there no plan reaches
+    them. A segment that does nothing for 4 frames is the first move of that
+    failure, and the search has no way to see a cost that only lands 600
+    frames later.
+    """
+    return segment_library(swings=True, stand=False)
+
+
 def _pushable_block_y(snap: ZeldaSnapshot) -> int | None:
     for obj in snap.objects:
         if 1 <= int(obj.slot) <= 12 and int(obj.type_id) == PUSHABLE_BLOCK:
@@ -318,6 +390,12 @@ class Room1ACandleController(HopController):
     _hunt_last_xy: tuple[int, int] | None = None
     _cellar_dropped: bool = False
     _cellar_climbed: bool = False
+    # The search arm. Off unless ``attach_solver`` binds it: a ``RoomSolver``
+    # needs the live env (one emulator per process) and a ``ZeldaSnapshot`` is
+    # not one, so binding is the only constructor and a pin selects the arm.
+    solver_clear: bool = False
+    _solver: RoomSolver | None = field(default=None, repr=False)
+    _arbiter: Arbiter | None = field(default=None, repr=False)
 
     @property
     def stage_id(self) -> str:
@@ -349,7 +427,71 @@ class Room1ACandleController(HopController):
                 return self.mark_fail("already_red_candle")
         return super().step(snap)
 
+    # --- the ladder ---------------------------------------------------- #
+
+    @property
+    def clear_arbiter(self) -> Arbiter:
+        """The two-rung ladder this room decides on. Built once, lazily."""
+        if self._arbiter is None:
+            self._arbiter = Arbiter(
+                (
+                    Rung("room1a_solver", ROOM1A_RUNG_SOLVER, self._rung_solver),
+                    Rung("room1a_scripted", ROOM1A_RUNG_SCRIPTED, self._rung_scripted),
+                )
+            )
+        return self._arbiter
+
+    def attach_solver(self, env: Any, **kwargs: Any) -> RoomSolver:
+        """Bind the ROM-truth room solver to the live env and select that arm.
+
+        ``env`` is the emulator the walk is already running on — **one
+        emulator per process** (``AGENTS.md``), so this never makes one, and
+        ``Rollout.branching`` restores it in a ``finally`` on every search.
+        ``kwargs`` are the budget knobs (``room_budget`` / ``config`` / ...)
+        and go to the constructor, never onto the instance afterwards: a
+        ``@dataclass`` copies its defaults into ``__init__`` when the class is
+        created, so ``setattr`` on the class is a no-op on every instance and
+        silently measures the unablated arm (``AGENTS.md``).
+
+        Returns the solver so a probe can read its ledger directly.
+        """
+        kwargs.setdefault("objective", room1a_objective())
+        kwargs.setdefault("actions", room1a_segments())
+        kwargs.setdefault("config", ROOM1A_SOLVER_CONFIG)
+        kwargs.setdefault("reason_prefix", "candle_solve")
+        self._solver = RoomSolver(Rollout(env), **kwargs)
+        self.solver_clear = True
+        return self._solver
+
+    def _rung_solver(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """The searched clear, when it is bound and has something to say.
+
+        Gated, not prioritised: "the wave is still alive in 0x1A" is a
+        *latching* fact about the phase of the room, and ``arbiter.py``'s rule
+        is that a latching condition is a gate and stays inside the rung. The
+        block push, the stairs walk and the cellar are a scripted geometry
+        problem with no enemy in them, and the search has nothing to add.
+        """
+        if not self.solver_clear or self._solver is None:
+            return None
+        if snap.mode == CELLAR_MODE or int(snap.screen) != ROOM_1A:
+            return None
+        if not live_goriyas(snap):
+            return None
+        # The scripted rung sets this on the same frames; the push phase reads
+        # it to tell "cleared" from "the wave has not spawned yet", so a rung
+        # that takes those frames has to keep the latch honest.
+        self.saw_goriya = True
+        return self._solver.act(snap)
+
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        act = self.clear_arbiter.decide(snap)
+        if act is not None:
+            return act
+        # Unreachable: the scripted rung claims every frame it is offered.
+        return FrameAction(nes_idle_action(), "candle_idle")
+
+    def _rung_scripted(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode == CELLAR_MODE or snap.screen == ROOM_4A:
             return self._cellar(snap)
         if snap.screen != ROOM_1A:
@@ -480,4 +622,7 @@ class Room1ACandleController(HopController):
             "evidence": "fixture-live",
             "route_eligible": False,
             "door": "STAIRS",
+            "rung_census": self.clear_arbiter.census(),
+            # A report that hides a ``set_state`` is lying about the walk.
+            "solver": self._solver.report() if self._solver is not None else None,
         }

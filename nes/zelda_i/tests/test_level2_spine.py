@@ -74,10 +74,13 @@ def test_backtrack_7d_recenters_live_timeout_pose() -> None:
     ctl = Level2BacktrackTo7dController()
     act = ctl.step(_snap(room=0x6C, x=128, y=133))
     assert act.reason == "door_align_y"
+    assert pressed_nes_buttons(list(act.action)) == ["DOWN"]
     act = ctl.step(_snap(room=0x6C, x=136, y=136))
     assert act.reason == "door_align_y"
+    assert pressed_nes_buttons(list(act.action)) == ["DOWN"]
     act = ctl.step(_snap(room=0x6C, x=136, y=141))
     assert act.reason == "door_push"
+    assert pressed_nes_buttons(list(act.action)) == ["RIGHT"]
 
 
 def test_enter_6f_fails_without_keys() -> None:

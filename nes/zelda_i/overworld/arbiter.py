@@ -15,30 +15,70 @@ strings. Two live failures came out of that:
   get the shot high enough in the chain. The hop now reaches into the
   hunter's blade because there was no other way to express "this rung goes
   above that one".
-* **The 0x79 inversion.** ``overworld.shop_p7._extra_hop_action`` opens with
+* **The 0x79 inversion.** ``overworld.shop_p7._extra_hop_action`` opened with
   ``if self.hunter is not None and 0x79 not in self.hunter.done: return
-  None`` — an override hook declining the frame, twice, so the hunt rung
-  below it can have it. That is a precedence edit written as a read of
-  another module's bookkeeping, because the hook's position in the chain is
-  fixed by where it is called from.
+  None`` — an override hook declining the frame, twice, and the read was
+  filed as a precedence edit written as another module's bookkeeping. Wiring
+  the ladder proved that reading **wrong**, which is the more useful result:
+  see below.
 
 This module is the ladder itself: a :class:`Rung` is a named, ordered
 callable over a :class:`~zelda_i.ram.ZeldaSnapshot`, and an :class:`Arbiter`
 runs them in priority order and hands back the first frame anyone claims.
 Ordering becomes a number a test can set, precedence becomes a rung nobody
 else's private state has to be consulted for, and the winner is recorded, so
-the per-behaviour counters ``ScreenHunter`` keeps by hand (``hunt_frames``,
-``guard_frames``, ``peel_frames``, ``transit_frames``, ``collect_frames``,
-``off_line_frames``) fall out of the arbitration instead of being incremented
-at six separate sites that can drift from the branch they claim to count.
+a run report can price a *behaviour* and not just a reason string.
+
+The first failure is now a number. ``overworld.path`` declares
+``HOP_RUNG_BEAM`` (30) above ``HOP_RUNG_STALL_ESCAPE`` (60) and the beam rung
+*is* ``ScreenHunter.take_beam``, so the hop no longer reaches into the
+hunter's blade to get the shot high enough.
+
+The second one was not a precedence bug at all, and the ladder is what
+showed it. **A completion gate and a decline are not the same set.** ``0x79
+not in done`` opens once and stays open; a rung under ``hop_hunt`` opens on
+every frame the hunt happens to decline, of which there are many while the
+wave is still alive. Spelling the gate as a low priority therefore moved
+frames in *both* directions — it handed the skirt frames that used to push
+east (waking a dead branch of ``_leave_79_east``) and let the beam, the
+scoop and the hunt's own lane return take frames the skirt used to own. On a
+chain where M5 Clean is live at 18909f that is not a refactor, so the gate
+went back and ``shop_p7`` keeps the default ``HOP_RUNG_EXTRA``. What C2 keeps
+there is smaller and still worth having: the hook's *place* is the number
+``extra_hop_priority`` rather than the line ``_do_hop`` calls it from, and
+the gate asks the declared query ``ScreenHunter.chase_finished`` instead of
+reaching into the ``done`` set.
+
+The lesson generalises past this hook: before spelling a decline as a
+priority, check whether the condition it declines on is *latching*. A
+latching condition is a gate and stays in the rung; only a per-frame
+contest is precedence.
+
+What did *not* fall out of arbitration is the counting.
+:meth:`Arbiter.census` credits a rung on the frame its action is the one
+returned, which is the honest answer to "which behaviour owned these
+frames" — but it is not the same number as the counters ``ScreenHunter``
+keeps by hand, and those are not all the same kind of number as each other:
+
+* ``guard_frames`` / ``transit_frames`` count the branch being *entered*.
+  They are bumped before ``_collect``, which may hand the frame back, so a
+  guard frame is not always a guard *win*. That difference is the budget
+  spend and the retire, which happen either way.
+* ``collect_frames`` / ``off_line_frames`` / ``heal_frames`` are *budgets*,
+  not a census: ``ScreenHunter._enter`` zeroes them on every scroll. A
+  per-screen budget and a lifetime census cannot be one field.
+* ``hunt_frames`` is the chase budget (``_spend``), which is charged per
+  screen as well (``frames_by_screen``).
+
+So the census sits *beside* them, in ``report()["rung_census"]``, and the
+hand counters keep the meaning their callers and their tests rely on. The
+drift the ladder does remove is the one that mattered: a rung can no longer
+be credited for a frame some other rung returned.
 
 Pure, like ``overworld.prey``: the input is a snapshot, the output is a
 ``FrameAction`` a rung already built. No emulator, no RAM array, no I/O, and
 no rungs constructed here — they are handed in, which is what lets one
 arbiter hold ``path``'s ladder and ``hunt``'s ladder at once.
-
-Nothing calls this yet; wiring the live controllers on to it is a separate
-change.
 """
 
 from __future__ import annotations

@@ -1,0 +1,356 @@
+{
+  "arm": "reactive",
+  "contacts": [
+    {
+      "cause": "tektite_blue",
+      "frame": 4300,
+      "screen": "0x7a",
+      "xy": [
+        112,
+        125
+      ]
+    },
+    {
+      "cause": "leever",
+      "frame": 5472,
+      "screen": "0x7b",
+      "xy": [
+        196,
+        141
+      ]
+    },
+    {
+      "cause": "leever",
+      "frame": 5983,
+      "screen": "0x7c",
+      "xy": [
+        55,
+        125
+      ]
+    },
+    {
+      "cause": "fireball_or_statue_projectile",
+      "frame": 6272,
+      "screen": "0x7c",
+      "xy": [
+        168,
+        94
+      ]
+    },
+    {
+      "cause": "fireball_or_statue_projectile",
+      "frame": 6430,
+      "screen": "0x7c",
+      "xy": [
+        133,
+        101
+      ]
+    },
+    {
+      "cause": "rock_projectile",
+      "frame": 7397,
+      "screen": "0x7d",
+      "xy": [
+        64,
+        139
+      ]
+    },
+    {
+      "cause": "rock_projectile",
+      "frame": 7493,
+      "screen": "0x7d",
+      "xy": [
+        64,
+        85
+      ]
+    }
+  ],
+  "damage_units": 898,
+  "failed_stage": "bomb_walk",
+  "final": {
+    "arrows": 0,
+    "bombs": 0,
+    "bow": 0,
+    "candle": 0,
+    "food": 0,
+    "health": 32,
+    "health_full": false,
+    "heart_containers": 3,
+    "keys": 0,
+    "level": 0,
+    "map": 0,
+    "mode": 17,
+    "rod": 0,
+    "room": 125,
+    "rupees": 13,
+    "selected_item": 0,
+    "triforce": 0,
+    "whistle": 0,
+    "x": 216,
+    "y": 91
+  },
+  "frames": 7944,
+  "hearts_lost": 3.508,
+  "hits": 7,
+  "hits_by_cause": {
+    "fireball_or_statue_projectile": 2,
+    "leever": 2,
+    "rock_projectile": 2,
+    "tektite_blue": 1
+  },
+  "hits_by_screen": {
+    "0x7a": {
+      "tektite_blue": 1
+    },
+    "0x7b": {
+      "leever": 1
+    },
+    "0x7c": {
+      "fireball_or_statue_projectile": 2,
+      "leever": 1
+    },
+    "0x7d": {
+      "rock_projectile": 2
+    }
+  },
+  "hits_by_stage": {
+    "bomb_walk": {
+      "fireball_or_statue_projectile": 2,
+      "leever": 2,
+      "rock_projectile": 2,
+      "tektite_blue": 1
+    }
+  },
+  "knobs": {},
+  "ok": false,
+  "rollout": {
+    "budget": null,
+    "claims": 0,
+    "declines": {},
+    "frames_rolled": 0,
+    "held_frames": 0,
+    "replans": 0,
+    "rollouts": 0
+  },
+  "stages": [
+    {
+      "end_frame": 948,
+      "frame_base": 199,
+      "frames": 749,
+      "name": "sword_cave",
+      "success": true
+    },
+    {
+      "end_frame": 7944,
+      "evade_reasons": {
+        "evade_commit": 47,
+        "evade_in_pad": 282,
+        "evade_no_gain": 5,
+        "evade_peel": 11,
+        "evade_shot_over_sword": 9,
+        "evade_yield_to_sword": 488,
+        "shield_hold": 38,
+        "shield_turn": 16,
+        "spit_duck": 809
+      },
+      "evades": 63,
+      "frame_base": 948,
+      "frames": 6996,
+      "hunt": {
+        "damage_taken": 8,
+        "hunt_frames_by_screen": {
+          "0x78": 238,
+          "0x79": 601,
+          "0x7a": 626,
+          "0x7b": 221,
+          "0x7c": 528,
+          "0x7d": 38
+        },
+        "hurt_events": 8,
+        "kills": 21,
+        "streak_best": 9,
+        "streak_resets": 5
+      },
+      "name": "bomb_walk",
+      "parries": 11,
+      "reason_by_screen": {
+        "0x77": {
+          "hop": 138,
+          "hop_ay": 39,
+          "scroll": 29
+        },
+        "0x78": {
+          "beam": 13,
+          "beam_recover": 150,
+          "evade_shield_hold": 8,
+          "evade_shield_turn": 12,
+          "hop": 221,
+          "hop_advance": 1,
+          "hop_ay": 1,
+          "hop_escape": 593,
+          "hop_escape_shield": 7,
+          "hunt": 173,
+          "hunt_lane": 24,
+          "hunt_offline": 7,
+          "off_west": 11,
+          "scroll": 100,
+          "wait_mode_4": 4
+        },
+        "0x79": {
+          "beam": 14,
+          "beam_recover": 110,
+          "beam_release": 4,
+          "evade_evade_commit": 1,
+          "hop_advance": 1,
+          "hunt": 405,
+          "hunt_beam": 150,
+          "hunt_lane": 1,
+          "hunt_offline": 40,
+          "hunt_slash": 1,
+          "hunt_slash_recover": 4,
+          "off_west": 7,
+          "scroll": 100,
+          "skirt_beach": 71,
+          "skirt_exit_east": 36,
+          "skirt_exit_up": 23,
+          "skirt_south": 57,
+          "wait_mode_4": 2,
+          "wake_mode_4": 2
+        },
+        "0x7a": {
+          "band_down": 2,
+          "band_up": 1,
+          "beam": 11,
+          "beam_recover": 81,
+          "beam_release": 4,
+          "evade_evade_commit": 5,
+          "hop": 119,
+          "hop_advance": 1,
+          "hop_lane": 2,
+          "hunt": 331,
+          "hunt_beam": 161,
+          "hunt_close_peel": 5,
+          "hunt_lane": 63,
+          "hunt_offline": 19,
+          "hunt_slash": 6,
+          "hunt_slash_recover": 29,
+          "hunt_slash_release": 1,
+          "hunt_slash_turn": 9,
+          "off_west": 7,
+          "scoop_rupee": 32,
+          "scroll": 100,
+          "spit_duck": 2,
+          "wait_mode_4": 4
+        },
+        "0x7b": {
+          "beam": 3,
+          "beam_recover": 30,
+          "beam_release": 1,
+          "evade_evade_commit": 11,
+          "evade_parry": 4,
+          "evade_parry_face": 1,
+          "evade_parry_recover": 5,
+          "hop": 178,
+          "hop_advance": 1,
+          "hop_escape": 93,
+          "hop_escape_dodge": 3,
+          "hop_escape_slash": 3,
+          "hop_escape_turn": 7,
+          "hop_lane": 17,
+          "hunt_close_peel": 49,
+          "hunt_duck": 65,
+          "hunt_lane": 70,
+          "hunt_lane_dodge": 6,
+          "hunt_lane_turn": 2,
+          "hunt_slash": 27,
+          "hunt_slash_recover": 173,
+          "hunt_slash_release": 9,
+          "hunt_slash_turn": 12,
+          "off_west": 11,
+          "scoop_heart": 40,
+          "scoop_rupee": 92,
+          "scroll": 100,
+          "spit_duck": 113,
+          "wait_mode_4": 2,
+          "wake_mode_4": 2
+        },
+        "0x7c": {
+          "beam": 3,
+          "beam_recover": 34,
+          "evade_evade_commit": 27,
+          "evade_parry_face": 1,
+          "hop": 59,
+          "hop_advance": 1,
+          "hunt": 340,
+          "hunt_align": 7,
+          "hunt_beam": 2,
+          "hunt_close_peel": 1,
+          "hunt_duck": 97,
+          "hunt_offline": 40,
+          "hunt_scoop": 10,
+          "hunt_slash": 12,
+          "hunt_slash_recover": 61,
+          "hunt_slash_release": 2,
+          "hunt_slash_turn": 15,
+          "off_west": 11,
+          "scoop_rupee": 98,
+          "scroll": 100,
+          "spit_duck": 333,
+          "wait_mode_4": 4
+        },
+        "0x7d": {
+          "evade_evade_commit": 2,
+          "evade_evade_peel": 1,
+          "evade_shield_hold": 30,
+          "evade_shield_turn": 4,
+          "hop": 126,
+          "hop_advance": 1,
+          "hop_dodge": 14,
+          "hop_lane": 14,
+          "hop_shield": 43,
+          "hunt_close_peel": 19,
+          "hunt_duck": 68,
+          "hunt_lane": 181,
+          "hunt_lane_dodge": 6,
+          "hunt_lane_shield": 7,
+          "hunt_shield": 51,
+          "hunt_slash": 5,
+          "hunt_slash_recover": 30,
+          "hunt_slash_release": 2,
+          "hunt_slash_turn": 1,
+          "link_death": 1,
+          "off_west": 11,
+          "scroll": 71,
+          "spit_duck": 361,
+          "wait_mode_4": 4
+        }
+      },
+      "rung_census": {
+        "hop_beam": 458,
+        "hop_edge": 58,
+        "hop_extra": 187,
+        "hop_hunt": 2799,
+        "hop_lane": 33,
+        "hop_maze": 0,
+        "hop_occupancy": 0,
+        "hop_scoop": 262,
+        "hop_stall_escape": 706,
+        "hop_unstick": 0,
+        "push": 941
+      },
+      "rung_frames": 5444,
+      "spit_ducks": 809,
+      "stall_escapes": 2,
+      "success": false,
+      "threat_census": {
+        "threat_duck": 809,
+        "threat_reactive": 112,
+        "threat_rollout": 0,
+        "yielded": 5450
+      },
+      "threat_frames": 6371
+    }
+  ],
+  "tag": "ab_reactive",
+  "through": "pre-l1"
+}

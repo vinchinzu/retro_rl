@@ -4,6 +4,7 @@
     uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --headed --no-video --trials 1
+    uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --rollout --headed --no-video --trials 1
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
 unless ``--no-video``. ``--headed`` opens a pygame window (``[ ]`` speed,
@@ -30,6 +31,7 @@ from retro_harness.headed import (
 from retro_harness.segment_runner import configure_headless, save_rgb_png, write_json_report
 from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.combat import facing_to_direction
+from zelda_i.overworld.path import OverworldPathController
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_HELP_DROP_COUNT, ADDR_WORLD_KILL_COUNT, read_snapshot
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
@@ -105,6 +107,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     add_video_args(parser, default_on=True)
     add_headed_flag(parser)
+    parser.add_argument(
+        "--rollout",
+        action="store_true",
+        help=(
+            "Opt-in ROM-truth evader on OverworldPathController. "
+            "Default reactive arm is unchanged. A/B only."
+        ),
+    )
     args = parser.parse_args(argv)
 
     headed = bool(args.headed)
@@ -118,6 +128,18 @@ def main(argv: list[str] | None = None) -> int:
             default_path=RECORDINGS_DIR / f"{tag}.mp4",
         )
         env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
+        if args.rollout:
+            # Bind the inner emulator: a rollout is a restore, not a STATUS
+            # mid-run load. The honest cost is controller.report()["rollout"].
+            raw = env
+            _orig_step = OverworldPathController.step
+
+            def _step(self, snap, **kw):  # type: ignore[no-untyped-def]
+                if self._rollout is None:
+                    self.attach_rollout(raw)
+                return _orig_step(self, snap, **kw)
+
+            OverworldPathController.step = _step  # type: ignore[assignment]
         tap = VideoTap(
             video_path,
             video_config,

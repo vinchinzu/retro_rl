@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 40,
+  "roomHex": "0x28",
+  "name": "Swamp Palace lobby",
+  "measured": "2026-09-21",
+  "sourceState": "SwampPalaceEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [4344, 1496], "role": "spawn", "notes": "SwampPalaceEntry load; south-east landing, north of the palace door"},
+    {"label": "canal", "xy": [4344, 1410], "role": "waypoint", "notes": "Walkable south canal grate (flood overlay set; Link walks, does not swim)"},
+    {"label": "canal_lip", "xy": [4344, 1352], "role": "waypoint", "notes": "North lip of the south canal; solid wall, cannot walk onto the north floor"},
+    {"label": "west_lip", "xy": [4160, 1357], "role": "waypoint", "notes": "West end of the canal lip; cropped ladder well. UP from here does not climb to the north floor"},
+    {"label": "south_door_approach", "xy": [4344, 1512], "role": "approach", "notes": "Hold DOWN → overworld screen 0x7B"}
+  ],
+  "doors": [
+    {
+      "label": "south_to_overworld",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 123,
+      "approachXy": [4344, 1512],
+      "landingXy": [1912, 3819],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 600,
+      "notes": "Isolated 2026-09-21 from SwampPalaceEntry. Spotlight-close (module 0x0F) then OW 0x7B (1912,3819) $10==0x09 $11==0. DW swamp facade."
+    },
+    {
+      "label": "north_to_0x38",
+      "direction": "UP",
+      "toRoom": 56,
+      "toRoomHex": "0x38",
+      "approachXy": [4344, 1352],
+      "landingXy": null,
+      "role": "primary",
+      "path": ["canal", "canal_lip"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "First indoor hop (small-key stairs to Swamp Pot Row 0x38). NOT isolated this sitting: canal lip y=1352 is a wall. North floor (tektites + key chest + stairs) is visible beyond it. Cropped west ladder not climbed. Needs flood-cross + entrance key."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [4160, 1352, 4392, 1524],
+  "hostilesAtEntry": [
+    {"type": "0x9A", "xy": [4256, 1120]},
+    {"type": "0x81", "xy": [4224, 1152]},
+    {"type": "0x81", "xy": [4272, 1184]},
+    {"type": "0x81", "xy": [4208, 1232]},
+    {"type": "0x8A", "xy": [4228, 1279]}
+  ],
+  "z3Label": "Swamp Palace (Entrance)",
+  "notes": [
+    "Confirmed $A0==0x28 via module 0x06 + entrance 0x25 from FighterSword after loadout pokes.",
+    "State-load / isolated. Not power-on, not continuous.",
+    "Water: $F2BB/$F2FB bit5=0x20 and $F051==1. South canal grate is walkable. North floor is walled off at y=1352; first indoor door not isolated.",
+    "Must not have hookshot ($F342==0). Master sword, pearl, hammer, mirror, boots, gloves.",
+    "Authority: maps/room_28.json (load via alttp.room_sense.load_room_map)."
+  ]
+}

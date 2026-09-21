@@ -61,12 +61,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--min-hearts", type=int, default=None)
     parser.add_argument("--screen-budget", type=int, default=None)
+    parser.add_argument(
+        "--turn-first", action=argparse.BooleanOptionalAction, default=None
+    )
     args = parser.parse_args(argv)
     configure_headless()
 
     # Ablation knobs. ``path.OverworldPathController`` builds its own
-    # ``ScreenHunter()``, so the only seam a probe has is the field default.
-    import dataclasses
+    # ``ScreenHunter()``, so the only seam a probe has is the constructor.
+    #
+    # It has to be the *constructor*. This block used to rewrite
+    # ``dataclasses.fields(ScreenHunter)[i].default`` and set the class
+    # attribute, and neither reaches an instance: ``@dataclass`` copies every
+    # default into the generated ``__init__`` signature when the class is
+    # created. Every ablation run before 2026-09-16 printed "overrides:" and
+    # then measured the unablated hunt.
     from zelda_i.overworld import hunt as hunt_mod
 
     overrides = {
@@ -74,15 +83,19 @@ def main(argv: list[str] | None = None) -> int:
         "avoid_firing_lines": args.off_line,
         "min_hearts": args.min_hearts,
         "screen_max_frames": args.screen_budget,
+        "turn_before_swing": args.turn_first,
     }
-    for name, value in overrides.items():
-        if value is None:
-            continue
-        for f in dataclasses.fields(hunt_mod.ScreenHunter):
-            if f.name == name:
-                f.default = value
-        setattr(hunt_mod.ScreenHunter, name, value)
-    print("overrides:", {k: v for k, v in overrides.items() if v is not None})
+    overrides = {k: v for k, v in overrides.items() if v is not None}
+    if overrides:
+        _orig_init = hunt_mod.ScreenHunter.__init__
+
+        def _init(self, *a, **kw):  # type: ignore[no-untyped-def]
+            _orig_init(self, *a, **kw)
+            for name, value in overrides.items():
+                setattr(self, name, value)
+
+        hunt_mod.ScreenHunter.__init__ = _init  # type: ignore[assignment]
+    print("overrides:", overrides)
 
     # Which rule owned the frame. ``_do_hop`` runs four position rules
     # ahead of ``_hunt_action`` (occupancy align, stall escape, unstick

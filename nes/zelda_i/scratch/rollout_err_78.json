@@ -1,0 +1,46 @@
+{
+  "state": "At78",
+  "points": 144,
+  "rows": [
+    {
+      "horizon": 8,
+      "n": 718,
+      "mean": 0.4,
+      "median": 0.0,
+      "p90": 2,
+      "ge8_pct": 1,
+      "ge16_pct": 0
+    },
+    {
+      "horizon": 16,
+      "n": 718,
+      "mean": 2.0,
+      "median": 1.0,
+      "p90": 7,
+      "ge8_pct": 9,
+      "ge16_pct": 1
+    },
+    {
+      "horizon": 32,
+      "n": 718,
+      "mean": 6.3,
+      "median": 3.0,
+      "p90": 20,
+      "ge8_pct": 26,
+      "ge16_pct": 14
+    },
+    {
+      "horizon": 48,
+      "n": 718,
+      "mean": 11.4,
+      "median": 4.0,
+      "p90": 33,
+      "ge8_pct": 39,
+      "ge16_pct": 29
+    }
+  ],
+  "per_type": {
+    "octorok": 2.5,
+    "unk_0x64": 0
+  }
+}

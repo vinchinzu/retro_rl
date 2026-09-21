@@ -315,19 +315,18 @@ def test_a_transit_screen_still_shoots_what_walks_into_the_lane() -> None:
     assert act is not None and act.reason == "beam_7b"
 
 
-def test_a_hopping_body_is_waited_for_at_range_not_closed_on() -> None:
-    """A blue tektite's whole attack is the hop that lands on Link.
-
-    Off the lane the hunt walks to a *beam* stand — in the body's row, 56 px
-    out — instead of the sword stand 20 px off the sprite.
+def test_a_hopping_body_is_closed_on_not_waited_for() -> None:
+    """A tektite hops off the beam row. Live 0x79/0x7A spent 229/274 frames
+    reversing UP/DOWN to chase a 56 px stand, then retired with tektites
+    still up. Close and slash; the shot still fires when they walk into it.
     """
     hunter = ScreenHunter()
     foe = _foe(slot=1, x=180, y=100, type_id=TEKTITE_BLUE_OBJECT_TYPE, hp=1)
     snap = _snap(screen=0x78, link_x=60, link_y=141, objects=(foe,))
     hunter.observe(snap)
     act = hunter.step(snap, 1)
-    assert act is not None and act.reason.endswith("_beam")
-    assert hunter.beam.stand_frames == 1
+    assert act is not None and not act.reason.endswith("_beam")
+    assert hunter.beam.stand_frames == 0
 
 
 def test_a_shooter_keeps_its_axis_off_limits() -> None:

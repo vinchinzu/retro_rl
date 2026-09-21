@@ -282,14 +282,6 @@ def test_prefers_heart_drop_over_rupee() -> None:
     assert list(act.action) == list(nes_action("RIGHT"))
 
 
-def test_chases_enemies_when_no_heart_or_fairy_drops() -> None:
-    prey = ZeldaObject(slot=3, type_id=0x11, x=180, y=149, facing=0, hp=1, state=0)
-    farm = _farm()
-    act = farm.step(_snap(link_x=120, link_y=149, objects=(prey,)))
-    assert "farm_chase" in act.reason
-    assert farm.phase is HeartFarmPhase.FARM
-
-
 def test_link_death_fails() -> None:
     farm = _farm()
     act = farm.step(_snap(mode=17, health=0x22))

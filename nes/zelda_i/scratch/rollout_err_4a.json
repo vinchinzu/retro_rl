@@ -1,0 +1,45 @@
+{
+  "state": "At4A",
+  "points": 144,
+  "rows": [
+    {
+      "horizon": 8,
+      "n": 864,
+      "mean": 2.7,
+      "median": 0.0,
+      "p90": 12,
+      "ge8_pct": 17,
+      "ge16_pct": 4
+    },
+    {
+      "horizon": 16,
+      "n": 864,
+      "mean": 7.5,
+      "median": 0.0,
+      "p90": 34,
+      "ge8_pct": 25,
+      "ge16_pct": 22
+    },
+    {
+      "horizon": 32,
+      "n": 864,
+      "mean": 19.3,
+      "median": 0.0,
+      "p90": 71,
+      "ge8_pct": 36,
+      "ge16_pct": 34
+    },
+    {
+      "horizon": 48,
+      "n": 864,
+      "mean": 31.3,
+      "median": 0.0,
+      "p90": 114,
+      "ge8_pct": 43,
+      "ge16_pct": 42
+    }
+  ],
+  "per_type": {
+    "tektite_blue": 7.5
+  }
+}

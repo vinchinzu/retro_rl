@@ -205,12 +205,17 @@ def test_up_5d_off_column_binds_door_x() -> None:
     assert list(first.action) != list(nes_idle_action())
 
 
-@pytest.mark.parametrize("idle_frames", [0, 30, 90, 223])
-def test_right_5c_jitter_still_arrives_dest(idle_frames: int) -> None:
-    """Entry-frame jitter is not the hop; dest is RAM 0x5d play."""
+def test_right_5c_jitter_still_arrives_dest() -> None:
+    """Entry-frame jitter is not the hop; dest is RAM 0x5d play.
+
+    idle_frames=223 is the only value worth pinning here: the wait loop is
+    straight-line code with no branch on iteration count (mode=6 does not
+    change what the loop does), so 0/30/90 measured as byte-identical
+    coverage to this case and to the file's other no-idle door-hop tests —
+    collapsed 2026-09-16 (see A_coverage_redundant.txt)."""
     ctl = L3DoorHopController(RIGHT_5C_SPEC)
     wait = _snap(screen=ROOM_L3_BOMB_SHORTCUT, x=120, y=141, mode=6)
-    for _ in range(idle_frames):
+    for _ in range(223):
         act = ctl.step(wait)
         assert not ctl.success
         assert not ctl.failed
@@ -435,19 +440,16 @@ def _plant_darknut(
     ram[0x0098 + slot] = facing
 
 
-def test_clear_5c_west_leftover_is_dest_hop() -> None:
-    """Combat leftover on a diamond is success; dest hop owns the leave."""
-    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=98, y=157, bombs=4, doors=3)
-    ctl = Level3SpawnClearController(ROOM_5C_SPEC)
-    ctl.saw_live = True
-    act = ctl.step(read_snapshot(ram))
-    assert ctl.success
-    assert act.reason == "done"
-
-
-def test_clear_5c_se_corner_is_dest_hop() -> None:
-    """(192,181) is a cleared leftover; dest hop BFS owns the diamond leave."""
-    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=192, y=181, bombs=4, doors=3)
+@pytest.mark.parametrize(
+    "x,y",
+    [
+        pytest.param(98, 157, id="west_leftover"),
+        pytest.param(192, 181, id="se_corner"),
+    ],
+)
+def test_clear_5c_leftover_is_dest_hop(x: int, y: int) -> None:
+    """Combat leftover on a diamond is success; dest hop BFS owns the leave."""
+    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=x, y=y, bombs=4, doors=3)
     ctl = Level3SpawnClearController(ROOM_5C_SPEC)
     ctl.saw_live = True
     act = ctl.step(read_snapshot(ram))

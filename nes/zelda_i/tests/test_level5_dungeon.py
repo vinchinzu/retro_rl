@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import GenericDungeonRoomController
@@ -291,37 +292,24 @@ def test_pols_voice_leaves_sw_pocket_east() -> None:
     assert act.reason == "77_aisle_east"
 
 
-def test_pols_voice_leaves_south_lip() -> None:
-    """Death (142,181): south wall / right island — UP or LEFT, not A/DOWN."""
+@pytest.mark.parametrize(
+    "x,y",
+    [
+        pytest.param(142, 181, id="south_wall_right_island"),
+        pytest.param(136, 179, id="y179_slipped_under_181_peel"),
+    ],
+)
+def test_pols_voice_leaves_south_lip(x: int, y: int) -> None:
+    """Death near the south wall/lip: UP or LEFT, not A/DOWN.
+
+    (142,181) is the south wall / right island; (136,179) is y=179 slipped
+    under the y=181 peel band."""
     ctrl = make_pols_south_controller()
     ctrl.entered_central = True
     ram = _ram(
         room=ROOM_L5_POLS_77,
-        x=142,
-        y=181,
-        enemies=1,
-        enemy_type=POLS_VOICE_OBJECT_TYPE,
-        hp=160,
-    )
-    ram[ADDR_LINK_X + 1] = 120
-    ram[ADDR_LINK_Y + 1] = 173
-    act = ctrl.step(read_snapshot(ram))
-    assert "A" not in act.reason
-    assert act.action != nes_action("A")
-    assert act.action != nes_action("DOWN")
-    assert act.action != nes_action("DOWN", "A")
-    assert act.action in (nes_action("UP"), nes_action("LEFT"))
-    assert act.reason in {"77_lip_north", "77_aisle_west"}
-
-
-def test_pols_voice_leaves_south_lip_at_179() -> None:
-    """Death (136,179): y=179 slipped under y=181 peel — UP or LEFT, not A/DOWN."""
-    ctrl = make_pols_south_controller()
-    ctrl.entered_central = True
-    ram = _ram(
-        room=ROOM_L5_POLS_77,
-        x=136,
-        y=179,
+        x=x,
+        y=y,
         enemies=1,
         enemy_type=POLS_VOICE_OBJECT_TYPE,
         hp=160,

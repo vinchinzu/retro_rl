@@ -34,6 +34,7 @@ from zelda_i.beam import BeamPolicy
 from zelda_i.overworld.hunt import (
     HUNT_BOX,
     HUNT_PICKUP_RADIUS,
+    HUNT_TURN_CAP,
     ScreenHunter,
     sword_stand,
 )
@@ -191,12 +192,21 @@ def test_the_larger_counter_delta_is_the_one_banked() -> None:
 # ---------------------------------------------------------------- step ---
 
 
-def test_a_body_outranks_a_drop() -> None:
-    """Scooping mid-fight walked onto a heart sitting in an octorok pad."""
+def test_a_body_outranks_a_drop_in_its_pad() -> None:
+    """Scooping a drop the wave is standing on walked into the body."""
     hunter = _blade_only()
-    snap = _snap(objects=(_foe(slot=1, x=160), _drop(slot=2, x=80)))
+    snap = _snap(objects=(_foe(slot=1, x=80), _drop(slot=2, x=80)))
     act = hunter.step(snap, 1)
     assert act is not None and act.reason == "hunt_78"
+
+
+def test_a_clear_drop_is_banked_while_the_wave_is_still_up() -> None:
+    """Live 0x79/0x7A let rupees expire because chase ignored every drop
+    until the wave was empty. A drop outside every body's pad is money."""
+    hunter = _blade_only()
+    snap = _snap(link_x=120, objects=(_foe(slot=1, x=200), _drop(slot=2, x=80)))
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.startswith("hunt_scoop")
 
 
 def test_a_drop_is_taken_once_the_wave_is_dead() -> None:
@@ -322,6 +332,23 @@ def test_the_screen_budget_ends_a_hunt_that_will_not_finish() -> None:
     assert any(note.startswith("hunt_budget") for note in hunter.census.notes)
 
 
+def test_reset_restores_ordinary_budgets_after_a_destination_hunt() -> None:
+    hunter = _blade_only(
+        screen_max_frames=17,
+        target_max_frames=9,
+        destination_frames=2400,
+        destination_target_frames=420,
+    )
+
+    hunter.take_destination(_snap(), 1)
+    assert hunter.screen_max_frames == 2400
+    assert hunter.targets.max_frames == 420
+
+    hunter.reset()
+    assert hunter.screen_max_frames == 17
+    assert hunter.targets.max_frames == 9
+
+
 def test_a_body_that_will_not_die_is_skipped_not_chased_to_the_budget() -> None:
     hunter = _blade_only(target_max_frames=3)
     stubborn = _foe(slot=1, x=200, y=141)
@@ -370,18 +397,48 @@ def test_the_swing_faces_the_body_at_every_pad_in_reach() -> None:
 
     The old ladder could only turn at ``pad > MIN_DODGE_BODY + 2``, so at
     17-18px Link pulsed A at the wall behind him until the octorok walked in.
+
+    The turn is now its own frame — ``dir+A`` across a facing swings the old
+    way (``probe_turn_swing.py``) — so the contract at every pad is *turn
+    toward the body, then swing*, never A into the wall behind him.
     """
     hunter = ScreenHunter()
     foe = _foe(x=160, y=141)
     for pad in range(MIN_DODGE_BODY - 6, SWORD_REACH + 1):
         hunter.reset()
-        act = hunter.step(
+        turn = hunter.step(
             _snap(link_x=160 - pad, facing=FACING_WEST, objects=(foe,)), 1
         )
-        assert act is not None, pad
-        assert act.reason == "hunt_78_slash", (pad, act.reason)
+        assert turn is not None, pad
+        assert turn.reason == "hunt_78_slash_turn", (pad, turn.reason)
+        buttons = pressed_nes_buttons(list(turn.action))
+        assert "RIGHT" in buttons and "A" not in buttons, (pad, buttons)
+        # The ROM has turned him: now the blade goes out where the body is.
+        act = hunter.step(
+            _snap(link_x=160 - pad, facing=FACING_EAST, objects=(foe,)), 2
+        )
+        assert act is not None and act.reason == "hunt_78_slash", (pad, act)
         buttons = pressed_nes_buttons(list(act.action))
         assert "A" in buttons and "RIGHT" in buttons, (pad, buttons)
+
+
+def test_the_turn_wait_is_capped() -> None:
+    """A body crossing a diagonal can ask for a new face every frame.
+
+    ``HUNT_TURN_CAP`` frames of that is a dance, not a turn, so the press
+    goes out anyway rather than holding the rung forever.
+    """
+    hunter = ScreenHunter()
+    foe = _foe(x=160, y=141)
+    reasons = []
+    for frame in range(HUNT_TURN_CAP + 2):
+        act = hunter.step(
+            _snap(link_x=160 - 12, facing=FACING_WEST, objects=(foe,)), frame + 1
+        )
+        assert act is not None
+        reasons.append(act.reason)
+    assert reasons[:HUNT_TURN_CAP] == ["hunt_78_slash_turn"] * HUNT_TURN_CAP
+    assert reasons[HUNT_TURN_CAP] == "hunt_78_slash"
 
 
 def test_the_nearest_body_is_answered_not_the_held_target() -> None:
@@ -389,7 +446,7 @@ def test_the_nearest_body_is_answered_not_the_held_target() -> None:
     while the walk was aimed at slot 1 thirty pixels north."""
     hunter = _blade_only()
     far = _foe(slot=1, x=120, y=141 - 30)
-    near = _foe(slot=4, x=120 + 9, y=141)
+    near = _foe(slot=4, x=120 + 14, y=141)
     # Slot 1 is the held target: it was the only body when the screen opened.
     hunter.step(_snap(link_x=120, link_y=141, objects=(far,)), 1)
     assert hunter.targets.slot == 1
@@ -401,6 +458,17 @@ def test_the_nearest_body_is_answered_not_the_held_target() -> None:
     assert "A" in buttons and "RIGHT" in buttons
     # The hunt answers slot 4 without dropping the target it walked out for.
     assert hunter.targets.slot == 1
+
+    # At 9 px the same body is answered with the step out, not the blade:
+    # the sword is an object in front of Link and ``blade1`` never landed a
+    # press that close (:data:`HUNT_BLADE_MIN_FWD`).
+    hunter = _blade_only()
+    touching = _foe(slot=4, x=120 + 9, y=141)
+    act = hunter.step(
+        _snap(link_x=120, link_y=141, facing=FACING_EAST, objects=(touching,)), 1
+    )
+    assert act is not None and act.reason.endswith("_peel")
+    assert "LEFT" in pressed_nes_buttons(list(act.action))
 
 
 def test_every_swing_gets_its_own_release_edge() -> None:
@@ -647,8 +715,10 @@ def test_a_body_at_contact_outranks_a_blockable_rock() -> None:
         snap = _snap(
             link_x=120,
             link_y=141,
-            facing=FACING_EAST,
-            objects=(_foe(slot=1, x=111, y=141), _rock(rx)),
+            facing=FACING_WEST,
+            # 14 px, not 9: inside 9 the blade reaches nothing, and this test
+            # is about which *rung* owns the frame, not about the near end.
+            objects=(_foe(slot=1, x=106, y=141), _rock(rx)),
         )
         hunter.observe(snap)
         act = hunter.step(snap, frame)
@@ -688,9 +758,17 @@ def test_the_last_heart_stops_the_chase_but_not_the_blade() -> None:
     assert hunter.census.guard_frames == 1
 
     hunter = ScreenHunter()
-    near = _snap(health=0x20, link_x=120, link_y=141, objects=(_foe(slot=1, x=129, y=141),))
+    near = _snap(health=0x20, link_x=120, link_y=141, objects=(_foe(slot=1, x=134, y=141),))
     act = hunter.step(near, 1)
     assert act is not None and "A" in pressed_nes_buttons(list(act.action))
+
+    # And at 9 px, where the blade cannot reach, the answer is the step out.
+    hunter = ScreenHunter()
+    touching = _snap(
+        health=0x20, link_x=120, link_y=141, objects=(_foe(slot=1, x=129, y=141),)
+    )
+    act = hunter.step(touching, 1)
+    assert act is not None and act.reason.endswith("_peel")
 
 
 def test_hunt_yields_off_the_overworld() -> None:
@@ -872,6 +950,18 @@ def test_a_zora_is_never_a_target() -> None:
     assert hunter.targets.passed.get("zora") == 1
 
 
+def test_a_near_body_is_not_aligned_off_a_two_pixel_hop() -> None:
+    """Live 0x79 hunt_79 twerked 133<->135: ``_approach`` aligned UP/DOWN
+    on dy=2 while already in the blade row. Pad 18 is inside sword reach
+    and outside the peel pad, so this is the align rung, not the peel."""
+    hunter = _blade_only()
+    snap = _snap(link_x=120, link_y=141, objects=(_foe(slot=1, x=138, y=143),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None
+    assert not act.reason.endswith("_align")
+
+
 def test_the_richer_drop_row_is_held_over_the_nearer_body() -> None:
     """A blue tektite is row 1 (0.891 R/kill, two 5-rupees); a red octorok is
     row 0 (0.156). Nearest-first read them as the same body."""
@@ -914,6 +1004,32 @@ def test_a_rich_body_is_still_chased_on_short_health() -> None:
     hunter.observe(snap)
     act = hunter.step(snap, 1)
     assert act is not None and hunter.targets.slot == 1
+
+
+def test_tektites_are_not_retired_at_the_ordinary_screen_budget() -> None:
+    """Live 0x79/0x7A retired at 600f with 3+3 tektites still up. The 5-rupee
+    row keeps the chase until the destination cap."""
+    hunter = _blade_only()
+    snap = _snap(
+        screen=0x79,
+        objects=(_foe(slot=1, x=160, type_id=TEKTITE_BLUE_OBJECT_TYPE),),
+    )
+    hunter.observe(snap)
+    hunter.step(snap, 1)
+    hunter.screen_frames = hunter.screen_max_frames + 1
+    act = hunter.step(snap, 2)
+    assert 0x79 not in hunter.done
+    assert act is not None and act.reason.startswith("hunt_")
+
+
+def test_an_octorok_screen_still_retires_at_the_ordinary_budget() -> None:
+    hunter = _blade_only()
+    snap = _snap(screen=0x78, objects=(_foe(slot=1, x=160),))
+    hunter.observe(snap)
+    hunter.step(snap, 1)
+    hunter.screen_frames = hunter.screen_max_frames + 1
+    hunter.step(snap, 2)
+    assert 0x78 in hunter.done
 
 
 def test_a_chase_longer_than_the_screen_budget_never_starts() -> None:
@@ -981,10 +1097,17 @@ def test_a_transit_screen_is_crossed_not_cleared() -> None:
 def test_a_transit_screen_still_answers_a_body_at_contact() -> None:
     """Declining the wave is not the same as standing in it."""
     hunter = ScreenHunter(transit_screens=frozenset({0x59}))
-    snap = _snap(screen=0x59, link_x=120, link_y=141, objects=(_foe(slot=1, x=129, y=141),))
+    snap = _snap(screen=0x59, link_x=120, link_y=141, objects=(_foe(slot=1, x=134, y=141),))
     hunter.observe(snap)
     act = hunter.step(snap, 1)
     assert act is not None and "A" in pressed_nes_buttons(list(act.action))
+
+    # Inside the blade the transit screen still answers — with the peel.
+    hunter = ScreenHunter(transit_screens=frozenset({0x59}))
+    snap = _snap(screen=0x59, link_x=120, link_y=141, objects=(_foe(slot=1, x=129, y=141),))
+    hunter.observe(snap)
+    act = hunter.step(snap, 1)
+    assert act is not None and act.reason.endswith("_peel")
 
 
 def test_a_transit_screen_still_banks_a_drop_it_walks_past() -> None:

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 219,
+  "roomHex": "0xDB",
+  "name": "Thieves' Town lobby",
+  "measured": "2026-09-21",
+  "sourceState": "ThievesTownEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [5880, 7128], "role": "spawn", "notes": "ThievesTownEntry load; south of huge-room 0xDB"},
+    {"label": "south_door_approach", "xy": [5880, 7128], "role": "approach", "notes": "Hold DOWN → Village of Outcasts 0x58"},
+    {"label": "south_hall", "xy": [5880, 7048], "role": "waypoint", "notes": "North of spawn in the south corridor"},
+    {"label": "mid_hall", "xy": [5880, 6968], "role": "waypoint", "notes": "North end of south corridor; water to the east"},
+    {"label": "east_south", "xy": [5940, 7104], "role": "waypoint", "notes": "East along south corridor from spawn"},
+    {"label": "conveyor", "xy": [5940, 6865], "role": "waypoint", "notes": "East conveyor toward 0xDC; RIGHT from here still 0xDB this sitting"}
+  ],
+  "doors": [
+    {
+      "label": "south_to_outcasts",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 88,
+      "approachXy": [5880, 7128],
+      "landingXy": [504, 1979],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "Isolated 2026-09-21 from ThievesTownEntry. First control outdoors (504,1983) module 0x09 screen 0x58. Hold DOWN continues walking south."
+    },
+    {
+      "label": "east_to_0xDC",
+      "direction": "RIGHT",
+      "toRoom": 220,
+      "toRoomHex": "0xDC",
+      "approachXy": [5940, 6865],
+      "landingXy": null,
+      "role": "primary",
+      "path": ["east_south", "conveyor"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "Huge-room east quadrant (compass). Conveyor approach measured; RIGHT from (5940,6865) still 0xDB. Not isolated."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [5632, 6656, 6143, 7167],
+  "hostilesAtEntry": [
+    {"type": "0xd1", "xy": [5680, 6720]},
+    {"type": "0x5b", "xy": [5856, 6816]},
+    {"type": "0xa6", "xy": [6000, 6832]},
+    {"type": "0xa5", "xy": [5872, 6848]},
+    {"type": "0x8f", "xy": [5808, 6912]},
+    {"type": "0x80", "xy": [5955, 6912]},
+    {"type": "0xa5", "xy": [5874, 6992]}
+  ],
+  "z3Label": "Thieves Town (Entrance)",
+  "notes": [
+    "Confirmed $A0=0xDB on ThievesTownEntry (which_entrance=$010E=0x34, $040C=0x16).",
+    "0xDB is the SW quadrant of the huge lobby; 0xDC east, 0xCB north. Map + BK chests are in 0xDB.",
+    "South door is overworld backtrack (screen 0x58). First indoor hop east_to_0xDC is not isolated (conveyor / pots / hostiles).",
+    "Pin is isolated/state-load via Module_PreDungeon. $0FFF stays 0 (no DW overworld walk).",
+    "Authority: maps/room_db.json (load via alttp.room_sense.load_room_map)."
+  ]
+}

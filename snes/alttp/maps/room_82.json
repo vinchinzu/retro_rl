@@ -8,10 +8,17 @@
   "z3Label": "Hyrule Castle",
   "points": [
     {"label": "entry_spawn", "xy": [1184, 4108], "role": "spawn", "notes": "CastleB1West"},
-    {"label": "south_area", "xy": [1312, 4456], "role": "waypoint", "notes": "CastleB1South"},
-    {"label": "bridge", "xy": [1255, 4393], "role": "waypoint", "notes": "CastleB1Bridge"},
+    {"label": "south_area", "xy": [1312, 4456], "role": "waypoint", "notes": "CastleB1South; south-east of pit, on west-door walkway"},
+    {"label": "bridge", "xy": [1255, 4393], "role": "waypoint", "notes": "CastleB1Bridge; N-S corridor. South/west of here is pit."},
     {"label": "island", "xy": [1275, 4253], "role": "waypoint", "notes": "CastleZeldaB1Island"},
     {"label": "east_b1", "xy": [1036, 4492], "role": "waypoint", "notes": "CastleZeldaB1East"},
+    {"label": "south_west_lane", "xy": [1255, 4496], "role": "waypoint", "notes": "South seam; LEFT to 0x81. Direct south from bridge pits."},
+    {"label": "floor_south", "xy": [1198, 4160], "role": "waypoint", "notes": "Out of north-door alcove onto north floor; 0x72-south leftover is (1198,4108)"},
+    {"label": "east_lane", "xy": [1272, 4160], "role": "waypoint", "notes": "North floor east of alcove; then south toward island"},
+    {"label": "corridor_x", "xy": [1255, 4253], "role": "waypoint", "notes": "Align x with bridge before going south; diagonal from island pits"},
+    {"label": "east_hug", "xy": [1324, 4393], "role": "waypoint", "notes": "East wall of south-east alcove. x<=1310 then south pits."},
+    {"label": "south_walk", "xy": [1324, 4492], "role": "waypoint", "notes": "South walkway y-band; west along here to east_b1 / west door"},
+    {"label": "west_door_approach", "xy": [1010, 4496], "role": "approach", "notes": "Hold LEFT → room 0x81"},
     {"label": "north_door_approach", "xy": [1184, 4100], "role": "approach", "notes": "Hold UP → room 0x72"}
   ],
   "doors": [
@@ -36,27 +43,29 @@
       "approachXy": [1010, 4496],
       "landingXy": [960, 4496],
       "role": "zelda_path",
-      "path": ["east_b1"],
-      "pathTolerances": {"default": 16},
-      "pushFrames": 100,
-      "notes": "Reverse of room_81 east door; approach near south seam"
+      "path": ["floor_south", "east_lane", "island", "corridor_x", "bridge", "east_hug", "south_walk", "east_b1"],
+      "recoveryPath": ["east_b1"],
+      "pathTolerances": {"default": 16, "bridge": 20, "east_hug": 8, "south_walk": 8},
+      "pushFrames": 120,
+      "notes": "0x72-south leftover (1198,4108) chains: south onto floor, east, south via island/bridge corridor, hug east wall x≈1324, south to y=4492, west along south walkway, LEFT → 0x81 ~(996,4495) F3CC=0. Direct walk from north/bridge south/west pits (sub 20, respawn north door). Isolated pin CastleZeldaB1East is already at east_b1 (recoveryPath). Reverse: CastleB1FarWest RIGHT. LandingXy unchanged."
     }
   ],
   "clearPolicy": {
-    "maxDistance": 40,
+    "maxDistance": 120,
     "attackDistance": 48,
     "maxCycles": 100,
     "skirmishMaxDistance": 70,
     "skirmishPad": 12,
     "skirmishMaxCycles": 50
   },
-  "walkBbox": [1036, 4099, 1312, 4496],
+  "walkBbox": [1036, 4099, 1360, 4496],
   "hostilesAtEntry": [
     {"type": "0x41", "xy": [1168, 4176]},
     {"type": "0x41", "xy": [1280, 4192]}
   ],
   "notes": [
     "B1 east/bridge chamber; many work-queue states share this room base id.",
+    "Pit splits a north floor (0x72 door) from a south walkway (0x81 door). Walk around the east wall; do not cut south/west from bridge.",
     "Authority: maps/room_82.json"
   ]
 }

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 201,
+  "roomHex": "0xC9",
+  "name": "Eastern Palace lobby",
+  "measured": "2026-09-21",
+  "sourceState": "EasternPalaceEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [4856, 6616], "role": "spawn", "notes": "EasternPalaceEntry load; south alcove, facing the overworld door"},
+    {"label": "south_door_approach", "xy": [4856, 6616], "role": "approach", "notes": "Hold DOWN → overworld screen 0x1E"},
+    {"label": "railing_gap", "xy": [4872, 6504], "role": "waypoint", "notes": "16px east of spawn x slips north of the south-alcove railing"},
+    {"label": "north_wall_nook", "xy": [4864, 6448], "role": "waypoint", "notes": "Center-x against the south-alcove north wall; hall is visible, not crossed this sitting"}
+  ],
+  "doors": [
+    {
+      "label": "south_to_overworld",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 30,
+      "approachXy": [4856, 6616],
+      "landingXy": [3920, 1579],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "Isolated 2026-09-21 from EasternPalaceEntry. Spawn is already on the south door; DOWN → OW 0x1E (3920,1579) module 0x09. Probe settle was (3920,1583)."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [4784, 6448, 4872, 6644],
+  "hostilesAtEntry": [
+    {"type": "0x4f", "xy": [4864, 6224]},
+    {"type": "0x4f", "xy": [4848, 6240]},
+    {"type": "0x4f", "xy": [4864, 6256]}
+  ],
+  "z3Label": "Eastern Palace",
+  "notes": [
+    "Confirmed $A0 == 0xC9 on the live pin (hypothesis matched).",
+    "South alcove is a 512-cell south quadrant (local y 304–472). Popos sit in the north hall (y≈6224) behind the alcove wall.",
+    "North door of the alcove is visible but UP at (4864,6448) does not room-change. First isolated door is south_to_overworld.",
+    "Authority: maps/room_c9.json (load via alttp.room_sense.load_room_map)."
+  ]
+}

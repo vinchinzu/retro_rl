@@ -1,0 +1,851 @@
+{
+  "failed": "bomb_buy",
+  "final": {
+    "arrows": 0,
+    "bombs": 0,
+    "bow": 0,
+    "candle": 0,
+    "food": 0,
+    "health": 32,
+    "health_full": false,
+    "heart_containers": 3,
+    "keys": 0,
+    "level": 0,
+    "map": 0,
+    "mode": 5,
+    "rod": 0,
+    "room": 74,
+    "rupees": 8,
+    "selected_item": 0,
+    "triforce": 0,
+    "whistle": 0,
+    "x": 40,
+    "y": 181
+  },
+  "hunt": {
+    "damage_hearts": 2.508,
+    "damage_taken": 5,
+    "damage_units": 642,
+    "drops_by_state": {
+      "0x0f": 2,
+      "0x18": 5,
+      "0x22": 2
+    },
+    "duck_frames": 73,
+    "guard_frames": 615,
+    "hits_by_cause": {
+      "fireball_or_statue_projectile_S": 1,
+      "octorok_fast_E": 1,
+      "rock_projectile_S": 1,
+      "tektite_blue_N": 2
+    },
+    "hunt_frames": 5460,
+    "hunt_frames_by_screen": {
+      "0x49": 969,
+      "0x4a": 2401,
+      "0x58": 767,
+      "0x68": 1108,
+      "0x78": 215
+    },
+    "hurt_events": 5,
+    "kills": 33,
+    "kills_by_screen": {
+      "0x49": 12,
+      "0x4a": 6,
+      "0x58": 8,
+      "0x68": 7
+    },
+    "kills_counter": 32,
+    "notes": [
+      "hunt_clear_77",
+      "hunt_skip_68_slot3",
+      "hunt_clear_68",
+      "hunt_skip_58_slot2",
+      "hunt_transit_59",
+      "hunt_budget_49",
+      "hunt_clear_58",
+      "hunt_clear_68",
+      "hunt_skip_78_slot4",
+      "hunt_clear_78",
+      "hunt_skip_68_slot3",
+      "hunt_skip_68_slot4",
+      "hunt_budget_68",
+      "hunt_clear_58",
+      "hunt_clear_49",
+      "hunt_skip_4a_slot5",
+      "hunt_guard_4a",
+      "hunt_guard_budget_4a"
+    ],
+    "occupancy_misses": 35,
+    "off_line_frames": 40,
+    "peak_live_by_screen": {
+      "0x49": 6,
+      "0x4a": 6,
+      "0x58": 4,
+      "0x59": 5,
+      "0x68": 4,
+      "0x78": 4
+    },
+    "peak_prey_by_screen": {
+      "0x49": 6,
+      "0x4a": 6,
+      "0x58": 4,
+      "0x59": 5,
+      "0x68": 4,
+      "0x78": 1
+    },
+    "peel_frames": 204,
+    "prey_passed": {
+      "octorok_fast": 5
+    },
+    "release_frames": 15,
+    "rupees_banked": 8,
+    "screens": [
+      {
+        "cleared": true,
+        "containers": 3,
+        "damage_hearts": 0.0,
+        "damage_units": 0,
+        "drops_by_state": {},
+        "frames": 185,
+        "heal_hearts": 0.0,
+        "hearts_in": 2.996,
+        "hearts_out": 2.496,
+        "hits": 0,
+        "hits_by_cause": {},
+        "hunt_frames": 0,
+        "hurt_events": 0,
+        "kills": 0,
+        "kills_by_type": {},
+        "order": 0,
+        "peak_live": 0,
+        "peak_prey": 0,
+        "rupees": 0,
+        "screen": "0x77",
+        "spawned": 0,
+        "spawned_by_type": {},
+        "streak_in": 0,
+        "streak_out": 2,
+        "streak_resets": 0,
+        "transit": false,
+        "visits": 2
+      },
+      {
+        "cleared": true,
+        "containers": 3,
+        "damage_hearts": 0.0,
+        "damage_units": 0,
+        "drops_by_state": {},
+        "frames": 519,
+        "heal_hearts": 0.0,
+        "hearts_in": 2.996,
+        "hearts_out": 2.496,
+        "hits": 0,
+        "hits_by_cause": {},
+        "hunt_frames": 215,
+        "hurt_events": 0,
+        "kills": 0,
+        "kills_by_type": {},
+        "order": 1,
+        "peak_live": 4,
+        "peak_prey": 1,
+        "rupees": 0,
+        "screen": "0x78",
+        "spawned": 4,
+        "spawned_by_type": {
+          "octorok": 4
+        },
+        "streak_in": 0,
+        "streak_out": 2,
+        "streak_resets": 0,
+        "transit": false,
+        "visits": 3
+      },
+      {
+        "cleared": true,
+        "containers": 3,
+        "damage_hearts": 0.5,
+        "damage_units": 128,
+        "drops_by_state": {},
+        "frames": 2292,
+        "heal_hearts": 0.0,
+        "hearts_in": 2.996,
+        "hearts_out": 2.496,
+        "hits": 1,
+        "hits_by_cause": {
+          "rock_projectile_S": 1
+        },
+        "hunt_frames": 1108,
+        "hurt_events": 1,
+        "kills": 7,
+        "kills_by_type": {
+          "octorok": 7
+        },
+        "order": 2,
+        "peak_live": 4,
+        "peak_prey": 4,
+        "rupees": 0,
+        "screen": "0x68",
+        "spawned": 4,
+        "spawned_by_type": {
+          "octorok": 4
+        },
+        "streak_in": 0,
+        "streak_out": 5,
+        "streak_resets": 1,
+        "transit": false,
+        "visits": 3
+      },
+      {
+        "cleared": true,
+        "containers": 3,
+        "damage_hearts": 0.0,
+        "damage_units": 0,
+        "drops_by_state": {
+          "0x22": 1
+        },
+        "frames": 1455,
+        "heal_hearts": 0.5,
+        "hearts_in": 2.996,
+        "hearts_out": 2.496,
+        "hits": 0,
+        "hits_by_cause": {},
+        "hunt_frames": 767,
+        "hurt_events": 0,
+        "kills": 8,
+        "kills_by_type": {
+          "octorok": 3,
+          "octorok_fast": 5
+        },
+        "order": 3,
+        "peak_live": 4,
+        "peak_prey": 4,
+        "rupees": 0,
+        "screen": "0x58",
+        "spawned": 4,
+        "spawned_by_type": {
+          "octorok": 2,
+          "octorok_fast": 2
+        },
+        "streak_in": 2,
+        "streak_out": 9,
+        "streak_resets": 0,
+        "transit": false,
+        "visits": 3
+      },
+      {
+        "cleared": false,
+        "containers": 3,
+        "damage_hearts": 0.5,
+        "damage_units": 128,
+        "drops_by_state": {},
+        "frames": 976,
+        "heal_hearts": 0.0,
+        "hearts_in": 2.996,
+        "hearts_out": 2.496,
+        "hits": 1,
+        "hits_by_cause": {
+          "fireball_or_statue_projectile_S": 1
+        },
+        "hunt_frames": 0,
+        "hurt_events": 1,
+        "kills": 0,
+        "kills_by_type": {},
+        "order": 4,
+        "peak_live": 5,
+        "peak_prey": 5,
+        "rupees": 0,
+        "screen": "0x59",
+        "spawned": 5,
+        "spawned_by_type": {
+          "peahat": 4,
+          "zora": 1
+        },
+        "streak_in": 5,
+        "streak_out": 9,
+        "streak_resets": 1,
+        "transit": true,
+        "visits": 3
+      },
+      {
+        "cleared": true,
+        "containers": 3,
+        "damage_hearts": 0.504,
+        "damage_units": 129,
+        "drops_by_state": {
+          "0x0f": 2,
+          "0x18": 3
+        },
+        "frames": 1598,
+        "heal_hearts": 0.0,
+        "hearts_in": 2.996,
+        "hearts_out": 1.992,
+        "hits": 1,
+        "hits_by_cause": {
+          "octorok_fast_E": 1
+        },
+        "hunt_frames": 969,
+        "hurt_events": 1,
+        "kills": 12,
+        "kills_by_type": {
+          "octorok_blue": 2,
+          "octorok_fast": 10
+        },
+        "order": 5,
+        "peak_live": 6,
+        "peak_prey": 6,
+        "rupees": 8,
+        "screen": "0x49",
+        "spawned": 6,
+        "spawned_by_type": {
+          "octorok_blue": 1,
+          "octorok_fast": 5
+        },
+        "streak_in": 5,
+        "streak_out": 5,
+        "streak_resets": 1,
+        "transit": false,
+        "visits": 3
+      },
+      {
+        "cleared": true,
+        "containers": 3,
+        "damage_hearts": 1.004,
+        "damage_units": 257,
+        "drops_by_state": {
+          "0x18": 2,
+          "0x22": 1
+        },
+        "frames": 2484,
+        "heal_hearts": 0.0,
+        "hearts_in": 2.996,
+        "hearts_out": 0.988,
+        "hits": 2,
+        "hits_by_cause": {
+          "tektite_blue_N": 2
+        },
+        "hunt_frames": 2401,
+        "hurt_events": 2,
+        "kills": 6,
+        "kills_by_type": {
+          "tektite_blue": 6
+        },
+        "order": 6,
+        "peak_live": 6,
+        "peak_prey": 6,
+        "rupees": 0,
+        "screen": "0x4a",
+        "spawned": 6,
+        "spawned_by_type": {
+          "tektite_blue": 6
+        },
+        "streak_in": 11,
+        "streak_out": 0,
+        "streak_resets": 2,
+        "transit": false,
+        "visits": 2
+      }
+    ],
+    "screens_cleared": 7,
+    "screens_done": [
+      73,
+      74,
+      88,
+      104,
+      119,
+      120
+    ],
+    "screens_retired": 3,
+    "shield_frames": 151,
+    "shield_holds": 68,
+    "shield_swings_held": 0,
+    "shield_turns": 10,
+    "streak_best": 11,
+    "streak_resets": 5,
+    "target_skips": 6,
+    "transit_frames": 553,
+    "transit_screens": [
+      89
+    ]
+  },
+  "laps": 1,
+  "ok": false,
+  "stages": [
+    {
+      "frames": 749,
+      "name": "sword_cave",
+      "notes": null,
+      "ok": null
+    },
+    {
+      "frames": 11204,
+      "name": "bomb_walk",
+      "notes": null,
+      "ok": null
+    },
+    {
+      "frames": 1,
+      "name": "bomb_buy",
+      "notes": null,
+      "ok": null
+    }
+  ],
+  "tag": "lap2",
+  "visits": [
+    {
+      "R": 0,
+      "R_out": 0,
+      "f": 199,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x77",
+        "0x00",
+        "0x00",
+        "0x00",
+        "0x00",
+        "0x00"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 0,
+      "screen": "0x77",
+      "streak": 0,
+      "streak_out": 0,
+      "wave_in": {}
+    },
+    {
+      "R": 0,
+      "R_out": 0,
+      "f": 1235,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x77",
+        "0x78",
+        "0x00",
+        "0x00",
+        "0x00",
+        "0x00"
+      ],
+      "hist_i": 2,
+      "hp": 34,
+      "peak": 3,
+      "screen": "0x78",
+      "streak": 0,
+      "streak_out": 0,
+      "wave_in": {
+        "octorok": 3
+      }
+    },
+    {
+      "R": 0,
+      "R_out": 0,
+      "f": 1434,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x00",
+        "0x00",
+        "0x00"
+      ],
+      "hist_i": 3,
+      "hp": 34,
+      "peak": 4,
+      "screen": "0x68",
+      "streak": 0,
+      "streak_out": 2,
+      "wave_in": {
+        "octorok": 4
+      }
+    },
+    {
+      "R": 0,
+      "R_out": 0,
+      "f": 2085,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x00",
+        "0x00"
+      ],
+      "hist_i": 4,
+      "hp": 34,
+      "peak": 4,
+      "screen": "0x58",
+      "streak": 2,
+      "streak_out": 5,
+      "wave_in": {
+        "octorok": 2,
+        "octorok_fast": 2
+      }
+    },
+    {
+      "R": 0,
+      "R_out": 0,
+      "f": 2835,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x00"
+      ],
+      "hist_i": 5,
+      "hp": 34,
+      "peak": 5,
+      "screen": "0x59",
+      "streak": 5,
+      "streak_out": 5,
+      "wave_in": {
+        "peahat": 4,
+        "zora": 1
+      }
+    },
+    {
+      "R": 0,
+      "R_out": 2,
+      "f": 3123,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 0,
+      "hp": 34,
+      "peak": 6,
+      "screen": "0x49",
+      "streak": 5,
+      "streak_out": 11,
+      "wave_in": {
+        "octorok_blue": 1,
+        "octorok_fast": 5
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 4134,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 0,
+      "screen": "0x4a",
+      "streak": 11,
+      "streak_out": 11,
+      "wave_in": {}
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 4240,
+      "flags_in": 7,
+      "flags_out": 7,
+      "hist": [
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 0,
+      "screen": "0x49",
+      "streak": 11,
+      "streak_out": 11,
+      "wave_in": {}
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 4483,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 5,
+      "screen": "0x59",
+      "streak": 11,
+      "streak_out": 0,
+      "wave_in": {
+        "peahat": 4,
+        "zora": 1
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 5103,
+      "flags_in": 3,
+      "flags_out": 3,
+      "hist": [
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 1,
+      "screen": "0x58",
+      "streak": 0,
+      "streak_out": 1,
+      "wave_in": {
+        "octorok_fast": 1
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 5531,
+      "flags_in": 2,
+      "flags_out": 2,
+      "hist": [
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 2,
+      "screen": "0x68",
+      "streak": 1,
+      "streak_out": 2,
+      "wave_in": {
+        "octorok": 2
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 5944,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 4,
+      "screen": "0x78",
+      "streak": 2,
+      "streak_out": 2,
+      "wave_in": {
+        "octorok": 4
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 6339,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x77",
+        "0x68",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 2,
+      "hp": 34,
+      "peak": 0,
+      "screen": "0x77",
+      "streak": 2,
+      "streak_out": 2,
+      "wave_in": {}
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 6445,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x77",
+        "0x78",
+        "0x58",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 3,
+      "hp": 34,
+      "peak": 2,
+      "screen": "0x78",
+      "streak": 2,
+      "streak_out": 2,
+      "wave_in": {
+        "octorok": 2
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 6644,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x59",
+        "0x49"
+      ],
+      "hist_i": 4,
+      "hp": 34,
+      "peak": 4,
+      "screen": "0x68",
+      "streak": 2,
+      "streak_out": 5,
+      "wave_in": {
+        "octorok": 4
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 8125,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x49"
+      ],
+      "hist_i": 5,
+      "hp": 34,
+      "peak": 4,
+      "screen": "0x58",
+      "streak": 5,
+      "streak_out": 9,
+      "wave_in": {
+        "octorok": 2,
+        "octorok_fast": 2
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 2,
+      "f": 8693,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x4a",
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59"
+      ],
+      "hist_i": 0,
+      "hp": 34,
+      "peak": 5,
+      "screen": "0x59",
+      "streak": 9,
+      "streak_out": 9,
+      "wave_in": {
+        "peahat": 4,
+        "zora": 1
+      }
+    },
+    {
+      "R": 2,
+      "R_out": 8,
+      "f": 9035,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x49",
+        "0x77",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59"
+      ],
+      "hist_i": 1,
+      "hp": 34,
+      "peak": 6,
+      "screen": "0x49",
+      "streak": 9,
+      "streak_out": 5,
+      "wave_in": {
+        "octorok_blue": 1,
+        "octorok_fast": 5
+      }
+    },
+    {
+      "R": 8,
+      "R_out": 8,
+      "f": 9670,
+      "flags_in": 0,
+      "flags_out": 0,
+      "hist": [
+        "0x49",
+        "0x4a",
+        "0x78",
+        "0x68",
+        "0x58",
+        "0x59"
+      ],
+      "hist_i": 2,
+      "hp": 33,
+      "peak": 6,
+      "screen": "0x4a",
+      "streak": 5,
+      "streak_out": 0,
+      "wave_in": {
+        "tektite_blue": 6
+      }
+    }
+  ]
+}

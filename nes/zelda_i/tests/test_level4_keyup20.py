@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from zelda_i.level4.keyup20 import (
     Maze31WestPhase,
@@ -47,31 +48,37 @@ def test_sw_pocket_40_165_peels_right_not_up() -> None:
     assert "UP" not in act.reason
 
 
-def test_west_aisle_south_aligns_y_to_door() -> None:
-    ctrl = _inland(3)
-    act = ctrl.step(read_snapshot(_pose(48, 165)))
+@pytest.mark.parametrize(
+    "path_index,x,y,reason",
+    [
+        pytest.param(3, 48, 165, "west_door_align_y", id="west_aisle_south_aligns_y_to_door"),
+        pytest.param(3, 48, 141, "west_door_left", id="door_band_from_aisle_goes_left"),
+    ],
+)
+def test_west_door_band_reasons(path_index: int, x: int, y: int, reason: str) -> None:
+    ctrl = _inland(path_index)
+    act = ctrl.step(read_snapshot(_pose(x, y)))
     assert ctrl.phase is Maze31WestPhase.INLAND
-    assert act.reason == "west_door_align_y"
+    assert act.reason == reason
 
 
-def test_door_band_from_aisle_goes_left() -> None:
-    ctrl = _inland(3)
-    act = ctrl.step(read_snapshot(_pose(48, 141)))
+@pytest.mark.parametrize(
+    "path_index,x,y,reason",
+    [
+        pytest.param(
+            3, 32, 149, "west_door_align_y",
+            id="alcove_32_149_aligns_y_not_left",
+        ),
+        pytest.param(
+            0, 160, 113, "join_maze_west",
+            id="north_strip_still_left_to_inland",
+        ),
+    ],
+)
+def test_west_aisle_leftover_reasons(path_index: int, x: int, y: int, reason: str) -> None:
+    """l4_maze_west_pocket leftovers: (32,149) door-frame lip aligns y not left;
+    historical CLIP leftover (160,113) keeps LEFT toward (80,109)."""
+    ctrl = _inland(path_index)
+    act = ctrl.step(read_snapshot(_pose(x, y)))
     assert ctrl.phase is Maze31WestPhase.INLAND
-    assert act.reason == "west_door_left"
-
-
-def test_alcove_32_149_aligns_y_not_left() -> None:
-    """l4_maze_west_pocket leftover: LEFT at y=149 is the door-frame lip."""
-    ctrl = _inland(3)
-    act = ctrl.step(read_snapshot(_pose(32, 149)))
-    assert ctrl.phase is Maze31WestPhase.INLAND
-    assert act.reason == "west_door_align_y"
-
-
-def test_north_strip_still_left_to_inland() -> None:
-    """Historical CLIP leftover (160,113) must keep LEFT toward (80,109)."""
-    ctrl = _inland(0)
-    act = ctrl.step(read_snapshot(_pose(160, 113)))
-    assert ctrl.phase is Maze31WestPhase.INLAND
-    assert act.reason == "join_maze_west"
+    assert act.reason == reason

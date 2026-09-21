@@ -12,7 +12,571 @@ not overwrite the 18909f claim.
 
 No pokes. Do not STATUS from a pin.
 
-## This sitting (2026-09-16) — the frames, not the tuning
+## This sitting (2026-09-20) — 0x7D carries the 0x7E band; bombs=4
+
+`rr-ttyu.3` stays in progress.  `pre_l1_topup_live` died 0x7E `(40,131)`
+mode 17 with 19R: y=131 is the dead 133 row (`l1` want_y=133 stood at 131
+and never scrolled), and 0x7D was `SCREEN_ANY_ROW_BAND` so the walk could
+enter 0x7E there.  The 0x7E east hop already used `SCREEN_7E_EAST_BAND
+(137,145)`; picking that drift up *after* the scroll is the death.
+
+One hop-table change, hunt/rollout/M5 untouched, rollout still opt-in:
+
+* Hop that leaves 0x7D (target 0x7E) now carries `SCREEN_7E_EAST_BAND`.
+* 0x7B / 0x7C stay `SCREEN_ANY_ROW_BAND`.  0x7E→0x7F keeps the same band.
+* Do not restore ANY_ROW on that hop.  Never retry a fixed y=133 coast row.
+
+`--through pre-l1 --no-video --trials 1 --rollout` (`pre_l1_7e_band1`),
+`set_state=0`, assist=null, pokes off:
+
+| measure | topup_live (red) | 7e_band1 |
+|---------|-----------------:|---------:|
+| leftover | death 0x7E `(40,131)` m17 19R | **cave 0x6F `(120,149)` m11, bombs=4** |
+| bombs / rupees | 0 / 19 | **4 / 20** |
+| walk frames | 7742 fail | **8700 ok**, then topup 1f, buy 483f |
+| 0x7D | 1236f, 3 hits, 0.484 out | **424f, 0 hits**, 1.988, `band_down` 20 |
+| 0x7E | 107f, 1 `0x55` E, death | 1384f, 4 octorok_fast, +1R, heart 1.988→2.996 |
+| 0x79 / 0x7A | 5/5 + 3/4 +5R | same 5/5 + 3/4 +5R |
+| `0x55` hits | 5 | 3 (two on 0x7C, one S on 0x7E) |
+| 0x78 `hop_escape` | 593 | 593 |
+
+Glance: cave **0x6F `(120,149)`** mode **11** TF `0x00` keys 0 bombs **4**
+rupees 20 health **`0x21` 2/3** lo!=hi.  Arrival-short stop fired: walk
+had 20R so topup was a 1-frame no-op.  Buy leftover `(118,149)` still
+reads 20R on the stop frame; `success_addr=$0658` bombs=4.
+
+Narrow `test_pre_l1` / `test_zd_map` / `test_ow_align`: **34**.  M5 not
+re-measured (shop_p7 hops only; Clean mouth does not walk this table).
+
+### Next C3 action
+
+Keep `rr-ttyu.3`.  Do not STATUS.  Flagged arm greened natural
+`ADDR_BOMBS>=1` on this one tape; C3 still wants flag-off vs flag-on
+damage on 0x7B / 0x7C / `0x55` and an M5 confirm if the walker moves.
+The 0x7E band is shared, so the reactive default now leaves 0x7D on that
+corridor too — do not treat that as a rollout promotion.  Do not restore
+ANY_ROW on the 0x7D→0x7E hop.
+
+## Previous sitting (2026-09-17) — melee the hoppers; bank the drop; 0x6F at 18R
+
+`rr-ttyu.3` stays in progress.  The flagged arm was watched live
+(`pre_l1_c3_rollout7d`): death on 0x7D, 0R, 6236 walk frames, same ledger as
+`ab_rollout_sword1_measure`.  The window showed three hunt failures the
+rollout does not own.
+
+1. **UP/DOWN spam.** 0x79/0x7A reversed y 229/274 times.  `BEAM_STAND_KINDS`
+   parked Link 56 px off in a blue tektite's row; they hop off that row, so
+   the stand goal flipped every hop.  `hunt_79_beam` 150f + `hunt_7a_beam`
+   161f.  `_approach` also aligned UP/DOWN on `dy=2` inside sword reach
+   (0x79 133↔135).
+2. **Rupees expired.** `hop_scoop` was 0.  Chase ignored every floor drop
+   while any body was alive; path scoop is 48 px and the beam stand is 56.
+3. **Easy kills skipped.** 0x79 3/5 tektites, 0x7A 2/4, both retired at the
+   600f hunt budget.  0x7C killed 1/6 leevers.  0x7D died to three `0x55`
+   (entry PNG `005`, hits `007`/`009`, final `011` at `(57,109)` mode 17).
+
+One hunt change, default reactive/M5 path untouched, rollout still opt-in:
+
+* Tektites are not a beam-stand kind (leevers still are).
+* Align the short axis only when `|cross| > lane_tol` (6).
+* Chase banks a drop inside `HUNT_PICKUP_RADIUS` when no live body is in
+  that drop's `MIN_DODGE_BODY` pad.
+
+`pre_l1_c3_melee1` (flagged, headless, `set_state=0`, `ram_writes=0`):
+
+| measure | live rollout7d | melee1 |
+|---------|---------------:|-------:|
+| leftover | death 0x7D 0R | **0x6F 18R**, then 22403f `shop_p7_hunt_settle` timeout |
+| bombs | 0 | 0 |
+| `hop_scoop` / `scoop_rupee` | 0 / 0 | 272 / 239 |
+| 0x7C leevers | 1 kill, 0R | **6 kills, 13R banked** |
+| 0x79/0x7A tektites | 3/5 + 2/4 | 2/5 + 1/4 (still retire) |
+| `hunt_*_beam` on 0x79/0x7A | 150+161 | **0** |
+| 0x7A twerk2 | 274 | 167 |
+| 0x79 twerk2 | 229 | 244 (occupancy still chases hops) |
+| 0x78 twerk2 | 696 | 696 (`hop_escape` unchanged) |
+
+The 18R is two short of the pack.  The walk then entered cave mode 11, hunt
+declined (`mode != PLAY`), and `_after_hops` idled until 30000f because
+`destination_hunted` was still false at 2 hearts / 18R.
+
+Follow-up (same sitting): arrival-short now **stops the walk** so
+`bomb_topup` can leave 0x6F and fight 0x5F/0x6E.  Tektites keep the chase
+until they are gone or the 2400f destination cap — retiring them at 600f
+was the skip.  Headed `--through pre-l1 --rollout` (`pre_l1_topup_live`):
+0x79 **5/5** tektites in 1024 hunt frames, 0x7A 3/4 and **5R**.  The extra
+time on those screens changed 0x7C–0x7E: death on **0x7E** `(40,131)` mode 17
+with **19R**, 22 kills, bombs=0, `failed=bomb_walk`.  Topup never ran.
+Damage 1023 / 9 hits (five `0x55`).  `set_state=0`.  Bomb buy remains red.
+Rollout stays opt-in.
+
+Narrow hunt/beam/arbiter/pre-l1/topup/path/spine: **251**.  M5 was not
+re-measured: `ScreenHunter` is the shop_p7/topup walk, not the Clean mouth.
+
+### Next C3 action
+
+Do not restore tektite beam-stand.  0x79 no longer skips the wave; the bill
+moved to 0x7E.  Arrival-short stop is untested on this tape.  Next is a
+0x7E crossing that keeps the 19R, or a walk that still reaches 0x6F after
+the longer tektite chase.  Keep the reactive default and M5 path unchanged.
+
+## Previous sitting (2026-09-17) — C3 sees the bodies; `0x55` is still red
+
+`rr-ttyu.3` is claimed and remains in progress.  Before changing policy,
+`scratch/probe_walk_trace.py` was extended to audit the real power-on walk and
+save a PNG plus compact Link/object RAM on entry to 0x7C/0x7D, on every
+non-fatal hit, and every 250 frames.  A fatal contact is also captured on the
+next run; the first trace predated that terminal-hook correction.  Each object
+row carries type/state/x/y plus the controller's measured velocity.
+
+`recordings/scratch_walk_trace/pre_l1_c3_trace1.json` reproduced the retained
+control exactly: death on 0x7D, 13R, 6996 walk frames.  The audit is
+`assist=null`, `allow_pokes=false`, `set_state_count=0`, `ram_writes=0`.  Its
+real predecessor is play 0x77 `(64,77)`, wooden sword, 0 bombs/R/keys, TF
+`0x00`, health `0x22` + partial `0xFF` (3/3), with no other item.
+
+The capture rejects the old explanation more strongly: the baseline also
+enters 0x7D at **y=133**.  The fixed-row tape did not die because y=133 is an
+intrinsically bad entrance; shortening 0x7C changed the wave/drop timing.  It
+then spent **385 frames `scoop_heart`** on 0x7D, spawned two Zoras rather than
+the control's one, and took three body contacts in addition to the same two
+rocks and one `0x55`.  The control's three 0x7D hits are all projectiles.
+
+Exactly one C3 hypothesis was tried.  The first rollout A/B had recorded
+**417 `rollout_yield_to_sword` frames**: the arm declined before asking the ROM
+whenever the hunter could swing.  That is the blind window described by the
+bead, because a shot still on the Zora muzzle has zero tracked velocity and
+`_shot_first` cannot exempt it.  On the flagged arm only, the rollout now
+compares walking against its existing STAND control even during a sword
+window.  A safe stand still returns `no_gain` and falls through to the
+reactive/hunt rungs; the default reactive arm is unchanged.
+
+The corrected measurement is `scratch/ab_rollout_sword1_measure.json`.  The
+first report omitted the fatal hit because the observer discarded mode 17;
+the observer now records that contact and retains the full hunter screen
+ledger.  The repeat changed observation only and is byte-identical in route
+frames/census.
+
+| measure | retained reactive | flagged rollout | delta |
+|---------|------------------:|----------------:|------:|
+| total damage units / hits | 1023 / 8 | 767 / 6 | -256 / -2 |
+| 0x7B damage | 128 / 1 | 0 / 0 | -128 / -1 |
+| 0x7C damage | 385 / 3 | 257 / 2 | -128 / -1 |
+| `0x55` hits | 3 | 3 | **0** |
+| bomb-walk frames | 6996 | 6236 | -760 |
+
+The rollout report is explicit: 483 replans, 2396 rollouts, 57,504 simulated
+frames, 169 claimed frames (22 replans + 147 holds), and no new stall.  It
+reaches 0x7D with the same 1.492 hearts by spending less life earlier but
+collecting no replacement heart, then takes three `0x55` hits and dies with 0R.
+It did **not** reach 0x6F or buy bombs, so the arm stays opt-in and nothing is
+route-promoted.  C3 acceptance is not met because `0x55` damage is unchanged.
+
+The C2+C3 narrow gate is **229/229**.  Clean natural-entry M5 was re-measured
+after the flagged change: `ok`, `prefix_ok`, room `0x24`, TF `0x01`, frame
+**18909**.  This confirms rather than replaces the existing 2/2 claim.
+
+### Next C3 action
+
+Do not retry a fixed row or tune another budget from the red.  First explain
+the three 0x7D contacts against the active rung: the flagged tape still gives
+`threat_duck` 517 frames (293 on 0x7D) above the rollout, and all remaining
+0x7D damage is `0x55`.  Capture the flagged arm's three contact windows with
+the same PNG/object rows, including the fatal hit, then decide whether the
+rollout must measure the moving-shot window as well as the zero-velocity
+muzzle window.  Keep the reactive default and M5 path unchanged.
+
+## Previous sitting (2026-09-17) — the arbiter is measurable; y=133 is not a route
+
+Three unassisted power-on `--through pre-l1` tapes, all `set_state=0`, no
+assist and no inventory write.  The wired arbiter now reports both hop and
+hunt rung censuses; the old 0x7C two-pixel lane/push split is absent.  The
+committed-policy control (`pre_l1_arbiter1`) is the current leave: death on
+**0x7D**, 13R, 21 kills, eight hits.  It spent 1154f / three hits on 0x7C
+and 977f / three hits on 0x7D.
+
+Two narrow entry-lane hypotheses were measured and reverted:
+
+| tag | change | result |
+|-----|--------|--------|
+| `pre_l1_zora_lane1` | y=129..137 from x>=192 into both 0x7C and 0x7D | 0x7B/0x7C hitless, but 0x7D took six hits; death with 7R / 16 kills |
+| `pre_l1_7c_entry1` | same band only for the last 8 px of 0x7B | 0x7C took five hits; death on 0x7D with 13R / 18 kills |
+
+The first tape proves the asymmetry: y≈133 can shorten 0x7C (625f, zero
+hits) but is a lethal octorok lane on 0x7D.  The second proves that merely
+choosing it later does not stabilize 0x7C against the live leever/Zora wave.
+Do not restore either exit-row rule.  After three serial reds this checkbox
+is blocked for the sitting.  Next work needs a screen-specific 0x7D crossing
+hypothesis from transition screenshots/RAM, not another fixed coast row.
+
+### C2 closeout — the winner census is not the budget ledger
+
+`rr-ttyu.2` closed after the exact narrow gate passed **166/166** and one
+confirmatory Clean natural-entry M5 trial returned `ok`, `prefix_ok`, room
+`0x24`, TF `0x01`, and frame **18909**.  The trial confirms the existing 2/2
+claim; it does not replace it.
+
+The original counter criterion needed one honest correction.  The arbiter's
+`rung_census` is the frame-winner accounting and cannot drift from the action
+returned.  The six legacy fields are not all censuses: some are per-screen
+budgets and others count branch entry even when that branch yields the frame.
+They therefore remain beside `rung_census` under their original semantics
+instead of being relabelled or mechanically derived from it.
+
+The closeout commands were:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest \
+  nes/zelda_i/tests/test_arbiter.py \
+  nes/zelda_i/tests/test_hunt.py \
+  nes/zelda_i/tests/test_ow_path.py -q
+QT_QPA_PLATFORM=offscreen uv run python \
+  nes/zelda_i/scripts/run_level1_complete.py --natural-entry --trials 1
+```
+
+## This sitting (2026-09-16) — the weapon was measured; half the wave was asleep
+
+Four measured facts, each one a rung that was acting on a model nobody had
+checked against the ROM. The walk still dies on the same half-heart, but
+0x7B — the screen that has taken three to five of every tape's hits — is
+down to **one hit and a banked heart**.
+
+### A turn and a swing cannot share a frame
+
+`hunt._a_edge` pressed `nes_action(face, "A")`: the face the rung wants and
+the A edge, together. `scratch/probe_turn_swing.py` (`turn4`) stands Link on
+0x77 and asks for 64 perpendicular turns from a *walking* Link:
+
+| press | turned | did not |
+|---|---|---|
+| `dir+A` (combined) | 42 | **22** |
+| `dir`, then `dir+A` | 50 | 14 |
+| `dir` held until the facing agrees | **64** | 0 (1-4 frames, max 4) |
+
+When the turn is refused the blade still goes out — along the **old** facing,
+which by construction is an axis the body is not on. That is a guaranteed
+miss plus 13 frames of `$00AC != 0` with a body closing. Live, it is not
+rare: the gate-off tape (`zoffJ`, byte-identical to last sitting's `zfixE`)
+pressed 81 times and **30 of them went out off-face**.
+
+So `_a_edge` spends the frame turning and presses when `$0098` agrees,
+capped by `HUNT_TURN_CAP` (a body crossing a diagonal can ask for a new face
+every frame — that is a dance, not a turn). `common.swing_or_turn` is the
+same rule for the walk's periodic swing.
+
+**Not the shot.** A blade that goes out the wrong way is a miss *and* a pin;
+a *beam* that goes out the wrong way is a screen-long projectile down some
+other lane, and these screens are full of lanes. Gating it too (`zfixG`)
+fired 4 beams where the baseline fired 36, lost full health on 0x78 and cost
+half the kills. `_beam_action` passes `turn_first=False`.
+
+### The blade has a near end, and `pad <= MIN_DODGE_BODY` is not a sword rule
+
+`scratch/probe_blade.py` (`blade1`) ledgers every A press of a walk against
+the hp drops in the next 16 frames, with each body's offset written in Link's
+own frame (`fwd` along the facing, `lat` across):
+
+| nearest body at the press | presses | landed |
+|---|---|---|
+| `fwd` >= 10 | 41 | 11 |
+| `fwd` <= 9 | **13** | **1** |
+| `abs(lat)` >= 16 | 4 | 0 |
+
+The sword is an *object the ROM places in front of Link*, so a body
+overlapping him is not in front of anything. Every landed press was
+`8 <= fwd <= 20`, `abs(lat) <= 12`. `in_sword_hitbox` has no minimum and
+`_at_contact` accepted `pad <= MIN_DODGE_BODY` on its own — which is the
+softlock rule, not a sword rule — so the contact rung spent 13 pinned frames
+at a body that was already touching Link. Four of the eight hits in `zhit6`
+have exactly that shape (f=4981: two swings DOWN at a leever 4 px below, the
+leever walks in; f=6633: a press at one **1 px** away).
+
+`blade_lands` is `in_sword_hitbox` plus `HUNT_BLADE_MIN_FWD` (10), and inside
+it the answer is the peel, not the press — `hunt_*_close_peel`. The hit
+census moved accordingly: `slash_recover` owned 5 of 7 contacts in `zhit6`
+and **1 of 6** in `zhit7`.
+
+### Standing on a drop is not instant
+
+Live 0x7B (`zhit6` f=4837-4856): Link idles 3 px from a 1-rupee for **twenty
+frames** before the ROM hands it over, and a leever closes 10 → 8 and takes
+the heart. `common.scoop_toward_drop` idled at `dist <= 4` with no idea what
+else was on the screen. The drop keeps for hundreds of frames and the wave
+does not, so `_stand_on_drop` hands the frame back whenever a threat is
+inside `MIN_DODGE_BODY`.
+
+### Half of 0x7B was asleep
+
+`ObjState` 0 on a leever is the whole dormant phase, and **every layer that
+reads "body" was reading it as one**. Measured across five contact tapes:
+
+| leever state | frames still / moved | hp drops | frames touching Link (<=8 px) | of those, armed `$04F0` |
+|---|---|---|---|---|
+| 0 (under the sand) | 3844 / 45 | **0** | 49 | 4 (iframe carry-over) |
+| 1-2 (the rise) | 526 / 0 | 3 | 0 | - |
+| 3 (up) | 1941 / 935 | 15 | 111 | 33 |
+
+A state-0 leever cannot move, cannot be cut, and has never hurt Link. Six of
+them sit on 0x7B and seven on 0x7C. The blade swung at them (13 pinned frames
+each), the evader stepped away from them into the ones that were up, and
+`closest_body` handed the whole contact ladder a sand mound.
+`combat.dormant_body` now filters them out of `overworld_threat_objects`, out
+of `attackable`, and out of `hunt.closest_live_body`; the rise (states 1-2)
+is still a threat, so the warning is unchanged.
+
+### The tapes
+
+All unassisted `--through pre-l1`, `scratch/probe_screen_tables.py`.
+
+| tag | leftover | R | kills | hits / hearts | what changed |
+|-----|----------|---|-------|---------------|--------------|
+| `zoffJ` | died 0x7D | 19 | 23 | 8 / 4.00 | last sitting's `zfixE`, re-measured through the new ablation knob |
+| `zfixH` | died 0x7D | 6 | 20 | 8 / 3.99 | turn gate, blade only |
+| `zfixK` | died 0x7C | 15 | 21 | 8 / 4.00 | + the blade's near end |
+| `zfixL` | died 0x7C | 13 | 21 | 8 / 4.00 | + the scoop yields in the pad |
+| `zfixM` | died 0x7D | 13 | 22 | 8 / 4.00 | + dormant leevers are not bodies |
+| `zfixO` | **died 0x7D** | 13 | 21 | 8 / 4.00 | + the walk's own swing waits for the facing |
+
+`zfixO` is the state of the code: 81 blade presses with 30 off-face became
+**51 with 1**. Read it screen by screen, not on the total — **0x7B went from
+3-4 hits and 1.50-2.01 hearts to one hit, 0.50, and Link *healed* there**
+(2.50 → 3.00 in), the first heart this walk has ever banked on the coast, and
+0x7C went 2185 → 1154 frames. The eight hits did not go away. They moved
+down the coast to 0x7C and 0x7D, and half of them are now the Zora
+(`fireball_or_statue_projectile` ×3, `rock_projectile` ×2, leever ×2,
+tektite ×1).
+
+### What the next sitting should not do
+
+- **Do not score a change on where the tape died.** Every variant this
+  sitting spent 8 hits and ~4.00 hearts and the leftover screen moved with
+  the reshuffle. Read `hits_by_cause` per screen and the rung that owned the
+  frame (`probe_contact.py` + the window census), not the rupee count.
+- **Do not paint a firing line on the Zora.** The open question from last
+  sitting is answered: the spit is *aimed*, not axial. Across five tapes its
+  motion was 466 frames horizontal, 248 diagonal, 172 vertical, and it shares
+  the Zora's row in only 247 of 886. There is no row to stand out of;
+  distance and the duck are the only answers.
+- **0x7C as a transit screen is not free.** `zfixN` (`--transit 0x7c`) cut it
+  to 1425 frames and 4 hits but handed 0x7D four more: 10 hits, 5.00 hearts,
+  9R. The money and the damage are the same twelve leevers.
+
+The next lever is **time on a Zora screen**. 0x7C and 0x7D cost `zfixO` 2131
+frames and six of its eight hits, and the hunt owns only 566 of them — the
+rest is the hop, the duck and the scoops. A spit lands about once per 350
+exposed frames and neither the duck nor a wall memory has ever changed that
+rate; what has never been tried is arriving on those two screens with a lane
+picked so the crossing is short.
+
+Do not STATUS. **M5 Clean re-measured after all of this and is unmoved:**
+`run_level1_complete.py --natural-entry --trials 1` → ok, `prefix_ok`, room
+36, TF `0x01`, **end_frame 18909** — the same frame as the live 2/2 claim,
+with `combat.py`, `hunt.py`, `common.py` and `path.py` all changed under the
+walker. One trial, so it confirms the claim rather than replacing it.
+
+## Previous sitting (2026-09-16) — the Zora is never a fight; the walk reaches 0x6F
+
+**Never engage the Zora. Always dodge and run.** That is now a rung, not a
+disposition, and it is the first thing the walk asks every play frame:
+`OverworldPathController._spit_duck` steps off any *closing* unblockable shot
+inside `_SPIT_DUCK_RADIUS` (96 px) before the evader, the hunt or the hop get
+the frame. Nothing below that line can answer a `0x55` — `prey.SKIP_TYPES`
+never chases a Zora, `beam` never shoots one, `behaviors.shield_blocks` says
+the small shield does not stop the spit, and `threat.assess` scores a muzzle
+that has not launched as *safe* because it is not moving. The old rung that
+was supposed to cover this (`evade_shot_over_sword`) never got the frame:
+`evade_yield_to_sword` owned **687 of 6384** walk frames (`zhit1`) because
+the leever screens keep a body in the blade box almost continuously, and
+those are the same screens the Zora shares.
+
+`common.walk_or_swing` also stops *turning* toward one: `prey.SKIP_TYPES` now
+filters the nearest-enemy hint and `_off_axis_face`, so a Zora can never own
+Link's face. A free swing the travel direction was already pulsing still
+lands; that costs nothing and is not engagement.
+
+### The dodge was walking into the shot
+
+`common.answer_projectile` sidestepped perpendicular to the **travel** axis
+and then *flipped the step at the screen edge*. On a wall that reverses it
+into the shot: live 0x7C (`zhit1` f=5806), Link pinned at x=16 walking DOWN
+with the spit 19 px east and 9 px south, stepped RIGHT three frames running
+and took it. It now crosses the bearing to the *shot* (`common.perpendicular`,
+moved out of `hunt` so one geometry serves both layers) and answers `None`
+when neither side has room — the push is honest, a step that closes the gap
+is not.
+
+`perpendicular` also stopped asking "does one 2 px step stay in the box" and
+started asking "is there a **pad** of room this way": a sidestep only clears
+a hitbox once Link has walked `MIN_DODGE_BODY`, so a side with 3 px of wall
+left is not an escape. That is the old edge flip stated as what it was for,
+and unlike the flip it still answers when Link is already inside the margin.
+
+### Two things a shot dodge must not do
+
+- **Press into terrain.** `_EVADE_BOUNDS` is the scroll rectangle and knows
+  nothing about the coast's rocks. Live 0x7B (`zhit2` f=4684): eight frames
+  of UP at (48, 133) against a rock while a leever closed 12 px → 8, and
+  that was the walk's *first* hit — at full health, streak on 10. It is the
+  most expensive frame on the corridor: one `$0670` chip takes the sword
+  beam away, so every screen after it is melee, and the forced 5-rupee at
+  ten kills dies with it. So the wall is **measured**: `_SPIT_DUCK_STILL_CAP`
+  frames that move Link nowhere (and are not `link_busy` — the ROM pins him
+  for the whole sword animation) retire that direction, keyed by
+  `(direction, 16 px cell)`. Screen-wide was worse than nothing: `zfixB`
+  wrote off both sides of 0x7B and then took **eight hits on one screen**.
+- **Walk through a body.** The duck is a walk. `_body_first` hands the frame
+  back when a body is already inside `MIN_DODGE_BODY`, where a sidestep
+  cannot clear it anyway and the blade and the peel are the real answers. A
+  body *further out* than the shot still yields to the shot — that part of
+  `evade_shot_over_sword` was always right.
+
+### The tapes
+
+All unassisted `--through pre-l1`, `scratch/probe_screen_tables.py`.
+
+| tag | leftover | R | kills | hits / hearts | note |
+|-----|----------|---|-------|---------------|------|
+| `zbase1` | died 0x7E | 12 | 26 | 7 / 3.50 | committed + lane no-gain |
+| `zfixA` | died 0x7E | 11 | 19 | 6 / 3.00 | duck in, fireball hits 3 → 1 |
+| `zfixB` | died **0x7B** | 8 | 15 | 8 / 4.00 | screen-wide wall memory: don't |
+| `zfixD` | **0x6F** (walk ok) | 12 | 32 | 9 / 4.52 | first arrival by committed code |
+| `zfixE` | died 0x7D | **19** | 23 | 8 / 4.00 | `_body_first`; 0x7B 3.01 → 1.50 |
+
+`zfixD` is the first pass where `bomb_walk` returns **ok** — the walk reached
+0x6F, which `pre_l1_anyrow1` did once with code that no longer exists and the
+committed walk had never done. `zfixE` then banks **19 of the 20 rupee**
+price: 0x7B 6R → 7R at half the damage, 0x7C 0R → 7R. It dies on 0x7D at
+0.48 hearts, one rupee short, with `duck_wall_7d_up` / `duck_wall_7d_down` —
+both sides of the bearing are rock in that cell, so the rung correctly stops
+claiming frames and the shot lands.
+
+**The gap is one heart, not one rupee.** 0x7B and 0x7C are the money (12 row-1
+leevers, 0.891 R/kill with the streak in it) *and* the damage, and the walk
+arrives on the last half-heart either way. The next lever is the one the
+census keeps naming and nothing has touched: `hunt_*_slash_recover`. Link
+swings at a body inside the contact pad but **not** in the sword hitbox
+(`_at_contact` accepts `pad <= MIN_DODGE_BODY` on its own), misses, and the
+ROM pins him for the animation while the body closes the last 8 px — every
+leever and octorok contact in `zhit2` / `zhit3` has that shape.
+
+Do not STATUS. **M5 Clean re-measured after these changes and is unmoved:**
+`run_level1_complete.py --natural-entry --trials 1` → ok, `prefix_ok`, room
+36, TF `0x01`, **end_frame 18909** — the same frame as the live 2/2 claim,
+with `path.py` and `common.py` both changed under the walker. One trial, so
+it confirms the claim rather than replacing it.
+
+## Previous sitting (2026-09-16) — `pre_l1_anyrow1` is not this walk
+
+**The walk did change.** `pre_l1_anyrow1` (the only tape that ever reached
+0x6F) was written 10:42:39. `overworld/hunt.py` was edited 10:51:03 and
+`overworld/path.py` 10:56:50, and both landed in `7b364caf` at 11:18 —
+strictly between that tape and `pre_l1_topup1` (11:12:45). The fixes priced
+off anyrow1's own census went in *after* it and were never re-measured
+unassisted. So "the one pass that arrived" is not a statement about code
+that exists, and the committed walk has arrived on 0x6F **zero** times.
+
+`pre_l1_repro1` re-ran the committed walk: 10211 frames, died 0x7D, 6R, 21
+kills — the `pre_l1_topup1` report byte for byte, including `end_frame`.
+The emulator is deterministic and the walk is reproducible; the difference
+from anyrow1 is code, not noise. The 10:41 `hunt.py` / `path.py` are gone
+(no stash, no dangling blob from 2026-09-16), so anyrow1 cannot be restored
+by reverting — it has to be re-earned.
+
+| | anyrow1 (gone) | committed | + lane no-gain |
+|---|---|---|---|
+| leftover | 0x6F, `shop_p_hunt_settle` | died 0x7D | died **0x7E** |
+| rupees | 14 | 6 | **12** |
+| kills | 28 | 21 | **26** |
+| walk frames | 8238 | 9263 | **6384** |
+| hearts spent | 5.996 (12 hits) | 3.496 (7 hits) | 3.496 (7 hits) |
+
+The heal caps are **not** the regression. `HUNT_PICKUP_RADIUS` 400 and
+`HUNT_HEAL_MAX_FRAMES` 100000 (`pre_l1_uncap1`) died *earlier*, on 0x7C
+with 8R, and 0x79 still cost 1029 frames rather than anyrow1's 1037 — so
+the flip that separates the two tapes is not in that pair. Reverted.
+
+### 0x7C was a two-pixel stand-off, not an alternation
+
+`scratch/probe_walk_trace.py` (tag `w1`) runs the committed walk unassisted
+and records `(frame, screen, x, y, reason)` every frame — `reason_by_screen`
+is a histogram and cannot say whether Link moved while a rung owned him. It
+reproduces the walk exactly (9263 frames, 0x7D, 6R). On 0x7C:
+
+- **3593 of 4301 frames at x ∈ {24, 25}, y=109** — the far *west* of a screen
+  hop 5 crosses eastward. 1797 frames on x=24, 1796 on x=25.
+- The peel steps LEFT, the plain push steps RIGHT: `hop_lane` 1795 against
+  `hop` 1982, one pixel each, for ~60 minutes of game time.
+- `_grinding` ends it at 4000 frames by dropping the lane branch — and Link
+  then walks x=25 → 240 in **215 frames**. The screen was always ~220
+  frames wide. The stand-off was the whole bill.
+
+Neither existing cap can see it. `_OCCUPIED_LANE_STEER_CAP` counts
+*consecutive* non-travel steers and every push frame takes the `not blocked`
+early return, which zeroes it; `_lane_stand` is zeroed on the same returns;
+`track_stuck` sees a Link who is moving. Only travel-axis **progress**
+separates a peel going around a body from a tug-of-war, so that is what
+`OverworldPathController._lane_no_gain` measures: lane frames this
+`(hop_index, screen)` has owned since the best pixel it has reached toward
+the exit, capped at `_OCCUPIED_LANE_NO_GAIN_CAP` (120 — a full vertical
+traverse at 1 px/frame with nothing to show for it), then latched off for
+that visit. The latch is per visit on purpose: handing the branch back on
+the first pixel the push wins restarts the stand-off one pixel east, and
+215 px at one cap per pixel is slower than the 4000-frame floor it beats.
+
+`pre_l1_nogain1`: 0x7C **4301 → 923** frames, `hop_lane` 1795 → 61,
+note `lane_nogain_5_7c`. The freed frames bought a `scoop_rupee` 66 on 0x7C
+that had never run. Walk 9263 → 6384 frames, 6R → 12R, 21 → 26 kills, two
+screens further. Same 7 hits / 3.496 hearts — it dies later, not softer.
+0x77–0x7B are frame-identical to the committed walk; the change only fires
+on 0x7C.
+
+**Still dies, now on 0x7E** (215 frames in, 12R). Damage is
+`fireball_or_statue_projectile` ×3, `leever` ×3, `octorok_blue` ×1. The
+projectile is the 0x55 Zora spit and **the documented hole is still open**:
+`dungeon/threat._FACING_AXIS` is `{0x08, 0x04: col, 0x01, 0x02: row}` and a
+Zora reads `0x03` (Right|Left), so `firing_axis` returns None and
+`in_firing_line` has still never returned True for one. `_FACING_SIGN` is
+the second half — 0x03 has no sign, so adding the axis alone changes
+nothing; an ambiguous facing has to mean *either side of the row*. Measure
+the byte live before painting that.
+
+Do not STATUS. M5 18909f not re-measured.
+
+## Previous sitting (2026-09-16) — `bomb_topup` has live frames
+
+`scratch/probe_topup.py`: assist ON, hunter off on the walk (the geometry
+path that already reached 0x6F), then `RupeeTopUpController`. Glance after
+t3: play **0x6F `(0,141)`** mode 5 TF `0x00` keys 0 bombs 0 rupees **2**
+health **`0x22` 3/3** lo==hi. `progression_writes=0` / `capacity_writes=0`.
+Not a Clean claim. Unassisted leftover is still `pre_l1_topup1` (died 0x7D);
+this sitting did not re-run `--through pre-l1`.
+
+| tag | 0x5F | 0x6E | kills | R | what it says |
+|-----|------|------|-------|---|--------------|
+| t1 | 87f, peak_live 0 | 106f, peak_live 0 | 6 (0x6F only) | 0 | back hop retraced the arrival edge |
+| t2 | 1091f, 7 kills, 2R | 1197f, 2 kills, 214 occupancy_stand | 15 | 2 | hold works; 0x6E bush maze stands |
+| t3 | 1091f, 7 kills, 2R | 1120f, 4 kills, 0 occupancy_stand | 17 | 2 | occupancy_stand now walks inward |
+
+The retrace is structural. Hop 0 is UP to 0x5F; the first play frame on 0x5F
+is y≈221, which is **not** the UP arrival edge (`y<70`), so hop_index
+advances onto the DOWN home hop. Hunt then skips because y>200 **is** the
+DOWN arrival edge, `recover_off_edge` allows DOWN, and the hop walks home
+the same frame the wave would have spawned. 0x6E east is the same shape.
+`RupeeTopUpController._extra_hop_action` holds (`topup_hold`) on a back hop
+until `hunter.done`, and treats `occupancy_stand` as no claim so the inward
+step is the sand corridor the neighbour probe already walked.
+
+Both neighbours now get a 600f hunt. Both **retire** with bodies left
+(`hunt_budget_5f` / `hunt_budget_6e`). 17 kills paid 2R (`streak_best` 5,
+6 hurt_events). Two one-shot six-body waves cannot bank a 20R pack from a
+0R arrival without the 10-kill 5-rupee. The top-up is the 19R-plus-one
+gap, not a farm. The walk still has to survive to 0x6F with the corridor's
+rupees.
+
+Do not STATUS. M5 18909f not re-measured (this sitting did not touch
+`path.py` / `tracking.py`).
+
+## Previous sitting (2026-09-16) — the frames, not the tuning
 
 `OverworldPathController.step` now censuses the *stem* of every
 `FrameAction.reason` per screen (`report()["reason_by_screen"]`). That census
@@ -99,8 +663,9 @@ table pays them, where 0x6E is four moblins. Both are six-body waves — the
 same size as the corridor screens that cost the walk its hearts, so this is a
 real fight, not a lap of an empty screen.
 
-**The stage has not run live yet.** The walk has to survive to 0x6F for it to
-get a frame, and only `pre_l1_anyrow1` has.
+Live under assist, hunter-off walk: `scratch/probe_topup.py` t3, 17 kills,
+2R, both neighbours hunted, still short. See the sitting above. The
+unassisted walk has to survive to 0x6F for this to close the pack.
 
 ## Current walk (2026-09-15)
 

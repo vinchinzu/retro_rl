@@ -12,21 +12,40 @@
     {"label": "key_spot", "xy": [1320, 3656], "role": "waypoint", "notes": "CastleB1Key; keys>=1 on that state"},
     {"label": "zelda_pit", "xy": [1184, 4016], "role": "waypoint", "notes": "CastleZeldaB1Pit"},
     {"label": "north_extent", "xy": [1271, 3944], "role": "waypoint", "notes": ""},
-    {"label": "west_extent", "xy": [1224, 3656], "role": "waypoint", "notes": "Key-state west bound"}
+    {"label": "west_extent", "xy": [1224, 3656], "role": "waypoint", "notes": "Key-state west bound"},
+    {"label": "castle_b1_guard", "xy": [1273, 3665], "role": "spawn", "notes": "CastleB1Guard; on F1 stair column"},
+    {"label": "f1_stair_approach", "xy": [1272, 3656], "role": "approach", "notes": "North-wall stair at x≈1272; UP → F1 0x01"},
+    {"label": "pit_guard_cleared", "xy": [1230, 3989], "role": "spawn", "notes": "CastleB1PitGuardCleared; south of pit, hp 24"},
+    {"label": "south_door_approach", "xy": [1184, 4080], "role": "approach", "notes": "Hold DOWN → 0x82; trigger ~y=4068"},
+    {"label": "south_key_door", "xy": [1287, 3776], "role": "approach", "notes": "North-ledge south key door. DOWN+LEFT from east lip (1320,3776); sub=4 spends 1 key. LEFT-only along the lip misses it."},
+    {"label": "key_ledge_drop", "xy": [1272, 3945], "role": "waypoint", "notes": "DOWN through south_key_door lands here (lower floor, y=north_extent). keys=0 hp=20 $5D=6. Not a key-preserving drop. West to zelda_pit then south_door_approach → 0x82 ~(1190,4108) keys=0. South-first at x≈1224 hits the railing y=4032."}
   ],
   "doors": [
+    {
+      "label": "north_to_0x01",
+      "direction": "UP",
+      "toRoom": 1,
+      "toRoomHex": "0x01",
+      "approachXy": [1272, 3656],
+      "landingXy": [760, 99],
+      "role": "zelda_path",
+      "path": ["castle_b1_guard", "f1_stair_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 80,
+      "notes": "Straight stairs (submodule 14). CastleB1Guard hold UP ~28f room-change, ~292f settle in 0x01 at (760,99). Stair column x≈1272; CastleB1Key x=1320 misses it."
+    },
     {
       "label": "south_to_0x82",
       "direction": "DOWN",
       "toRoom": 130,
       "toRoomHex": "0x82",
       "approachXy": [1184, 4080],
-      "landingXy": [1184, 4108],
-      "role": "backtrack",
-      "path": ["entry_from_0x82"],
+      "landingXy": [1196, 4113],
+      "role": "zelda_path",
+      "path": ["pit_guard_cleared", "south_door_approach"],
       "pathTolerances": {"default": 16},
       "pushFrames": 80,
-      "notes": "Reverse of room_82 north; not fully path-tested from pit spawn"
+      "notes": "From CastleB1PitGuardCleared (1230,3989) walk SW; room-change ~y=4068. North ledge (CastleB1Guard) cannot reach this door (pit/rail). CastleB1Pit has 4 HP and dies. key_ledge_drop leftover (1272,3945) keys=0 also reaches it: west to zelda_pit then south; 0x82 ~(1190,4108)."
     }
   ],
   "clearPolicy": {
@@ -37,13 +56,15 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 80
   },
-  "walkBbox": [1184, 3656, 1320, 4099],
+  "walkBbox": [1184, 3644, 1320, 4099],
   "hostilesAtEntry": [
     {"type": "0x41", "xy": [1249, 4040]}
   ],
   "notes": [
     "Pit/key chamber north of 0x82. CastleB1Key has small key already.",
-    "Doors other than south seam not isolated from pure cardinal holds.",
+    "F1 stairs: north wall x≈1272 UP → room 0x01 (CastleB1Guard). Not at CastleB1Key x=1320.",
+    "North-ledge south key door ~(1287,3776): spend small key then DOWN → lower floor key_ledge_drop (1272,3945) keys=0. Grab/star/walk-off the railing do not drop. No keys>=1 drop found.",
+    "key_ledge_drop leftover walks west to zelda_pit then south_door_approach → 0x82 ~(1190,4108) isolated keys=0. South-first at x≈1224 hits the south railing y=4032.",
     "Authority: maps/room_72.json"
   ]
 }

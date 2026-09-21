@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 # Import the assembled spine first: it primes door_graph before level5.spine,
 # which otherwise trips a circular import when imported in isolation.
 from zelda_i.spine.survival import BOOT_POLICY, SPINE_THROUGH, SpineRun
@@ -80,14 +82,16 @@ def test_leave_spec_hops_unique_and_on_spine() -> None:
     assert all(hop in SPINE_THROUGH for hop in hops)
 
 
-def test_spine_run_gohma_report_stop() -> None:
-    run = SpineRun(through="level6-gohma", success=True, boot_frames=199)
-    assert run.report()["stop"] == L6_STOPS["level6-gohma"]
-
-
-def test_spine_run_level6_report_stop() -> None:
-    run = SpineRun(through="level6", success=True, boot_frames=199)
-    assert run.report()["stop"] == L6_STOPS["level6"]
+@pytest.mark.parametrize(
+    "through",
+    [
+        pytest.param("level6-gohma", id="gohma"),
+        pytest.param("level6", id="level6"),
+    ],
+)
+def test_spine_run_report_stop(through: str) -> None:
+    run = SpineRun(through=through, success=True, boot_frames=199)
+    assert run.report()["stop"] == L6_STOPS[through]
 
 
 def test_boot_policy_file_slot_and_quest() -> None:

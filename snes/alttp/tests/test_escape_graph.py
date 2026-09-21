@@ -13,6 +13,9 @@ from alttp.opening_route.escape_graph import (
     N_CASTLE_GROUNDS,
     N_COURTYARD_SECRET_POCKET,
     N_ROOM_01,
+    N_ROOM_72,
+    N_ROOM_81,
+    N_ROOM_82,
     N_ROOM_55_KEYED,
     N_ROOM_55_SOUTH,
     N_ROOM_55_SWORD,
@@ -25,6 +28,7 @@ from alttp.opening_route.escape_graph import (
     N_SEWERS_DARK,
     NATURAL_HOUSE_EXIT_CAPABILITIES,
     VERIFICATION_CONTINUOUS,
+    VERIFICATION_ISOLATED,
     VERIFICATION_NATURAL_ENTRY,
     VERIFICATION_PLANNED,
     capabilities_from_snapshot,
@@ -37,6 +41,7 @@ from alttp.opening_route.escape_graph import (
     plan_escape_to_sanctuary,
 )
 from alttp.ram import (
+    HYRULE_CASTLE_B1_PIT_ROOM,
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_MAIN_WEST_ROOM,
     HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
@@ -87,6 +92,7 @@ def test_escape_graph_builds_and_nodes_cover_edges() -> None:
     assert graph.nodes[N_ROOM_60].meta["room_base_id"] == HYRULE_CASTLE_MAIN_WEST_ROOM
     assert graph.nodes[N_ROOM_50].meta["room_base_id"] == HYRULE_CASTLE_NW_ROOM
     assert graph.nodes[N_ROOM_01].meta["room_base_id"] == HYRULE_CASTLE_NORTH_CONNECTOR_ROOM
+    assert graph.nodes[N_ROOM_72].meta["room_base_id"] == HYRULE_CASTLE_B1_PIT_ROOM
     assert graph.nodes[N_ROOM_80].meta["room_base_id"] == ZELDA_CELL_ROOM
     assert graph.nodes[N_SANCTUARY].meta["room_base_id"] == SANCTUARY_ROOM
     assert graph.nodes[N_COURTYARD_SECRET_POCKET].meta["screen_id"] == 0x1B
@@ -109,6 +115,12 @@ def test_verified_edges_are_continuous() -> None:
     )
     natural_entry_pairs = {
         (N_ROOM_50, N_ROOM_01),
+        (N_ROOM_01, N_ROOM_72),
+    }
+    isolated_pairs = {
+        (N_ROOM_72, N_ROOM_01),
+        (N_ROOM_72, N_ROOM_82),
+        (N_ROOM_82, N_ROOM_81),
     }
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
@@ -116,12 +128,37 @@ def test_verified_edges_are_continuous() -> None:
             assert edge.verification == VERIFICATION_CONTINUOUS, edge.edge_id
         elif pair in natural_entry_pairs:
             assert edge.verification == VERIFICATION_NATURAL_ENTRY, edge.edge_id
+        elif pair in isolated_pairs:
+            assert edge.verification == VERIFICATION_ISOLATED, edge.edge_id
         else:
             assert edge.verification == VERIFICATION_PLANNED, edge.edge_id
     assert graph.edge_for(N_ROOM_61, N_ROOM_60).direction == "west"  # type: ignore[union-attr]
     assert graph.edge_for(N_ROOM_60, N_ROOM_50).direction == "north"  # type: ignore[union-attr]
     assert graph.edge_for(N_ROOM_50, N_ROOM_01).direction == "east"  # type: ignore[union-attr]
     assert graph.edge_for(N_ROOM_50, N_ROOM_01).meta["door_label"] == "east_to_0x01"  # type: ignore[union-attr]
+    stair = graph.edge_for(N_ROOM_72, N_ROOM_01)
+    assert stair is not None
+    assert stair.verification == VERIFICATION_ISOLATED
+    assert stair.meta["map_id"] == "room_72"
+    assert stair.meta["door_label"] == "north_to_0x01"
+    down = graph.edge_for(N_ROOM_01, N_ROOM_72)
+    assert down is not None
+    assert down.verification == VERIFICATION_NATURAL_ENTRY
+    assert down.verification != VERIFICATION_CONTINUOUS
+    assert down.meta["map_id"] == "room_01"
+    assert down.meta["door_label"] == "down_to_0x72"
+    assert down.direction == "north"
+    hops = {h.hop_id: h for h in escape_route_hops()}
+    assert hops["room_01_down_to_0x72"].paths == frozenset()
+    assert hops["room_72_north_to_0x01"].verification == VERIFICATION_ISOLATED
+    south = graph.edge_for(N_ROOM_72, N_ROOM_82)
+    assert south is not None
+    assert south.verification == VERIFICATION_ISOLATED
+    assert south.meta["door_label"] == "south_to_0x82"
+    west = graph.edge_for(N_ROOM_82, N_ROOM_81)
+    assert west is not None
+    assert west.verification == VERIFICATION_ISOLATED
+    assert west.meta["door_label"] == "west_to_0x81"
 
 
 def test_multi_screen_55_connected() -> None:

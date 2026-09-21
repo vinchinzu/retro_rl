@@ -11,7 +11,8 @@
     {"label": "green_room", "xy": [776, 4316], "role": "waypoint", "notes": "CastleB1GreenRoom load"},
     {"label": "zelda_west", "xy": [632, 4152], "role": "waypoint", "notes": "CastleZeldaB1West; near north door to 0x71"},
     {"label": "east_door_approach", "xy": [960, 4496], "role": "approach", "notes": "Hold RIGHT → room 0x82"},
-    {"label": "north_door_approach", "xy": [632, 4140], "role": "approach", "notes": "Hold UP → room 0x71"}
+    {"label": "north_door_approach", "xy": [632, 4140], "role": "approach", "notes": "Hold UP → room 0x71"},
+    {"label": "west_to_0x80_approach", "xy": [608, 4168], "role": "approach", "notes": "West wall at Zelda-cell y-band; LEFT needs a small key"}
   ],
   "doors": [
     {
@@ -39,6 +40,19 @@
       "pathTolerances": {"default": 12},
       "pushFrames": 80,
       "notes": "From CastleZeldaB1West UP 26f → 0x71"
+    },
+    {
+      "label": "west_to_0x80",
+      "direction": "LEFT",
+      "toRoom": 128,
+      "toRoomHex": "0x80",
+      "approachXy": [608, 4168],
+      "landingXy": null,
+      "role": "zelda_path",
+      "path": ["zelda_west", "west_to_0x80_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 80,
+      "notes": "Still locked. CastleB1SecondKey wrap leftover 0x81 (632,4155) keys=1 $F3CC==0: (611,4169) LEFT y-sweep 4144–4216 stays 0x81 keys=1 (608,4169). Small key never spent. $F366==0 $F367==0 (no big key). Overlay is the gold jail door. Do not claim isolated."
     }
   ],
   "clearPolicy": {

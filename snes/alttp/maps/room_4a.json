@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 74,
+  "roomHex": "0x4A",
+  "name": "Palace of Darkness lobby",
+  "measured": "2026-09-21",
+  "sourceState": "PalaceOfDarknessEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [5368, 2520], "role": "spawn", "notes": "PalaceOfDarknessEntry load; south door of 0x4A"},
+    {"label": "east_lane", "xy": [5504, 2424], "role": "waypoint", "notes": "East of pots; x must be ~5504 to line up with the green door"},
+    {"label": "east_green", "xy": [5504, 2300], "role": "waypoint", "notes": "Through the east-side green door into the east cage"},
+    {"label": "east_cage", "xy": [5512, 2192], "role": "waypoint", "notes": "East cage; mini-helmasaur patrols west of this x"},
+    {"label": "east_stair_approach", "xy": [5512, 2104], "role": "approach", "notes": "Arrives ~(5504, 2111); hold UP → 0x09 shooter room"},
+    {"label": "south_door_approach", "xy": [5368, 2520], "role": "approach", "notes": "Hold DOWN → PoD overworld door"}
+  ],
+  "doors": [
+    {
+      "label": "east_stairs_to_0x09",
+      "direction": "UP",
+      "toRoom": 9,
+      "toRoomHex": "0x09",
+      "approachXy": [5512, 2104],
+      "landingXy": [4985, 55],
+      "role": "primary",
+      "path": ["east_lane", "east_green", "east_cage", "east_stair_approach"],
+      "pathTolerances": {"east_lane": 16, "east_green": 16, "east_cage": 16, "default": 12},
+      "pushFrames": 360,
+      "notes": "First indoor hop. Isolated 2026-09-21 from PalaceOfDarknessEntry. Stair anim; dest 0x09 shooter room B1. Mini-helmasaurs on the east cage are not CASTLE_HOSTILE_TYPES."
+    },
+    {
+      "label": "south_to_overworld",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 94,
+      "approachXy": [5368, 2520],
+      "landingXy": [3920, 1576],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "PoD overworld door. DOWN from spawn; Archipelago door 0x25 / $010E exit 0x26. Landing xy from module-08 transition; screen 0x5E."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [5120, 2048, 5632, 2560],
+  "hostilesAtEntry": [
+    {"type": "0x13", "xy": [5248, 2176]},
+    {"type": "0x13", "xy": [5504, 2176]},
+    {"type": "0x1C", "xy": [5440, 2167]}
+  ],
+  "z3Label": "Palace of Darkness (Entrance)",
+  "notes": [
+    "Confirmed $A0==0x4A on a real module-06 entrance load (entrance id $010E==0x26).",
+    "Dark world: $0FFF==1 $F3CA==0x40 $040C==0x0C. Prize (hammer $F34B) not granted.",
+    "South-east / south-west palace shutters at y≈2496 stay closed without a switch.",
+    "First room-change is east cage north stairs → 0x09 (shooter room), not the north key door.",
+    "room_engine.in_room requires not dark_world; run_room_edge clear_room fails closed. Isolated hop is probe --isolate leftover.",
+    "Authority: maps/room_4a.json (load via alttp.room_sense.load_room_map)."
+  ]
+}

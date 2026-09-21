@@ -31,6 +31,9 @@ from retro_harness.adventure.graph import (
     normalize_capability,
 )
 from alttp.ram import (
+    HYRULE_CASTLE_B1_EAST_ROOM,
+    HYRULE_CASTLE_B1_PIT_ROOM,
+    HYRULE_CASTLE_B1_WEST_ROOM,
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_MAIN_WEST_ROOM,
     HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
@@ -72,6 +75,9 @@ N_ROOM_60 = "room_60"
 N_ROOM_50 = "room_50"
 # East of 0x50 north connector (natural_entry 2026-08-02).
 N_ROOM_01 = "room_01"
+N_ROOM_72 = "room_72"
+N_ROOM_81 = "room_81"
+N_ROOM_82 = "room_82"
 N_ROOM_80 = "room_80"
 N_CASTLE_MANTLE = "castle_mantle"
 N_SEWERS_DARK = "sewers_dark"
@@ -368,7 +374,94 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
             "to_room_base_id": ZELDA_CELL_ROOM,
             "note": (
                 "Measured exploration chain: 0x01→0x52→0x62 (clear required in "
-                "0x52). B1 stairs not yet isolated; maps/room_70.json seed exists."
+                "0x52). B1 well room_01_down_to_0x72 is natural_entry (trigger "
+                "UP); reverse room_72_north_to_0x01 stays isolated. Cell door "
+                "0x81 west_to_0x80 still needs a small key."
+            ),
+        },
+    ),
+    # Reverse B1→F1 stair (not on the Sanctuary plan; graph-only isolated).
+    EscapeHop(
+        hop_id="room_72_north_to_0x01",
+        source_id=N_ROOM_72,
+        target_id=N_ROOM_01,
+        direction="north",
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        verification=VERIFICATION_ISOLATED,
+        provenance="room_engine.room_72.north_to_0x01+CastleB1Guard",
+        goal="reach_room_01_via_b1_stairs",
+        paths=frozenset(),
+        meta={
+            "to_room_base_id": HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
+            "door_label": "north_to_0x01",
+            "map_id": "room_72",
+            "note": (
+                "B1 reverse from CastleB1Guard: 0x72 north-wall x≈1272 UP "
+                "straight stairs (submodule 14) settle in 0x01 ~(760,99)."
+            ),
+        },
+    ),
+    # F1→B1 reverse of the north-wall well (not on the Sanctuary plan).
+    EscapeHop(
+        hop_id="room_01_down_to_0x72",
+        source_id=N_ROOM_01,
+        target_id=N_ROOM_72,
+        direction="north",
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        verification=VERIFICATION_NATURAL_ENTRY,
+        provenance="room_engine.room_01.down_to_0x72+CastleRoom50.east",
+        goal="reach_room_72_via_f1_stairs",
+        paths=frozenset(),
+        meta={
+            "to_room_base_id": HYRULE_CASTLE_B1_PIT_ROOM,
+            "door_label": "down_to_0x72",
+            "map_id": "room_01",
+            "note": (
+                "F1 north-wall well: map door down_to_0x72, hold UP → 0x72. "
+                "Natural entry from CastleRoom50 east leftover ~(560,120). "
+                "Reverse room_72_north_to_0x01 stays isolated."
+            ),
+        },
+    ),
+    EscapeHop(
+        hop_id="room_72_south_to_0x82",
+        source_id=N_ROOM_72,
+        target_id=N_ROOM_82,
+        direction="south",
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        verification=VERIFICATION_ISOLATED,
+        provenance="room_engine.room_72.south_to_0x82+CastleB1PitGuardCleared",
+        goal="reach_room_82_from_pit",
+        paths=frozenset(),
+        meta={
+            "to_room_base_id": HYRULE_CASTLE_B1_EAST_ROOM,
+            "door_label": "south_to_0x82",
+            "map_id": "room_72",
+            "note": (
+                "From CastleB1PitGuardCleared (south of 0x72 pit). "
+                "CastleB1Guard north ledge cannot reach this door."
+            ),
+        },
+    ),
+    EscapeHop(
+        hop_id="room_82_west_to_0x81",
+        source_id=N_ROOM_82,
+        target_id=N_ROOM_81,
+        direction="west",
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        verification=VERIFICATION_ISOLATED,
+        provenance="room_engine.room_82.west_to_0x81+CastleZeldaB1East",
+        goal="reach_room_81_from_bridge",
+        paths=frozenset(),
+        meta={
+            "to_room_base_id": HYRULE_CASTLE_B1_WEST_ROOM,
+            "door_label": "west_to_0x81",
+            "map_id": "room_82",
+            "note": (
+                "LEFT from east_b1. Isolated pin CastleZeldaB1East has "
+                "$F3CC==1 as loaded. Reverse: CastleB1FarWest RIGHT ($F3CC==0). "
+                "0x72-south leftover (1198,4108) also chains: east wall x>=1312 "
+                "then south walkway y=4492 (direct west pits, submodule 20)."
             ),
         },
     ),
@@ -561,6 +654,42 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
                     ),
                     "map_id": "room_01",
                 },
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_72,
+            name="Hyrule Castle B1 pit / key (0x72)",
+            area="hyrule_castle",
+            tags=frozenset({"indoors", "escape", "isolated"}),
+            meta=_room_meta(
+                HYRULE_CASTLE_B1_PIT_ROOM,
+                z3_label="Hyrule Castle",
+                extra={
+                    "note": "B1 pit; north stairs to F1 0x01 (isolated reverse)",
+                    "map_id": "room_72",
+                },
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_82,
+            name="Hyrule Castle B1 east / bridge (0x82)",
+            area="hyrule_castle",
+            tags=frozenset({"indoors", "escape", "isolated"}),
+            meta=_room_meta(
+                HYRULE_CASTLE_B1_EAST_ROOM,
+                z3_label="Hyrule Castle",
+                extra={"map_id": "room_82"},
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_81,
+            name="Hyrule Castle B1 west (0x81)",
+            area="hyrule_castle",
+            tags=frozenset({"indoors", "escape", "isolated"}),
+            meta=_room_meta(
+                HYRULE_CASTLE_B1_WEST_ROOM,
+                z3_label="Hyrule Castle",
+                extra={"map_id": "room_81"},
             ),
         ),
         GraphNode(
