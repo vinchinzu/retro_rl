@@ -39,11 +39,9 @@ Planner owns `docs/STATUS.md`. This sitting did not STATUS-promote.
 
 ## Exact next action
 
-Commit the staged `z3-json-data/` deletions + gitignore/docs with
-`.beads/issues.jsonl` when closing `rr-a3s`. Do not restore the workspace
-vendor tree. Do not `git submodule` surgery on refs (no `.gitmodules`).
-Optional local fallback: `uv run python alttp/scripts/setup_z3_json_data.py`
-(already targets refs) or copy into `snes/alttp/z3-json-data/` (ignored).
+Workspace dump restored at `snes/alttp/z3-json-data/` (JSON only; no
+LICENSE, no nested `.git`). `.gitignore` no longer ignores that path.
+`rr-a3s` stays closed. Do not nest a `.git` or LICENSE into the dump.
 
 ## Non-claims
 

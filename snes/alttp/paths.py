@@ -41,8 +41,7 @@ ROOM_WORK_QUEUE_JSON = RECORDINGS_DIR / "room_work_queue.json"
 ROOM_WORK_QUEUE_MD = DOCS_DIR / "routes" / "ROOM_WORK_QUEUE.md"
 
 # Local clone of vg-json-data/z3-json-data (gitignored under refs/; setup script).
-# Optional committed/workspace copy at GAME_DIR/z3-json-data is also accepted
-# (see resolve in z3_json_data.default_data_root) — same US/JP vanilla labels.
+# Committed JSON dump at GAME_DIR/z3-json-data (no LICENSE, no nested git).
 Z3_JSON_DATA_DIR = REFS_DIR / "z3-json-data"
 Z3_JSON_DATA_WORKSPACE_DIR = GAME_DIR / "z3-json-data"
 Z3_JSON_DATA_REPO = "https://github.com/vg-json-data/z3-json-data.git"

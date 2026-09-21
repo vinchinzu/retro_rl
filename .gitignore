@@ -280,9 +280,6 @@ uwnh/
 super_metroid_rl/
 alttp/refs/z3-json-data/
 snes/alttp/refs/z3-json-data/
-# Workspace-local clone (prefer refs/ via setup script; never commit vendor tree)
-alttp/z3-json-data/
-snes/alttp/z3-json-data/
 smz3/refs/
 smz3/seeds/
 sm_rando/seeds/
