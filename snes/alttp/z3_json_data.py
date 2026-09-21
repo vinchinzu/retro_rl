@@ -1,8 +1,8 @@
 """Project-native loader for a local vg-json-data / z3-json-data checkout.
 
-The upstream tree is **not** vendored. Fetch it explicitly with
-``alttp/scripts/setup_z3_json_data.py`` into the gitignored path
-``alttp/refs/z3-json-data``. Normal imports never download.
+Committed dump: ``alttp/z3-json-data`` (JSON only; no LICENSE, no nested
+``.git``). Optional live pin: ``alttp/scripts/setup_z3_json_data.py`` into
+gitignored ``alttp/refs/z3-json-data``. Normal imports never download.
 
 This module validates a small **source shape** (expected files/keys) and
 exposes a typed subset useful for the title→castle opening route. It does
@@ -127,7 +127,7 @@ class Z3SourceStatus:
 
 
 def default_data_root() -> Path:
-    """Prefer gitignored refs checkout; fall back to workspace ``z3-json-data/``.
+    """Prefer gitignored refs checkout; fall back to committed ``z3-json-data/``.
 
     Upstream is randomizer **logic** labels (not screen coords). The same region
     names apply to US and Japanese **vanilla** castle layouts for the opening
