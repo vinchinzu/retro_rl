@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Tear down processes this run started. Never deletes evidence.
+# Usage: cleanup --run-dir DIR
+set -euo pipefail
+
+RUN_DIR=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --run-dir)
+      RUN_DIR="${2:?cleanup: --run-dir requires a directory}"
+      shift 2
+      ;;
+    -h|--help)
+      echo "Usage: cleanup --run-dir DIR" >&2
+      exit 2
+      ;;
+    *)
+      echo "cleanup: unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -z "$RUN_DIR" ]]; then
+  echo "cleanup: --run-dir DIR is required" >&2
+  exit 2
+fi
+
+PIDS_FILE="$RUN_DIR/pids"
+if [[ ! -f "$PIDS_FILE" ]]; then
+  echo "cleanup: no pid file at $PIDS_FILE (nothing to kill)"
+  exit 0
+fi
+
+while read -r pid; do
+  [[ -z "$pid" ]] && continue
+  [[ "$pid" =~ ^[0-9]+$ ]] || continue
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid" 2>/dev/null || true
+    sleep 0.2
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+    echo "cleanup: stopped pid $pid"
+  else
+    echo "cleanup: pid $pid already exited"
+  fi
+done <"$PIDS_FILE"
+
+echo "cleanup: evidence retained at $RUN_DIR"

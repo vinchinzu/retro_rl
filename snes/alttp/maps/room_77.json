@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 119,
+  "roomHex": "0x77",
+  "name": "Tower of Hera 2F entrance",
+  "measured": "2026-09-21",
+  "sourceState": "HeraEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [3832, 4032], "role": "spawn", "notes": "HeraEntry real overworld door; green platform south"},
+    {"label": "crystal_ledge", "xy": [3840, 3968], "role": "waypoint", "notes": "0x1E crystal switch on the green platform; slash/spin lowers blue pegs"},
+    {"label": "west_alcove", "xy": [3693, 3968], "role": "waypoint", "notes": "West of blue peg cage after crystal ledge"},
+    {"label": "west_stair_lip", "xy": [3696, 3928], "role": "waypoint", "notes": "West of stair column; x=3704–3710 UP wedges."},
+    {"label": "west_stair_approach", "xy": [3728, 3904], "role": "approach", "notes": "move_to here left 0x77→0x87 at (3720, 3911) submodule 14"},
+    {"label": "south_door_approach", "xy": [3832, 4032], "role": "approach", "notes": "Hold DOWN → Death Mountain screen 0x03"}
+  ],
+  "doors": [
+    {
+      "label": "west_down_to_0x87",
+      "direction": "UP",
+      "toRoom": 135,
+      "toRoomHex": "0x87",
+      "approachXy": [3728, 3904],
+      "landingXy": [3721, 4424],
+      "role": "primary",
+      "path": ["crystal_ledge", "west_alcove", "west_stair_lip", "west_stair_approach"],
+      "pathTolerances": {"crystal_ledge": 16, "west_alcove": 16, "west_stair_lip": 12, "default": 8},
+      "pushFrames": 300,
+      "notes": "West down-stairs to Hera 1F. Isolated 2026-09-21 from HeraEntry via probe --hop (slash 0x1E crystal, then this path, UP). room_engine run wedges at west_alcove until the crystal is hit. Landing after dest settle (3721, 4424) in 0x87 1F."
+    },
+    {
+      "label": "south_to_mountain",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 3,
+      "approachXy": [3832, 4032],
+      "landingXy": [2288, 196],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "Overworld Hera door on Death Mountain (screen 0x03). Measured DOWN from HeraEntry."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [3584, 3584, 4096, 4096],
+  "hostilesAtEntry": [
+    {"type": "0x18", "xy": [3760, 3728]}
+  ],
+  "z3Label": "Tower of Hera (Bottom)",
+  "notes": [
+    "Confirmed $A0==0x77 on HeraEntry (real overworld door after module-06 pin).",
+    "Spawn is Hera 2F: green platform, blue crystal pegs, west down-stairs to 0x87 (1F), east up-stairs.",
+    "Mini-moldorms are sprite 0x18 (not castle soldiers). 0x1E at (3840,3968) is the crystal switch.",
+    "First indoor hop: west_down_to_0x87. Isolated / state-load only.",
+    "Authority: maps/room_77.json (load via alttp.room_sense.load_room_map)."
+  ]
+}

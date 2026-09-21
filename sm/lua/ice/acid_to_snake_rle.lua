@@ -1,0 +1,26 @@
+-- Converted from ice_acid_to_snake_rle.json
+-- {n, buttons} RLE runs. Lua 5.1.
+return {
+  {10, {}},
+  {12, {"LEFT", "B"}},
+  {28, {"LEFT", "A", "B"}},
+  {14, {"LEFT", "B"}},
+  {12, {"LEFT", "B"}},
+  {28, {"LEFT", "A", "B"}},
+  {14, {"LEFT", "B"}},
+  {12, {"LEFT", "B"}},
+  {28, {"LEFT", "A", "B"}},
+  {14, {"LEFT", "B"}},
+  {12, {"LEFT", "B"}},
+  {28, {"LEFT", "A", "B"}},
+  {14, {"LEFT", "B"}},
+  {12, {"LEFT", "B"}},
+  {28, {"LEFT", "A", "B"}},
+  {14, {"LEFT", "B"}},
+  {12, {"LEFT", "B"}},
+  {28, {"LEFT", "A", "B"}},
+  {14, {"LEFT", "B"}},
+  {16, {"LEFT", "X"}},
+  {55, {}},
+  {220, {"LEFT", "A", "B"}},
+}

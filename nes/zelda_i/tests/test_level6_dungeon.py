@@ -164,6 +164,7 @@ def test_east_key_engages_undodgeable_0x24_pose() -> None:
     ctl = make_east_key_controller()
     action = ctl.step(read_snapshot(ram))
     assert "engage" in action.reason
+    assert list(action.action) == list(nes_action("RIGHT"))
 
 
 @pytest.mark.parametrize("x,y", [(189, 141), (192, 140)])
@@ -416,23 +417,32 @@ def test_clear29_downs_inland_from_north_mouth() -> None:
     assert list(act.action) != list(nes_action("LEFT"))
 
 
-def test_clear29_north_band_is_inland() -> None:
-    """y=109 is inland; do not LEFT-peel the door channel."""
-    act = _clear29_fight(x=120, y=109, enemy_x=184, enemy_y=144)
+@pytest.mark.parametrize(
+    "x,y",
+    [
+        pytest.param(120, 109, id="north_band_is_inland"),
+        pytest.param(48, 133, id="may_chase_east_from_west_aisle"),
+    ],
+)
+def test_clear29_does_not_west_peel(x: int, y: int) -> None:
+    """y=109 is inland (no LEFT-peel of the door channel); west-only chase at
+    (48,133) left two wizzrobes live for 15000f (reds 1-2) — neither is a peel."""
+    act = _clear29_fight(x=x, y=y, enemy_x=184, enemy_y=144)
     assert act.reason != "west_peel"
     assert list(act.action) != list(nes_action("LEFT"))
 
 
-def test_clear29_may_chase_east_from_west_aisle() -> None:
-    """West-only chase left two wizzrobes live for 15000f (reds 1–2)."""
-    act = _clear29_fight(x=48, y=133, enemy_x=184, enemy_y=144)
-    assert act.reason != "west_peel"
-    assert list(act.action) != list(nes_action("LEFT"))
-
-
-def test_clear29_leftover_clips_right_down_to_waist() -> None:
-    """Cardinal RIGHT at y=109 boxed at x=96. RIGHT+DOWN is the open axis."""
-    ctl, act = _cleared_29(x=96, y=109)
+@pytest.mark.parametrize(
+    "x,y",
+    [
+        pytest.param(96, 109, id="clips_right_down_to_waist"),
+        pytest.param(104, 131, id="peels_up_from_plus_interior"),
+    ],
+)
+def test_clear29_leftover_clip(x: int, y: int) -> None:
+    """Cardinal RIGHT boxed at x=96,y=109; inside the plus north of the waist
+    at (104,131) — both take the same RIGHT+DOWN open-axis clip."""
+    ctl, act = _cleared_29(x=x, y=y)
     assert not ctl.success
     assert act.reason == "leftover_clip"
     assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
@@ -447,12 +457,6 @@ def test_clear29_leftover_waist_goes_south() -> None:
     assert list(act.action) == list(nes_action("LEFT"))
 
 
-def test_clear29_leftover_peels_up_from_plus_interior() -> None:
-    """Inside the plus north of the waist: same RIGHT+DOWN clip."""
-    ctl, act = _cleared_29(x=104, y=131)
-    assert not ctl.success
-    assert act.reason == "leftover_clip"
-    assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
 
 
 def test_clear29_does_not_walk_deeper_into_sw_trap() -> None:

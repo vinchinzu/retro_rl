@@ -50,13 +50,16 @@ COAST_TEKTITE_SCREEN = 0x7A
 SCREEN_7A_EAST_BAND = (133, 141)
 SCREEN_7E_EAST_BAND = (137, 145)
 # 0x7B, 0x7C and 0x7D scrolled east from *every* row the sweep tried, which
-# was ``range(77, 206, 8)``. Carrying an ``align_y`` across them is therefore
-# not a lane, it is a vertical shuffle in a leever swarm, and the frame census
-# priced it: 394 of 0x7B's 1863 frames were ``hop_ay`` — Link walking up and
-# down to reach a row that was never required, on the screen that costs the
-# walk five of its six hits (``pre_l1_census1``). The band is the measured
-# sweep's own extent, so the push never corrects and the read still says what
-# was measured rather than leaving the field empty.
+# was ``range(77, 206, 8)``. Carrying an ``align_y`` across 0x7B/0x7C is
+# therefore not a lane, it is a vertical shuffle in a leever swarm, and the
+# frame census priced it: 394 of 0x7B's 1863 frames were ``hop_ay`` — Link
+# walking up and down to reach a row that was never required
+# (``pre_l1_census1``). 0x7D is the same shape for *its own* exit, but 0x7E
+# is not: want_y=133 stood at 131 and never scrolled (``l1``).
+# ``pre_l1_topup_live`` entered 0x7E at that dead row and died ``(40,131)``.
+# The 0x7E east band therefore sits on the hop that *leaves* 0x7D, so the
+# drift is corrected before the scroll, not after. 0x7B/0x7C keep the
+# sweep's own extent so the push never corrects.
 SCREEN_ANY_ROW_BAND = (77, 205)
 
 # Screens the hunt crosses instead of clearing. See ScreenHunter.transit_screens.
@@ -89,7 +92,7 @@ SHOP_P7_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x7B, "RIGHT", y_band_lo=SCREEN_7A_EAST_BAND[0], y_band_hi=SCREEN_7A_EAST_BAND[1]),
     ScreenHop(0x7C, "RIGHT", y_band_lo=SCREEN_ANY_ROW_BAND[0], y_band_hi=SCREEN_ANY_ROW_BAND[1]),
     ScreenHop(0x7D, "RIGHT", y_band_lo=SCREEN_ANY_ROW_BAND[0], y_band_hi=SCREEN_ANY_ROW_BAND[1]),
-    ScreenHop(0x7E, "RIGHT", y_band_lo=SCREEN_ANY_ROW_BAND[0], y_band_hi=SCREEN_ANY_ROW_BAND[1]),
+    ScreenHop(0x7E, "RIGHT", y_band_lo=SCREEN_7E_EAST_BAND[0], y_band_hi=SCREEN_7E_EAST_BAND[1]),
     ScreenHop(0x7F, "RIGHT", y_band_lo=SCREEN_7E_EAST_BAND[0], y_band_hi=SCREEN_7E_EAST_BAND[1]),
     ScreenHop(0x6F, "UP", align_x=82),
 )
@@ -106,10 +109,13 @@ assert _SCREENS == (0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F, 0x6F)
 assert SHOP_P7_NOT_ON_WALK.isdisjoint(_SCREENS)
 assert SHOP_P7_HOPS[2] == ScreenHop(0x7A, "RIGHT", align_y=SCREEN_79_BEACH_Y)
 assert SHOP_P7_HOPS[3].y_band == SCREEN_7A_EAST_BAND
+assert SHOP_P7_HOPS[6].y_band == SCREEN_7E_EAST_BAND
 assert SHOP_P7_HOPS[7].y_band == SCREEN_7E_EAST_BAND
-# The three "every row" hops leave 0x7B / 0x7C / 0x7D. The rows they need on
-# arrival are the *next* hop's business, and 0x7E's band picks up the drift.
-assert all(h.y_band == SCREEN_ANY_ROW_BAND for h in SHOP_P7_HOPS[4:7])
+# 0x7B / 0x7C still leave on every row. 0x7D does too, but the hop that
+# leaves it carries 0x7E's live corridor so the next screen is not entered
+# on the dead 133 row. Picking that drift up *after* the scroll is the
+# ``(40,131)`` death.
+assert all(h.y_band == SCREEN_ANY_ROW_BAND for h in SHOP_P7_HOPS[4:6])
 assert all(h.align_y is None for h in SHOP_P7_HOPS[4:7])
 
 
@@ -156,6 +162,10 @@ class ShopP7WalkController(OverworldPathController):
     # six-sample velocity reads 0.4 px/frame on the first moving frame and
     # only tells the truth once the shot has closed 10 px of a 40 px lane.
     shot_history: int = 2
+    # The 0x79 skirt keeps the default ``HOP_RUNG_EXTRA`` — the top of the
+    # hop ladder, which is where the hook has always been called from. Its
+    # gate is clearance, not precedence; ``_extra_hop_action`` carries the
+    # measurement that says why those are different.
     hunter: ScreenHunter | None = field(
         default_factory=lambda: ScreenHunter(
             transit_screens=SHOP_P7_TRANSIT_SCREENS
@@ -192,29 +202,57 @@ class ShopP7WalkController(OverworldPathController):
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
+        """The 0x79 skirt route, once the wave on 0x79 is off the chase list.
+
+        C2 read the opening ``0x79 not in self.hunter.done`` as a precedence
+        edit — the hook declining so the hunt rung below could have the frame
+        — and the fix for that is ``extra_hop_priority``. Wiring the ladder
+        proved the reading wrong here, and the counter-example is worth
+        keeping: a *completion* gate and a *decline* are not the same set.
+
+        ``not in done`` opens once and stays open. A rung sitting under the
+        hunt opens on every frame the hunt declines, of which there are many
+        while the wave is alive — so moving this hook below ``hop_hunt``
+        changes behaviour in both directions. It hands the skirt frames that
+        used to push east (waking ``_leave_79_east``'s ``x < 35`` branch,
+        which was dead code), and it lets the beam, the scoop and the hunt's
+        own ``_lane_return`` take frames the skirt used to own outright.
+
+        So the gate stays and the hook keeps the top of the ladder, which is
+        where it has always been. What changed is that its place is now the
+        number ``extra_hop_priority`` rather than the line ``_do_hop`` calls
+        it from, and the gate asks :meth:`ScreenHunter.chase_finished` — a
+        declared query — instead of reaching into the ``done`` set. Pre-L1 is
+        frame-perfect (``AGENTS.md``: M5 Clean 18909f is live, re-measure
+        after walker changes), so whether the skirt *should* run before the
+        wave dies is a policy question that deserves its own measured card,
+        not a side effect of a refactor.
+        """
+        if self.hunter is not None and not self.hunter.chase_finished(0x79):
+            return None
         if snap.screen == 0x79 and hop.target == 0x7A:
-            if self.hunter is not None and 0x79 not in self.hunter.done:
-                return None
             return self._leave_79_east(snap)
         if snap.screen == 0x79 and hop.target == 0x78:
-            if self.hunter is not None and 0x79 not in self.hunter.done:
-                return None
             return self._leave_79_west(snap)
         return None
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
-        if shop_p7_arrived(snap) and int(snap.rupees) >= SHOP_P7_PRICE:
+        """Play 0x6F after the hops. Short of the pack is ``bomb_topup``.
+
+        Fighting the shop wave until ``destination_hunted`` deadlocked
+        ``pre_l1_c3_melee1``: 18R, cave mode 11, 22403f of
+        ``shop_p7_hunt_settle``. Arrival-short must leave and fight next
+        door, not idle in the cave.
+        """
+        if not shop_p7_arrived(snap):
+            return False
+        if int(snap.rupees) >= SHOP_P7_PRICE:
             return True
         if self.laps and self.hop_index < len(self.hops):
             return False
-        return shop_p7_arrived(snap) and self.destination_hunted(snap)
+        return True
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
-        final = self._final_hunt(snap)
-        if final is not None:
-            return final
-        if not self.destination_hunted(snap):
-            return FrameAction(nes_idle_action(), "shop_p7_hunt_settle")
         if shop_p7_arrived(snap):
             return self._finish("shop_p7_arrived")
         return self._fail("hops_complete_not_shop_p7")

@@ -12,6 +12,8 @@ from __future__ import annotations
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
+from zelda_i.dungeon.ids import GORIYA_OBJECT_TYPE
+from zelda_i.level7.path import ROOM_1A
 from zelda_i.level7.cellar import (
     CELLAR_ROOM,
     DEST_ROOM,
@@ -26,7 +28,11 @@ from zelda_i.level7.cellar import (
     SPAWN_XY,
     WEST_X,
     Level7NoseCellarCrossController,
+    ROOM1A_RUNG_SCRIPTED,
+    ROOM1A_RUNG_SOLVER,
     Room1ACandleController,
+    room1a_segments,
+    room1a_unkillable,
     make_nose_cellar_cross_controller,
     nose_cellar_cross_step,
     nose_cellar_cross_success,
@@ -41,8 +47,11 @@ from zelda_i.ram import (
     ADDR_CANDLE,
     ADDR_LINK_X,
     ADDR_LINK_Y,
+    ADDR_OBJ_HP,
+    ADDR_OBJ_TYPE,
     PASSAGE_MODE,
     PLAY_MODE,
+    ZeldaObject,
     read_snapshot,
 )
 from zelda_i.tests.ram_helpers import make_ram
@@ -350,3 +359,109 @@ def test_candle_rising_edge_greens() -> None:
     assert ctl.success
     assert not ctl.failed
     assert act.reason == "red_candle_natural"
+
+
+# --- 0x1A: the searched clear as a rung ---------------------------------
+
+
+def _room1a_ram(**fields: int) -> np.ndarray:
+    """0x1A in live play with one full-HP goriya east of Link."""
+    ram = _ram(screen=ROOM_1A, mode=PLAY_MODE, x=100, y=100, candle=0, **fields)
+    ram[ADDR_LINK_X + 1] = 108
+    ram[ADDR_LINK_Y + 1] = 100
+    ram[ADDR_OBJ_TYPE + 1] = GORIYA_OBJECT_TYPE
+    ram[ADDR_OBJ_HP + 1] = 48
+    return ram
+
+
+class _StubEnv:
+    """Enough of an env to construct a ``Rollout``. Never stepped."""
+
+    class _Em:
+        def get_state(self):  # pragma: no cover - a budgeted-out solver
+            raise AssertionError("a budgeted-out solver must not touch the core")
+
+    em = _Em()
+
+    def get_ram(self):  # pragma: no cover - same
+        raise AssertionError("a budgeted-out solver must not read RAM")
+
+
+def test_room1a_rung_order_puts_the_search_above_the_position_table() -> None:
+    """Structural. Precedence is a number, not a source line."""
+    assert ROOM1A_RUNG_SOLVER < ROOM1A_RUNG_SCRIPTED
+    names = [r.name for r in Room1ACandleController().clear_arbiter.rungs]
+    assert names == ["room1a_solver", "room1a_scripted"]
+
+
+def test_room1a_ladder_is_the_old_chain_with_nothing_bound() -> None:
+    """Behavioural. The solver is off by default, so every frame is scripted."""
+    ctl = Room1ACandleController()
+    act = _step(ctl, _room1a_ram())
+    assert not ctl.solver_clear
+    assert act.reason in ("goriya_slash", "goriya_face")
+    assert ctl.clear_arbiter.census() == {"room1a_solver": 0, "room1a_scripted": 1}
+    assert ctl.report()["solver"] is None
+
+
+def test_room1a_solver_past_its_room_budget_drops_to_the_scripted_clear() -> None:
+    """Behavioural. The card's drop-out, wired: a bound solver whose room
+    budget is spent declines every frame, and the position table drives the
+    room exactly as it does today."""
+    ctl = Room1ACandleController()
+    solver = ctl.attach_solver(_StubEnv(), room_budget=0)
+    assert ctl.solver_clear
+    act = _step(ctl, _room1a_ram())
+    assert act.reason in ("goriya_slash", "goriya_face")
+    assert ctl.clear_arbiter.census() == {"room1a_solver": 0, "room1a_scripted": 1}
+    assert solver.declines["room_budget"] == 1
+    assert solver.report()["rollouts"] == 0
+    # The latch the push phase reads has to stay honest whoever owns the frame.
+    assert ctl.saw_goriya
+
+
+def test_room1a_solver_declines_the_push_and_the_cellar() -> None:
+    """Behavioural. A latching phase is a gate inside the rung, not a priority:
+    the block push and the stairs walk have no enemy for a search to plan
+    against."""
+    ctl = Room1ACandleController()
+    solver = ctl.attach_solver(_StubEnv(), room_budget=0)
+    ctl.saw_goriya = True
+    _step(ctl, _ram(screen=ROOM_1A, mode=PLAY_MODE, x=96, y=180, candle=0))
+    _step(ctl, _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=96, y=93, candle=0))
+    assert solver.declines == {}
+    assert ctl.clear_arbiter.census()["room1a_solver"] == 0
+
+
+def test_room1a_unkillable_drops_the_block_and_the_sealed_centre() -> None:
+    """Behavioural. The ``0x68`` pushable block sits in the object table with
+    the wave, and a goriya inside the sealed diamond cross can never be cut —
+    a goal that waits for either never fires."""
+    block = ZeldaObject(slot=1, type_id=0x68, x=96, y=136, facing=0, hp=1, state=0)
+    sealed = ZeldaObject(
+        slot=2, type_id=GORIYA_OBJECT_TYPE, x=128, y=144, facing=0, hp=48, state=0
+    )
+    reachable = ZeldaObject(
+        slot=3, type_id=GORIYA_OBJECT_TYPE, x=64, y=100, facing=0, hp=48, state=0
+    )
+    assert room1a_unkillable(block)
+    assert room1a_unkillable(sealed)
+    assert not room1a_unkillable(reachable)
+
+
+def test_room1a_alphabet_has_the_swings_and_no_standing() -> None:
+    """Behavioural. Passivity is this room's measured failure: slots 4/5 reach
+    the sealed centre if they are not engaged early."""
+    labels = [a.label for a in room1a_segments()]
+    assert [x for x in labels if x.startswith("swing_")]
+    assert not [x for x in labels if x.startswith("stand")]
+
+
+def test_attach_solver_passes_the_budget_to_the_constructor() -> None:
+    """Behavioural, and the dataclass trap: a default cannot be overridden
+    after the class exists, so every knob goes through ``__init__``."""
+    ctl = Room1ACandleController()
+    solver = ctl.attach_solver(_StubEnv(), room_budget=7)
+    assert solver.room_budget == 7
+    assert solver.objective.unreachable is room1a_unkillable
+    assert solver.reason_prefix == "candle_solve"

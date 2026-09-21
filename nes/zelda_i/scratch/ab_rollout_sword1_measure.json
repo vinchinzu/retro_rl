@@ -1,0 +1,635 @@
+{
+  "arm": "rollout",
+  "contacts": [
+    {
+      "cause": "tektite_blue",
+      "frame": 4415,
+      "screen": "0x7a",
+      "xy": [
+        144,
+        134
+      ]
+    },
+    {
+      "cause": "leever",
+      "frame": 6052,
+      "screen": "0x7c",
+      "xy": [
+        150,
+        117
+      ]
+    },
+    {
+      "cause": "leever",
+      "frame": 6177,
+      "screen": "0x7c",
+      "xy": [
+        211,
+        117
+      ]
+    },
+    {
+      "cause": "fireball_or_statue_projectile",
+      "frame": 6612,
+      "screen": "0x7d",
+      "xy": [
+        145,
+        85
+      ]
+    },
+    {
+      "cause": "fireball_or_statue_projectile",
+      "frame": 7007,
+      "screen": "0x7d",
+      "xy": [
+        19,
+        101
+      ]
+    },
+    {
+      "cause": "fireball_or_statue_projectile",
+      "frame": 7183,
+      "screen": "0x7d",
+      "xy": [
+        57,
+        109
+      ]
+    }
+  ],
+  "damage_units": 767,
+  "failed_stage": "bomb_walk",
+  "final": {
+    "arrows": 0,
+    "bombs": 0,
+    "bow": 0,
+    "candle": 0,
+    "food": 0,
+    "health": 32,
+    "health_full": false,
+    "heart_containers": 3,
+    "keys": 0,
+    "level": 0,
+    "map": 0,
+    "mode": 17,
+    "rod": 0,
+    "room": 125,
+    "rupees": 0,
+    "selected_item": 0,
+    "triforce": 0,
+    "whistle": 0,
+    "x": 57,
+    "y": 109
+  },
+  "frames": 7184,
+  "hearts_lost": 2.996,
+  "hits": 6,
+  "hits_by_cause": {
+    "fireball_or_statue_projectile": 3,
+    "leever": 2,
+    "tektite_blue": 1
+  },
+  "hits_by_screen": {
+    "0x7a": {
+      "tektite_blue": 1
+    },
+    "0x7c": {
+      "leever": 2
+    },
+    "0x7d": {
+      "fireball_or_statue_projectile": 3
+    }
+  },
+  "hits_by_stage": {
+    "bomb_walk": {
+      "fireball_or_statue_projectile": 3,
+      "leever": 2,
+      "tektite_blue": 1
+    }
+  },
+  "knobs": {},
+  "ok": false,
+  "rollout": {
+    "budget": {
+      "frames": 24,
+      "min_gain": 4,
+      "replan_frames": 8,
+      "screen_budget": 120,
+      "trigger_radius": 56
+    },
+    "claims": 169,
+    "declines": {
+      "hold_stand": 3197,
+      "no_gain": 461,
+      "no_hazard": 1139,
+      "screen_budget": 128
+    },
+    "frames_rolled": 57504,
+    "held_frames": 147,
+    "replans": 483,
+    "rollouts": 2396
+  },
+  "stages": [
+    {
+      "end_frame": 948,
+      "frame_base": 199,
+      "frames": 749,
+      "name": "sword_cave",
+      "success": true
+    },
+    {
+      "end_frame": 7184,
+      "evade_reasons": {
+        "evade_commit": 31,
+        "evade_in_pad": 206,
+        "evade_no_gain": 3,
+        "evade_peel": 2,
+        "evade_yield_to_sword": 271,
+        "rollout_evade": 22,
+        "rollout_evade_hold": 147,
+        "shield_hold": 18,
+        "shield_turn": 12,
+        "spit_duck": 517
+      },
+      "evades": 214,
+      "frame_base": 948,
+      "frames": 6236,
+      "hunt": {
+        "damage_taken": 6,
+        "damage_units": 767,
+        "hits_by_cause": {
+          "fireball_or_statue_projectile_E": 2,
+          "fireball_or_statue_projectile_S": 1,
+          "leever_W": 2,
+          "tektite_blue_S": 1
+        },
+        "hunt_frames_by_screen": {
+          "0x78": 238,
+          "0x79": 601,
+          "0x7a": 620,
+          "0x7b": 109,
+          "0x7c": 358,
+          "0x7d": 40
+        },
+        "hurt_events": 6,
+        "kills": 15,
+        "screens": [
+          {
+            "beam_fired": 0,
+            "cleared": true,
+            "containers": 3,
+            "damage_hearts": 0.0,
+            "damage_units": 0,
+            "drops_by_state": {},
+            "frames": 177,
+            "heal_hearts": 0.0,
+            "hearts_in": 2.996,
+            "hearts_out": 2.996,
+            "hits": 0,
+            "hits_by_cause": {},
+            "hunt_frames": 0,
+            "hurt_events": 0,
+            "kills": 0,
+            "kills_by_type": {},
+            "order": 0,
+            "peak_live": 0,
+            "peak_prey": 0,
+            "retired": false,
+            "rupees": 0,
+            "rupees_dropped": 0,
+            "screen": "0x77",
+            "spawned": 0,
+            "spawned_by_type": {},
+            "streak_in": 0,
+            "streak_out": 0,
+            "streak_resets": 0,
+            "transit": false,
+            "visits": 1
+          },
+          {
+            "beam_fired": 13,
+            "cleared": true,
+            "containers": 3,
+            "damage_hearts": 0.0,
+            "damage_units": 0,
+            "drops_by_state": {
+              "0x23": 1
+            },
+            "frames": 1221,
+            "heal_hearts": 0.0,
+            "hearts_in": 2.996,
+            "hearts_out": 2.996,
+            "hits": 0,
+            "hits_by_cause": {},
+            "hunt_frames": 238,
+            "hurt_events": 0,
+            "kills": 4,
+            "kills_by_type": {
+              "octorok": 4
+            },
+            "order": 1,
+            "peak_live": 4,
+            "peak_prey": 2,
+            "retired": false,
+            "rupees": 0,
+            "rupees_dropped": 0,
+            "screen": "0x78",
+            "spawned": 4,
+            "spawned_by_type": {
+              "octorok": 4
+            },
+            "streak_in": 0,
+            "streak_out": 4,
+            "streak_resets": 0,
+            "transit": false,
+            "visits": 1
+          },
+          {
+            "beam_fired": 10,
+            "cleared": false,
+            "containers": 3,
+            "damage_hearts": 0.0,
+            "damage_units": 0,
+            "drops_by_state": {
+              "0x21": 1,
+              "0x22": 1
+            },
+            "frames": 925,
+            "heal_hearts": 0.0,
+            "hearts_in": 2.996,
+            "hearts_out": 2.996,
+            "hits": 0,
+            "hits_by_cause": {},
+            "hunt_frames": 601,
+            "hurt_events": 0,
+            "kills": 3,
+            "kills_by_type": {
+              "tektite_blue": 3
+            },
+            "order": 2,
+            "peak_live": 5,
+            "peak_prey": 5,
+            "retired": true,
+            "rupees": 0,
+            "rupees_dropped": 0,
+            "screen": "0x79",
+            "spawned": 5,
+            "spawned_by_type": {
+              "tektite_blue": 5
+            },
+            "streak_in": 4,
+            "streak_out": 7,
+            "streak_resets": 0,
+            "transit": false,
+            "visits": 1
+          },
+          {
+            "beam_fired": 10,
+            "cleared": false,
+            "containers": 3,
+            "damage_hearts": 0.5,
+            "damage_units": 128,
+            "drops_by_state": {
+              "0x18": 1
+            },
+            "frames": 958,
+            "heal_hearts": 0.0,
+            "hearts_in": 2.996,
+            "hearts_out": 2.496,
+            "hits": 1,
+            "hits_by_cause": {
+              "tektite_blue_S": 1
+            },
+            "hunt_frames": 620,
+            "hurt_events": 1,
+            "kills": 2,
+            "kills_by_type": {
+              "tektite_blue": 2
+            },
+            "order": 3,
+            "peak_live": 4,
+            "peak_prey": 4,
+            "retired": true,
+            "rupees": 0,
+            "rupees_dropped": 1,
+            "screen": "0x7a",
+            "spawned": 4,
+            "spawned_by_type": {
+              "tektite_blue": 4
+            },
+            "streak_in": 7,
+            "streak_out": 0,
+            "streak_resets": 1,
+            "transit": false,
+            "visits": 1
+          },
+          {
+            "beam_fired": 0,
+            "cleared": false,
+            "containers": 3,
+            "damage_hearts": 0.0,
+            "damage_units": 0,
+            "drops_by_state": {},
+            "frames": 776,
+            "heal_hearts": 0.0,
+            "hearts_in": 2.496,
+            "hearts_out": 2.496,
+            "hits": 0,
+            "hits_by_cause": {},
+            "hunt_frames": 109,
+            "hurt_events": 0,
+            "kills": 4,
+            "kills_by_type": {
+              "leever": 3,
+              "zora": 1
+            },
+            "order": 4,
+            "peak_live": 7,
+            "peak_prey": 7,
+            "retired": false,
+            "rupees": 0,
+            "rupees_dropped": 0,
+            "screen": "0x7b",
+            "spawned": 7,
+            "spawned_by_type": {
+              "leever": 6,
+              "zora": 1
+            },
+            "streak_in": 0,
+            "streak_out": 3,
+            "streak_resets": 0,
+            "transit": true,
+            "visits": 1
+          },
+          {
+            "beam_fired": 0,
+            "cleared": false,
+            "containers": 3,
+            "damage_hearts": 1.004,
+            "damage_units": 257,
+            "drops_by_state": {},
+            "frames": 673,
+            "heal_hearts": 0.0,
+            "hearts_in": 2.496,
+            "hearts_out": 1.492,
+            "hits": 2,
+            "hits_by_cause": {
+              "leever_W": 2
+            },
+            "hunt_frames": 358,
+            "hurt_events": 2,
+            "kills": 1,
+            "kills_by_type": {
+              "leever": 1
+            },
+            "order": 5,
+            "peak_live": 7,
+            "peak_prey": 7,
+            "retired": false,
+            "rupees": 0,
+            "rupees_dropped": 0,
+            "screen": "0x7c",
+            "spawned": 7,
+            "spawned_by_type": {
+              "leever": 6,
+              "zora": 1
+            },
+            "streak_in": 3,
+            "streak_out": 0,
+            "streak_resets": 1,
+            "transit": false,
+            "visits": 1
+          },
+          {
+            "beam_fired": 0,
+            "cleared": false,
+            "containers": 3,
+            "damage_hearts": 1.492,
+            "damage_units": 382,
+            "drops_by_state": {},
+            "frames": 881,
+            "heal_hearts": 0.0,
+            "hearts_in": 1.492,
+            "hearts_out": 0.488,
+            "hits": 3,
+            "hits_by_cause": {
+              "fireball_or_statue_projectile_E": 2,
+              "fireball_or_statue_projectile_S": 1
+            },
+            "hunt_frames": 40,
+            "hurt_events": 3,
+            "kills": 1,
+            "kills_by_type": {
+              "octorok_blue": 1
+            },
+            "order": 6,
+            "peak_live": 5,
+            "peak_prey": 5,
+            "retired": false,
+            "rupees": 0,
+            "rupees_dropped": 0,
+            "screen": "0x7d",
+            "spawned": 5,
+            "spawned_by_type": {
+              "octorok_blue": 4,
+              "zora": 1
+            },
+            "streak_in": 0,
+            "streak_out": 0,
+            "streak_resets": 1,
+            "transit": true,
+            "visits": 1
+          }
+        ],
+        "streak_best": 9,
+        "streak_resets": 3
+      },
+      "name": "bomb_walk",
+      "parries": 0,
+      "reason_by_screen": {
+        "0x77": {
+          "hop": 138,
+          "hop_ay": 39,
+          "scroll": 29
+        },
+        "0x78": {
+          "beam": 13,
+          "beam_recover": 150,
+          "evade_shield_hold": 8,
+          "evade_shield_turn": 12,
+          "hop": 221,
+          "hop_advance": 1,
+          "hop_ay": 1,
+          "hop_escape": 593,
+          "hop_escape_shield": 7,
+          "hunt": 173,
+          "hunt_lane": 24,
+          "hunt_offline": 7,
+          "off_west": 11,
+          "scroll": 100,
+          "wait_mode_4": 4
+        },
+        "0x79": {
+          "beam": 14,
+          "beam_recover": 110,
+          "beam_release": 4,
+          "evade_evade_commit": 1,
+          "hop_advance": 1,
+          "hunt": 405,
+          "hunt_beam": 150,
+          "hunt_lane": 1,
+          "hunt_offline": 40,
+          "hunt_slash": 1,
+          "hunt_slash_recover": 4,
+          "off_west": 7,
+          "scroll": 100,
+          "skirt_beach": 71,
+          "skirt_exit_east": 36,
+          "skirt_exit_up": 23,
+          "skirt_south": 57,
+          "wait_mode_4": 2,
+          "wake_mode_4": 2
+        },
+        "0x7a": {
+          "band_down": 5,
+          "band_up": 1,
+          "beam": 12,
+          "beam_recover": 99,
+          "beam_release": 4,
+          "evade_evade_commit": 5,
+          "hop": 138,
+          "hop_advance": 1,
+          "hop_lane": 17,
+          "hunt": 331,
+          "hunt_beam": 161,
+          "hunt_close_peel": 5,
+          "hunt_lane": 98,
+          "hunt_offline": 19,
+          "hunt_slash": 6,
+          "hunt_slash_recover": 21,
+          "hunt_slash_release": 1,
+          "hunt_slash_turn": 11,
+          "off_west": 7,
+          "rollout_evade": 2,
+          "rollout_evade_hold": 14,
+          "scroll": 100,
+          "wait_mode_4": 4
+        },
+        "0x7b": {
+          "evade_evade_commit": 8,
+          "evade_evade_peel": 1,
+          "hop": 224,
+          "hop_advance": 1,
+          "hop_dodge": 1,
+          "hop_lane": 117,
+          "hop_lane_stand": 5,
+          "hunt_close_peel": 9,
+          "hunt_duck": 62,
+          "hunt_lane": 89,
+          "hunt_lane_dodge": 16,
+          "hunt_lane_turn": 4,
+          "hunt_slash": 14,
+          "hunt_slash_recover": 82,
+          "hunt_slash_release": 5,
+          "hunt_slash_turn": 8,
+          "off_west": 11,
+          "scroll": 100,
+          "spit_duck": 119,
+          "wait_mode_4": 4
+        },
+        "0x7c": {
+          "evade_evade_commit": 17,
+          "hop": 52,
+          "hop_advance": 1,
+          "hunt": 187,
+          "hunt_align": 28,
+          "hunt_close_peel": 18,
+          "hunt_duck": 42,
+          "hunt_lane": 1,
+          "hunt_offline": 40,
+          "hunt_slash": 9,
+          "hunt_slash_recover": 40,
+          "hunt_slash_release": 2,
+          "hunt_slash_turn": 16,
+          "off_west": 11,
+          "rollout_evade": 13,
+          "rollout_evade_hold": 91,
+          "scroll": 100,
+          "spit_duck": 105,
+          "wait_mode_4": 4
+        },
+        "0x7d": {
+          "evade_evade_peel": 1,
+          "evade_shield_hold": 10,
+          "hop": 194,
+          "hop_advance": 1,
+          "hop_lane": 31,
+          "hop_shield": 41,
+          "hunt_close_peel": 7,
+          "hunt_duck": 49,
+          "hunt_lane": 110,
+          "hunt_lane_dodge": 3,
+          "hunt_shield": 35,
+          "hunt_shield_turn": 6,
+          "hunt_slash": 5,
+          "hunt_slash_block": 2,
+          "hunt_slash_recover": 29,
+          "hunt_slash_release": 1,
+          "hunt_slash_turn": 3,
+          "link_death": 1,
+          "off_west": 11,
+          "rollout_evade": 7,
+          "rollout_evade_hold": 42,
+          "scroll": 71,
+          "spit_duck": 293,
+          "wait_mode_4": 4
+        }
+      },
+      "rollout": {
+        "budget": {
+          "frames": 24,
+          "min_gain": 4,
+          "replan_frames": 8,
+          "screen_budget": 120,
+          "trigger_radius": 56
+        },
+        "claims": 169,
+        "declines": {
+          "hold_stand": 3197,
+          "no_gain": 461,
+          "no_hazard": 1139,
+          "screen_budget": 128
+        },
+        "frames_rolled": 57504,
+        "held_frames": 147,
+        "replans": 483,
+        "rollouts": 2396
+      },
+      "rung_census": {
+        "hop_beam": 406,
+        "hop_edge": 58,
+        "hop_extra": 187,
+        "hop_hunt": 2380,
+        "hop_lane": 170,
+        "hop_maze": 0,
+        "hop_occupancy": 0,
+        "hop_scoop": 0,
+        "hop_stall_escape": 600,
+        "hop_unstick": 0,
+        "push": 1055
+      },
+      "rung_frames": 4856,
+      "spit_ducks": 517,
+      "stall_escapes": 1,
+      "success": false,
+      "threat_census": {
+        "threat_duck": 517,
+        "threat_reactive": 63,
+        "threat_rollout": 169,
+        "yielded": 4862
+      },
+      "threat_frames": 5611
+    }
+  ],
+  "tag": "ab_rollout_sword1_measure",
+  "through": "pre-l1"
+}

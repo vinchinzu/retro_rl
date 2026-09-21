@@ -1,0 +1,96 @@
+# Baseline for test_assertion_quality.py.
+#
+# Format: one "file.py::test_name" entry per line, under a "# reason_only"
+# or "# meta_only" section header. Lines starting with "#" that are not a
+# section header are ignored (use them for justification comments). A
+# trailing "  # comment" on an entry line is also ignored.
+#
+# reason_only = every assert in the test touches only `.reason` / `.notes`.
+# meta_only   = every assert in the test touches only report()-bookkeeping
+#               keys (route_eligible, writes, evidence, natural_entry,
+#               spec_id) or isinstance().
+#
+# This is a ratchet, not a target: test_assertion_quality.py checks that the
+# CURRENT set of offenders is a subset of what's listed here. Tests deleted
+# elsewhere only shrink the live set, so this never goes red on someone
+# else's work. Do not add new entries to make a new offender go away --
+# fix the test (add a substantive assertion) instead. Add an entry only when
+# the string genuinely is the contract being tested, with a one-line
+# justification comment.
+#
+# Generated 2026-09-16 by AST-walking nes/zelda_i/tests/test_*.py (see
+# test_assertion_quality.py:scan_tests_dir for the exact algorithm). 56
+# reason_only + 13 meta_only entries, matching the mutation-campaign census
+# that motivated this file.
+
+# reason_only
+test_arbiter.py::test_equal_priorities_are_broken_by_name_not_insertion
+test_arbiter.py::test_stamp_appends_the_winner_without_losing_the_reason
+test_arbiter.py::test_stamp_is_off_by_default
+test_arbiter.py::test_stamp_names_an_empty_reason
+test_beam.py::test_a_transit_screen_still_shoots_what_walks_into_the_lane
+test_beam.py::test_a_zora_is_never_worth_a_shot
+test_bomb_wall_wait_policies.py::test_1e_south_band_centers_x_before_stand
+test_dungeon.py::test_contact_enemy_fights_instead_of_scoop
+test_dungeon.py::test_engage_far_enemy_walks_without_slash
+test_dungeon.py::test_occupancy_room_does_not_leave_wall_in_south_pocket
+test_dungeon.py::test_patrol_does_not_slash
+test_dungeon.py::test_room23_never_answers_a_closing_body_with_an_idle_frame
+test_dungeon.py::test_room23_occupancy_stands_on_goriya_instead_of_walking
+test_hunt.py::test_a_body_outranks_a_drop
+test_hunt.py::test_a_cleared_screen_still_walks_onto_the_rupee_it_dropped
+test_hunt.py::test_a_drop_across_a_live_screen_is_not_worth_walking_to
+test_hunt.py::test_a_drop_inside_the_radius_is_still_taken
+test_hunt.py::test_a_drop_is_taken_once_the_wave_is_dead
+test_hunt.py::test_a_duck_never_steps_into_a_body
+test_hunt.py::test_a_fireball_across_the_map_is_left_to_the_evader
+test_hunt.py::test_a_full_health_link_does_not_walk_to_a_heart
+test_hunt.py::test_a_heart_is_taken_once_the_partial_heart_is_chipped
+test_hunt.py::test_a_rock_that_is_not_arriving_does_not_stop_the_hunt
+test_hunt.py::test_a_transit_screen_still_banks_a_drop_it_walks_past
+test_hunt.py::test_an_empty_screen_still_walks_the_whole_box_for_a_drop
+test_hunt.py::test_five_rupee_drop_is_taken_at_full_health
+test_hunt.py::test_one_body_cannot_hold_the_contact_strike_forever
+test_hunt.py::test_the_duck_can_be_switched_off_without_the_shield
+test_hunt.py::test_the_heal_budget_is_not_the_collect_budget
+test_hunt.py::test_the_heal_outranks_the_beam_when_link_is_chipped
+test_hunt.py::test_two_hearts_of_three_still_hunt
+test_level1_arrow_shop.py::test_farm_leaves_after_empty_to_respawn
+test_level2_spine.py::test_backtrack_7d_recenters_live_timeout_pose
+test_level3_boss_path.py::test_clear_5c_avoids_direct_shield_slash
+test_level3_boss_path.py::test_clear_5c_conserves_bombs_for_manhandla
+test_level4_dungeon.py::test_maze_50_live_corner_turns_at_observed_coordinates
+test_level5_path.py::test_east_key_route_returns_south_from_cleared_66
+test_level5_path.py::test_east_key_route_uses_wall_before_door_channel
+test_level5_path.py::test_room66_west_aisle_prefights_north_of_river
+test_level5_path.py::test_west65_uses_statue_bypass_on_76
+test_level6_dungeon.py::test_east_key_engages_undodgeable_0x24_pose
+test_level7_hops.py::test_room69_east_crosses_on_the_north_band_not_the_centre_row
+test_level7_hops.py::test_room_58_north_east_around_then_push
+test_level7_hops.py::test_room_68_down_peels_then_drops_then_pushes
+test_level7_hops.py::test_room_6a_east_crosses_the_top_band_not_the_centre_row
+test_level9_room51.py::test_room51_to_41_step_waypoints
+test_nav_common.py::test_magic_shield_blocks_the_fireball_instead
+test_nav_common.py::test_shot_behind_link_does_not_dodge
+test_ow_path.py::test_far_drop_does_not_steal_the_hop
+test_ow_path.py::test_need_rupees_already_funded_keeps_hopping
+test_ow_path.py::test_need_rupees_zero_ignores_drops
+test_ow_path.py::test_occupied_lane_clear_hop_row_is_not_a_lane_action
+test_pre_l1.py::test_the_travelling_shot_is_off_when_the_walk_does_not_hunt
+test_rupee_farm.py::test_ignores_dead_and_sentinel_and_out_of_bounds_slots
+test_rupee_farm.py::test_ignores_slot11_cave_door_trigger
+test_white_sword.py::test_take_sword_waits_out_the_old_man_before_walking
+# meta_only
+test_level3_boss_path.py::test_spawn_clear_5c_wires_clear5c_controller
+test_level6_door_hop.py::test_row_table_is_the_ten_generic_hops
+test_level7_aquamentus.py::test_hops_factory_returns_the_live_controller
+test_level8_cellar.py::test_magic_key_stairs_factory_is_live_controller
+test_level8_east.py::test_gleeok_and_magic_key_factories_stay_unverified
+test_level8_overworld_from_l7.py::test_fixture_report_never_claims_route_eligibility_or_writes
+test_level8_passage.py::test_gleeok_passage_factory_stays_unverified
+test_level8_south.py::test_2e_gleeok_and_magic_key_factories_stay_unverified
+test_level8_south.py::test_gleeok_passage_factory_stays_unverified
+test_level8_stairs.py::test_gleeok_passage_factory_stays_unverified
+test_level8_west.py::test_gleeok_passage_factory_stays_unverified
+test_natural_entry_segments.py::test_every_segment_row_is_fully_populated
+test_white_sword.py::test_detour_writes_nothing

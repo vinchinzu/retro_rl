@@ -18,12 +18,12 @@
       "toRoom": 113,
       "toRoomHex": "0x71",
       "approachXy": [160, 3620],
-      "landingXy": [160, 3613],
+      "landingXy": [672, 3658],
       "role": "primary",
       "path": ["north_to_0x71_approach"],
       "pathTolerances": {"default": 12},
       "pushFrames": 40,
-      "notes": "From CastleB2Landing spawn UP ~28f → 0x71"
+      "notes": "Spiral/straight stairs (submodule 14). Room-change ~28f at (160,3613); settled landing (672,3658) in 0x71 ~292f. Not F1."
     },
     {
       "label": "west_north_to_0x80",

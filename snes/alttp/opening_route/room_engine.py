@@ -40,6 +40,11 @@ def at_door_destination(snap: AlttpSnapshot, door: KnownDoor) -> bool:
     return in_room(snap, door.to_room)
 
 
+# Dungeon submodule 14 (stair anim) can idle ~292–400f after dest room-change.
+# Only dest settle uses this; primitives.settle_control default stays 240.
+DEST_SETTLE_MAX_FRAMES = 480
+
+
 def move_path_combat_aware(
     env: object,
     waypoints: list[primitives.Waypoint],
@@ -493,8 +498,8 @@ def run_room_edge(
     if at_door_destination(snap, door):
         # A room id can change while the door transition still owns input.
         # Settle in the destination before reporting a composable edge success;
-        # the next edge must see the real predecessor state, not submodule 2.
-        settled = primitives.settle_control(env)
+        # the next edge must see the real predecessor state, not submodule 14.
+        settled = primitives.settle_control(env, max_frames=DEST_SETTLE_MAX_FRAMES)
         frames += settled.frames
         phases.append(
             RoutePhaseResult(

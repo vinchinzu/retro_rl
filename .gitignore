@@ -115,6 +115,13 @@ snes/SMW/tas/ref/
 !nes/zelda_i/tas/**/*.py
 !nes/zelda_i/tas/**/__init__.py
 !nes/zelda_i/tas/README.md
+# ALTTP TAS import; keep movies/slices ignored (re-fetch)
+!snes/alttp/tas/
+!snes/alttp/tas/**/*.py
+!snes/alttp/tas/**/__init__.py
+!snes/alttp/tas/README.md
+snes/alttp/tas/ref/
+snes/alttp/tas/slices/
 *.bk2
 *.fm2
 *.lsmv
@@ -272,8 +279,10 @@ harvest/HM-Decomp/
 uwnh/
 super_metroid_rl/
 alttp/refs/z3-json-data/
+snes/alttp/refs/z3-json-data/
 # Workspace-local clone (prefer refs/ via setup script; never commit vendor tree)
 alttp/z3-json-data/
+snes/alttp/z3-json-data/
 smz3/refs/
 smz3/seeds/
 sm_rando/seeds/

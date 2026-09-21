@@ -36,6 +36,24 @@ from zelda_i.paths import GAME_DIR
 MAP1_URL = "https://www.zeldadungeon.net/Zelda01/Walkthrough/01/Map-1.png"
 MAP1_PATH = GAME_DIR / "refs" / "zd" / "Map-1.png"
 
+# Derived once from the cyan overlay with :func:`parse_overworld_map`.  Keep
+# the small route datum in source control instead of requiring the ignored,
+# third-party PNG at runtime.  ``MAP1_PATH`` and the parser remain available
+# for manually checking a newly downloaded copy of the walkthrough image.
+_MAP1_SCREENS = (0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F, 0x6F)
+_MAP1_LANES = {
+    0x6F: (107, 160),
+    0x77: (165, 133),
+    0x78: (121, 130),
+    0x79: (118, 131),
+    0x7A: (117, 131),
+    0x7B: (132, 131),
+    0x7C: (121, 130),
+    0x7D: (123, 130),
+    0x7E: (123, 130),
+    0x7F: (82, 118),
+}
+
 _CYAN_FRAC = 0.02
 _NEIGHBORS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
@@ -264,5 +282,17 @@ def mirror_screen_hops(
 
 @lru_cache(maxsize=1)
 def map1_route() -> PaintedRoute:
-    """The Gathering Map-1.png, committed next to this module's refs."""
-    return parse_overworld_map(MAP1_PATH, source=MAP1_URL)
+    """The route derived from The Gathering Map-1.png cyan overlay.
+
+    The source image is third-party reference material and ``*.png`` is
+    intentionally ignored by the repository, so production route lookup
+    must not depend on that local file being present.
+    """
+    lanes = dict(_MAP1_LANES)
+    return PaintedRoute(
+        screens=_MAP1_SCREENS,
+        hops=_hops_for(_MAP1_SCREENS, lanes),
+        dest=_MAP1_SCREENS[-1],
+        lanes=lanes,
+        source=MAP1_URL,
+    )

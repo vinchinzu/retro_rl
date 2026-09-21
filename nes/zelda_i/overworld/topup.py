@@ -34,11 +34,16 @@ from dataclasses import dataclass, field
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
+from zelda_i.overworld.common import recover_off_edge
 from zelda_i.overworld.graph import ScreenHop
-from zelda_i.overworld.hunt import ScreenHunter
+from zelda_i.overworld.hunt import ScreenHunter, hop_lane
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.shop_p7 import SHOP_P7_SCREEN
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+
+# Back hop travel → the way into the neighbour. An out-and-back lands on
+# the reverse hop's arrival edge, which is the scroll line home.
+_INWARD = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 
 __all__ = [
     "SCREEN_6E_WEST_BAND",
@@ -170,6 +175,48 @@ class RupeeTopUpController(OverworldPathController):
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         return self._home(snap) and not self._short(snap)
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        """Fight the neighbour before the back hop retraces.
+
+        Live ``scratch/probe_topup.py`` t1: hop_index advanced onto the DOWN
+        home hop the first play frame of 0x5F (``on_arrival_edge`` names the
+        *travel* edge, and an UP arrival is the south). Hunt then skipped
+        because y>200 is the DOWN arrival edge, ``recover_off_edge`` allowed
+        DOWN, and the hop retraced in 87f with ``peak_live`` 0. 0x6E was the
+        same one-frame visit. Both neighbours measured a six-body wave;
+        neither got a hunt frame.
+        """
+        if self.hunter is None or hop.target != int(self.shop_screen):
+            return None
+        screen = int(snap.screen)
+        if screen == int(self.shop_screen):
+            return None
+        hunted = None
+        if screen not in self.hunter.done:
+            hunted = self.hunter.step(snap, self.frames, lane=hop_lane(hop))
+            # ``FarmOccupancy`` stands when the 1px grid has no path. On 0x6E
+            # that is the bush maze, and extra returning the stand left Link
+            # on the east scroll line for 214f (live t2). The hold's inward
+            # step is the sand corridor the neighbour probe already walked.
+            if hunted is not None and hunted.reason != "occupancy_stand":
+                return hunted
+        if screen in self.hunter.done:
+            return None
+        inward = _INWARD.get(hop.direction)
+        if inward is not None:
+            rec = recover_off_edge(
+                snap,
+                inward,
+                swing=lambda d, _r: self._swing(d, "topup_hold"),
+            )
+            if rec is not None:
+                return rec
+            if hunted is not None and hunted.reason == "occupancy_stand":
+                return self._swing(inward, "topup_hold")
+        return FrameAction(nes_idle_action(), "topup_hold")
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         """Table exhausted. Home is a finish even when it is still short.

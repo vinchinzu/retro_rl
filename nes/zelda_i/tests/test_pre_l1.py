@@ -195,8 +195,27 @@ def test_shop_bomb_hops_follow_map1_coast_with_79_beach() -> None:
     assert painted.hops[2].align_y != SCREEN_79_BEACH_Y
     assert by_target[0x7A] == ScreenHop(0x7A, "RIGHT", align_y=SCREEN_79_BEACH_Y)
     assert by_target[0x7B].y_band == SCREEN_7A_EAST_BAND == (133, 141)
+    # 0x7D scrolls from every row; 0x7E does not. The dead 133 row is how
+    # ``pre_l1_topup_live`` entered 0x7E and died at y=131. The 0x7E band
+    # therefore sits on the hop that leaves 0x7D, not only on 0x7E itself.
+    assert by_target[0x7E].y_band == SCREEN_7E_EAST_BAND == (137, 145)
     assert by_target[0x7F].y_band == SCREEN_7E_EAST_BAND == (137, 145)
     assert 120 <= int(painted.hops[2].align_y or 0) <= 145
+
+
+def test_7d_exit_band_walks_down_off_the_dead_133_row() -> None:
+    """y=131 is outside SCREEN_7E_EAST_BAND; the 0x7D→0x7E hop must DOWN."""
+    from zelda_i.overworld.common import align_and_push
+
+    hop = next(h for h in SHOP_P7_HOPS if h.target == 0x7E)
+    snap = read_snapshot(make_ram(
+        {"mode": PLAY_MODE, "level": 0, "screen": 0x7D, "x": 200, "y": 131, "sword": 1}
+    ))
+    act = align_and_push(
+        snap, direction=hop.direction, reason="hop6", y_band=hop.y_band
+    )
+    assert hop.y_band == SCREEN_7E_EAST_BAND
+    assert act.reason == "band_down"
 
 
 def test_shop_p7_arrived_only_on_play_6f_with_sword() -> None:
@@ -280,15 +299,15 @@ def test_pre_l1_stages_are_sword_then_walk_then_topup_then_buy() -> None:
     assert inland_bomb_shop.BOMB_SHOP_HOPS != walk_ctl.hops
 
 
-def test_the_walk_does_not_stop_until_the_destination_wave_is_fought() -> None:
-    """0x6F arrival is not enough; the coast shop wave has to be fought."""
+def test_arrival_short_stops_so_topup_can_leave() -> None:
+    """18R at 0x6F is ``bomb_topup``'s job. Fighting the shop wave until
+    ``destination_hunted`` deadlocked 22403f in cave mode (``pre_l1_c3_melee1``)."""
     ctl = make_shop_p7_walk_controller()
-    assert ctl.hunter is not None and ctl.hunt_destination is True
-    arrived = read_snapshot(_shop_p7_ram(health=0x22))
+    arrived = read_snapshot(_shop_p7_ram(health=0x22, rupees=18))
     assert shop_p7_arrived(arrived)
-    assert not ctl._at_stop(arrived)
-    ctl.hunter.done.add(0x6F)
     assert ctl._at_stop(arrived)
+    funded = read_snapshot(_shop_p7_ram(rupees=SHOP_P7_PRICE))
+    assert ctl._at_stop(funded)
 
 
 def test_the_destination_wave_is_not_worth_a_2400_frame_stand_at_one_heart() -> None:

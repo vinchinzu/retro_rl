@@ -3,6 +3,15 @@
 Pure helpers over Link + object slots. Room geometry stays on
 ``DungeonRoomSpec``; the generic dungeon controller can call these later.
 Hitbox-gated sword in ``combat.should_swing_at`` remains the swing gate.
+
+**This module owns policy: how we choose to fight a kind.** What the ROM says
+a type *is* -- hitbox shape, HP, speed, damage -- lives in
+``dungeon/species.py`` (sourced in ``scratch/enemy_constants_rom.md``). The two
+touch in exactly two places, and neither value is stored twice:
+``alive_rule == TYPE`` is true *because* the ROM HP is 0, and
+``whistle_then_sword`` is true *because* type ``$38`` carries object attribute
+``$20``. ``tests/test_species.py`` asserts both agreements rather than copying
+the numbers across.
 """
 
 from __future__ import annotations
@@ -19,7 +28,14 @@ from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 # IDs already catalogued in dungeon_ids.
 KEESE_TYPE = _ids.KEESE_OBJECT_TYPE
 VIRE_SPLIT_KEESE_TYPE = _ids.VIRE_SPLIT_KEESE_TYPE
+# $1D is the third Keese. `NoDropMonsterTypes` lists $1B/$1C/$1D together and
+# the ROM gives $1D HP 0 (`species.species_of(0x1D).hp`), so leaving it out of
+# `_TYPE_TO_KIND` made it EnemyKind.UNKNOWN -> AliveRule.TYPE_AND_HP -> dead on
+# arrival, the exact failure the KEESE note exists to prevent.
+KEESE_BLACK_TYPE = _ids.KEESE_BLACK_OBJECT_TYPE
 GEL_TYPE = _ids.GEL_OBJECT_TYPE
+# $14 is the Zol-split Gel residual: same ROM HP 0 as $15, same kind.
+GEL_SPLIT_TYPE = _ids.GEL_SPLIT_OBJECT_TYPE
 ROPE_TYPE = _ids.ROPE_OBJECT_TYPE
 GORIYA_TYPE = _ids.GORIYA_OBJECT_TYPE
 GORIYA_BLUE_TYPE = _ids.GORIYA_BLUE_OBJECT_TYPE
@@ -205,7 +221,10 @@ KIND_POLICY: dict[EnemyKind, KindPolicy] = {
         preferred_distance=48,
         alive_rule=AliveRule.TYPE,
         type_only=True,
-        notes="HP stays 0 while alive; never use TYPE_AND_HP alone.",
+        notes=(
+            "HP stays 0 while alive; never use TYPE_AND_HP alone. "
+            "Three types: 0x1B, 0x1C (Vire split) and 0x1D (black)."
+        ),
     ),
     EnemyKind.GEL: KindPolicy(
         preferred_distance=40,
@@ -319,7 +338,9 @@ _TYPE_TO_KIND: dict[int, EnemyKind] = {
     STALFOS_TYPE: EnemyKind.STALFOS,
     KEESE_TYPE: EnemyKind.KEESE,
     VIRE_SPLIT_KEESE_TYPE: EnemyKind.KEESE,
+    KEESE_BLACK_TYPE: EnemyKind.KEESE,
     GEL_TYPE: EnemyKind.GEL,
+    GEL_SPLIT_TYPE: EnemyKind.GEL,
     ROPE_TYPE: EnemyKind.ROPE,
     GORIYA_TYPE: EnemyKind.GORIYA,
     GORIYA_BLUE_TYPE: EnemyKind.GORIYA,
@@ -649,7 +670,9 @@ def may_close(
 
 __all__ = [
     "KEESE_TYPE",
+    "KEESE_BLACK_TYPE",
     "VIRE_SPLIT_KEESE_TYPE",
+    "GEL_SPLIT_TYPE",
     "ROPE_TYPE",
     "GORIYA_TYPE",
     "GORIYA_BLUE_TYPE",

@@ -39,10 +39,18 @@ _ALLOWED_ROOT_PY = frozenset(
         "beam.py",
         "anchors.py",
         "room_timer.py",
+        # Engine primitive beside combat.py: forward prediction against the
+        # ROM itself. Root because every engine dir (walk, overworld,
+        # dungeon) needs it and none of them may own it.
+        "rollout.py",
+        # The multi-segment search built on rollout.py. Root for the same
+        # reason: a room solver is not a level's property and not an engine
+        # dir's -- L7 binds it, L6 and L8 are meant to, and none may own it.
+        "solver.py",
     }
 )
 _ENGINE_DIRS = ("walk", "overworld", "dungeon", "door_graph")
-_ENGINE_ROOT_FILES = ("ram.py", "combat.py", "beam.py", "anchors.py")
+_ENGINE_ROOT_FILES = ("ram.py", "combat.py", "beam.py", "anchors.py", "rollout.py")
 _LEVEL_EXITS_ALLOWLIST = frozenset(f"level{n}_exits.py" for n in range(1, 10))
 _GONE_FLAT_MODULES = (
     "zelda_i.level6_hops",

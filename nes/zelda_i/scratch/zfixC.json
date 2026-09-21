@@ -1,0 +1,196 @@
+{
+  "failed": "bomb_topup",
+  "final": {
+    "arrows": 0,
+    "bombs": 0,
+    "bow": 0,
+    "candle": 0,
+    "food": 0,
+    "health": 32,
+    "health_full": false,
+    "heart_containers": 3,
+    "keys": 0,
+    "level": 0,
+    "map": 0,
+    "mode": 17,
+    "rod": 0,
+    "room": 111,
+    "rupees": 12,
+    "selected_item": 0,
+    "triforce": 0,
+    "whistle": 0,
+    "x": 105,
+    "y": 205
+  },
+  "hunt": {
+    "beam_aimed": 0,
+    "beam_fired": 0,
+    "beam_fired_by_screen": {},
+    "beam_impacts": 0,
+    "beam_pressed": 0,
+    "beam_ready_frames": 0,
+    "beam_stand_frames": 0,
+    "damage_hearts": 0.48,
+    "damage_taken": 1,
+    "damage_units": 123,
+    "drops_by_state": {},
+    "duck_frames": 17,
+    "guard_frames": 44,
+    "heal_frames": 0,
+    "hits_by_cause": {
+      "fireball_or_statue_projectile_E": 1
+    },
+    "hunt_frames": 44,
+    "hunt_frames_by_screen": {
+      "0x6f": 44
+    },
+    "hurt_events": 1,
+    "kills": 0,
+    "kills_by_screen": {},
+    "kills_counter": 0,
+    "notes": [
+      "hunt_guard_6f"
+    ],
+    "occupancy_misses": 5,
+    "off_line_frames": 0,
+    "peak_live_by_screen": {
+      "0x6f": 6
+    },
+    "peak_prey_by_screen": {
+      "0x6f": 6
+    },
+    "peel_frames": 0,
+    "prey_passed": {},
+    "release_frames": 0,
+    "rupees_banked": 0,
+    "rupees_dropped": 0,
+    "rupees_left": 0,
+    "screens": [
+      {
+        "beam_fired": 0,
+        "cleared": false,
+        "containers": 3,
+        "damage_hearts": 0.48,
+        "damage_units": 123,
+        "drops_by_state": {},
+        "frames": 94,
+        "heal_hearts": 0.0,
+        "hearts_in": 0.48,
+        "hearts_out": 0.48,
+        "hits": 1,
+        "hits_by_cause": {
+          "fireball_or_statue_projectile_E": 1
+        },
+        "hunt_frames": 44,
+        "hurt_events": 1,
+        "kills": 0,
+        "kills_by_type": {},
+        "order": 0,
+        "peak_live": 6,
+        "peak_prey": 6,
+        "retired": false,
+        "rupees": 0,
+        "rupees_dropped": 0,
+        "screen": "0x6f",
+        "spawned": 6,
+        "spawned_by_type": {
+          "octorok_blue": 1,
+          "octorok_fast": 4,
+          "zora": 1
+        },
+        "streak_in": 1,
+        "streak_out": 1,
+        "streak_resets": 1,
+        "transit": false,
+        "visits": 1
+      }
+    ],
+    "screens_cleared": 0,
+    "screens_done": [],
+    "screens_retired": 0,
+    "shield_frames": 17,
+    "shield_holds": 0,
+    "shield_swings_held": 0,
+    "shield_turns": 0,
+    "streak_best": 1,
+    "streak_resets": 1,
+    "target_skips": 0,
+    "transit_frames": 0,
+    "transit_screens": []
+  },
+  "ok": false,
+  "screens": [
+    {
+      "beam_fired": 0,
+      "cleared": false,
+      "containers": 3,
+      "damage_hearts": 0.48,
+      "damage_units": 123,
+      "drops_by_state": {},
+      "frames": 94,
+      "heal_hearts": 0.0,
+      "hearts_in": 0.48,
+      "hearts_out": 0.48,
+      "hits": 1,
+      "hits_by_cause": {
+        "fireball_or_statue_projectile_E": 1
+      },
+      "hunt_frames": 44,
+      "hurt_events": 1,
+      "kills": 0,
+      "kills_by_type": {},
+      "order": 0,
+      "peak_live": 6,
+      "peak_prey": 6,
+      "retired": false,
+      "rupees": 0,
+      "rupees_dropped": 0,
+      "screen": "0x6f",
+      "spawned": 6,
+      "spawned_by_type": {
+        "octorok_blue": 1,
+        "octorok_fast": 4,
+        "zora": 1
+      },
+      "streak_in": 1,
+      "streak_out": 1,
+      "streak_resets": 1,
+      "transit": false,
+      "visits": 1
+    }
+  ],
+  "stages": [
+    {
+      "frames": 749,
+      "name": "sword_cave",
+      "notes": [
+        "aligned",
+        "sword_collected",
+        "sword_on_start"
+      ],
+      "ok": true,
+      "phase": "DONE"
+    },
+    {
+      "frames": 8967,
+      "name": "bomb_walk",
+      "notes": [
+        "hop_7_7f",
+        "duck_wall_7f_down",
+        "path_stop"
+      ],
+      "ok": true,
+      "phase": "DONE"
+    },
+    {
+      "frames": 95,
+      "name": "bomb_topup",
+      "notes": [
+        "link_death"
+      ],
+      "ok": false,
+      "phase": "FAILED"
+    }
+  ],
+  "tag": "zfixC"
+}

@@ -8,10 +8,15 @@
   "z3Label": "Hyrule Castle",
   "points": [
     {"label": "entry_from_0x81", "xy": [632, 4113], "role": "spawn", "notes": "Landing after UP from CastleZeldaB1West"},
+    {"label": "spiral_from_0x70", "xy": [672, 3658], "role": "spawn", "notes": "Settled landing after 0x70 north stairs"},
     {"label": "north_extent", "xy": [632, 3856], "role": "waypoint", "notes": "North walk bound"},
     {"label": "west_extent", "xy": [576, 4008], "role": "waypoint", "notes": ""},
-    {"label": "east_extent", "xy": [688, 4008], "role": "waypoint", "notes": ""},
-    {"label": "south_door_approach", "xy": [632, 4100], "role": "approach", "notes": "Hold DOWN → room 0x81"}
+    {"label": "east_extent", "xy": [688, 4008], "role": "waypoint", "notes": "West-corridor east bound; wrap from east pocket also lands x=688 y=3960"},
+    {"label": "south_door_approach", "xy": [632, 4100], "role": "approach", "notes": "Hold DOWN → room 0x81"},
+    {"label": "second_key_pin", "xy": [904, 3988], "role": "spawn", "notes": "CastleB1SecondKey; keys=1 in east alcove (chest + pots). Cardinals box x=832-944 y=3976-4008; LEFT at pin y is the south jamb."},
+    {"label": "east_pocket_nw", "xy": [835, 3982], "role": "waypoint", "notes": "NW lip inside the alcove. Cardinal LEFT stays (832,3982). UP along this x reaches (835,3944) still east of the corridor."},
+    {"label": "east_pocket_west_door", "xy": [832, 3960], "role": "approach", "notes": "West door of the east alcove. Open at y=3960; pin y=3988 hits the jamb. UP+LEFT from east_pocket_nw walks through (no key spent)."},
+    {"label": "wrap_to_corridor", "xy": [688, 3960], "role": "waypoint", "notes": "UP+LEFT from east_pocket_nw halt; x=east_extent keys=1. Then south_door_approach DOWN → 0x81."}
   ],
   "doors": [
     {
@@ -25,7 +30,7 @@
       "path": ["south_door_approach"],
       "pathTolerances": {"default": 12},
       "pushFrames": 200,
-      "notes": "Measured ~180f DOWN from landing back to 0x81"
+      "notes": "Measured ~180f DOWN from landing back to 0x81. CastleB1SecondKey wrap (east_pocket_nw UP+LEFT → wrap_to_corridor) then DOWN: room-change (632,4084) sub=2, settle 0x81 (632,4155) keys=1."
     }
   ],
   "clearPolicy": {
@@ -36,11 +41,13 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 60
   },
-  "walkBbox": [576, 3856, 688, 4113],
+  "walkBbox": [576, 3658, 944, 4113],
   "hostilesAtEntry": [],
   "notes": [
-    "No dedicated save-state; measured by UP from CastleZeldaB1West.",
-    "North/west/east bounds measured; no further door isolated yet.",
+    "No dedicated save-state for the west corridor; measured by UP from CastleZeldaB1West.",
+    "0x70 north stairs settle at (672,3658). CastleB1SecondKey (904,3988) is the east alcove (keys=1).",
+    "East pocket wrap: NW lip UP+LEFT through west door at y=3960 → wrap_to_corridor (688,3960) keys=1, then south_to_0x81. Cardinal LEFT at pin y=3988 is the jamb (keys stay 1).",
+    "North/west/east bounds measured; no F1 door isolated in this room.",
     "Authority: maps/room_71.json"
   ]
 }

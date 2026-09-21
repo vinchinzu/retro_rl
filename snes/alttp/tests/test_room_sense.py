@@ -279,6 +279,60 @@ def test_courtyard_outdoor_map() -> None:
     assert "open_gardens" in door.path
 
 
+def test_room_01_down_stair_door() -> None:
+    from alttp.ram import HYRULE_CASTLE_B1_PIT_ROOM
+
+    m = load_room_map("room_01")
+    door = m.door("down_to_0x72")
+    assert door is not None
+    assert door.direction == "UP"
+    assert door.to_room == HYRULE_CASTLE_B1_PIT_ROOM
+    assert door.role == "zelda_path"
+    assert door.approach_xy == (760, 99)
+    assert door.landing_xy == (1273, 3665)
+    wps = m.waypoints_for_door(door)
+    assert wps[-1][0] == door.approach_xy[0]
+    assert wps[-1][1] == door.approach_xy[1]
+
+
+def test_room_72_south_to_0x82_door() -> None:
+    from alttp.ram import HYRULE_CASTLE_B1_EAST_ROOM
+
+    m = load_room_map("room_72")
+    door = m.door("south_to_0x82")
+    assert door is not None
+    assert door.direction == "DOWN"
+    assert door.to_room == HYRULE_CASTLE_B1_EAST_ROOM
+    assert "pit_guard_cleared" in door.path
+
+
+def test_room_82_west_to_0x81_door() -> None:
+    from alttp.ram import HYRULE_CASTLE_B1_WEST_ROOM
+
+    m = load_room_map("room_82")
+    door = m.door("west_to_0x81")
+    assert door is not None
+    assert door.direction == "LEFT"
+    assert door.to_room == HYRULE_CASTLE_B1_WEST_ROOM
+    assert door.approach_xy == (1010, 4496)
+
+
+def test_room_72_f1_stair_door() -> None:
+    from alttp.ram import HYRULE_CASTLE_NORTH_CONNECTOR_ROOM
+
+    m = load_room_map("room_72")
+    door = m.door("north_to_0x01")
+    assert door is not None
+    assert door.direction == "UP"
+    assert door.to_room == HYRULE_CASTLE_NORTH_CONNECTOR_ROOM
+    assert door.role == "zelda_path"
+    assert door.approach_xy == (1272, 3656)
+    assert door.landing_xy == (760, 99)
+    wps = m.waypoints_for_door(door)
+    assert wps[-1][0] == door.approach_xy[0]
+    assert wps[-1][1] == door.approach_xy[1]
+
+
 def test_room_60_north_door_map() -> None:
     from alttp.ram import HYRULE_CASTLE_NW_ROOM
 

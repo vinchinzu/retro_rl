@@ -18,6 +18,7 @@ from zelda_i.combat import (
     HEART_OR_FAIRY_STATES,
     RUPEE_DROP_STATES,
     chebyshev,
+    facing_to_direction,
     in_sword_hitbox,
     manhattan,
     nearest_enemy,
@@ -35,6 +36,8 @@ from zelda_i.dungeon.behaviors import (
     shield_blocks,
 )
 from zelda_i.dungeon.hop_controller import dungeon_align_then_push as dungeon_align_then_push
+from zelda_i.dungeon.threat import MIN_DODGE_BODY
+from zelda_i.overworld.prey import SKIP_TYPES as NO_ENGAGE_TYPES
 from zelda_i.ram import ZeldaObject, ZeldaSnapshot
 
 DEFAULT_SWING_PERIOD = 12
@@ -54,6 +57,10 @@ ARRIVAL_EAST_X = 220
 ARRIVAL_WEST_X = 30
 ARRIVAL_NORTH_Y = 70
 ARRIVAL_SOUTH_Y = 200
+# One pixel inside each scroll line, so an escape step never hands the screen
+# back. Same shape as ``hunt.HUNT_BOX``: ``(xlo, xhi, ylo, yhi)``.
+DODGE_BOX = (EDGE_WEST_X + 1, EDGE_EAST_X - 1, EDGE_NORTH_Y + 1, EDGE_SOUTH_Y - 1)
+_STEP = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 # Floor drops share ObjType 0x60; item identity is ObjState (live At4A).
 HEART_FAIRY_DROP_TYPES: frozenset[int] = frozenset(
@@ -76,6 +83,46 @@ def swing_action(
     if period > 0 and phase_frames % period < hold:
         return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
     return FrameAction(nes_action(direction), reason)
+
+
+def facing_direction(snap: ZeldaSnapshot | None) -> str | None:
+    """Link's own facing as a direction name, or ``None`` if it reads odd.
+
+    A Zora reads ``0x03`` (Right|Left) and Link's own byte can be read
+    mid-write, so an unmapped value is not an error here.
+    """
+    if snap is None:
+        return None
+    try:
+        return facing_to_direction(int(snap.facing))
+    except ValueError:
+        return None
+
+
+def swing_or_turn(
+    phase_frames: int,
+    direction: str,
+    reason: str,
+    snap: ZeldaSnapshot | None,
+    *,
+    period: int = DEFAULT_SWING_PERIOD,
+    hold: int = DEFAULT_SWING_FRAMES,
+) -> FrameAction:
+    """:func:`swing_action`, but never press A across a turn.
+
+    A turn and a swing cannot share a frame: measured
+    (``scratch/probe_turn_swing.py``, ``turn4``) a walking Link keeps his old
+    facing through 22 of 64 ``dir+A`` presses, and the blade then goes out
+    along an axis the body is not on — a miss that pins him for 13 frames.
+    Holding the direction alone turns him in 1-4 frames and he is walking,
+    not pinned, while it happens. The frame this returns instead is the one
+    the non-swing phase of the period returns anyway, so nothing that could
+    stall on a wall is new.
+    """
+    held = facing_direction(snap)
+    if held is not None and held != direction:
+        return FrameAction(nes_action(direction), f"{reason}_turn")
+    return swing_action(phase_frames, direction, reason, period=period, hold=hold)
 
 
 def _in_contact(link_x: int, link_y: int, obj: ZeldaObject) -> bool:
@@ -120,6 +167,81 @@ def overworld_projectiles(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     )
 
 
+def box_step(
+    x: int, y: int, direction: str, box: tuple[int, int, int, int]
+) -> str | None:
+    """``direction`` if one step of it stays inside ``box``, else ``None``."""
+    nx, ny = x, y
+    if direction == "LEFT":
+        nx = x - 2
+    elif direction == "RIGHT":
+        nx = x + 2
+    elif direction == "UP":
+        ny = y - 2
+    elif direction == "DOWN":
+        ny = y + 2
+    else:
+        return None
+    xlo, xhi, ylo, yhi = box
+    if xlo <= nx <= xhi and ylo <= ny <= yhi:
+        return direction
+    return None
+
+
+def perpendicular(
+    lx: int, ly: int, mx: int, my: int, box: tuple[int, int, int, int],
+    bodies: tuple[ZeldaObject, ...] = (),
+    avoid: frozenset[str] | set[str] = frozenset(),
+) -> str | None:
+    """Step that opens the angle to a muzzle at ``(mx, my)``, or ``None``.
+
+    Zora aim is quantized at launch; never walk into the muzzle. ``bodies``
+    is the same rule :meth:`ShotPolicy.face` keeps: a shot is not a reason to
+    walk into an octorok. ``avoid`` is what the *caller* has measured to be
+    unwalkable — ``box`` is a rectangle and the overworld is not, so a step
+    that Link has already failed to take belongs here and nowhere else.
+    """
+    dx, dy = int(mx) - int(lx), int(my) - int(ly)
+    # Cross the *major* axis of the bearing. Shared row (dy == 0) -> UP/DOWN.
+    if abs(dx) >= abs(dy):
+        options = ("DOWN", "UP") if dy <= 0 else ("UP", "DOWN")
+    else:
+        options = ("RIGHT", "LEFT") if dx <= 0 else ("LEFT", "RIGHT")
+    for direction in options:
+        if direction in avoid:
+            continue
+        # Room, not one step: a sidestep only clears a hitbox once Link has
+        # walked the whole pad, so a side with 3 px of wall left is not an
+        # escape — it is the wall he is about to be pinned against. This is
+        # the old edge flip stated as what it was for, and it still answers
+        # when Link is *already* inside the margin (both box tests pass there
+        # and only the room test can tell the two sides apart).
+        if _room(lx, ly, direction, box) < MIN_DODGE_BODY:
+            continue
+        nx = lx + _STEP[direction][0] * MIN_DODGE_BODY
+        ny = ly + _STEP[direction][1] * MIN_DODGE_BODY
+        if any(
+            chebyshev(nx, ny, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
+        ):
+            continue
+        return direction
+    return None
+
+
+def _room(lx: int, ly: int, direction: str, box: tuple[int, int, int, int]) -> int:
+    """Pixels of ``direction`` left inside ``box``. Negative outside it."""
+    xlo, xhi, ylo, yhi = box
+    if direction == "LEFT":
+        return int(lx) - int(xlo)
+    if direction == "RIGHT":
+        return int(xhi) - int(lx)
+    if direction == "UP":
+        return int(ly) - int(ylo)
+    if direction == "DOWN":
+        return int(yhi) - int(ly)
+    return -1
+
+
 def answer_projectile(
     link_x: int,
     link_y: int,
@@ -128,14 +250,24 @@ def answer_projectile(
     reason: str,
     *,
     magic_shield: bool = False,
+    bodies: tuple[ZeldaObject, ...] = (),
 ) -> FrameAction | None:
     """Shield or sidestep an inbound shot; None when the lane is clear.
 
     Walking ``direction`` means Link faces the band, and the shield blocks
     while facing and not attacking — so a blockable shot costs nothing but
     the A press (``swing_action`` pulses it on a fixed period and would
-    cancel the block). Anything the shield cannot eat has to leave the lane;
-    perpendicular keeps hop progress on the other axis.
+    cancel the block). Anything the shield cannot eat has to leave the lane.
+
+    The escape crosses the bearing to the *shot*, not the travel axis. The
+    old rule sidestepped perpendicular to ``direction`` and then flipped the
+    step at the screen edge, which on a wall reverses it **into** the shot:
+    live 0x7C (``scratch/zhit1.json`` f=5806), Link pinned at x=16 walking
+    DOWN with the spit 19 px east, stepped RIGHT three frames running and
+    took it. :func:`perpendicular` answers with the bearing's minor axis and
+    only returns a step the box has room for, so there is no flip to make.
+    None now means *no escape step is better than the push* — the caller
+    keeps walking rather than being handed a direction that closes the gap.
     """
     hits = projectile_threats(link_x, link_y, projectiles, direction=direction)
     if not hits:
@@ -143,18 +275,11 @@ def answer_projectile(
     nearest = min(hits, key=lambda o: manhattan(link_x, link_y, o.x, o.y))
     if all(shield_blocks(obj, magic_shield=magic_shield) for obj in hits):
         return FrameAction(nes_action(direction), f"{reason}_shield")
-    if direction in ("LEFT", "RIGHT"):
-        step = "UP" if int(nearest.y) - int(link_y) > 0 else "DOWN"
-        if step == "UP" and link_y <= EDGE_NORTH_Y + 8:
-            step = "DOWN"
-        elif step == "DOWN" and link_y >= EDGE_SOUTH_Y - 8:
-            step = "UP"
-    else:
-        step = "LEFT" if int(nearest.x) - int(link_x) > 0 else "RIGHT"
-        if step == "LEFT" and link_x <= EDGE_WEST_X + 8:
-            step = "RIGHT"
-        elif step == "RIGHT" and link_x >= EDGE_EAST_X - 8:
-            step = "LEFT"
+    step = perpendicular(
+        link_x, link_y, int(nearest.x), int(nearest.y), DODGE_BOX, bodies
+    )
+    if step is None:
+        return None
     return FrameAction(nes_action(step), f"{reason}_dodge")
 
 
@@ -203,8 +328,15 @@ def walk_or_swing(
             phase_frames, direction, reason, period=period, hold=hold
         )
     threats = overworld_threat_objects(snap)
+    # Turning off the travel axis *is* engaging, and a Zora is never a fight
+    # this walk takes: ``prey.SKIP_TYPES`` is the same list the hunt refuses
+    # to chase. Leave it in ``threats`` — a swing the travel direction was
+    # already pulsing costs nothing — but never let it own the face.
+    engageable = tuple(
+        obj for obj in threats if (int(obj.type_id) & 0xFF) not in NO_ENGAGE_TYPES
+    )
     lx, ly = snap.link_x, snap.link_y
-    nearest = nearest_enemy(lx, ly, threats)
+    nearest = nearest_enemy(lx, ly, engageable)
     hint = (
         engagement_hint(kind_for_type(nearest.type_id), snap, nearest)
         if nearest is not None
@@ -216,19 +348,19 @@ def walk_or_swing(
     if _any_in_hitbox(lx, ly, direction, threats) and should_swing_at(
         lx, ly, direction, threats
     ):
-        return swing_action(
-            phase_frames, direction, reason, period=period, hold=hold
+        return swing_or_turn(
+            phase_frames, direction, reason, snap, period=period, hold=hold
         )
 
     face = None
     if hint is not None and nearest is not None and _in_contact(lx, ly, nearest):
         face = hint.face
     if face is None:
-        face = _off_axis_face(lx, ly, threats)
+        face = _off_axis_face(lx, ly, engageable)
     if face is not None:
         if should_swing_at(lx, ly, face, threats):
-            return swing_action(
-                phase_frames, face, reason, period=period, hold=hold
+            return swing_or_turn(
+                phase_frames, face, reason, snap, period=period, hold=hold
             )
         return FrameAction(nes_action(face), reason)
     # Nothing to hit: block what the shield eats, sidestep the rest. Never
@@ -240,6 +372,7 @@ def walk_or_swing(
         overworld_projectiles(snap),
         reason,
         magic_shield=bool(snap.magic_shield),
+        bodies=threats,
     )
     if answer is not None:
         return answer
@@ -356,7 +489,7 @@ def scoop_toward_drop(
     if travel_dir == "UP" and obj.y > EDGE_SOUTH_Y - 16:
         return None
     if dist <= 4:
-        return FrameAction(nes_idle_action(), reason)
+        return _stand_on_drop(snap, reason)
     dx = obj.x - snap.link_x
     dy = obj.y - snap.link_y
     if abs(dx) >= abs(dy) and abs(dx) > 2:
@@ -364,8 +497,27 @@ def scoop_toward_drop(
     elif abs(dy) > 2:
         direction = "DOWN" if dy > 0 else "UP"
     else:
-        return FrameAction(nes_idle_action(), reason)
+        return _stand_on_drop(snap, reason)
     return FrameAction(nes_action(direction), reason)
+
+
+def _stand_on_drop(snap: ZeldaSnapshot, reason: str) -> FrameAction | None:
+    """Idle on the drop — unless something is close enough to walk into Link.
+
+    Standing on a drop is not instant: live 0x7B (``zhit6`` f=4837-4856) Link
+    sat 3 px from a 1-rupee for **twenty** frames before the ROM handed it
+    over, and a leever closed 10 px → 8 px and took the heart in frame 4860.
+    The drop keeps for hundreds of frames and the wave does not, so inside
+    the dodge pad this rung hands the frame back to the layers whose job the
+    body is.
+    """
+    if any(
+        chebyshev(int(snap.link_x), int(snap.link_y), int(b.x), int(b.y))
+        <= MIN_DODGE_BODY
+        for b in overworld_threat_objects(snap)
+    ):
+        return None
+    return FrameAction(nes_idle_action(), reason)
 
 
 def scoop_floor_drop(

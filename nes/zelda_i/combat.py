@@ -23,10 +23,18 @@ from zelda_i.dungeon.ids import (
     GHINI_FLYING_OBJECT_TYPE,
     HEART_DROP_OBJECT_TYPE,
     HEART_DROP_STATE,
+    LEEVER_BLUE_OBJECT_TYPE,
+    LEEVER_OBJECT_TYPE,
     OBJECT_NAMES,
     PROJECTILE_TYPES,
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
+)
+from zelda_i.dungeon.species import (
+    BURROWER_DORMANT_STATE,
+    BURROWER_TYPES,
+    Contact,
+    species_of,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
@@ -311,8 +319,59 @@ def wants_heart_pickup(snap: ZeldaSnapshot) -> bool:
     return not snap.health_is_full
 
 
+# A burrower under the sand. ``ObjState`` 0 is the whole dormant phase: over
+# five contact tapes a state-0 leever never lost hp (every drop was state 2 or
+# 3) and never hurt Link — 49 frames overlapping him inside 8 px with no
+# ``$04F0`` arm of its own, where a *surfaced* one armed 33 of 111. The rise is
+# states 1-2, so the warning is still there. Six of these sit on 0x7B and 0x7C,
+# and every layer that reads "body" was reading them: the blade swung at them
+# for 13 pinned frames each, the evader stepped away from them into real ones.
+#
+# The ROM behind it is ``Burrower_AnimateDrawAndCheckCollisions`` (Z_04.asm
+# #L2664), which returns before any collision check while ObjState is 0. The
+# dormant *state* is therefore ROM fact and comes from ``species`` — no local
+# copy of the number, and no second list of type ids.
+LEEVER_TYPES = frozenset({LEEVER_BLUE_OBJECT_TYPE, LEEVER_OBJECT_TYPE})
+DORMANT_BURROWER_TYPES = BURROWER_TYPES
+LEEVER_DORMANT_STATE = BURROWER_DORMANT_STATE
+
+
+def no_contact_frame(obj: ZeldaObject) -> bool:
+    """ROM: no collision check runs for this type in this ``ObjState``.
+
+    ``species.contact_in_state`` is the table; this is the object-shaped ask.
+    True for all three burrowers ($0F/$10/$11) at ObjState 0 — the state list
+    is ROM fact, so it is read from ``species`` and not named again here.
+    """
+    return species_of(obj.type_id).contact_in_state(int(obj.state)) is Contact.NONE
+
+
+def dormant_body(obj: ZeldaObject) -> bool:
+    """A buried leever: cannot be cut, cannot touch Link this frame.
+
+    **Not the Zora, even though the ROM agrees it is dormant.** ``UpdateZora``
+    runs the same ``Burrower_AnimateDrawAndCheckCollisions``, so $11 at
+    ObjState 0 also runs no collision check (``no_contact_frame`` says so). It
+    is still wrong to filter it out here: the measured ``behaviors.ZORA_CYCLE``
+    puts ObjState 0 at **2 frames of surfacing**, not the 96-frame submerged
+    phase (that is ObjState 5), and the Zora is answered by a clock rung
+    (``zora_shot_eta`` counts *from* state 0) rather than as a body. Dropping
+    it from ``overworld_threat_objects`` for two frames in 195 blinds the
+    rung that has to see it — measured: six tests in ``test_hunt`` /
+    ``test_heart_farm`` go red, including "a Zora is never a target".
+
+    **Dormant is not motionless.** "It never moved" is a *red*-leever fact:
+    ``RedLeeverStateQSpeeds`` is 0 in every state but 3.
+    ``BlueLeeverStateQSpeeds[0]`` is ``$08`` = 0.125 px/frame, so a buried blue
+    leever ($0F) creeps about a pixel every eight frames and ``ObjectTracker``
+    reports it moving. Uncuttable and harmless hold for both; immobile does
+    not — never gate anything on a dormant body standing still.
+    """
+    return int(obj.type_id) in LEEVER_TYPES and no_contact_frame(obj)
+
+
 def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
-    """Live OW combatants: typed, in-bounds, hp>0, not floor drops.
+    """Live OW combatants: typed, in-bounds, hp>0, not floor drops, not dormant.
 
     OW octoroks use HP; corpses (hp<=0) and type 0x60 drops (heart/rupee/fairy
     even with hp>0) are not threats. Type-only liveness (Keese) is a dungeon
@@ -327,6 +386,7 @@ def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         and int(obj.hp) > 0
         and 40 < obj.y < 220
         and 8 < obj.x < 248
+        and not dormant_body(obj)
     )
 
 
@@ -766,6 +826,9 @@ __all__ = [
     "in_sword_hitbox",
     "nearest_enemy",
     "should_swing_at",
+    "DORMANT_BURROWER_TYPES",
+    "dormant_body",
+    "no_contact_frame",
     "overworld_threat_objects",
     "is_floor_drop",
     "is_heart_or_fairy_drop",

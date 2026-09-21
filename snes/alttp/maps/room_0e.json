@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 14,
+  "roomHex": "0x0E",
+  "name": "Ice Palace entrance lobby",
+  "measured": "2026-09-21",
+  "sourceState": "IcePalaceEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [7544, 472], "role": "spawn", "notes": "IcePalaceEntry load; south stairs, doorway $6C==1"},
+    {"label": "freezor_stand", "xy": [7520, 328], "role": "waypoint", "notes": "On ice, aligned with Freezor 0xA1; fire rod from here"},
+    {"label": "west_door_approach", "xy": [7469, 364], "role": "approach", "notes": "West lip after Freezor dead; hold LEFT → west quadrant"},
+    {"label": "west_quad_landing", "xy": [7232, 367], "role": "waypoint", "notes": "Ice Jelly Key quadrant; same $A0=0x0E"},
+    {"label": "south_door_approach", "xy": [7544, 472], "role": "approach", "notes": "Hold DOWN → overworld (pin is LW-warped; screen 0x36)"}
+  ],
+  "doors": [
+    {
+      "label": "west_to_jelly",
+      "direction": "LEFT",
+      "toRoom": null,
+      "toRoomHex": null,
+      "approachXy": [7469, 364],
+      "landingXy": [7232, 367],
+      "role": "primary",
+      "path": ["freezor_stand", "west_door_approach"],
+      "pathTolerances": {"freezor_stand": 10, "default": 12},
+      "pushFrames": 520,
+      "notes": "Intra-room west quadrant (Ice Lobby WS). Kill Freezor 0xA1 with fire rod first or the shutter stays closed. Same $A0=0x0E. Isolated 2026-09-21 from IcePalaceEntry. room_engine dest check needs a room-id change so this hop is probe-isolated."
+    },
+    {
+      "label": "south_to_overworld",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 54,
+      "approachXy": [7544, 472],
+      "landingXy": [3256, 3531],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "Ice Palace Exit. Pin was Module_PreDungeon from LW, so landing screen is 0x36 not DW 0x75."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [7168, 256, 7679, 511],
+  "hostilesAtEntry": [
+    {"type": "0xA1", "xy": [7520, 296], "notes": "Freezor; fire rod only"},
+    {"type": "0x24", "xy": [7248, 352]},
+    {"type": "0x24", "xy": [7248, 384]},
+    {"type": "0x24", "xy": [7248, 416]}
+  ],
+  "z3Label": "Ice Palace (Entrance)",
+  "notes": [
+    "Confirmed $A0==0x0E on IcePalaceEntry. $040C==0x12 (Ice Palace).",
+    "Spawn is the east (SE) quadrant. First indoor door is intra-room west to the jelly/Bari quadrant, still 0x0E.",
+    "Freezor 0xA1 blocks the west shutter until melted with fire rod ($0303=5). Sword does not work.",
+    "Doorway $6C==1 at spawn blocks Y-item until Link walks north off the stairs.",
+    "Authority: maps/room_0e.json. Isolated / state-load, not continuous."
+  ]
+}

@@ -2,10 +2,201 @@
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.
 
-## This sitting (2026-09-16) — 0x6F arrived once; top-up wired, not run
+## This sitting (2026-09-20) — 0x7D carries the 0x7E band; bombs=4
+
+`rr-ttyu.3` stays in progress.  One change: the hop that leaves 0x7D now
+carries `SCREEN_7E_EAST_BAND (137,145)`, the same corridor the 0x7E→0x7F
+hop already had.  0x7B/0x7C stay `SCREEN_ANY_ROW_BAND`.  `l1` already
+said 0x7E want_y=133 stood at 131 and never scrolled; `pre_l1_topup_live`
+died there `(40,131)` mode 17 with 19R.  Do not restore ANY_ROW on that
+hop.  Do not restore tektite beam-stand.  Rollout still opt-in.
+
+`--through pre-l1 --no-video --trials 1 --rollout` (`pre_l1_7e_band1`):
+`ok=True`, `failed_stage=None`, `set_state=0`, assist=null, pokes off.
+Walk 8700f → 0x6F with 20R; topup 1f no-op; buy 483f `ADDR_BOMBS>=1`.
+
+Glance (cave leftover, not play): **0x6F `(120,149)`** mode **11** TF
+`0x00` keys 0 bombs **4** rupees 20 health **`0x21` 2/3** lo!=hi
+deaths 0.  Buy leftover xy `(118,149)` `rupees_at_buy=20` — wallet still
+reads 20 on the stop frame; bombs=4 is the stop.
+
+0x7D: 424f, **0 hits**, hearts 1.988→1.988, `band_down` 20 +
+`band_down_dodge` 8, spit_duck 117 (was 1236f / 3 hits / 0.484 out).
+0x7E: 1384f, 4 octorok_fast, +1R, one `0x55` S, scooped a heart
+1.988→2.996.  0x7F two rocks 2.996→1.992.  0x79 5/5, 0x7A 3/4 +5R,
+0x7C 6 leevers / 8R.  24 kills, 20R banked, `hop_escape` 593f on 0x78
+unchanged.  Occupancy misses 29 on 0x7F (`hop_occ`); still crossed.
+
+Narrow `test_pre_l1` + `test_zd_map` + `test_ow_align`: **34**.  M5 not
+re-measured (shop_p7 hop table only).  Do not STATUS.
+
+### Handoff — resume in this order
+
+1. Keep `rr-ttyu.3`.  Flagged arm now greens natural bombs.  C3
+   acceptance is still flag-off vs flag-on damage on 0x7B / 0x7C / `0x55`
+   plus M5 unregressed — this sitting did not A/B the reactive default.
+   The 0x7E band is on the shared hop table, so flag-off gets it too.
+2. Do not restore ANY_ROW on the 0x7D→0x7E hop, a fixed y=133 row, or
+   tektite beam-stand.
+3. Pre-L1 `ADDR_BOMBS>=1` greened on this one flagged tape.  Planner
+   owns STATUS.
+
+Full evidence: [`../PRE_L1.md`](../PRE_L1.md), “0x7D carries the 0x7E band”.
+
+## Previous sitting (2026-09-17) — melee the hoppers; 0x6F at 18R; buy still red
+
+`rr-ttyu.3` stays open.  Live headed watch of the flagged arm
+(`pre_l1_c3_rollout7d`) died 0x7D / 0R / 6236f.  The UP/DOWN dance, expired
+rupees, and skipped tektite/leever kills were the hunt, not the rollout:
+beam-standing a tektite's row (229/274 y-reversals on 0x79/0x7A), chase
+ignoring floor drops while the wave was up (`hop_scoop` 0), 0x7C 1/6
+leevers.  Flagged 0x7D contacts: `007` hunt_lane `(145,85)`, `009` hunt_lane
+`(19,101)`, final `(57,109)` mode 17; `threat_duck` still 293f on 0x7D.
+
+Hunt change only (tektites off `BEAM_STAND_KINDS`; no 2 px UP/DOWN align;
+uncontested drop scooped mid-wave).  `pre_l1_c3_melee1`: **0x6F 18R**,
+`scoop_rupee` 239, 0x7C **6 leevers / 13R**, no 0x79/0x7A beam-stand.
+Tektite clears did not improve (2/5, 1/4).  Then 22403f
+`shop_p7_hunt_settle` in cave mode 11 — hunt declined, destination not
+`done`, timeout 30000f, bombs=0.  Rollout still opt-in.  M5 not re-measured.
+
+Headed `--through pre-l1 --rollout` (`pre_l1_topup_live`) killed 0x79
+**5/5** tektites and 0x7A 3/4 + 5R, then **died 0x7E `(40,131)` mode 17
+with 19R**, 22 kills, bombs=0.  Topup never ran.  Arrival-short stop was
+wired but untested.  Next was the 0x7E crossing (this sitting).
+
+Full evidence: [`../PRE_L1.md`](../PRE_L1.md), “melee the hoppers”.
+
+## Previous sitting (2026-09-17) — C3 rollout lowers damage; `0x55` unchanged
+
+`rr-ttyu.3` is claimed and remains open.  The real power-on trace probe now
+saves entry/hit/~250f PNGs and compact Link/body/projectile RAM for 0x7C/0x7D.
+`pre_l1_c3_trace1` reproduced the retained control (death 0x7D, 13R, 6996
+walk frames) with `assist=null`, pokes off, `set_state=0`, and `ram_writes=0`.
+Predecessor: play 0x77 `(64,77)`, wooden sword, health `0x22`/`0xFF` 3/3,
+0 bombs/R/keys, TF `0x00`, no other item.
+
+The baseline itself enters 0x7D at y=133.  The rejected fixed-row tape changed
+timing/drop state, then spent 385f `scoop_heart`, spawned a second Zora, and
+took three body contacts on top of two rocks plus one `0x55`; the row itself
+was not the cause.  Control 0x7D damage is three projectiles.
+
+One flagged C3 hypothesis removed the rollout arm's pre-ROM sword yield (417
+frames in the first A/B).  STAND is already the control plan: a safe stand
+still declines with `no_gain`; a measured walk may now beat a swing during the
+zero-velocity muzzle window.  Default reactive policy is unchanged.
+
+`ab_rollout_sword1_measure` (fatal-contact observer fixed) versus the retained
+reactive control: total damage 1023→767 units / 8→6 hits; 0x7B 128→0; 0x7C
+385→257; walk 6996→6236f.  No new stall.  Ledger: 483 replans, 2396 rollouts,
+57,504 frames rolled, 169 claimed frames.  But `0x55` stays **3→3**, all three
+on 0x7D, and the tape dies there with 0R before 0x6F.  No route promotion;
+natural bombs remain red.  C3 acceptance is not met.
+
+Narrow C2+C3 gate: **229/229**.  Clean M5 confirmation remains frame-perfect:
+`ok`, `prefix_ok`, room `0x24`, TF `0x01`, frame **18909**.
+
+### Handoff — resume in this order
+
+1. Keep `rr-ttyu.3` as the only claimed bead.  Instrument the flagged arm's
+   three 0x7D `0x55` contact windows with the same PNG/object trace, including
+   the fatal contact.  `threat_duck` still owns 517 frames (293 on 0x7D) above
+   the rollout; establish whether that precedence hides the moving-shot
+   window before changing it.
+2. Do not retry either fixed-row policy, change another budget, add random
+   jitter/timeout, or add a shop-specific exception.  The rollout arm remains
+   opt-in; the default reactive/M5 path stays unchanged.
+3. Full pre-L1 acceptance is still natural `ADDR_BOMBS>=1`, no assist/pokes/
+   inventory/progression/capacity writes.  0x6F arrival is intermediate only.
+
+Full evidence and artifact names are in [`../PRE_L1.md`](../PRE_L1.md),
+“This sitting — C3 sees the bodies; `0x55` is still red.”
+
+## Previous sitting (2026-09-17) — fixed y=133 lane rejected; baseline is 13R
+
+Three unassisted power-on `--through pre-l1` tapes; `assist=None`, pokes off,
+`set_state=0`.  The arbiter-wired control `pre_l1_arbiter1` died on 0x7D
+with **13R / 21 kills**.  Hop/hunt rung census is live and the former 0x7C
+lane/push oscillation is gone.  The bill is now 0x7C 1154f/three hits plus
+0x7D 977f/three hits.
+
+`pre_l1_zora_lane1` forced y=129..137 from x>=192 into both Zora screens:
+0x7C became 625f/hitless, but 0x7D took six hits and the tape died with 7R.
+`pre_l1_7c_entry1` delayed the same row choice to 0x7B x>=232 and did not
+force 0x7D; 0x7C instead took five hits and the tape died with 13R.  Both
+policies were reverted.  The final C2 arbiter/hunt/path gate passed
+**166/166**.  One confirmatory Clean natural-entry M5 trial also remained
+frame-perfect: `ok`, `prefix_ok`, room `0x24`, TF `0x01`, frame **18909**.
+It confirms rather than replaces the existing 2/2 claim.
+
+Three serial reds means stop this checkbox.  Next action: capture transition
+screenshots/RAM for 0x7C→0x7D and form a screen-specific 0x7D crossing; do
+not restore a fixed y≈133 rule and do not add a whole-screen `align_y`.
+
+### Handoff — resume in this order
+
+`rr-ttyu.2` is closed.  Its counter criterion was reconciled without changing
+the data's meaning: `rung_census` is the arbiter-owned frame-winner count; the
+six older fields remain per-screen budgets or branch-entry accounting and are
+not presented as winner censuses.
+
+1. Next sitting, claim the newly unblocked `rr-ttyu.3`.  Instrument the real
+   power-on walk for 0x7C/0x7D transition PNGs plus compact Link/object RAM.
+   Use the rollout/reactive seam for one evidence-based 0x7D hypothesis.
+2. Never retry `pre_l1_zora_lane1` or `pre_l1_7c_entry1`, never add a fixed
+   coast `align_y`, and never repeat `pre_l1_arbiter1` unchanged.
+3. Acceptance is still natural bombs bought (`ADDR_BOMBS>=1`), no assist,
+   pokes, state loads, progression writes, or capacity writes.  Arrival with
+   20R is an intermediate boundary, not completion.
+
+Commands and required M5/trace fields are in [`../PRE_L1.md`](../PRE_L1.md),
+“Next session — instrument C3 before changing policy.”
+
+## This sitting (2026-09-16) — `bomb_topup` ran; still 2R from a 0R arrival
+
+`scratch/probe_topup.py` t1→t3. Assist ON, hunter off on the walk, then
+`RupeeTopUpController`. Glance t3: play **0x6F `(0,141)`** mode 5 TF `0x00`
+keys 0 bombs 0 rupees **2** health **`0x22` 3/3** lo==hi deaths 0.
+`progression_writes=0` / `capacity_writes=0`. Not Clean. Unassisted leftover
+is still `pre_l1_topup1` (died 0x7D, 6R) — walk code did not change, so that
+tape is still the measurement.
+
+t1 retraced both neighbours on the reverse arrival edge (0x5F 87f peak_live
+0; 0x6E 106f peak_live 0). `RupeeTopUpController._extra_hop_action` holds
+(`topup_hold`) on a back hop until `hunter.done`. t2 hunted both (15 kills,
+2R) but 0x6E spent 214f `occupancy_stand` on the east line (bush maze). t3
+treats that stand as no claim so the inward step is the sand corridor: 0x6E
+kills 2→4, occupancy_stand 214→0, **17 kills 2R**. Both neighbours still
+`hunt_budget_*` retire with bodies left. `streak_best` 5.
+
+Two one-shot six-body waves cannot bank 20R from a 0R arrival without the
+10-kill 5-rupee. The top-up is the 19R-plus-one gap, not a farm. Units in
+`tests/test_topup.py` (13). Do not STATUS. M5 18909f still stale from the
+previous sitting's `path.py` / `tracking.py` (untouched this sitting).
+
+### Handoff — next, in order
+
+1. **Unassisted walk still has to survive to 0x6F.** `pre_l1_topup1` died
+   0x7D, 6R. `pre_l1_anyrow1` is the one pass that arrived (14R, 28 kills)
+   and died in the destination stand — that stand is now unit-tested to
+   finish. The corridor still costs ~3 hearts (Zora spit first). Judge on
+   `reason_by_screen`, not on one rupee count.
+2. **Top-up 600f budget retires both neighbours.** 0x5F 7 kills / 2R, 0x6E
+   4 kills / 0R. Raising `screen_max_frames` on the topup hunter is the
+   next topup-only lever; it still will not bank 20R from a 0R arrival.
+3. **0x6E is a bush maze.** Do not BFS occupancy there. The hold walks the
+   measured sand corridor; a real 0x6E fight needs a measured bush lane,
+   same shape as 0x79 beach.
+4. **Re-measure M5 Clean** before any STATUS (`path.py` / `tracking.py`
+   changed last sitting). `run_level1_complete.py --natural-entry --trials 2`.
+5. **0x78 burns a 593-frame `hop_escape`** every unassisted run
+   (`stall_escape_78_80_133`). No damage, 10s of wall clock.
+6. `overworld/arbiter.py` is still unwired.
+
+## Superseded (2026-09-16) — 0x6F arrived once; top-up wired, not run
 
 Six unassisted `--through pre-l1` runs, tags `pre_l1_scoop1` → `pre_l1_topup1`.
-Full detail in [`docs/PRE_L1.md`](../PRE_L1.md) "This sitting (2026-09-16)".
+Full detail in [`docs/PRE_L1.md`](../PRE_L1.md).
 
 | tag | leftover | R | kills | what it says |
 |-----|----------|---|-------|--------------|
@@ -22,34 +213,7 @@ cleared screen scoops money; `combat.heal_wanted`; a `hunt_heal` rung above
 the beam with `HUNT_PICKUP_RADIUS` / `HUNT_HEAL_MAX_FRAMES`;
 `ObjectTracker(shot_history=2)` and `path._shot_first` for the Zora muzzle
 hold; `overworld/topup.py` + the `bomb_topup` stage with both 0x6F neighbours
-measured. 1658 tests green. M5 Clean **not** re-measured — do that before any
-STATUS claim (`AGENTS.md`: a walker change invalidates 18909f).
-
-### Handoff — next, in order
-
-1. **Re-measure M5 Clean.** `run_level1_complete.py --natural-entry --trials 2`.
-   `path.py` and `tracking.py` both changed. Nothing here may be STATUSed
-   until 18909f is reproduced or replaced.
-2. **Run the walk more than once per change.** The emulator is deterministic,
-   so one run *is* the measurement for a config, and any timing change
-   reshuffles the whole corridor (`zelda-l1-chain-frame-perfect`). Rupees went
-   19 → 14 → 11 → 6 across changes that are each individually correct. Judge
-   changes on `reason_by_screen`, not on the rupee count of one run.
-3. **`bomb_topup` has never had a frame.** It needs a pass that survives to
-   0x6F. Easiest proof is the probe's own path: assist ON, hunter off,
-   `ShopP7WalkController` to 0x6F, then drive `RupeeTopUpController` and read
-   `rupees` / `reason_by_screen`. Do that before trusting it unassisted.
-4. **The corridor still costs ~3 hearts.** `hits_by_cause` is still Zora spit
-   first (`fireball_or_statue_projectile_*`). `_shot_first` fired 9 frames in
-   one run: with a body in the pad every candidate step has TTC 0 and
-   `ReactiveEvader` peels from the body instead of the shot. That is a
-   *positioning* problem — the fix is not standing next to a leever while a
-   Zora is surfaced, not a faster reaction.
-5. **0x78 burns a 593-frame `hop_escape`** every run (`stall_escape_78_80_133`).
-   No damage, 10s of wall clock; worth one look at the tree maze lane.
-6. `overworld/arbiter.py` is still unwired. The four stalls above were all
-   "which rung owns this frame", which is exactly what it exists to make
-   assertable.
+measured. 1658 tests green. M5 Clean **not** re-measured.
 
 ## Superseded (2026-09-15) — structure pass; leftover still 0x7C
 

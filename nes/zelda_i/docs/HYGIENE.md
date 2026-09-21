@@ -27,7 +27,10 @@ Rules that keep L4–L9 from repeating L2/L3 copy-expand debt.
 | Eligibility | `route/eligible.py`, `route/natural_entry.py` | Lab-fixture vs route pin; STATUS claim gate |
 | Dungeon treasures | `route/treasures.py` | First-quest wiki items vs default-spine collection |
 | OW locations | `overworld/locations.py` | First-quest cave dests, open method, rando ROM decode, enemy-drop farms (`farm_at`, `worth_rupee_farm`, restock pairs) |
-| Combat helpers | `combat.py` + `dungeon/behaviors.py` + `dungeon/gleeok.py` | Hitbox swing gate, reusable enemy policies, shared Gleeok sensors (L4+L6) |
+| Combat helpers | `combat.py` + `dungeon/behaviors.py` + `dungeon/gleeok.py` + `dungeon/gohma.py` | Hitbox swing gate, reusable enemy policies, shared Gleeok sensors (L4+L6), shared Gohma sensors (L6+L8: eye clock, strafe read, arrow lead) |
+| Room search | `solver.py` | Budget-bounded beam search over *sequences* of held segments (`TimedAction`), built on `rollout.py`. Generic core takes injected `expand`/`score`/`reached`/`state_key`, so it is unit-testable with no emulator. Wired as a `Rung` behind a flag, off by default (`level7.cellar.Room1ACandleController.attach_solver`) — **never a second dispatcher**. |
+| Enemy ROM facts | `dungeon/species.py` | Per-type HP / contact class / q-speed / damage, sourced in `scratch/enemy_constants_rom.md`. **Fact, not policy** — `behaviors.KIND_POLICY` owns how we fight a kind. |
+| Enemy motion | `dungeon/tracking.py` | The only place a slot's velocity is derived. Two argued exceptions (`dungeon/gohma.py`, `level6/wizzrobe.py`) are pinned in `tests/test_enemy_motion_seam.py`; a `last_xy` over **Link's** position is a stall counter, not this. |
 | Continuous spine | `spine/survival.py` + `spine.hops.attach_hops` + `level*/spine.py` hop tables | One env, power-on, stop at first fail. New dest hops are `SpineHop` rows, not `*_stages`/`*_success` pairs. |
 | Scripts | thin CLIs + library controllers | Env/assist/report only — **no path logic** |
 

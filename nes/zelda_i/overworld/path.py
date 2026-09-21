@@ -19,6 +19,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import (
     BOMB_DROP_OBJECT_TYPE,
     BOMB_DROP_STATES,
+    chebyshev,
     direction_to_facing,
     heal_wanted,
     in_sword_hitbox,
@@ -35,6 +36,7 @@ from zelda_i.dungeon.threat import (
     dodgeable,
 )
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
+from zelda_i.overworld.arbiter import Arbiter, Rung
 from zelda_i.overworld.common import (
     EDGE_EAST_X,
     EDGE_NORTH_Y,
@@ -44,10 +46,12 @@ from zelda_i.overworld.common import (
     HEART_FAIRY_DROP_TYPES,
     RUPEE_DROP_STATES,
     align_and_push,
+    box_step,
     on_arrival_edge,
+    perpendicular,
     recover_off_edge,
     scoop_floor_drop,
-    swing_action,
+    swing_or_turn,
     track_knockback,
     track_stuck,
     unstick_wiggle,
@@ -66,9 +70,10 @@ from zelda_i.overworld.graph import (
     ScreenHop,
     is_5c_maze_hop,
 )
-from zelda_i.overworld.hunt import ScreenHunter, hop_lane
+from zelda_i.overworld.hunt import ScreenHunter, hop_lane, link_busy
 from zelda_i.overworld.locations import restock_for, worth_heart_farm, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
+from zelda_i.rollout import Rollout, RolloutEvader
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker, WALK_DELTA
 
@@ -110,8 +115,122 @@ _SHOT_OVER_SWORD_TTC = TRIGGER_TTC
 _OCCUPIED_LANE_STAND_CAP = 8  # then yield the hop
 # Perp walk before writing off the parallel lane; then own-row / stand / yield.
 _OCCUPIED_LANE_STEER_CAP = 48
+# Lane frames this hop may spend on one screen without gaining a pixel toward
+# its exit. ``_OCCUPIED_LANE_STEER_CAP`` cannot see the failure it was written
+# for: the peel and the push alternate frames, and every push frame takes the
+# ``not blocked`` early return, which zeroes the steer counter. Live 0x7C
+# (``scratch/probe_walk_trace.py`` w1): 1795 lane frames and 1982 hop frames
+# held Link between x=24 and x=25 at y=109 for 3593 frames — the peel steps
+# LEFT, the push steps RIGHT, and neither counter ever reaches its cap. Only
+# travel-axis *progress* separates a peel that is going around a body from a
+# tug-of-war, so that is what resets this one. Link walks 1 px/frame, so 120
+# is a full vertical traverse of the screen with nothing to show for it.
+_OCCUPIED_LANE_NO_GAIN_CAP = 120
 # Committed stall escape; ``stuck`` reset must not hand the frame back to hop.
 _STALL_ESCAPE_COMMIT_FRAMES = 600
+# Chebyshev gap at which an unblockable shot outranks every other rung.
+#
+# The Zora is the live case and it is not a fight: ``prey.SKIP_TYPES`` never
+# chases one, ``beam`` never shoots one, and ``behaviors.shield_blocks`` says
+# the small shield does not stop its ``0x55`` spit. So the whole policy is
+# *dodge and run*, and ``scratch/zora1.json`` says when the dodge has to
+# start: the shot is aimed at **launch** and then flies straight at ~1.5
+# px/frame, so no step taken before the mouth opens survives it and no swing
+# taken after it shortens the contact. Link walks 1 px/frame and the pad is
+# ``MIN_DODGE_SHOT`` (12), so a 96 px closing gap is ~64 frames of flight —
+# five times the walk the step needs, and short enough that a shot already
+# crossing the far side of the screen does not own the hop.
+_SPIT_DUCK_RADIUS = 96
+# Hold one escape direction while the same shot is still closing. The bearing
+# rotates as a shot goes past, so re-deciding every frame is the two-pixel
+# tug-of-war this module keeps re-learning (see ``_OCCUPIED_LANE_NO_GAIN_CAP``).
+_SPIT_DUCK_COMMIT = 12
+# Frames a duck may press a direction that moves Link nowhere before that
+# direction is written off as wall for the rest of the screen.
+_SPIT_DUCK_STILL_CAP = 4
+# A body this close outranks the shot: the duck is a walk, and a walk inside
+# a body's own dodge pad cannot clear it — ``MIN_DODGE_BODY`` is the distance
+# a sidestep needs before it has moved Link out of a hitbox at all, so inside
+# it the honest answers are the blade and the peel. A body further out than
+# the shot still yields to the shot: that is ``evade_shot_over_sword``, and a
+# 0x55 is the one thing no swing shortens.
+_SPIT_DUCK_BODY_PAD = MIN_DODGE_BODY
+# Wall memory resolution. A rock blocks a place, not a screen.
+_DUCK_CELL = 16
+
+# --------------------------------------------------- the hop ladder ---
+# ``_do_hop`` used to be a chain of ``if act is not None: return act`` and its
+# precedence was therefore source-line order — unnameable, unassertable, and
+# only movable by moving a line. These are the same rungs in the same order,
+# as numbers (``overworld.arbiter``: priority counts *down*, 0 is the top and
+# the lowest number that claims the frame wins).
+#
+# They are spaced by ten so a rung can be slotted between two neighbours
+# without renumbering the ladder, and so a subclass can express "just below
+# that one" as ``+ 1`` (see ``ShopP7WalkController.extra_hop_priority``).
+#
+# ``align_and_push`` is deliberately *not* a rung: it is the fall-through the
+# whole ladder declining resolves to, which is exactly ``Arbiter.decide``
+# returning ``None``.
+HOP_RUNG_EXTRA = 10  # ``_extra_hop_action``, the subclass hook
+HOP_RUNG_MAZE = 20
+# The shot. The ladder position is the whole point of this rung: AGENTS.md
+# Traps, "travelling frames must offer ``ScreenHunter.take_beam`` above
+# stall-escape (600f commits used to zero the weapon)". It used to be an
+# out-of-band call into ``self.hunter.take_beam`` from ``_do_hop``, made
+# there purely because a hop had no way to say "this rung goes above that
+# one". It is now a number, and ``HOP_RUNG_BEAM < HOP_RUNG_STALL_ESCAPE`` is
+# a test (``test_arbiter``), not a comment.
+HOP_RUNG_BEAM = 30
+HOP_RUNG_SCOOP = 40
+HOP_RUNG_OCCUPANCY = 50
+HOP_RUNG_STALL_ESCAPE = 60
+HOP_RUNG_UNSTICK = 70
+HOP_RUNG_EDGE = 80
+HOP_RUNG_HUNT = 90
+HOP_RUNG_LANE = 100
+
+# ------------------------------------------------ the threat ladder ---
+# ``_threat_action`` runs *above* the whole hop ladder: it is consulted in
+# ``_decide`` before ``_do_hop`` is reached at all, and it was the same
+# ``if act is not None: return act`` chain the hop used to be. These are its
+# rungs as numbers, on the same ``Arbiter`` and with the same convention
+# (priority counts down; the lowest number that claims the frame wins).
+#
+# The duck stays on top. It is the one rung that answers a ``0x55``, it is
+# live on the M5 Clean chain at 18909f, and ``AGENTS.md`` Traps spells its
+# place out ("above the evader and the hunt"). It also declines exactly the
+# window the rollout below it is written for: ``TrackedObject.closing_on``
+# is False for a shot that has not moved, so a spit still sitting on the
+# Zora's muzzle is invisible to the duck *and* to ``assess``.
+THREAT_RUNG_DUCK = 10
+# The ROM-truth evader (``rollout.RolloutEvader``). Off unless
+# ``attach_rollout`` has bound it, so the default ladder is byte-for-byte the
+# chain that was here before: duck, then reactive. It is deliberately a
+# *sibling* of the reactive rung rather than a replacement for it -- both
+# stay in the tree and both are selectable from the same pin, which is the
+# whole point (a rollout cannot be scored against a model that is not there).
+THREAT_RUNG_ROLLOUT = 20
+# ``threat.ReactiveEvader`` plus the yield/in-pad gates it runs behind. The
+# default arm, and the fall-back for every frame the rollout declines. The
+# rollout does not inherit the sword-yield gate: standing still is one of its
+# candidates, so a safe stand declines to this rung naturally, while an
+# otherwise-invisible muzzle hit is still allowed to beat the swing.
+THREAT_RUNG_REACTIVE = 30
+
+
+def _step_into_body(
+    lx: int, ly: int, direction: str, bodies: tuple[Any, ...]
+) -> bool:
+    """True when walking ``direction`` a full pad lands inside a body."""
+    dx, dy = _DUCK_STEP.get(direction, (0, 0))
+    nx, ny = lx + dx * MIN_DODGE_BODY, ly + dy * MIN_DODGE_BODY
+    return any(
+        chebyshev(nx, ny, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
+    )
+
+
+_DUCK_STEP = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 
 def _reason_key(reason: str) -> str:
@@ -266,13 +385,68 @@ class OverworldPathController:
     shot_history: int | None = None
     _tracker: ObjectTracker | None = field(default=None, repr=False)
     _evader: ReactiveEvader | None = field(default=None, repr=False)
+    # The other arm. ``rollout.RolloutEvader`` answers the same question off
+    # the ROM instead of off a straight line, and it is opt-in: nothing
+    # constructs it, because it needs the *live* env (one emulator per
+    # process) and a ``ZeldaSnapshot`` is not one. ``attach_rollout`` is the
+    # only constructor, so a caller selects the arm and nothing else moves.
+    rollout_evade: bool = False
+    _rollout: RolloutEvader | None = field(default=None, repr=False)
+    # Built once from ``threat_rungs``; the rungs read ``self.hunter`` at call
+    # time, so unlike the hop ladder this one never needs a rebuild.
+    _threat_arbiter: Arbiter | None = field(default=None, repr=False)
+    # The frame's hop, for the rungs. Same trick as ``_hop``: a rung is
+    # ``(snap) -> FrameAction | None``, so the second argument
+    # ``_threat_action`` used to thread down its chain is set once a frame.
+    _threat_hop: Any = field(default=None, repr=False)
     _tracked: tuple[TrackedObject, ...] = field(default=(), repr=False)
     _evade_room: tuple[int, int] | None = field(default=None, repr=False)
+    # The committed spit dodge: direction, the slot it is dodging, and how
+    # many frames it has held. ``spit_ducks`` is accounting only.
+    spit_ducks: int = 0
+    _duck_dir: str | None = field(default=None, repr=False)
+    _duck_slot: int | None = field(default=None, repr=False)
+    _duck_frames: int = field(default=0, repr=False)
+    # ``(direction, cell)`` pairs this screen has *measured* to be wall, and
+    # the frames the current one has failed to move Link. ``_EVADE_BOUNDS``
+    # is a rectangle; the coast is not. The key carries the cell because a
+    # rock blocks a *place* — writing the direction off screen-wide poisons
+    # the dodge for the rest of the wave (``zfixB``: 0x7B wrote off LEFT and
+    # RIGHT, then took eight hits on one screen).
+    _duck_walls: set[tuple[str, int, int]] = field(default_factory=set, repr=False)
+    _duck_xy: tuple[int, int] | None = field(default=None, repr=False)
+    _duck_still: int = field(default=0, repr=False)
     occupied_lane: bool = False  # L2 on; travel cell in a body pad → parallel lane
     _lane_stand: int = 0
     _lane_steer: int = 0
+    # Per ``(hop_index, screen)``: the best travel-axis pixel the lane branch
+    # has seen, the frames it has owned since that pixel, and the latch that
+    # writes the branch off for the rest of this hop's visit.
+    _lane_key: tuple[int, int] | None = field(default=None, repr=False)
+    _lane_gain: int | None = field(default=None, repr=False)
+    _lane_nogain: int = field(default=0, repr=False)
+    _lane_off: bool = field(default=False, repr=False)
     _hop_screen: tuple[int, int] | None = field(default=None, repr=False)
     _hop_screen_frames: int = field(default=0, repr=False)
+
+    # Where ``_extra_hop_action`` sits on the hop ladder. It is a *number*
+    # rather than the position of the call site, which is the whole of the
+    # 0x79 inversion (``overworld.arbiter`` docstring): a hook pinned to the
+    # top of the chain can only decline its way downwards, and a decline
+    # written to let the rung below have the frame is a precedence edit
+    # spelled as a read of another module's bookkeeping.
+    extra_hop_priority: int = HOP_RUNG_EXTRA
+    # Built once from ``hop_rungs``; rebuilt if the hunter is swapped, since
+    # the beam rung is the hunter's own bound ``take_beam``.
+    _hop_arbiter: Arbiter | None = field(default=None, repr=False)
+    _hop_arbiter_hunter: Any = field(default=None, repr=False)
+    # The frame's hop and its grind verdict, read by the rungs. The rung
+    # signature is ``(snap) -> FrameAction | None`` on purpose (it is the
+    # shape every ``if act is not None`` branch already had), so the two
+    # extra arguments ``_do_hop`` used to pass down its chain are set once a
+    # frame here rather than threaded through ten closures.
+    _hop: ScreenHop | None = field(default=None, repr=False)
+    _hop_grinding: bool = field(default=False, repr=False)
 
     # Off by default. Hunt runs *after* evade and *after* edge recovery.
     # The hunter is a collaborator, not a flag bundle: whoever builds the path
@@ -343,10 +517,32 @@ class OverworldPathController:
         self.reason_by_screen = {}
         self._tracker = self._evader = None
         self._tracked = ()
+        # The kernel was handed in (it holds the live env), so it is not ours
+        # to drop -- the same rule the hunter gets two blocks down.
+        if self._rollout is not None:
+            self._rollout.reset()
+        self._threat_arbiter = None
+        self._threat_hop = None
         self._evade_room = None
+        self.spit_ducks = 0
+        self._duck_dir = self._duck_slot = None
+        self._duck_frames = 0
+        self._duck_walls = set()
+        self._duck_xy = None
+        self._duck_still = 0
         self._lane_stand = self._lane_steer = 0
+        self._lane_key = self._lane_gain = None
+        self._lane_nogain = 0
+        self._lane_off = False
         self._hop_screen = None
         self._hop_screen_frames = 0
+        # Dropping the ladder rather than ``Arbiter.reset``-ing it also picks
+        # up a hunter swapped in since the last walk (the beam rung is that
+        # hunter's bound method).
+        self._hop_arbiter = None
+        self._hop_arbiter_hunter = None
+        self._hop = None
+        self._hop_grinding = False
         if self.hunter is not None:
             # The hunter was handed in, so it is not ours to drop: dropping it
             # would silence the fight, where rebuilding it from the old flags
@@ -388,6 +584,33 @@ class OverworldPathController:
             screen: dict(sorted(rows.items(), key=lambda kv: -kv[1]))
             for screen, rows in self.reason_by_screen.items()
         }
+        # ``reason_by_screen`` answers "which reason string", which is not the
+        # same question as "which behaviour owned these frames": one rung
+        # emits several reasons (``hop0``, ``hop0_lane``, ``79_skirt_beach``)
+        # and one reason can come from two rungs. The census is per *rung*,
+        # so a run report can price a behaviour, and ``push`` is the frames
+        # the whole ladder declined — the plain ``align_and_push``.
+        ladder = self.hop_arbiter
+        out["rung_census"] = dict(ladder.census(), push=ladder.idle_frames)
+        out["rung_frames"] = ladder.frames
+        if self.evade:
+            # The other ladder. It sits *above* the hop one (``_decide`` asks
+            # it before ``_do_hop`` exists), so its frames are not in
+            # ``rung_census`` at all and an A/B between the two evaders is
+            # unreadable without it. ``yielded`` is the frames every threat
+            # rung declined — the quiet frames the hop then drove.
+            threat = self.threat_arbiter
+            out["threat_census"] = dict(
+                threat.census(), yielded=threat.idle_frames
+            )
+            out["threat_frames"] = threat.frames
+        if self._rollout is not None:
+            # A rollout is a ``set_state``. It is not the kind
+            # ``docs/STATUS.md`` means by an assist — the walk's own tape is
+            # bit-identical either side of a fan — but a report that hides it
+            # is lying about the walk, so the ledger rides next to the census
+            # that prices it.
+            out["rollout"] = self._rollout.report()
         if self.hunter is not None:
             out["hunt"] = self.hunter.report()
             out["kills"] = self.hunter.kills
@@ -395,6 +618,7 @@ class OverworldPathController:
         if self.evade:
             out["evades"] = self.evades
             out["parries"] = self.parries
+            out["spit_ducks"] = self.spit_ducks
             out["evade_reasons"] = dict(self.evade_reasons)
         if self.maze_waypoints:
             out["maze_wp_index"] = self.maze_wp_index
@@ -771,10 +995,11 @@ class OverworldPathController:
         if direction is None or direction in forbidden:
             return FrameAction(nes_idle_action(), f"hop{self.hop_index}_stand")
         # Keep the occupancy lane; off-axis face would RIGHT-scroll the mouth.
-        return swing_action(
+        return swing_or_turn(
             self.phase_frames,
             direction,
             f"hop{self.hop_index}_occ",
+            snap,
             period=self.swing_period,
             hold=self.swing_hold,
         )
@@ -788,6 +1013,9 @@ class OverworldPathController:
         room = (int(snap.level), int(snap.screen))
         if room != self._evade_room:
             self._evade_room = room
+            self._duck_walls = set()
+            self._duck_xy = None
+            self._duck_still = 0
             if self._evader is not None:
                 self._evader.reset()  # slots reuse; drop a cross-scroll commit
 
@@ -845,17 +1073,228 @@ class OverworldPathController:
         )
         return impact.within(_SHOT_OVER_SWORD_TTC) and dodgeable(impact)
 
+    def _body_first(self, snap: ZeldaSnapshot, shot_gap: int) -> bool:
+        """True when a body is too close for the shot to own the frame.
+
+        The duck walks, and a walk through a leever swarm is a contact. Live
+        0x7B (``zhit3`` f=4691): six frames of ``spit_duck`` with a leever
+        closing 12 px to 8 took the walk's first hit — at full health, which
+        is the hit that costs the sword beam (``$0670`` chips it off) and
+        turns every screen after it into melee. Inside this pad the honest
+        answers are the blade and the peel, and both live below this rung.
+        ``ShotPolicy.face`` keeps the same rule for the shield.
+        """
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        for track in self._tracked:
+            if track.hazard is not HazardClass.BODY:
+                continue
+            gap = chebyshev(lx, ly, int(track.x), int(track.y))
+            if gap <= _SPIT_DUCK_BODY_PAD and gap <= int(shot_gap):
+                return True
+        return False
+
+    def _note_duck_wall(self, snap: ZeldaSnapshot, direction: str) -> None:
+        note = f"duck_wall_{int(snap.screen):02x}_{direction.lower()}"
+        if note not in self.notes:
+            self.notes.append(note)
+
+    def _spit_duck(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Step off a closing unblockable shot, ahead of every other rung.
+
+        This is the Zora rule, and it sits above the sword on purpose. The
+        evader below it yields the frame whenever the blade reaches a body
+        (``evade_yield_to_sword`` owned 687 of 6384 walk frames in
+        ``zhit1``), which on 0x7B / 0x7C is almost continuous — those screens
+        hold six leevers *and* the Zora that shares them, so the one rung
+        that could answer the spit was handed off for exactly the window it
+        was written for. Nothing below this line can answer a ``0x55``: it
+        cannot be killed by the walk (``prey.SKIP_TYPES``), the small shield
+        does not block it, and ``assess`` scores a muzzle that has not
+        launched yet as safe because it is not moving.
+
+        Closing only. A shot going away is geometry, not a threat, and
+        ducking it would spend the hop's frames on nothing. :meth:`_body_first`
+        is the other side: the duck is a *walk*, so a body already inside its
+        own dodge pad outranks the shot.
+        """
+        if not self.evade:
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        best: TrackedObject | None = None
+        best_gap = 10**9
+        for track in self._tracked:
+            if track.hazard is not HazardClass.PROJECTILE or track.blockable:
+                continue
+            if not track.closing_on(lx, ly):
+                continue
+            gap = chebyshev(lx, ly, int(track.x), int(track.y))
+            if gap <= _SPIT_DUCK_RADIUS and gap < best_gap:
+                best, best_gap = track, gap
+        if best is None or self._body_first(snap, best_gap):
+            self._duck_dir = self._duck_slot = None
+            self._duck_frames = 0
+            self._duck_xy = None
+            self._duck_still = 0
+            return None
+        # A duck that does not move Link is not a duck. ``_EVADE_BOUNDS`` is
+        # the scroll rectangle and knows nothing about the coast's rocks, so
+        # the only honest test is the one the frame just ran: live 0x7B
+        # (``zhit2`` f=4684) held UP for eight frames at (48, 133) against a
+        # wall while a leever closed from 12 px to 8 and took the walk's
+        # first hit — at full health, with the streak on 10, which is the
+        # single most expensive frame on the corridor (it costs the beam and
+        # the forced 5-rupee at once). The threshold is
+        # ``_SPIT_DUCK_STILL_CAP`` rather than one frame because Link's
+        # 1 px/frame walk genuinely repeats a pixel now and then.
+        here = (int(snap.link_x), int(snap.link_y))
+        cell = (here[0] // _DUCK_CELL, here[1] // _DUCK_CELL)
+        if self._duck_dir is not None and not link_busy(snap):
+            # ``link_busy`` is the other reason Link does not move: the ROM
+            # pins him for the whole sword animation, and charging those
+            # frames to the terrain is how ``zfixB`` decided both sides of
+            # 0x7B were rock.
+            if self._duck_xy == here:
+                self._duck_still += 1
+                if self._duck_still >= _SPIT_DUCK_STILL_CAP:
+                    self._duck_walls.add((self._duck_dir, cell[0], cell[1]))
+                    self._note_duck_wall(snap, self._duck_dir)
+                    self._duck_dir = None
+                    self._duck_still = 0
+            else:
+                self._duck_still = 0
+        self._duck_xy = here
+        slot = int(best.slot)
+        step: str | None = None
+        bodies = overworld_threat_objects(snap)
+        if (
+            self._duck_dir is not None
+            and self._duck_slot == slot
+            and self._duck_frames < _SPIT_DUCK_COMMIT
+            and box_step(lx, ly, self._duck_dir, _EVADE_BOUNDS) is not None
+            # The commit is a commit against the *shot*, never against a
+            # body: ``zfixA`` walked 0x7B's leevers down four times, and a
+            # dodge that steps into a leever has traded a 0.5 heart shot for
+            # a 0.5 heart contact plus the streak.
+            and not _step_into_body(lx, ly, self._duck_dir, bodies)
+        ):
+            step = self._duck_dir
+        else:
+            walls = {
+                direction
+                for direction in ("UP", "DOWN", "LEFT", "RIGHT")
+                if (direction, cell[0], cell[1]) in self._duck_walls
+            }
+            step = perpendicular(
+                lx, ly, int(best.x), int(best.y), _EVADE_BOUNDS, bodies,
+                avoid=walls,
+            )
+            self._duck_frames = 0
+        if step is None:
+            # Boxed in on both sides of the bearing. The push is the honest
+            # answer; handing back a direction that closes the gap is how the
+            # old ``answer_projectile`` wall-flip took the 0x7C hit.
+            self._duck_dir = self._duck_slot = None
+            return None
+        self._duck_frames = self._duck_frames + 1 if step == self._duck_dir else 1
+        self._duck_dir, self._duck_slot = step, slot
+        self.spit_ducks += 1
+        self.evade_reasons["spit_duck"] = self.evade_reasons.get("spit_duck", 0) + 1
+        return FrameAction(nes_action(step), "spit_duck")
+
+    def attach_rollout(self, env: Any, **kwargs: Any) -> RolloutEvader:
+        """Bind the ROM-truth evader to the live env and select that arm.
+
+        The seam a pin uses to pick which evader is under test. ``env`` is
+        the emulator the walk is already running on -- **one emulator per
+        process** (``AGENTS.md``), so this never makes one, and
+        :class:`~zelda_i.rollout.Rollout` restores it in a ``finally`` on
+        every fan. ``kwargs`` are the budget knobs
+        (``replan_frames`` / ``trigger_radius`` / ``screen_budget`` / ...),
+        passed to the constructor rather than set on the instance afterwards:
+        a ``@dataclass`` copies its defaults into ``__init__`` when the class
+        is created, so ``setattr`` on the *class* is a no-op on every
+        instance and silently measures the unablated arm (``AGENTS.md``).
+
+        Returns the evader so a probe can read its ledger directly.
+        """
+        self._rollout = RolloutEvader(Rollout(env), **kwargs)
+        self.rollout_evade = True
+        return self._rollout
+
+    def _rung_rollout_evade(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """The ROM-truth dodge, when it is bound and has something to say.
+
+        Off by default: with no ``attach_rollout`` this declines on every
+        frame and the ladder is the chain that was here before.
+
+        It does *not* inherit either of the model's gates. ``dodgeable`` is
+        ``assess``, which is the thing under test, and the sword yield hides
+        the Zora muzzle for the same reason: while the shot is still, neither
+        ``_shot_first`` nor the straight-line tracker can see the coming hit.
+        Standing is already one of the rollout candidates. If standing is as
+        safe as walking, ``no_gain`` declines to the reactive rung/hunter; if
+        a walk survives and standing is hit, the ROM has measured why the
+        dodge outranks the swing.
+        """
+        if not self.rollout_evade or self._rollout is None:
+            return None
+        step = self._rollout.decide(
+            snap, self._tracked, blocked=self._evade_blocked_dirs(snap)
+        )
+        if step is None or step.direction is None:
+            return None
+        self.evade_reasons[step.reason] = self.evade_reasons.get(step.reason, 0) + 1
+        self.evades += 1
+        # Do not slash-walk: A frames stop Link inside the pad.
+        return FrameAction(nes_action(step.direction), step.reason)
+
+    def threat_rungs(self) -> tuple[Rung, ...]:
+        """The threat ladder, as data. All three rungs, always registered.
+
+        The rollout rung stays on the ladder even with nothing bound, so the
+        two arms are the *same* ladder with one flag between them and a
+        census taken on either is directly comparable -- ``threat_rollout: 0``
+        is a reading, not a missing row.
+        """
+        return (
+            Rung("threat_duck", THREAT_RUNG_DUCK, self._spit_duck),
+            Rung("threat_rollout", THREAT_RUNG_ROLLOUT, self._rung_rollout_evade),
+            Rung("threat_reactive", THREAT_RUNG_REACTIVE, self._rung_reactive_evade),
+        )
+
+    @property
+    def threat_arbiter(self) -> Arbiter:
+        """The threat ladder. Built on first use, dropped by ``reset``."""
+        if self._threat_arbiter is None:
+            self._threat_arbiter = Arbiter(self.threat_rungs())
+        return self._threat_arbiter
+
     def _threat_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop | None
     ) -> FrameAction | None:
         """Reactive first, before any hop rule answers this frame.
 
         Yields ``None`` when standing is safe so the hop drives quiet frames.
+        The guards here are a prologue, not rungs: they say whether a threat
+        decision is meaningful at all, which is not a claim on the frame.
         """
         if not self.evade or self._evader is None:
             return None
         if snap.level != 0 or snap.mode != PLAY_MODE or snap.transitioning:
             return None
+        self._threat_hop = hop
+        return self.threat_arbiter.decide(snap)
+
+    def _rung_reactive_evade(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """``threat.ReactiveEvader`` and the gates it runs behind.
+
+        Unchanged policy -- this is the tail of the old ``_threat_action``
+        chain, lifted onto the ladder so the rollout rung has somewhere to
+        sit *above* it and so the census can price the two arms apart.
+        """
+        if self._evader is None:
+            return None
+        hop = self._threat_hop
         hazards = tuple(t for t in self._tracked if t.is_hazard)
         stand = assess(
             (int(snap.link_x), int(snap.link_y)), hazards, bounds=_EVADE_BOUNDS
@@ -942,6 +1381,42 @@ class OverworldPathController:
             return FrameAction(nes_action("A"), "evade_parry")
         return FrameAction(nes_idle_action(), "evade_parry_recover")
 
+    def _lane_no_gain(self, snap: ZeldaSnapshot, travel: str, lx: int) -> bool:
+        """True once the peel has stopped buying travel on this screen.
+
+        Ticks only on frames this branch is actually *reached* — it sits under
+        the hunt in ``_do_hop``, so a fight holding Link still is not charged
+        here. What is charged is a lane frame that leaves Link no closer to the
+        exit than the best pixel he has already stood on, which is the whole
+        shape of the 0x7C tug-of-war: the peel steps LEFT, the plain push steps
+        RIGHT, and x reads 24, 25, 24, 25 for 3593 frames.
+
+        The latch is per ``(hop_index, screen)`` on purpose. Letting the branch
+        back in on the first pixel the push wins would just restart the
+        stand-off one pixel east — 215 px of screen at one cap per pixel is
+        slower than the 4000-frame ``_grinding`` floor it is meant to beat.
+        """
+        key = (int(self.hop_index), int(snap.screen))
+        if key != self._lane_key:
+            self._lane_key = key
+            self._lane_gain = lx
+            self._lane_nogain = 0
+            self._lane_off = False
+        if self._lane_off:
+            return True
+        best = self._lane_gain if self._lane_gain is not None else lx
+        gained = lx > best if travel == "RIGHT" else lx < best
+        if gained:
+            self._lane_gain = lx
+            self._lane_nogain = 0
+            return False
+        self._lane_nogain += 1
+        if self._lane_nogain > _OCCUPIED_LANE_NO_GAIN_CAP:
+            self._lane_off = True
+            self.notes.append(f"lane_nogain_{self.hop_index}_{int(snap.screen):02x}")
+            return True
+        return False
+
     def _occupied_lane_action(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction | None:
         play = snap.level == 0 and snap.mode == PLAY_MODE and not snap.transitioning
         if not self.occupied_lane or not play:
@@ -955,6 +1430,10 @@ class OverworldPathController:
         travel = hop.direction
         # RIGHT/LEFT only; DOWN peels stay off until a sitting owns that column.
         if travel not in ("LEFT", "RIGHT"):
+            self._lane_stand = 0
+            self._lane_steer = 0
+            return None
+        if self._lane_no_gain(snap, travel, lx):
             self._lane_stand = 0
             self._lane_steer = 0
             return None
@@ -1053,44 +1532,99 @@ class OverworldPathController:
             self.notes.append(f"hop_grind_{self.hop_index}_{int(snap.screen):02x}")
         return self._hop_screen_frames > self.hop_screen_max_frames
 
+    # ---------------------------------------------------- hop rungs ---
+    # One method per branch of the old chain, each with the ``RungFn``
+    # shape. They read ``self._hop`` / ``self._hop_grinding``, which
+    # ``_do_hop`` sets once a frame before it walks the ladder.
+
+    def _rung_extra(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._extra_hop_action(snap, self._hop)
+
+    def _rung_maze(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if not self._in_maze_phase(snap, self._hop):
+            return None
+        return self._follow_maze(snap)
+
+    def _rung_scoop(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._hop_grinding:
+            return None
+        return self._rupee_scoop(snap, self._hop)
+
+    def _rung_occupancy(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._occupancy_align_action(snap, self._hop)
+
+    def _rung_stall_escape(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._stall_escape(snap, self._hop)
+
+    def _rung_unstick(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self.stuck <= self.stuck_threshold:
+            return None
+        action, self.stuck = unstick_wiggle(self.stuck)
+        return action
+
+    def _rung_edge(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return recover_off_edge(snap, self._hop.direction, swing=self._swing)
+
+    def _rung_hunt(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._hop_grinding:
+            return None
+        return self._hunt_action(snap, self._hop)
+
+    def _rung_lane(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._hop_grinding:
+            return None
+        return self._occupied_lane_action(snap, self._hop)
+
+    def hop_rungs(self) -> tuple[Rung, ...]:
+        """This controller's hop ladder, as data.
+
+        Registration order is irrelevant — :class:`~zelda_i.overworld.arbiter.Arbiter`
+        sorts on ``(priority, name)`` — so a subclass adds a rung by
+        appending to this tuple and *placing* it, never by moving a line.
+
+        The beam is the hunter's own bound ``take_beam``: the hop no longer
+        reaches into the hunter's blade to get the shot high enough in the
+        chain, it declares ``HOP_RUNG_BEAM`` and the arbiter does the rest.
+        A hunterless path has no beam rung at all, because there is no bound
+        method to register — ``hop_hunt`` stays on the ladder and declines,
+        which is what ``_hunt_action`` already did.
+        """
+        rungs = [
+            Rung("hop_extra", self.extra_hop_priority, self._rung_extra),
+            Rung("hop_maze", HOP_RUNG_MAZE, self._rung_maze),
+            Rung("hop_scoop", HOP_RUNG_SCOOP, self._rung_scoop),
+            Rung("hop_occupancy", HOP_RUNG_OCCUPANCY, self._rung_occupancy),
+            Rung("hop_stall_escape", HOP_RUNG_STALL_ESCAPE, self._rung_stall_escape),
+            Rung("hop_unstick", HOP_RUNG_UNSTICK, self._rung_unstick),
+            Rung("hop_edge", HOP_RUNG_EDGE, self._rung_edge),
+            Rung("hop_hunt", HOP_RUNG_HUNT, self._rung_hunt),
+            Rung("hop_lane", HOP_RUNG_LANE, self._rung_lane),
+        ]
+        if self.hunter is not None:
+            rungs.append(Rung("hop_beam", HOP_RUNG_BEAM, self.hunter.take_beam))
+        return tuple(rungs)
+
+    @property
+    def hop_arbiter(self) -> Arbiter:
+        """The hop ladder. Built on first use, rebuilt on a hunter swap."""
+        if self._hop_arbiter is None or self._hop_arbiter_hunter is not self.hunter:
+            self._hop_arbiter = Arbiter(self.hop_rungs())
+            self._hop_arbiter_hunter = self.hunter
+        return self._hop_arbiter
+
     def _do_hop(self, snap: ZeldaSnapshot) -> FrameAction:
         hop = self.hops[self.hop_index]
+        # Prologue, not rungs. ``_advance_hop`` decides which hop the frame
+        # even belongs to, and ``_grinding`` is a per-frame side effect whose
+        # verdict the rungs below read — neither is a claim on the frame.
         advanced = self._advance_hop(snap, hop)
         if advanced is not None:
             return advanced
-        grinding = self._grinding(snap)
-        extra = self._extra_hop_action(snap, hop)
-        if extra is not None:
-            return extra
-        if self._in_maze_phase(snap, hop):
-            return self._follow_maze(snap)
-        if self.hunter is not None:
-            shot = self.hunter.take_beam(snap)
-            if shot is not None:
-                return shot
-        if not grinding:
-            scoop = self._rupee_scoop(snap, hop)
-            if scoop is not None:
-                return scoop
-        occ = self._occupancy_align_action(snap, hop)
-        if occ is not None:
-            return occ
-        escape = self._stall_escape(snap, hop)
-        if escape is not None:
-            return escape
-        if self.stuck > self.stuck_threshold:
-            action, self.stuck = unstick_wiggle(self.stuck)
-            return action
-        edge = recover_off_edge(snap, hop.direction, swing=self._swing)
-        if edge is not None:
-            return edge
-        if not grinding:
-            hunted = self._hunt_action(snap, hop)
-            if hunted is not None:
-                return hunted
-            lane = self._occupied_lane_action(snap, hop)
-            if lane is not None:
-                return lane
+        self._hop = hop
+        self._hop_grinding = self._grinding(snap)
+        act = self.hop_arbiter.decide(snap)
+        if act is not None:
+            return act
         return align_and_push(
             snap,
             direction=hop.direction,
@@ -1180,6 +1714,19 @@ __all__ = [
     "DEFAULT_HOP_SCREEN_MAX_FRAMES",
     "DEFAULT_SCOOP_RADIUS",
     "DEFAULT_SCOOP_HEAL_RADIUS",
+    "HOP_RUNG_EXTRA",
+    "HOP_RUNG_MAZE",
+    "HOP_RUNG_BEAM",
+    "HOP_RUNG_SCOOP",
+    "HOP_RUNG_OCCUPANCY",
+    "HOP_RUNG_STALL_ESCAPE",
+    "HOP_RUNG_UNSTICK",
+    "HOP_RUNG_EDGE",
+    "HOP_RUNG_HUNT",
+    "HOP_RUNG_LANE",
+    "THREAT_RUNG_DUCK",
+    "THREAT_RUNG_ROLLOUT",
+    "THREAT_RUNG_REACTIVE",
     "PathNavPhase",
     "OverworldPathController",
     "is_5c_maze_hop",

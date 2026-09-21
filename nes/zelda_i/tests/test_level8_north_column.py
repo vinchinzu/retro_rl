@@ -10,6 +10,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 from retro_harness.nes import nes_action, nes_idle_action
 
 from zelda_i.dungeon.ids import MANHANDLA_OBJECT_TYPE
@@ -365,69 +366,51 @@ def test_0x5e_rom_death_pose_stays_on_south_band() -> None:
     assert list(act.action) != list(nes_action("DOWN", "A"))
 
 
-def test_0x5e_south_band_peels_column_before_inland() -> None:
-    """Leftover (120,189) peels off x=120 first even if the facing axis is free."""
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
+@pytest.mark.parametrize(
+    "x,y,ox,oy,facing,reason,action",
+    [
+        pytest.param(
+            120, 189, 80, 141, 0x01, "column_peel", "LEFT",
+            id="south_band_peels_column_before_inland",
+        ),
+        pytest.param(
+            116, 189, 80, 141, 0x01, "column_peel", "LEFT",
+            id="death_pose_holds_peel_on_column",
+        ),
+        pytest.param(
+            120, 189, 120, 163, 0x04, "column_peel", "LEFT",
+            id="on_column_peels_then_inland",
+        ),
+        pytest.param(
+            104, 189, 120, 163, 0x04, "inland_leave", "UP",
+            id="peeled_column_then_inland_up",
+        ),
+        pytest.param(
+            80, 181, 120, 163, 0x04, "inland_leave", "UP",
+            id="off_column_south_band_inland_not_west",
+        ),
+        pytest.param(
+            116, 189, 120, 177, 0x04, "column_peel", "LEFT",
+            id="death_pose_on_column_keeps_peeling",
+        ),
+    ],
+)
+def test_0x5e_column_peel_or_inland(
+    x: int, y: int, ox: int, oy: int, facing: int, reason: str, action: str
+) -> None:
+    """Leftover positions near the entry column: inside |x-120|<16 the column
+    peel wins (LEFT); once off/clear of the column the inland leave wins (UP).
+    ROM-death leftovers land at the same coordinates as live leftovers."""
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=x, y=y, health=0x22)
+    _put_obj(ram, 1, TYPE_0C, 128, ox, oy, facing=facing)
     ctl = make_darknut_key_controller()
     act = _step(ctl, ram)
     assert not ctl.failed
-    assert act.reason == "column_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("DOWN"))
-
-
-def test_0x5e_death_pose_holds_peel_on_column() -> None:
-    """ROM death (116,189) still |x-120|<16: hold LEFT, not inland UP."""
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=116, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "column_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("DOWN"))
-
-
-def test_0x5e_on_column_peels_then_inland() -> None:
-    """Entry column + south-facing 0x0C: LEFT off x=120, never UP into the shield."""
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "column_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("DOWN"))
-
-
-def test_0x5e_peeled_column_then_inland_up() -> None:
-    """After peel to x=104, south-facing 0x0C still on x=120: axis free, UP inland."""
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=104, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "inland_leave"
-    assert list(act.action) == list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("DOWN"))
-
-
-def test_0x5e_off_column_south_band_inland_not_west() -> None:
-    """ROM death leftover (80,181): off-column, UP inland, never more LEFT."""
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=80, y=181, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "inland_leave"
-    assert list(act.action) == list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("DOWN"))
+    assert act.reason == reason
+    assert list(act.action) == list(nes_action(action))
+    for other in ("LEFT", "UP", "DOWN"):
+        if other != action:
+            assert list(act.action) != list(nes_action(other))
 
 
 def test_0x5e_off_column_contact_stands_not_west() -> None:
@@ -460,47 +443,26 @@ def test_0x5e_inland_north_of_waist_does_not_hunt_up() -> None:
         assert list(act.action) == list(nes_action("DOWN"))
 
 
-def test_0x5e_inland_occupancy_nopath_stands() -> None:
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=104, y=117, health=0x22)
+@pytest.mark.parametrize(
+    "x,y,blocked_action",
+    [
+        pytest.param(104, 117, "UP", id="inland_occupancy_nopath_stands"),
+        pytest.param(80, 181, "LEFT", id="off_column_occupancy_nopath_stands"),
+    ],
+)
+def test_0x5e_occupancy_nopath_stands(x: int, y: int, blocked_action: str) -> None:
+    ram = _ram(screen=ROOM_DARKNUT_KEY, x=x, y=y, health=0x22)
     _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
     ctl = make_darknut_key_controller()
     _step(ctl, ram)
-    xy = (104, 117)
+    xy = (x, y)
     for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
         ctl._walker.grid.mark_blocked_ahead(*xy, direction)
     act = _step(ctl, ram)
     assert not ctl.failed
     assert act.reason == "occupancy_stand"
     assert list(act.action) == list(nes_idle_action())
-    assert list(act.action) != list(nes_action("UP"))
-
-
-def test_0x5e_off_column_occupancy_nopath_stands() -> None:
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=80, y=181, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 120, 163, facing=0x04)
-    ctl = make_darknut_key_controller()
-    _step(ctl, ram)
-    xy = (80, 181)
-    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
-        ctl._walker.grid.mark_blocked_ahead(*xy, direction)
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "occupancy_stand"
-    assert list(act.action) == list(nes_idle_action())
-    assert list(act.action) != list(nes_action("LEFT"))
-
-
-def test_0x5e_death_pose_on_column_keeps_peeling() -> None:
-    """ROM death (116,189) still inside the entry column: peel LEFT, not UP into shield."""
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=116, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 120, 177, facing=0x04)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "column_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("DOWN"))
+    assert list(act.action) != list(nes_action(blocked_action))
 
 
 def test_0x6e_spill_reenters_north_not_fail_closed() -> None:
@@ -689,26 +651,23 @@ def test_candle_leftover_pause_selects_bombs_before_place() -> None:
     assert ctl._wall.select_item == 1
 
 
-def test_0x3e_door_entry_steps_up() -> None:
-    """Link at south door (120, 205) steps UP into room 0x3E."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=205, health=0x22)
+@pytest.mark.parametrize(
+    "y,reason,action",
+    [
+        pytest.param(205, "combat_door_enter", "UP", id="door_entry_steps_up"),
+        pytest.param(189, "column_peel", "LEFT", id="south_band_peels_west"),
+    ],
+)
+def test_0x3e_entry_column_reasons(y: int, reason: str, action: str) -> None:
+    """Link at south door (120,205) steps UP into room 0x3E; on the south band
+    (120,189) he peels LEFT off the center column toward the west aisle."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=y, health=0x22)
     _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
     ctl = make_darknut_key_controller()
     act = _step(ctl, ram)
     assert not ctl.failed
-    assert act.reason == "combat_door_enter"
-    assert list(act.action) == list(nes_action("UP"))
-
-
-def test_0x3e_south_band_peels_west() -> None:
-    """On south band (120, 189), Link peels LEFT off center column toward west aisle."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "column_peel"
-    assert list(act.action) == list(nes_action("LEFT"))
+    assert act.reason == reason
+    assert list(act.action) == list(nes_action(action))
 
 
 def test_0x3e_statues_are_blocked_in_grid() -> None:
@@ -723,28 +682,37 @@ def test_0x3e_statues_are_blocked_in_grid() -> None:
     assert ctl._walker.grid.passable(64, 141)   # west aisle is passable
 
 
-def test_0x3e_tactical_bomb_against_approaching_darknut() -> None:
-    """Link drops a bomb facing UP when a Darknut approaches south down the west aisle."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=7)
-    _put_obj(ram, 1, TYPE_0C, 128, 64, 135, facing=0x04)
+@pytest.mark.parametrize(
+    "x,y,ox,oy,facing,reason,action",
+    [
+        pytest.param(
+            64, 165, 64, 135, 0x04, "threat_bomb_up", ("UP", "B"),
+            id="tactical_bomb_against_approaching_darknut",
+        ),
+        pytest.param(
+            50, 140, 64, 140, 0x04, "combat_slash", ("RIGHT", "A"),
+            id="flank_slash",
+        ),
+        pytest.param(
+            120, 105, 180, 140, 0x01, "bomb_north_wall", ("UP", "B"),
+            id="bomb_north_wall_at_stand",
+        ),
+    ],
+)
+def test_0x3e_combat_reasons(
+    x: int, y: int, ox: int, oy: int, facing: int, reason: str, action: tuple[str, ...]
+) -> None:
+    """0x3E combat reasons keyed on Link's position vs. the Darknut: bomb an
+    approaching Darknut from the west aisle, slash an adjacent flank, or bomb
+    the north wall once Link reaches the north bomb stand (120,105)."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=x, y=y, health=0x22, bombs=7)
+    _put_obj(ram, 1, TYPE_0C, 128, ox, oy, facing=facing)
     ctl = make_darknut_key_controller()
     ctl._3e_peeled = True
     act = _step(ctl, ram)
     assert not ctl.failed
-    assert act.reason == "threat_bomb_up"
-    assert list(act.action) == list(nes_action("UP", "B"))
-
-
-def test_0x3e_flank_slash() -> None:
-    """Link slashes into the flank of a south-facing Darknut."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=50, y=140, health=0x22, bombs=7)
-    _put_obj(ram, 1, TYPE_0C, 128, 64, 140, facing=0x04)
-    ctl = make_darknut_key_controller()
-    ctl._3e_peeled = True
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "combat_slash"
-    assert list(act.action) == list(nes_action("RIGHT", "A"))
+    assert act.reason == reason
+    assert list(act.action) == list(nes_action(*action))
 
 
 def test_0x3e_advance_north_when_clear() -> None:
@@ -758,18 +726,6 @@ def test_0x3e_advance_north_when_clear() -> None:
     assert not ctl.failed
     assert act.reason == "advance_north"
     assert list(act.action) == list(nes_action("UP"))
-
-
-def test_0x3e_bomb_north_wall_at_stand() -> None:
-    """Link places a bomb facing UP when at the north bomb stand (120, 105)."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=105, health=0x22, bombs=7)
-    _put_obj(ram, 1, TYPE_0C, 128, 180, 140, facing=0x01)
-    ctl = make_darknut_key_controller()
-    ctl._3e_peeled = True
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "bomb_north_wall"
-    assert list(act.action) == list(nes_action("UP", "B"))
 
 
 def test_0x2e_advance_north_when_manhandla_off_corridor() -> None:
@@ -817,25 +773,22 @@ def test_0x2e_north_door_push_skips_select_when_arrows_on_b() -> None:
     assert list(act.action) == list(nes_action("UP"))
 
 
-def test_0x2e_manhandla_slash_in_range() -> None:
-    """Link slashes Manhandla limb when within sword range."""
+@pytest.mark.parametrize(
+    "ox,oy,reason,action",
+    [
+        pytest.param(135, 140, "combat_slash", ("RIGHT", "A"), id="manhandla_slash_in_range"),
+        pytest.param(120, 115, "combat_bomb_up", ("UP", "B"), id="manhandla_corridor_bomb"),
+    ],
+)
+def test_0x2e_manhandla_reasons(ox: int, oy: int, reason: str, action: tuple[str, ...]) -> None:
+    """Slash a Manhandla limb within sword range; bomb it when it blocks the
+    corridor ahead and bombs >= 2."""
     ram = _ram(screen=ROOM_MAP_MANHANDLA, x=120, y=140, health=0x21, keys=9, bombs=2)
-    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 135, 140)
+    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, ox, oy)
     ctl = make_darknut_key_controller()
     act = _step(ctl, ram)
     assert not ctl.failed
-    assert act.reason == "combat_slash"
-    assert list(act.action) == list(nes_action("RIGHT", "A"))
-
-
-def test_0x2e_manhandla_corridor_bomb() -> None:
-    """Link drops tactical bomb when Manhandla blocks the corridor ahead and bombs >= 2."""
-    ram = _ram(screen=ROOM_MAP_MANHANDLA, x=120, y=140, health=0x21, keys=9, bombs=2)
-    _put_obj(ram, 1, MANHANDLA_OBJECT_TYPE, 64, 120, 115)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "combat_bomb_up"
-    assert list(act.action) == list(nes_action("UP", "B"))
+    assert act.reason == reason
+    assert list(act.action) == list(nes_action(*action))
 
 

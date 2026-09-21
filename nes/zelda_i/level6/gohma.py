@@ -33,7 +33,20 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.assist import poke_wooden_arrows
-from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
+from zelda_i.dungeon.gohma import (
+    ARROW_SPEED,
+    EYE_ADDR,
+    EYE_EDGE_WINDOW,
+    EYE_SHUT,
+    GOHMA_TYPES,
+    LEAD_CLAMP,
+    advance_eye,
+    aim_column,
+    eye_fresh_open,
+    gohma_live,
+    read_eye,
+    strafe_vx,
+)
 from zelda_i.dungeon.hop_controller import (
     CELLAR_MODE,
     HopController,
@@ -48,8 +61,12 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 __all__ = [
     "GOHMA_MAX_FRAMES",
     "SPAWN_WINDOW",
+    "ARROW_SPEED",
     "EYE_ADDR",
+    "EYE_EDGE_WINDOW",
     "EYE_SHUT",
+    "GOHMA_TYPES",
+    "LEAD_CLAMP",
     "STAND_Y",
     "Level6GohmaController",
     "gohma_live",
@@ -64,16 +81,10 @@ __all__ = [
 GOHMA_MAX_FRAMES = 1400
 SPAWN_WINDOW = 54
 
-# Gohma's eye: RAM 0x03C7 reads 0xC0 for the ~17f closed blink and a lower
-# value (0x70 / 0x60 / 0x58 ...) while open, on a ~65f cycle. An arrow only
-# damages Gohma if it arrives while the eye is open. Firing on any fixed
-# multiple of the cycle aliases straight onto the closed blink (v1-v4 and the
-# first reactive pass: 20+ arrows, 0 connects), so fire only in the first
-# EYE_EDGE_WINDOW frames after the eye opens — the arrow (flight ~17f from
-# STAND_Y) then arrives well inside the same open window.
-EYE_ADDR = 0x03C7
-EYE_SHUT = 0xC0
-EYE_EDGE_WINDOW = 16
+# The eye clock (``EYE_ADDR`` / ``EYE_SHUT`` / ``EYE_EDGE_WINDOW``), the
+# strafe read and the arrow lead are the same Gohma L8 0x1E fights, so they
+# live in ``dungeon.gohma`` and are re-exported here for the callers that
+# already import them from this module.
 FACE_NORTH = 0x08  # ADDR_LINK_FACING: 0x08 N / 0x04 S / 0x02 W / 0x01 E
 SHOT_COOLDOWN = 30  # < eye period: at most one live arrow per open window
 STUCK_FRAMES = 260  # no fire this long -> take the next aligned shot, gated or not
@@ -88,25 +99,13 @@ STAND_Y = 162
 STAND_Y_TOL = 8
 ALIGN_TOL = 5    # start strafing again past this
 FIRE_TOL = 8     # commit to the fire sequence within this (recompose hit dx=8)
-ARROW_SPEED = 2.8  # px/frame up the column (recompose y~168 fire -> kill ~18f)
-LEAD_CLAMP = 12
 LINK_X_MIN, LINK_X_MAX = 40, 216
 
-GOHMA_TYPES = frozenset({GOHMA_OBJECT_TYPE, GOHMA_BLUE_OBJECT_TYPE})
 _SKIP_TYPES = frozenset({0, 0xFF})
 GOHMA_WAIT = tuple(sorted(set(WAIT_SCROLL_B) | {CELLAR_MODE}))
 
 # A per-frame WRAM dump for retuning this fight lives in
 # ``nes/zelda_i/scripts/gohma_lab.py --dump`` (gitignored scratch), not here.
-
-
-def gohma_live(snap: ZeldaSnapshot) -> list:
-    """Red 0x33 (or blue 0x34) slots 1–12. TYPE presence; HP may be 0."""
-    return [
-        obj
-        for obj in snap.objects
-        if 1 <= obj.slot <= 12 and int(obj.type_id) in GOHMA_TYPES
-    ]
 
 
 @dataclass
@@ -197,25 +196,14 @@ class Level6GohmaController(HopController):
         return self.saw_gohma
 
     def _eye_byte(self) -> int | None:
-        if self.env is None:
-            return None
-        try:
-            return int(self.env.get_ram()[EYE_ADDR])
-        except Exception:  # pragma: no cover - defensive
-            return None
+        return read_eye(self.env)
 
     def _track_eye(self) -> None:
-        byte = self._eye_byte()
-        if byte is None or byte == EYE_SHUT:
-            self.eye_open_since = -1
-        elif self.eye_open_since < 0:
-            self.eye_open_since = 0
-        else:
-            self.eye_open_since = min(9999, self.eye_open_since + 1)
+        self.eye_open_since = advance_eye(self.eye_open_since, self._eye_byte())
 
     def _eye_fresh_open(self) -> bool:
         """Eye left the blink within EYE_EDGE_WINDOW frames (arrow will land)."""
-        return 0 <= self.eye_open_since <= EYE_EDGE_WINDOW
+        return eye_fresh_open(self.eye_open_since)
 
     def _poke(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if self.poked:
@@ -266,13 +254,9 @@ class Level6GohmaController(HopController):
 
         body = bodies[0]
         gx = int(body.x)
-        self.gx_hist.append(gx)
-        del self.gx_hist[:-8]
-        gvx = (
-            (self.gx_hist[-1] - self.gx_hist[0]) / (len(self.gx_hist) - 1)
-            if len(self.gx_hist) >= 4
-            else 0.0
-        )
+        # Sampled here, above the climb branch: the history advances on every
+        # frame a body is on screen, not only on the frames that aim.
+        gvx = strafe_vx(self.gx_hist, gx)
 
         ly = int(snap.link_y)
 
@@ -284,10 +268,9 @@ class Level6GohmaController(HopController):
 
         # 2. lightly lead the strafing body; hit box is ~+-8 so a rough
         #    column is enough during the vertical bob (gvx ~ 0) and the sweep.
-        flight = max(1.0, (ly - int(body.y)) / ARROW_SPEED)
-        lead = int(round(gvx * flight))
-        lead = max(-LEAD_CLAMP, min(LEAD_CLAMP, lead))
-        target_x = max(LINK_X_MIN, min(LINK_X_MAX, gx + lead))
+        target_x = aim_column(
+            gx, gvx, int(body.y), ly, (LINK_X_MIN, LINK_X_MAX)
+        )
         dx = target_x - int(snap.link_x)
 
         # 3. fire on the rising edge of an eye-open window (or force a shot if

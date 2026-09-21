@@ -799,13 +799,13 @@ def test_occupied_lane_stand_cap_still_yields_the_hop() -> None:
 # ------------------------------------------------- shot over the sword ---
 
 
-def _fireball_snap(*, shot_x: int, leever_x: int) -> ZeldaSnapshot:
+def _fireball_snap(*, shot_x: int, leever_x: int, link_y: int = 141) -> ZeldaSnapshot:
     """Link on 0x7C between a leever at contact and inbound Zora spit."""
     from zelda_i.dungeon.ids import FIREBALL_OBJECT_TYPE
 
     return ZeldaSnapshot(
         mode=PLAY_MODE, level=0, screen=0x7C, next_screen=0x7C,
-        link_x=120, link_y=141, facing=0x01, sword=1, bombs=0, rupees=0, keys=0,
+        link_x=120, link_y=link_y, facing=0x01, sword=1, bombs=0, rupees=0, keys=0,
         health=0x22, heart_partial=0xFF, triforce=0, compass=0, dialog_timer=0,
         colliding_tile=0, room_item_id=0, room_all_dead=0, room_obj_count=0,
         cur_opened_doors=0, open_doorway_mask=0,
@@ -821,29 +821,105 @@ def _fireball_snap(*, shot_x: int, leever_x: int) -> ZeldaSnapshot:
     )
 
 
+_DRIVE_STEP = {"UP": -1, "DOWN": 1}
+
+
 def _drive_shot(controller, *, frames: int = 8, step: int = 2) -> str | None:
-    """Walk the spit west toward Link a frame at a time, return the last reason."""
+    """Walk the spit west toward Link a frame at a time, return the last reason.
+
+    Link *moves* when the controller says to move: a fixture that pins him in
+    place is a wall as far as ``_spit_duck`` is concerned, and the rung would
+    write its own escape off after three frames (which is exactly what it is
+    supposed to do to the 0x7B rock it kept pressing UP into).
+    """
     reason = None
+    link_y = 141
     for i in range(frames):
-        snap = _fireball_snap(shot_x=200 - step * i, leever_x=139)
+        snap = _fireball_snap(shot_x=200 - step * i, leever_x=139, link_y=link_y)
         controller._observe_threats(snap)
         controller.hunter.observe(snap)
         act = controller._threat_action(snap, None)
         reason = None if act is None else act.reason
+        if act is not None:
+            link_y += _DRIVE_STEP.get(_direction_of(act), 0)
     return reason
 
 
+def _direction_of(act) -> str | None:
+    from retro_harness.nes import nes_action
+
+    for name in ("UP", "DOWN", "LEFT", "RIGHT"):
+        if list(act.action) == list(nes_action(name)):
+            return name
+    return None
+
+
 def test_an_inbound_spit_outranks_a_body_in_the_blade_box() -> None:
-    """``evade_yield_to_sword`` was 383 of 6552 frames on the coast walk and
+    """``evade_yield_to_sword`` was 687 of 6384 walk frames (``zhit1``) and
     the leever screens keep a body in the box almost continuously, so the
     Zora fired into an evader that had been handed off for the whole window.
     0x55 is neither killable nor small-shield blockable: the swing cannot
-    answer it."""
+    answer it, so ``_spit_duck`` takes the frame above the yield."""
     from zelda_i.overworld.shop_p7 import ShopP7WalkController
 
     ctl = ShopP7WalkController()
-    _drive_shot(ctl, frames=40, step=2)
-    assert ctl.evade_reasons.get("evade_shot_over_sword", 0) > 0
+    # 30 frames leaves the spit 22 px out and still closing; past ~39 it has
+    # gone by Link, and a shot going away is geometry, not a threat.
+    reason = _drive_shot(ctl, frames=30, step=2)
+    assert reason == "spit_duck"
+    assert ctl.spit_ducks > 0
+    # The two velocity samples the tracker needs, and nothing after them:
+    # once the shot is closing, the sword never gets the window back.
+    assert ctl.evade_reasons.get("evade_yield_to_sword", 0) <= 3
+
+
+def test_the_spit_duck_leaves_the_shot_row_not_the_shot_lane() -> None:
+    """The shot flies west down Link's own row, so the escape is vertical.
+
+    The old ``answer_projectile`` crossed the *travel* axis and flipped at a
+    wall, which is how Link walked east into the 0x7C spit at x=16.
+    """
+    from retro_harness.nes import nes_action
+    from zelda_i.overworld.shop_p7 import ShopP7WalkController
+
+    ctl = ShopP7WalkController()
+    link_y = 141
+    for i in range(6):
+        snap = _fireball_snap(shot_x=200 - 2 * i, leever_x=139, link_y=link_y)
+        ctl._observe_threats(snap)
+        ctl.hunter.observe(snap)
+        act = ctl._threat_action(snap, None)
+        if act is not None and list(act.action) == list(nes_action("DOWN")):
+            link_y += 1
+    assert act is not None and act.reason == "spit_duck"
+    assert list(act.action) == list(nes_action("DOWN"))
+    assert link_y > 141  # off the shot's row, not along its lane
+
+
+def test_a_duck_that_moves_nobody_is_written_off_as_wall() -> None:
+    """Live 0x7B (``zhit2`` f=4684): eight frames of UP at (48, 133) against a
+    rock while a leever closed from 12 px to 8 — the walk's first hit, taken
+    at full health with the streak on 10. ``_EVADE_BOUNDS`` is the scroll
+    rectangle and cannot see a rock, so the wall has to be *measured*: three
+    frames that move Link nowhere retire that direction for the screen."""
+    from zelda_i.overworld.shop_p7 import ShopP7WalkController
+
+    ctl = ShopP7WalkController()
+    seen = []
+    for i in range(12):
+        # Link never moves: every direction this fixture offers is wall.
+        snap = _fireball_snap(shot_x=200 - 2 * i, leever_x=139, link_y=141)
+        ctl._observe_threats(snap)
+        ctl.hunter.observe(snap)
+        act = ctl._threat_action(snap, None)
+        seen.append(None if act is None else act.reason)
+    assert any(r == "spit_duck" for r in seen), seen
+    # Both sides of the bearing are wall, so the rung stops claiming frames
+    # instead of pressing one of them forever.
+    assert seen[-1] != "spit_duck", seen
+    walls = {direction for direction, _cx, _cy in ctl._duck_walls}
+    assert {"DOWN", "UP"} <= walls, ctl._duck_walls
+    assert any(n.startswith("duck_wall_7c_") for n in ctl.notes), ctl.notes
 
 
 def test_a_body_in_the_blade_box_still_owns_a_quiet_frame() -> None:
@@ -908,3 +984,61 @@ def test_the_budget_is_per_hop_and_per_screen() -> None:
     next_screen = read_snapshot(_ram(screen=0x7D, x=20, y=141, health=0x22))
     assert ctl._grinding(next_screen) is False
     assert ctl._grinding(here) is False  # a different key, counted afresh
+
+
+def test_the_lane_tug_of_war_writes_itself_off() -> None:
+    """Live 0x7C (``scratch/probe_walk_trace.py`` w1, the committed walk).
+
+    The peel steps LEFT and the plain push steps RIGHT, so x reads 24, 25,
+    24, 25 at y=109 for 3593 of the screen's 4301 frames — 1795 ``hop5_lane``
+    against 1982 ``hop5``. Neither existing cap can see it: every push frame
+    takes an early return that zeroes ``_lane_steer`` and ``_lane_stand``, so
+    both counters restart before either reaches its own cap. Travel-axis
+    progress is the only thing that separates a peel going around a body from
+    a stand-off, and that is what ``_lane_no_gain`` measures.
+    """
+    from zelda_i.overworld.path import (
+        _OCCUPIED_LANE_NO_GAIN_CAP,
+        _OCCUPIED_LANE_STEER_CAP,
+    )
+
+    ctrl = _lane_ctrl()
+    on_lane = (_octorok(x=160, y=141),)
+    off_lane = (_octorok(x=160, y=64),)
+    x = 24
+    lane_frames = 0
+    reasons = []
+    for i in range(4 * _OCCUPIED_LANE_NO_GAIN_CAP):
+        act = ctrl.step(
+            _snap(screen=0x49, x=x, y=141, objects=on_lane if i % 2 == 0 else off_lane)
+        )
+        reasons.append(act.reason)
+        if "lane" in act.reason:
+            lane_frames += 1
+        x = 25 if x == 24 else 24
+
+    assert ctrl._lane_steer <= _OCCUPIED_LANE_STEER_CAP, "steer cap never fires here"
+    assert any(n.startswith("lane_nogain_") for n in ctrl.notes), ctrl.notes
+    assert "lane" not in reasons[-1], reasons[-4:]
+    # The branch pays the cap once and is written off for this (hop, screen);
+    # it does not buy itself another cap's worth on the next pixel.
+    assert lane_frames <= _OCCUPIED_LANE_NO_GAIN_CAP + 2, lane_frames
+
+
+def test_the_lane_keeps_the_frame_while_the_peel_is_buying_travel() -> None:
+    """A peel that gains ground resets the budget; only a stand-off pays it."""
+    from zelda_i.overworld.path import _OCCUPIED_LANE_NO_GAIN_CAP
+
+    ctrl = _lane_ctrl()
+    x = 24
+    lane_frames = 0
+    frames = _OCCUPIED_LANE_NO_GAIN_CAP + 30  # past the cap, inside the screen
+    for _ in range(frames):
+        act = ctrl.step(
+            _snap(screen=0x49, x=x, y=141, objects=(_octorok(x=x + 20, y=141),))
+        )
+        if "lane" in act.reason:
+            lane_frames += 1
+        x += 1  # the push wins a pixel every frame
+    assert not any(n.startswith("lane_nogain_") for n in ctrl.notes), ctrl.notes
+    assert lane_frames == frames, (lane_frames, frames)

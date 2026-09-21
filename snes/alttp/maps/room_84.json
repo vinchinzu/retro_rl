@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 132,
+  "roomHex": "0x84",
+  "name": "Desert Palace main lobby",
+  "measured": "2026-09-21",
+  "sourceState": "DesertPalaceEntry",
+  "points": [
+    {"label": "entry_spawn", "xy": [2296, 4568], "role": "spawn", "notes": "DesertPalaceEntry load; south door alcove after entrance 0x09"},
+    {"label": "alcove_south", "xy": [2296, 4496], "role": "waypoint", "notes": "North off spawn into the tiled alcove"},
+    {"label": "alcove_north", "xy": [2296, 4415], "role": "waypoint", "notes": "Alcove north wall; straight UP wedges here"},
+    {"label": "west_around", "xy": [2174, 4415], "role": "waypoint", "notes": "West doorway around the alcove north wall"},
+    {"label": "west_jog", "xy": [2174, 4304], "role": "waypoint", "notes": "West-side north halt; go east to continue north"},
+    {"label": "hall_center", "xy": [2283, 4196], "role": "waypoint", "notes": "Sandy/tiled north hall, south of the 0x74 door"},
+    {"label": "north_door_approach", "xy": [2283, 4133], "role": "approach", "notes": "Hold UP → room 0x74"},
+    {"label": "south_door_approach", "xy": [2296, 4568], "role": "approach", "notes": "Hold DOWN → overworld desert screen 0x30"}
+  ],
+  "doors": [
+    {
+      "label": "north_to_0x74",
+      "direction": "UP",
+      "toRoom": 116,
+      "toRoomHex": "0x74",
+      "approachXy": [2283, 4133],
+      "landingXy": [2272, 4052],
+      "role": "primary",
+      "path": ["alcove_south", "alcove_north", "west_around", "west_jog", "hall_center", "north_door_approach"],
+      "pathTolerances": {"alcove_south": 16, "alcove_north": 16, "west_around": 16, "west_jog": 16, "hall_center": 16, "default": 12},
+      "pushFrames": 300,
+      "notes": "First indoor room-change from the main/book entrance. Isolated 2026-09-21 from DesertPalaceEntry. Straight UP from spawn wedges on the alcove north wall; west around then back to center."
+    },
+    {
+      "label": "south_to_desert",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 48,
+      "approachXy": [2296, 4568],
+      "landingXy": [296, 3240],
+      "role": "backtrack",
+      "path": ["south_door_approach"],
+      "pathTolerances": {"default": 12},
+      "pushFrames": 300,
+      "notes": "Overworld Desert Palace stairs (screen 0x30). Confirms this is the main/book mouth, not a side entrance."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 350,
+    "skirmishMaxDistance": 90,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 80
+  },
+  "walkBbox": [2088, 4096, 2504, 4608],
+  "hostilesAtEntry": [
+    {"type": "0x71", "xy": [2096, 4176]},
+    {"type": "0x71", "xy": [2480, 4176]},
+    {"type": "0x61", "xy": [2288, 4208]},
+    {"type": "0x71", "xy": [2192, 4384]},
+    {"type": "0x71", "xy": [2384, 4384]},
+    {"type": "0x71", "xy": [2192, 4528]},
+    {"type": "0x71", "xy": [2384, 4528]}
+  ],
+  "z3Label": "Desert Palace",
+  "notes": [
+    "Main/book entrance (ROM $02C813 index 0x09 → room 0x84). West 0x83 / east 0x85 / north-ledge 0x63 are other mouths.",
+    "Room is the south alcove plus north hall of supertile 0x84. Straight UP wedges at y≈4376.",
+    "Leevers (0x71) + Beamos (0x61). Prize (Power Gloves) is not granted on this pin.",
+    "Authority: maps/room_84.json. Pin is isolated / state-load, not continuous."
+  ]
+}

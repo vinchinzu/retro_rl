@@ -30,6 +30,7 @@ from zelda_i.combat import (
     chebyshev,
     closest_body,
     direction_to_facing,
+    dormant_body,
     facing_to_direction,
     floor_pickups,
     in_sword_hitbox,
@@ -48,6 +49,13 @@ from zelda_i.dungeon.threat import (
     off_line_step,
 )
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
+from zelda_i.overworld.common import (
+    _STEP,
+    DODGE_BOX as _DODGE_BOX,  # noqa: F401  (re-export for probes)
+    box_step as _box_step,
+    perpendicular,
+)
+from zelda_i.overworld.arbiter import Arbiter, Rung
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import LEAVE_GOALS, FarmOccupancy
 from zelda_i.overworld.prey import PreyPolicy, prey_name
@@ -61,6 +69,16 @@ __all__ = [
     "HUNT_MIN_HEARTS",
     "HUNT_MUZZLE_ALARM",
     "HUNT_OFF_LINE_MAX_FRAMES",
+    "HUNT_RUNG_STRIKE",
+    "HUNT_RUNG_PEEL",
+    "HUNT_RUNG_SHIELD",
+    "HUNT_RUNG_DUCK",
+    "HUNT_RUNG_HEAL",
+    "HUNT_RUNG_BEAM",
+    "HUNT_RUNG_TRANSIT",
+    "HUNT_RUNG_GUARD",
+    "HUNT_RUNG_COLLECT",
+    "HUNT_RUNG_CHASE",
     "HUNT_SCREEN_MAX_FRAMES",
     "HUNT_STRIKE_SLOT_MAX_FRAMES",
     "HUNT_SETTLE_FRAMES",
@@ -107,11 +125,25 @@ HUNT_PICKUP_RADIUS = 72
 # two hits to kill anything on this corridor and ``_a_edge`` spends ~7 frames
 # a press, so ~20 presses is already far past "this is not working".
 HUNT_STRIKE_SLOT_MAX_FRAMES = 300
+# Frames the A edge will spend waiting for ``$0098`` to agree with the face it
+# wants. Measured max is 4 (``turn4``, 64 perpendicular turns from a walking
+# Link, none of which failed); past that the face being asked for is changing
+# under the blade and the press is the cheaper way out of the dance.
+HUNT_TURN_CAP = 6
 # The heal is the shorter of the two budgets on purpose: it runs above the
 # beam and the chase, so an unbounded one starves the screen it is on.
 HUNT_HEAL_MAX_FRAMES = 120
 # Interior box. Scroll lines are x=14/232, y=62/212 (``overworld.common.EDGE_*``).
 HUNT_BOX = (32, 214, 76, 198)
+# The near end of the blade. ``in_sword_hitbox`` has no minimum, so the
+# contact rung swings at bodies that are *overlapping* Link — and the sword is
+# an object the ROM places in front of him, so it cuts nothing there.
+# ``scratch/probe_blade.py`` (``blade1``) ledgers all 54 blade presses of a
+# walk against the hp drops that followed: 13 presses had the nearest body
+# inside 10 px and **one** of them landed, against 11 of 41 further out. Each
+# of those is 13 pinned frames with a body already touching Link, which is
+# four of the eight hits in ``zhit6``.
+HUNT_BLADE_MIN_FWD = 10
 # ``$00AC`` slot 0 non-zero for the whole swing; idle is the ROM's A-release edge.
 LINK_SLOT = 0
 HUNT_SHIELD_WINDOW = 16  # swing pins Link with the shield down; do not A a shot in it
@@ -125,62 +157,39 @@ STAND_HOLD_PX = 12  # hold a sword-stand cell while the body hops inside this pa
 # Zora spit dwells ZORA_MUZZLE_DWELL (17) f at ~0 vel; launched is ZORA_SHOT_SPEED (1.75).
 SHOT_DWELL_SPEED = 0.5
 HUNT_MUZZLE_ALARM = 176  # dwelling muzzle still worth stepping away from. Measured.
-# Bodies the full-health sword shot is worth *waiting* for. Their whole attack
-# is walking into Link, so his standing 56 px off in their own row costs
-# nothing; a shooter's axis is the one place the beam's reach does not pay,
-# and keeps ``_off_line``.
-BEAM_STAND_KINDS = frozenset({EnemyKind.TEKTITE, EnemyKind.LEEVER})
+# Bodies the full-health sword shot is worth *waiting* for. A leever walks
+# a line once it is up, so a 56 px stand in that row is a free shot. A
+# tektite hops off the lane: live 0x79/0x7A spent 229/274 frames reversing
+# UP/DOWN to chase that row, retired with tektites still up, and banked 0R.
+BEAM_STAND_KINDS = frozenset({EnemyKind.LEEVER})
 _SIDE_FACE = {"N": "UP", "S": "DOWN", "E": "RIGHT", "W": "LEFT"}
 _FACING_SIDE = {0x08: "N", 0x04: "S", 0x01: "E", 0x02: "W"}  # $0098 facing -> muzzle side
 
-
-def _box_step(x: int, y: int, direction: str, box: tuple[int, int, int, int]) -> str | None:
-    nx, ny = x, y
-    if direction == "LEFT":
-        nx = x - 2
-    elif direction == "RIGHT":
-        nx = x + 2
-    elif direction == "UP":
-        ny = y - 2
-    elif direction == "DOWN":
-        ny = y + 2
-    else:
-        return None
-    xlo, xhi, ylo, yhi = box
-    if xlo <= nx <= xhi and ylo <= ny <= yhi:
-        return direction
-    return None
-
-
-def perpendicular(
-    lx: int, ly: int, mx: int, my: int, box: tuple[int, int, int, int],
-    bodies: tuple[ZeldaObject, ...] = (),
-) -> str | None:
-    """Step that opens the angle to a muzzle at ``(mx, my)``, or ``None``.
-
-    Zora aim is quantized at launch; never walk into the muzzle. ``bodies``
-    is the same rule :meth:`ShotPolicy.face` keeps: a shot is not a reason to
-    walk into an octorok.
-    """
-    dx, dy = int(mx) - int(lx), int(my) - int(ly)
-    # Cross the *major* axis of the bearing. Shared row (dy == 0) -> UP/DOWN.
-    if abs(dx) >= abs(dy):
-        options = ("DOWN", "UP") if dy <= 0 else ("UP", "DOWN")
-    else:
-        options = ("RIGHT", "LEFT") if dx <= 0 else ("LEFT", "RIGHT")
-    for direction in options:
-        if _box_step(lx, ly, direction, box) is None:
-            continue
-        nx, ny = lx + _STEP[direction][0] * MIN_DODGE_BODY, ly + _STEP[direction][1] * MIN_DODGE_BODY
-        if any(
-            chebyshev(nx, ny, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
-        ):
-            continue
-        return direction
-    return None
+# ------------------------------------------------- the hunt ladder ---
+# ``step`` used to be a chain of ``if act is not None: return act`` followed
+# by a four-way dispatch, so its precedence was source-line order. These are
+# the same rungs in the same order, as numbers (``overworld.arbiter``:
+# priority counts *down*, 0 is the top). Spaced by ten so a rung can be
+# slotted in without renumbering.
+HUNT_RUNG_STRIKE = 10
+HUNT_RUNG_PEEL = 20
+HUNT_RUNG_SHIELD = 30
+HUNT_RUNG_DUCK = 40
+# Above the beam on purpose: the beam is a full-health weapon, so on every
+# frame the heal can claim, the rung below it is already dead (``_take_heal``).
+HUNT_RUNG_HEAL = 50
+HUNT_RUNG_BEAM = 60
+# The tail four are a *dispatch*, not a ladder: exactly one of them owns the
+# frame and a ``None`` from it ends the step. Their priorities are still
+# real — they are the order the four conditions are tested in — but
+# ``_tail_owner`` makes the conditions mutually exclusive, so the three that
+# do not own the frame decline without running anything.
+HUNT_RUNG_TRANSIT = 70
+HUNT_RUNG_GUARD = 80
+HUNT_RUNG_COLLECT = 90
+HUNT_RUNG_CHASE = 100
 
 
-_STEP = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 def _side_cells(obj: ZeldaObject) -> dict[str, tuple[int, int]]:
     ox, oy = int(obj.x), int(obj.y)
@@ -228,6 +237,28 @@ def muzzle_free_side(link_x: int, link_y: int, obj: ZeldaObject, prefer: str | N
 def _clamp(cell: tuple[int, int], box: tuple[int, int, int, int]) -> tuple[int, int]:
     xlo, xhi, ylo, yhi = box
     return (max(xlo, min(xhi, cell[0])), max(ylo, min(yhi, cell[1])))
+
+
+def forward_lateral(face: str, dx: int, dy: int) -> tuple[int, int]:
+    """Body offset in Link's frame: ``fwd`` along ``face``, ``lat`` across it."""
+    if face == "RIGHT":
+        return dx, dy
+    if face == "LEFT":
+        return -dx, -dy
+    if face == "DOWN":
+        return dy, dx
+    return -dy, -dx  # UP
+
+
+def blade_lands(link_x: int, link_y: int, face: str, body_x: int, body_y: int) -> bool:
+    """:func:`in_sword_hitbox` with the near end the ROM actually has.
+
+    Measured, not modelled: see :data:`HUNT_BLADE_MIN_FWD`.
+    """
+    fwd, _lat = forward_lateral(face, int(body_x) - int(link_x), int(body_y) - int(link_y))
+    return fwd >= HUNT_BLADE_MIN_FWD and in_sword_hitbox(
+        link_x, link_y, face, body_x, body_y
+    )
 
 
 def link_busy(snap: ZeldaSnapshot) -> bool:
@@ -286,10 +317,32 @@ def attackable(obj: ZeldaObject, track: TrackedObject | None) -> bool:
     """False while the wooden sword cannot hurt this body.
 
     Peahat: ``CheckMonsterCollisions`` only while ``$0444 == 5`` (landed).
+    Leever: under the sand (:func:`combat.dormant_body`) it takes no damage —
+    every hp drop in five tapes was state 2 or 3 — so a press at one is 13
+    pinned frames bought from the leever that *is* up.
     """
+    if dormant_body(obj):
+        return False
     if kind_for_type(int(obj.type_id)) is not EnemyKind.PEAHAT:
         return True
     return track is None or track.speed < PEAHAT_LANDED_SPEED
+
+
+def closest_live_body(snap: ZeldaSnapshot, lx: int, ly: int) -> ZeldaObject | None:
+    """:func:`combat.closest_body` without the bodies that cannot act.
+
+    ``closest_body`` is "what is nearest to touching Link", and a dormant
+    leever is never going to touch him. Picking one as ``close`` sent the
+    whole contact ladder — strike, peel, shield — at a sand mound while the
+    surfaced leever behind it closed.
+    """
+    body = closest_body(snap, lx, ly)
+    if body is not None and not dormant_body(body):
+        return body
+    live = tuple(obj for obj in live_enemies(snap) if not dormant_body(obj))
+    if not live:
+        return None
+    return min(live, key=lambda o: chebyshev(lx, ly, int(o.x), int(o.y)))
 
 
 @dataclass
@@ -538,6 +591,15 @@ class HuntCensus:
 
     ``collect_frames`` and ``off_line_frames`` are *also* per-screen budgets —
     :meth:`ScreenHunter._enter` zeroes them on a scroll, not just on a reset.
+    That is why they are not the rung census: a budget that resets per screen
+    and a lifetime count of frames won are two different objects that happen
+    to be spelled the same. The census is
+    ``ScreenHunter.arbiter`` (``report()["rung_census"]``), which credits a
+    rung on the frame its action is the one returned; the counters here count
+    the *branch* — ``guard_frames`` and ``transit_frames`` are bumped before
+    ``_collect``, which can still hand the frame back to the path, and the
+    budget spend and the retire that go with them happen either way. Read the
+    two together: "what did this rung spend" and "what did it win".
     """
 
     hunt_frames: int = 0
@@ -552,6 +614,16 @@ class HuntCensus:
     heal_frames_total: int = 0
     off_line_frames: int = 0
     release_frames: int = 0  # A-edge idle frames; a swing that never starts is invisible
+    # Frames the A edge spent turning Link before pressing. These are the
+    # frames that used to be spent swinging at nothing: a turn and a swing
+    # cannot share a frame (``_a_edge``).
+    turn_frames: int = 0
+    # Every blade press (not the shot), and the ones that went out with
+    # ``$0098`` disagreeing with the face the rung asked for. The ROM keeps
+    # the old facing on such a press, so the second number is the count of
+    # swings that could not have landed where the rung was aiming.
+    blade_presses: int = 0
+    blade_presses_off_face: int = 0
     screens_cleared: int = 0
     screens_retired: int = 0
     frames_by_screen: dict[int, int] = field(default_factory=dict)
@@ -596,6 +668,9 @@ class HuntCensus:
         self.heal_frames_total = 0
         self.off_line_frames = 0
         self.release_frames = 0
+        self.turn_frames = 0
+        self.blade_presses = 0
+        self.blade_presses_off_face = 0
         self.screens_cleared = 0
         self.screens_retired = 0
         self.frames_by_screen.clear()
@@ -638,6 +713,10 @@ class ScreenHunter:
     beam: BeamPolicy = field(default_factory=BeamPolicy)
     beam_stand_kinds: frozenset[EnemyKind] = BEAM_STAND_KINDS
     duck: bool = True  # Zora 0x55; separate from shield so an ablation can split them
+    # Spend a frame turning Link before the blade press. Off is the old
+    # behaviour — ``nes_action(face, "A")`` — which the ROM answers by
+    # swinging along the *old* facing whenever the turn is refused.
+    turn_before_swing: bool = True
     transit_screens: frozenset[int] = frozenset()  # cross, do not chase; still strike/duck/scoop
     reopen_on_enter: bool = False  # lap needs this; one-pass must not reopen. See respawn.
     avoid_firing_lines: bool = True  # sword_stand puts Link on the muzzle axis by construction
@@ -659,6 +738,7 @@ class ScreenHunter:
     shield_policy: ShotPolicy = field(default_factory=ShotPolicy)
     targets: TargetBook = field(default_factory=TargetBook)
     _pressed: bool = field(default=False, repr=False)
+    _turn_frames: int = field(default=0, repr=False)
     screen: int = -1
     screen_frames: int = 0
     since_enter: int = 0
@@ -675,8 +755,23 @@ class ScreenHunter:
     _occ: FarmOccupancy = field(default_factory=FarmOccupancy, repr=False)
     _tracker: ObjectTracker = field(default_factory=ObjectTracker, repr=False)
     _tracked: tuple[TrackedObject, ...] = field(default=(), repr=False)
+    # The ladder, and the frame context its rungs read. ``RungFn`` is
+    # ``(snap) -> FrameAction | None`` — the shape every ``if act is not
+    # None`` branch already had — so ``step``'s other two arguments and the
+    # contact facts it works out once are set here rather than threaded
+    # through ten closures. The contact facts in particular *must* be worked
+    # out once: ``_strike_budget`` charges a slot on every call.
+    _arbiter: Arbiter | None = field(default=None, repr=False)
+    _step_frames: int = field(default=0, repr=False)
+    _step_lane: tuple[str, int] | None = field(default=None, repr=False)
+    _close: ZeldaObject | None = field(default=None, repr=False)
+    _pad: int = field(default=0, repr=False)
+    _contact: bool = field(default=False, repr=False)
+    _strikeable: bool = field(default=False, repr=False)
+    _normal_screen_max_frames: int = field(default=0, init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._normal_screen_max_frames = int(self.screen_max_frames)
         self.shield_policy.enabled = bool(self.shield)
         self.shield_policy.window = int(self.shield_window)
         self.shield_policy.duck_enabled = bool(self.duck)
@@ -711,6 +806,13 @@ class ScreenHunter:
         return {t.slot: t for t in self._tracked}
 
     def step(self, snap: ZeldaSnapshot, frames: int, lane: tuple[str, int] | None = None) -> FrameAction | None:
+        """The frame the highest hunt rung claims, or ``None`` for the caller.
+
+        The prologue is not a rung: entering a screen, censusing the wave and
+        working out the contact facts are things that happen to *every*
+        frame, claimed or not, and ``_strike_budget`` charges a slot on each
+        call, so it may be asked only once.
+        """
         if int(snap.level) != 0 or int(snap.mode) != PLAY_MODE or snap.transitioning:
             return None
         screen = int(snap.screen)
@@ -721,53 +823,154 @@ class ScreenHunter:
         if in_box:
             self.census.saw_prey(screen, in_box)
         lx, ly = int(snap.link_x), int(snap.link_y)
-        close = closest_body(snap, lx, ly)
+        close = closest_live_body(snap, lx, ly)
         pad = 10**6 if close is None else chebyshev(lx, ly, int(close.x), int(close.y))
-        if close is not None and self._at_contact(lx, ly, close, pad):
-            if attackable(close, self._track(close)) and self._strike_budget(
-                screen, close
-            ):
-                return self._strike(snap, frames, close, f"hunt_{screen:02x}")
-            peel = self._peel(snap, close, f"hunt_{screen:02x}")
-            if peel is not None:
-                return peel
-        block = self._shield_action(snap, close, pad)
-        if block is not None:
-            return block
-        duck = self._duck_action(snap)
-        if duck is not None:
-            return duck
-        heal = self._take_heal(snap, frames)
-        if heal is not None:
-            return heal
-        shot = self._beam_action(snap, screen)
-        if shot is not None:
-            return shot
+        self._step_frames = int(frames)
+        self._step_lane = lane
+        self._close = close
+        self._pad = pad
+        self._contact = close is not None and self._at_contact(
+            lx, ly, close, pad, _held_face(snap)
+        )
+        self._strikeable = (
+            self._contact
+            and attackable(close, self._track(close))
+            and self._strike_budget(screen, close)
+        )
+        return self.arbiter.decide(snap)
 
+    # --------------------------------------------------- hunt rungs ---
+
+    def _rung_strike(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if not self._strikeable:
+            return None
+        return self._strike(
+            snap, self._step_frames, self._close, f"hunt_{int(snap.screen):02x}"
+        )
+
+    def _rung_peel(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._close is None:
+            return None
+        screen = int(snap.screen)
+        if self._contact:
+            return self._peel(snap, self._close, f"hunt_{screen:02x}")
+        if self._pad <= MIN_DODGE_BODY:
+            # Inside the pad but inside the blade too. ``Link_BeHarmed`` is
+            # already happening here and a press only adds 13 frames of
+            # standing still to it, so the answer is the step out.
+            return self._peel(snap, self._close, f"hunt_{screen:02x}_close")
+        return None
+
+    def _rung_shield(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._shield_action(snap, self._close, self._pad)
+
+    def _rung_heal(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._take_heal(snap, self._step_frames)
+
+    def _rung_beam(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._beam_action(snap, int(snap.screen))
+
+    def _tail_owner(self, snap: ZeldaSnapshot) -> str:
+        """Which of the bottom four rungs owns this frame.
+
+        They were an ``if / if / if / return`` dispatch, where a ``None`` from
+        the branch that matched ended the step. A ladder treats ``None`` as a
+        decline and walks on, so the four conditions are made mutually
+        exclusive here instead: the three that do not own the frame decline
+        before running anything, and the one that does keeps its old power to
+        answer ``None`` on the whole hunt's behalf.
+        """
+        screen = int(snap.screen)
         if screen in self.transit_screens:
-            self.census.transit_frames += 1
-            self._note_once(f"hunt_transit_{screen:02x}")
-            return self._collect(snap, frames, lane, heal_only=False)
-
+            return "transit"
         if int(snap.whole_hearts) <= self.min_hearts:
-            self.census.guard_frames += 1
-            self._note_once(f"hunt_guard_{screen:02x}")
-            if screen not in self.done:
-                self._spend(screen)
-                if self.screen_frames > self.screen_max_frames:
-                    self._retire(screen, "guard_budget")
-            return self._collect(snap, frames, lane, heal_only=True)
-
+            return "guard"
         if screen in self.done:
-            # Money only once the wave is gone. ``heal_only`` here was the
-            # 5R-on-the-floor gap: the kill that empties a screen drops on the
-            # frame the screen goes ``done``, and the path's own
-            # ``_rupee_scoop`` only reaches 48 px.
-            return self._collect(
-                snap, frames, lane, heal_only=screen not in self.cleared
-            )
+            return "collect"
+        return "chase"
 
-        return self._hunt(snap, frames, screen, lane)
+    def _rung_transit(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._tail_owner(snap) != "transit":
+            return None
+        screen = int(snap.screen)
+        self.census.transit_frames += 1
+        self._note_once(f"hunt_transit_{screen:02x}")
+        return self._collect(
+            snap, self._step_frames, self._step_lane, heal_only=False
+        )
+
+    def _rung_guard(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._tail_owner(snap) != "guard":
+            return None
+        screen = int(snap.screen)
+        self.census.guard_frames += 1
+        self._note_once(f"hunt_guard_{screen:02x}")
+        if screen not in self.done:
+            self._spend(screen)
+            if self.screen_frames > self.screen_max_frames:
+                self._retire(screen, "guard_budget")
+        return self._collect(
+            snap, self._step_frames, self._step_lane, heal_only=True
+        )
+
+    def _rung_collect(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._tail_owner(snap) != "collect":
+            return None
+        # Money only once the wave is gone. ``heal_only`` here was the
+        # 5R-on-the-floor gap: the kill that empties a screen drops on the
+        # frame the screen goes ``done``, and the path's own
+        # ``_rupee_scoop`` only reaches 48 px.
+        screen = int(snap.screen)
+        return self._collect(
+            snap,
+            self._step_frames,
+            self._step_lane,
+            heal_only=screen not in self.cleared,
+        )
+
+    def _rung_chase(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if self._tail_owner(snap) != "chase":
+            return None
+        return self._hunt(
+            snap, self._step_frames, int(snap.screen), self._step_lane
+        )
+
+    def hunt_rungs(self) -> tuple[Rung, ...]:
+        """This hunter's ladder, as data. Registration order is irrelevant."""
+        return (
+            Rung("hunt_strike", HUNT_RUNG_STRIKE, self._rung_strike),
+            Rung("hunt_peel", HUNT_RUNG_PEEL, self._rung_peel),
+            Rung("hunt_shield", HUNT_RUNG_SHIELD, self._rung_shield),
+            Rung("hunt_duck", HUNT_RUNG_DUCK, self._duck_action),
+            Rung("hunt_heal", HUNT_RUNG_HEAL, self._rung_heal),
+            Rung("hunt_beam", HUNT_RUNG_BEAM, self._rung_beam),
+            Rung("hunt_transit", HUNT_RUNG_TRANSIT, self._rung_transit),
+            Rung("hunt_guard", HUNT_RUNG_GUARD, self._rung_guard),
+            Rung("hunt_collect", HUNT_RUNG_COLLECT, self._rung_collect),
+            Rung("hunt_chase", HUNT_RUNG_CHASE, self._rung_chase),
+        )
+
+    @property
+    def arbiter(self) -> Arbiter:
+        """The hunt ladder. Built on first use, cleared by :meth:`reset`."""
+        if self._arbiter is None:
+            self._arbiter = Arbiter(self.hunt_rungs())
+        return self._arbiter
+
+    def chase_finished(self, screen: int) -> bool:
+        """True once this screen is off the chase list — cleared or retired.
+
+        The public name for ``screen in self.done``. A *clearance gate* — a
+        caller that must not act until the wave here is settled — is a real
+        policy condition and is allowed to ask. What is not allowed is asking
+        in order to fall down a ladder: that is precedence, it belongs in a
+        ``Rung`` priority, and ``overworld.arbiter`` is where it now lives.
+        The distinction matters because the two are not the same set. A gate
+        on ``chase_finished`` opens once, for the rest of the screen; a rung
+        below the hunt opens on every frame the hunt happens to decline, of
+        which there are many while the wave is still alive.
+        """
+        return int(screen) in self.done
 
     def striking(self, snap: ZeldaSnapshot) -> bool:
         """True when the blade already reaches the nearest body.
@@ -778,11 +981,11 @@ class ScreenHunter:
         if int(snap.level) != 0 or int(snap.mode) != PLAY_MODE or snap.transitioning:
             return False
         lx, ly = int(snap.link_x), int(snap.link_y)
-        body = closest_body(snap, lx, ly)
+        body = closest_live_body(snap, lx, ly)
         if body is None:
             return False
         pad = chebyshev(lx, ly, int(body.x), int(body.y))
-        return self._at_contact(lx, ly, body, pad) and attackable(
+        return self._at_contact(lx, ly, body, pad, _held_face(snap)) and attackable(
             body, self._track(body)
         )
 
@@ -804,19 +1007,46 @@ class ScreenHunter:
             self.screen_frames = 0
         return self.step(snap, frames, lane=None)
 
-    def _at_contact(self, lx: int, ly: int, body: ZeldaObject, pad: int) -> bool:
-        face = face_toward(lx, ly, int(body.x), int(body.y))
-        return pad <= MIN_DODGE_BODY or in_sword_hitbox(
-            lx, ly, face, int(body.x), int(body.y)
-        )
+    def _at_contact(
+        self, lx: int, ly: int, body: ZeldaObject, pad: int,
+        facing: str | None = None,
+    ) -> bool:
+        """True when the blade reaches this body, now or after a turn.
+
+        ``pad <= MIN_DODGE_BODY`` used to be enough on its own, and that is
+        the *softlock* rule, not a sword rule: it accepts a body overlapping
+        Link (:data:`HUNT_BLADE_MIN_FWD`) and a body 16 px off the blade's
+        axis, neither of which any press in ``blade1`` ever hurt. What is
+        left there is the peel.
+        """
+        bx, by = int(body.x), int(body.y)
+        faces = {face_toward(lx, ly, bx, by)}
+        if facing is not None:
+            faces.add(facing)
+        return any(blade_lands(lx, ly, face, bx, by) for face in faces)
 
     def _a_edge(
         self, snap: ZeldaSnapshot, face: str, reason: str, *, closing: bool,
+        turn_first: bool = True,
     ) -> FrameAction:
-        """One A press then idle release. ButtonsPressed is an edge."""
+        """One A press then idle release. ButtonsPressed is an edge.
+
+        The turn is its own frame. ``nes_action(face, "A")`` asks the ROM to
+        turn Link and swing on the same frame, and it will not: measured
+        (``scratch/probe_turn_swing.py``, ``turn4``) a walking Link keeps his
+        old facing through **22 of 64** such presses, and the blade then goes
+        out along the axis the body is *not* on — a guaranteed miss that pins
+        him ``$00AC != 0`` for 13 frames while the body closes the last 8 px.
+        Holding the direction alone turns him in 1-4 frames, every time, and
+        he is walking rather than pinned while it happens, so the facing is
+        waited for. ``HUNT_TURN_CAP`` bounds the wait: ``face_toward`` is
+        recomputed per frame and a body crossing a diagonal can ask for a new
+        face each time, which is a dance, not a turn.
+        """
         self._freeze_occ()
         if link_busy(snap):
             self._pressed = False
+            self._turn_frames = 0
             return FrameAction(nes_idle_action(), f"{reason}_recover")
         if self._pressed:
             self._pressed = False
@@ -824,8 +1054,25 @@ class ScreenHunter:
             return FrameAction(nes_idle_action(), f"{reason}_release")
         if self.shield_policy.hold_swing(snap, self._tracked, closing):
             self._pressed = False
+            self._turn_frames = 0
             return FrameAction(nes_idle_action(), f"{reason}_block")
+        held = _held_face(snap)
+        if (
+            turn_first
+            and self.turn_before_swing
+            and held is not None
+            and held != face
+            and self._turn_frames < HUNT_TURN_CAP
+        ):
+            self._turn_frames += 1
+            self.census.turn_frames += 1
+            return FrameAction(nes_action(face), f"{reason}_turn")
+        self._turn_frames = 0
         self._pressed = True
+        if turn_first:
+            self.census.blade_presses += 1
+            if held is not None and held != face:
+                self.census.blade_presses_off_face += 1
         return FrameAction(nes_action(face, "A"), reason)
 
     def _strike_budget(self, screen: int, body: ZeldaObject) -> bool:
@@ -864,9 +1111,7 @@ class ScreenHunter:
         lx, ly = int(snap.link_x), int(snap.link_y)
         face = face_toward(lx, ly, int(body.x), int(body.y))
         held = _held_face(snap)
-        if held is not None and in_sword_hitbox(
-            lx, ly, held, int(body.x), int(body.y)
-        ):
+        if held is not None and blade_lands(lx, ly, held, int(body.x), int(body.y)):
             face = held  # hop that flips dx/dy is not a reason to turn
         track = self._track(body)
         closing = track.closing_on(lx, ly) if track is not None else True
@@ -892,7 +1137,12 @@ class ScreenHunter:
             return None
         face, _body = aim
         reason = f"beam_{screen:02x}"
-        act = self._a_edge(snap, face, reason, closing=True)
+        # The shot does not wait for the facing. A blade that goes out the
+        # wrong way is a miss *and* a 13 frame pin next to a body; a shot
+        # that goes out the wrong way is a screen-long projectile down some
+        # other lane, and these screens are full of lanes. ``zfixG`` gated it
+        # and the walk fired 4 beams where ``zfixE`` fired 36.
+        act = self._a_edge(snap, face, reason, closing=True, turn_first=False)
         if act.reason == reason:
             self.beam.press()
         return act
@@ -902,11 +1152,11 @@ class ScreenHunter:
     ) -> tuple[int, int] | None:
         """Where to wait for a body the shot can kill before it arrives.
 
-        Only for :data:`BEAM_STAND_KINDS` — a tektite's whole attack is the
-        hop that lands on Link, and standing 56 px off in its own row takes
-        it for nothing. Shooters keep ``_off_line``: their axis is the one
-        place the beam's reach does not pay for. Capped, because a lane can
-        be walled and a shot that never lands must not hold the chase.
+        Only for :data:`BEAM_STAND_KINDS` — a risen leever walks a line, so
+        standing 56 px off in that row is a free shot. Tektites hop off the
+        lane (live 0x79/0x7A) and are closed on instead. Shooters keep
+        ``_off_line``. Capped, because a lane can be walled and a shot that
+        never lands must not hold the chase.
         """
         if not self.beam.enabled or not beam_ready(snap):
             self.beam.enter()
@@ -942,7 +1192,10 @@ class ScreenHunter:
 
     def _duck_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
         verdict = self.shield_policy.duck(
-            snap, self._tracked, self.box, live_enemies(snap)
+            snap,
+            self._tracked,
+            self.box,
+            tuple(o for o in live_enemies(snap) if not dormant_body(o)),
         )
         if verdict is None:
             return None
@@ -959,12 +1212,14 @@ class ScreenHunter:
             self._freeze_occ()
             cx, cy = int(close.x), int(close.y)
             held = _held_face(snap)
-            if held is not None and in_sword_hitbox(lx, ly, held, cx, cy):
+            if held is not None and blade_lands(lx, ly, held, cx, cy):
                 return self._strike(snap, frames, close, reason)
             dx, dy = cx - lx, cy - ly
-            if abs(dx) >= abs(dy) and dy != 0:
+            # Align the short axis only when it is actually off the blade
+            # row. dy=2 used to flip UP/DOWN every hop (live 0x79 133<->135).
+            if abs(dx) >= abs(dy) and abs(dy) > self.lane_tol:
                 align = "DOWN" if dy > 0 else "UP"
-            elif abs(dy) > abs(dx) and dx != 0:
+            elif abs(dy) > abs(dx) and abs(dx) > self.lane_tol:
                 align = "RIGHT" if dx > 0 else "LEFT"
             else:
                 align = face_toward(lx, ly, cx, cy)
@@ -1023,7 +1278,15 @@ class ScreenHunter:
         if prey:
             self.settle = 0
             self._spend(screen)
-            if self.screen_frames > self.screen_max_frames:
+            # Blue tektites are the coast's 5-rupee row. Retiring them at
+            # 600f is how 0x79/0x7A left 3+3 still up (live watch). Keep
+            # chasing until they are gone or the destination cap.
+            cap = self.screen_max_frames
+            if any(
+                kind_for_type(int(o.type_id)) is EnemyKind.TEKTITE for o in prey
+            ):
+                cap = max(cap, self.destination_frames)
+            if self.screen_frames > cap:
                 self._retire(screen, "budget")
                 return self._collect(snap, frames, lane, heal_only=True)
             held = self.targets.slot
@@ -1031,7 +1294,7 @@ class ScreenHunter:
                 snap,
                 prey,
                 self._tracks_by_slot(),
-                budget_left=self.screen_max_frames - self.screen_frames,
+                budget_left=cap - self.screen_frames,
             )
             if self.targets.slot != held:
                 self._stand_side = None
@@ -1042,8 +1305,26 @@ class ScreenHunter:
             if target is None:
                 return self._collect(snap, frames, lane, heal_only=False)
             lx, ly = int(snap.link_x), int(snap.link_y)
-            close = closest_body(snap, lx, ly) or target
+            close = closest_live_body(snap, lx, ly) or target
             pad = chebyshev(lx, ly, int(close.x), int(close.y))
+            drop = self._near_drop(snap, lx, ly, heal_only=False)
+            if drop is not None:
+                # A drop in a body's pad is the old mid-fight scoop death.
+                # One sitting on empty sand while the rest of the wave is
+                # still up is the 0x79/0x7A timeout: chase ignored it.
+                bodies = tuple(
+                    o for o in live_enemies(snap) if not dormant_body(o)
+                )
+                if not any(
+                    chebyshev(int(drop.x), int(drop.y), int(b.x), int(b.y))
+                    <= MIN_DODGE_BODY
+                    for b in bodies
+                ):
+                    self.census.collect_frames += 1
+                    return self._occ.walk(
+                        snap, frames, (int(drop.x), int(drop.y)),
+                        "hunt_scoop", slash=False,
+                    )
             return self._approach(
                 snap, frames, target, close, pad, f"hunt_{screen:02x}"
             )
@@ -1208,6 +1489,11 @@ class ScreenHunter:
         self.census.note(f"hunt_{why}_{screen:02x}")
 
     def reset(self) -> None:
+        # ``take_destination`` temporarily widens both budgets.  A controller
+        # can be reused after reset, so restore its configured ordinary-screen
+        # values before another route begins.
+        self.screen_max_frames = self._normal_screen_max_frames
+        self.targets.max_frames = int(self.target_max_frames)
         self.ledger.reset()
         self.damage = DamageLog()
         self.census.reset()
@@ -1234,6 +1520,14 @@ class ScreenHunter:
         self._tracked = ()
         self._tracker = ObjectTracker()
         self._occ.reset()
+        self._step_frames = 0
+        self._step_lane = None
+        self._close = None
+        self._pad = 0
+        self._contact = False
+        self._strikeable = False
+        if self._arbiter is not None:
+            self._arbiter.reset()
 
     def screen_table(self) -> list[dict[str, Any]]:
         rows = []
@@ -1268,6 +1562,9 @@ class ScreenHunter:
             "off_line_frames": census.off_line_frames,
             "heal_frames": census.heal_frames_total,
             "release_frames": census.release_frames,
+            "turn_frames": census.turn_frames,
+            "blade_presses": census.blade_presses,
+            "blade_presses_off_face": census.blade_presses_off_face,
             "target_skips": self.targets.skips,
             "prey_passed": dict(self.targets.passed),
             "transit_screens": sorted(self.transit_screens),
@@ -1281,5 +1578,20 @@ class ScreenHunter:
                 f"{k:#04x}": v for k, v in sorted(census.prey_by_screen.items())
             },
             "occupancy_misses": self._occ.misses,
+            # Frames *claimed*, per rung, credited by the arbiter on the frame
+            # the rung's action is the one returned. This is the number the
+            # hand-kept counters above cannot give: ``guard_frames`` and
+            # ``transit_frames`` count the branch being *entered* (they are
+            # bumped before ``_collect``, which may hand the frame back), and
+            # ``collect_frames`` / ``off_line_frames`` / ``heal_frames`` are
+            # per-screen *budgets* that ``_enter`` zeroes on every scroll.
+            # Both readings are wanted — "what did this rung spend" and "what
+            # did it win" — so the census sits beside them rather than
+            # replacing them. ``yielded`` is the frames the whole ladder
+            # declined, which is the hunt handing the frame back to the path.
+            "rung_census": dict(
+                self.arbiter.census(), yielded=self.arbiter.idle_frames
+            ),
+            "rung_frames": self.arbiter.frames,
             "notes": list(census.notes),
         }
