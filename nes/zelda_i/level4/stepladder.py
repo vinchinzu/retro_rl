@@ -12,6 +12,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
+from zelda_i.dungeon.hop_controller import stairs_step
 from zelda_i.level4.north30 import (
     Level4North30Controller,
     North30Phase,
@@ -529,6 +530,24 @@ class Level4StepladderController:
                 self._set_phase(StepladderPhase.ALIGN_PUSH, note)
             else:
                 return self._clear.step(snap)
+
+        if self.phase in (
+            StepladderPhase.ALIGN_PUSH,
+            StepladderPhase.PUSH,
+            StepladderPhase.APPROACH_STAIRS,
+        ):
+            if snap.screen == ROOM_L4_STEPLADDER or snap.mode == 9:
+                self._set_phase(StepladderPhase.SETTLE_STAIRS, "entered_stairs")
+                return FrameAction(nes_idle_action(), "entered_stairs")
+            if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
+                # ROM block secret + stair tile first. The hand LEFT hold from
+                # (120,141) walked out the west door to 0x31 on the power-on
+                # gathered spine (push_left_room_0x31).
+                step = stairs_step(None, snap)
+                if step is not None:
+                    if "rom_stairs" not in self.notes:
+                        self.notes.append("rom_stairs")
+                    return FrameAction(nes_action(step), "rom_stairs")
 
         if self.phase is StepladderPhase.ALIGN_PUSH:
             if snap.screen != ROOM_L4_EAST_32:

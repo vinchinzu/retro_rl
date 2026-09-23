@@ -1182,6 +1182,14 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 tx, ty = self.spec.reward.waypoints[self.waypoint_index]
                 dx = tx - snap.link_x
                 dy = ty - snap.link_y
+            if self._collect_skips:
+                # Hand walks can disagree with the ROM: L1 0x23 (power-on
+                # gathered spine) planned down through the (192,100) block and
+                # jittered at (192,93) for 5000f; L2 0x6f sat at (120,165) for
+                # 11000f. Only after a skip, so a green collect keeps its frames.
+                step = self._lattice_dir(snap, (int(tx), int(ty)))
+                if step is not None:
+                    return FrameAction(nes_action(step), "collect_reward_lattice")
             if self.spec.combat.occupancy_patrol:
                 # A drop can land on geometry, and a waypoint can be written
                 # onto it. The BFS then correctly reports no path; walking to

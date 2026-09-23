@@ -113,6 +113,25 @@ def pending_block_push(
     return int(block.x), int(block.y)
 
 
+def _between_stand_and_block(
+    x: int, y: int, stand: tuple[int, int], dx: int, dy: int, slack: int = 16
+) -> bool:
+    """On the push line, up to ``slack`` px from ``stand`` toward the block.
+
+    The ROM lets Link walk into the block sprite while the 16-frame push
+    counter runs, so the whole block depth is still "pushing".
+
+    ``(dx, dy)`` is the stand's offset from the block, so the block lies at
+    ``-sign`` of it.
+    """
+    sx, sy = stand
+    if dx == 0:
+        toward = sy - y if dy > 0 else y - sy
+        return x == sx and 0 < toward <= slack
+    toward = sx - x if dx > 0 else x - sx
+    return y == sy and 0 < toward <= slack
+
+
 def block_push_step(
     env: Any,
     snap: ZeldaSnapshot,
@@ -149,7 +168,10 @@ def block_push_step(
         landing = (bx - dx, ly - dy)
         if stand not in nodes or landing not in nodes:
             continue
-        if (x, y) == stand:
+        # The push walks Link past the stand into the block sprite (L4 0x32:
+        # 157 -> 152 before it moves). Still on the push line is still
+        # pushing; routing back to the stand reset the 16-frame counter.
+        if (x, y) == stand or _between_stand_and_block(x, y, stand, dx, dy):
             return push
         route = lattice_route(nodes, (x, y), {stand})
         if route is None:
