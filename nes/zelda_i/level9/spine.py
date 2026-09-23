@@ -14,6 +14,7 @@ from zelda_i.level9.hops import l9_hops
 from zelda_i.spine.hops import attach_hops
 
 __all__ = [
+    "SPINE_L9_RETOPUP",
     "L9_STOPS",
     "L9_THROUGH",
     "continue_level9_spine",
@@ -26,6 +27,12 @@ def _l9_rows():
 
 L9_THROUGH = tuple(hop.through for hop in _l9_rows())
 L9_STOPS = {hop.through: hop.stop for hop in _l9_rows()}
+
+
+# The Patra join's contract needs bombs >= 1 (the 0x10 bomb hole) and the
+# gathered spine's silver-arrow chapter spends them all. Same documented
+# Survival count top-up as SPINE_L8_RETOPUP, at the chapter gate. Not Clean.
+SPINE_L9_RETOPUP: frozenset[str] = frozenset({"level9_natural_patra_join"})
 
 
 def continue_level9_spine(
@@ -49,4 +56,7 @@ def continue_level9_spine(
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
+        retopup=(
+            SPINE_L9_RETOPUP if getattr(run, "allow_pokes", True) else frozenset()
+        ),
     )
