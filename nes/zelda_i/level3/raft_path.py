@@ -96,7 +96,9 @@ def raft_passage_step(snap: ZeldaSnapshot) -> FrameAction:
     at_channel = abs(snap.link_x - RAFT_CHANNEL_X) <= RAFT_CHANNEL_X_TOL
     near_channel = abs(snap.link_x - RAFT_CHANNEL_X) <= 16
     on_south = snap.link_y >= RAFT_SOUTH_Y - RAFT_SOUTH_Y_TOL
-    on_pickup_band = abs(snap.link_y - RAFT_PICKUP_Y) <= 8
+    # A full tile off the pickup row is still blocked by the corridor wall.
+    # In particular, y=149 must climb the channel before trying LEFT.
+    on_pickup_band = abs(snap.link_y - RAFT_PICKUP_Y) <= KEY_DOOR_Y_TOL
 
     # Mid horizontal band (raft corridor): do not re-south — walk to pickup x.
     # Drift off exact channel while walking LEFT is expected (176 → 136).
