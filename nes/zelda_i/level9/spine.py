@@ -29,10 +29,18 @@ L9_THROUGH = tuple(hop.through for hop in _l9_rows())
 L9_STOPS = {hop.through: hop.stop for hop in _l9_rows()}
 
 
-# The Patra join's contract needs bombs >= 1 (the 0x10 bomb hole) and the
-# gathered spine's silver-arrow chapter spends them all. Same documented
-# Survival count top-up as SPINE_L8_RETOPUP, at the chapter gate. Not Clean.
-SPINE_L9_RETOPUP: frozenset[str] = frozenset({"level9_natural_patra_join"})
+# Bomb-spending L9 gates. The Patra join's contract needs bombs >= 1 (the
+# 0x10 bomb hole) and the silver-arrow chapter spends them all; the entry
+# contract needs bombs > 0 after the Spectacle Rock blast, and continuous
+# power-on run 10 arrived there with one. Same documented Survival count
+# top-up as SPINE_L8_RETOPUP (raise-only), at the chapter gates. Not Clean.
+SPINE_L9_RETOPUP: frozenset[str] = frozenset(
+    {
+        "level9_spectacle_rock_bomb",
+        "level9_natural_silver_arrows",
+        "level9_natural_patra_join",
+    }
+)
 
 
 def continue_level9_spine(
