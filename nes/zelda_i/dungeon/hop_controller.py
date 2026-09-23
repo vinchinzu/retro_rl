@@ -319,6 +319,47 @@ def ow_edge_band_step(
     return lattice_step(x, y, route[0]) if route else direction
 
 
+_CARDINAL_STEP = {"UP": (0, -8), "DOWN": (0, 8), "LEFT": (-8, 0), "RIGHT": (8, 0)}
+
+
+def inland_lattice_step(
+    x: int, y: int, direction: str, inland_x: tuple[int, int], inland_y: tuple[int, int]
+) -> str | None:
+    """Lattice route into an inland box, only when the cardinal is into a block.
+
+    Wall-leaving rules press one cardinal toward the interior. L7 0x38
+    pressed UP at (200,181) for 14000f (x=200 is no open column) and L6 0x39
+    DOWN at (120,108) for 12515f. An open cardinal keeps the old step, so
+    rooms that already leave the wall walk it unchanged. ``None`` = keep it.
+    """
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.walk.physics import lattice_route, lattice_starts, lattice_step
+
+    env = live_env.current()
+    if env is None or not has_room_tile_map(env.get_ram()):
+        return None
+    nodes = ow_walkable_nodes(env.get_ram(), overworld=False)
+    starts = [n for n in lattice_starts(x, y) if n in nodes]
+    if not starts:
+        return None
+    sx, sy = min(starts, key=lambda n: abs(n[0] - x) + abs(n[1] - y))
+    dx, dy = _CARDINAL_STEP[direction]
+    if (sx + dx, sy + dy) in nodes:
+        return None
+    goals = {
+        n for n in nodes
+        if inland_x[0] <= n[0] <= inland_x[1] and inland_y[0] <= n[1] <= inland_y[1]
+    }
+    if not goals:
+        return None
+    near = min(abs(n[0] - x) + abs(n[1] - y) for n in goals)
+    goals = {n for n in goals if abs(n[0] - x) + abs(n[1] - y) <= near + 16}
+    route = lattice_route(nodes, (x, y), goals)
+    if not route:
+        return None
+    return lattice_step(x, y, route[0])
+
+
 def lattice_goto(
     env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
 ) -> str | None:
