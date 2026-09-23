@@ -15,6 +15,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
+from zelda_i.dungeon.hop_controller import stairs_step
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.dungeon import (
     BOMBS_NOT_NATURAL,
@@ -611,6 +612,22 @@ class NaturalPatraJoinController(_NaturalEndingController):
             else:
                 act, self.cooldown = chase_sword_step(snap, self.cooldown)
                 return self._action(act.action, "clear_20_combat")
+
+        # 3-5. ROM block + stairs first (same shape as stairs_61): the
+        # NAV_BLOCK_20 waypoints held wp3 for 22433f on the power-on
+        # gathered spine. The hand phases below stay as the fallback.
+        if self.phase in (
+            PatraJoinPhase.NAV_BLOCK_20,
+            PatraJoinPhase.PUSH_BLOCK_20,
+            PatraJoinPhase.STAIRS_20,
+        ):
+            if snap.mode in (CELLAR_MODE, 10, 16) or stair_transition_modes(snap.mode):
+                self._set_phase(PatraJoinPhase.CELLAR_75)
+                return self._action(nes_idle_action(), "stairs_20_transition")
+            if snap.screen == 0x20 and snap.mode == PLAY_MODE and not snap.transitioning:
+                step = stairs_step(None, snap)
+                if step is not None:
+                    return self._action(nes_action(step), "rom_stairs_20")
 
         # 3. NAV_BLOCK_20
         if self.phase == PatraJoinPhase.NAV_BLOCK_20:
