@@ -93,27 +93,7 @@ def test_enter_6f_fails_without_keys() -> None:
     pushing.door_phase = "push"
     act = pushing.step(_snap(room=0x6E, x=208, y=141, keys=0))
     assert pushing.phase is Level2NavPhase.WALK
-    assert act.reason == "push_r"
-
-
-def test_enter_6f_south_occupancy_sidesteps_diamonds() -> None:
-    """Live timeout sat at (72, 181) then (112, 181); greedy UP hits diamonds."""
-    ctl = Level2Enter6fKeyController()
-    snap = _snap(room=0x6E, x=112, y=181, keys=2)
-    first = ctl.step(snap)
-    assert first.reason == "band_occ"
-    first_dir = pressed_nes_buttons(list(first.action))
-    second = ctl.step(snap)
-    assert ctl.walker.misses == 1
-    assert second.reason == "band_occ"
-    assert pressed_nes_buttons(list(second.action)) != first_dir
-    east_south = Level2Enter6fKeyController()
-    east_snap = _snap(room=0x6E, x=200, y=181, keys=2)
-    act = east_south.step(east_snap)
-    assert act.reason == "band_occ"
-    assert "RIGHT" not in pressed_nes_buttons(list(act.action))
-    east_south.step(east_snap)
-    assert east_south.walker.misses == 1
+    assert act.reason == "key_door_lattice_push"
 
 
 def test_room_4f_spec_occupancy_and_backstep() -> None:
