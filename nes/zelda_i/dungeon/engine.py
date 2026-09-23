@@ -21,7 +21,11 @@ from zelda_i.walk import live_env
 from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
 from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
-from zelda_i.dungeon.hop_controller import inland_lattice_step, lattice_goto
+from zelda_i.dungeon.hop_controller import (
+    inland_lattice_step,
+    lattice_goto,
+    lattice_goto_route,
+)
 from zelda_i.dungeon.behaviors import (
     blocked_by_projectile,
     fight_target,
@@ -70,6 +74,8 @@ _AVOID_WALL_X = (56, 200)
 _AVOID_WALL_Y = (109, 173)
 _SCOOP_RADIUS = 48
 _SCOOP_REACH = 4
+# Frames a cleared room may spend walking to its floor drops before leaving.
+SWEEP_MAX_FRAMES = 240
 _OCC_BODY_R = 8
 # What Link may stand on *inside* a room he is clearing. Deliberately narrower
 # than ``tilemap.LINK_WALKABLE_TILES``: that set also grades a bombed-open
@@ -463,6 +469,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
         default=None, init=False, repr=False
     )
     _scoop_unreachable_until: int = field(default=0, init=False, repr=False)
+    # Post-clear floor sweep: frames spent and drops given up as unreachable.
+    sweep_frames: int = field(default=0, init=False)
+    _sweep_skip: set[tuple[int, int]] = field(default_factory=set, init=False, repr=False)
     # Records-only action histogram + tail; see ``_record_reason``.
     _reason_counts: dict[str, int] = field(
         default_factory=dict, init=False, repr=False
@@ -1306,7 +1315,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 # Hand walks can disagree with the ROM: L1 0x23 (power-on
                 # gathered spine) planned down through the (192,100) block and
                 # jittered at (192,93) for 5000f; L2 0x6f sat at (120,165) for
-                # 11000f. Only after a skip, so a green collect keeps its frames.
+                # 11000f. Only after a skip: lattice-first broke 0x23's hunt.
                 step = self._lattice_dir(snap, (int(tx), int(ty)))
                 if step is not None:
                     return FrameAction(nes_action(step), "collect_reward_lattice")
@@ -1478,6 +1487,41 @@ class GenericDungeonRoomController(EntryRouteWalker):
             return None
         self._scoop_unreachable_goal = None
         return FrameAction(nes_action(direction), "scoop_heart")
+
+    def _sweep_drops(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Walk the lattice onto a cleared room's floor drops before leaving.
+
+        Rupees, bombs and clocks always; hearts and fairies only when hurt.
+        The run left 51 of 81 rupees and 6 of 9 bomb drops on the floor while
+        Survival poked 82 bombs (full_poweron12 ledger).
+        """
+        if self.sweep_frames >= SWEEP_MAX_FRAMES:
+            return None
+        hurt = not snap.health_is_full
+        drops = [
+            d
+            for d in _combat.floor_drops(snap)
+            if (int(d.x), int(d.y)) not in self._sweep_skip
+            and (hurt or int(d.state) not in _combat.HEART_OR_FAIRY_STATES)
+        ]
+        if not drops:
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        drop = min(drops, key=lambda d: manhattan(lx, ly, int(d.x), int(d.y)))
+        goal = (int(drop.x), int(drop.y))
+        self.sweep_frames += 1
+        if manhattan(lx, ly, *goal) <= _SCOOP_REACH:
+            return FrameAction(nes_idle_action(), "sweep_drop")
+        route = lattice_goto_route(None, snap, goal)
+        if route is None:
+            self._sweep_skip.add(goal)
+            return None
+        # On the drop's nearest node: the last pixels are a direct press.
+        step = lattice_step(lx, ly, route[0] if route else goal)
+        if step is None:
+            self._sweep_skip.add(goal)
+            return None
+        return FrameAction(nes_action(step), "sweep_drop")
 
     def _scoop_heart(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.health_is_full or snap.filled_hearts >= snap.heart_containers:
@@ -1660,6 +1704,12 @@ class GenericDungeonRoomController(EntryRouteWalker):
                     == self.spec.required_open_doors
                 )
             ):
+                if self.spec.reward.kind == RewardKind.CLEAR_ONLY:
+                    # Key rooms keep their hunt pose; a sweep there moved
+                    # Link into the 0x45 west pocket the hunt cannot leave.
+                    swept = self._sweep_drops(snap)
+                    if swept is not None:
+                        return swept
                 self.clear_signal_seen = True
                 if self.spec.reward.kind == RewardKind.CLEAR_ONLY:
                     if self.spec.reward.target is not None:
@@ -1697,6 +1747,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
             "phase": self.phase.name,
             "frames": self.frames,
             "combat_frames": self.combat_frames,
+            "sweep_frames": self.sweep_frames,
             "max_live_enemies": self.max_live_enemies,
             "last_live_enemies": self.last_live_enemies,
             "clear_signal_seen": self.clear_signal_seen,
