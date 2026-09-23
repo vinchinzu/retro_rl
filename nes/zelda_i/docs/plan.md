@@ -31,30 +31,36 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-vi
 
 That command forces the health assist off. `--rollout` stays opt-in.
 
-## Blue Ring main-spine audit (rr-c5az, 2026-09-23)
+## Blue Ring main spine: credits again (rr-c5az, 2026-09-23)
 
-Read at every `BlueRingFull2_*` milestone pin. The ring stays accounted for:
-Survival writes `$066D` rupees 73→250 at the `ring` stage (disclosed; natural
-farm is rr-t49c), the shop contact sets `$0662` 0→1 and takes the 250, and
-`ring=1` holds from `exit_ring` through L7. White Sword, blue candle, letter,
-and 6 containers all reach the L1 mouth and stay held. Gaps found:
+`blue_ring_full_poweron9` went power-on → credits in one session: zero state
+loads, 260,248 frames, TF `0xFF`, 14 containers, Blue Ring held, mode 19.
+Survival, not Clean: the refill absorbed 387.6 hearts (199 hits), and the
+disclosed top-ups remain (250R at `ring`, bombs/keys at the declared gates,
+L7 Food). Row and history: [RUN_METRICS.md](RUN_METRICS.md).
 
-- L4 Gleeok heart container was never taken (HC 9 after L4, 11 at L7). The
-  hunt walked fixed mid-room stands; the container is at (208,192), which is
-  the item slot `$0083/$0097`. It now walks there: HC 9→10, and the TF comes
-  about 800f sooner. Confirmed continuous in `blue_ring_full_poweron3`.
-- L7 0x4A Red Candle cellar: the drop stopped at y=181 on the ladder, where
-  RIGHT is dead and keese knock Link back up (36k-frame timeout). The floor
-  is y=189; the focused replay takes the candle 1→2 in 4522f.
-- Letter is carried but unused (potion, rr-sed5). Food at L7 is still the
-  disclosed `$065D` fixture.
+What got it there (each fixed from the stalled save point, then power-on):
+L6 0x19 and 0x29 (latched `LadderEscape`, goal-aware `ladder_release`,
+water waypoints moved to land, `reachable_only` clears), OW 0x15 (lattice
+start beside a solid pose), L7 0x59 and L8 0x3E (lattice door first), the
+post-L7 rupee floor (arrow budget), L8 Gleeok HC walk, L2 Dodongo HC (taken
+on evidence, not "near the stand"), L9 0x10/0x05 Wizzrobes on the generic
+engine (0x10 was 110 hearts and a 16,000f timeout; now 9.7h / 2,483f mean
+over 12 offsets), cellar 0x4F ladder align, L9 0x04 north-aisle leg.
 
-`blue_ring_full_poweron3` (L4 fix + 0x4A floor): power-on, zero state loads,
-zero deaths, L1–L5 clear, then timed out on the L6 0x19 clear (one enemy
-left; 9572 patrol + 3755 `ladder_back_off` frames). The L4 time change
-reshuffles L5/L6 (chain is frame-perfect). Next: fix 0x19 from
-`BlueRingFull3_level6_clear_0x19`, then rerun power-on; the L7 candle
-fix is still unproven continuous.
+Next, in order, from the ledger of run 9:
+
+1. Heart drains (hearts lost under the refill): L9 Patra 0x52 24.0, L9
+   0x61 23.0, L8 Gleeok 0x3C 16.7, L8 0x3E 14.0, L6 0x28 13.5, L6 0x38 12.5,
+   L6 0x3A 12.5, L5 0x05 11.0, L9 0x42 10.0, L6 0x09 10.0. Score any combat
+   change with `stage_replay.py --idle` offsets from a pin cut at the room.
+2. rr-iu0g: the remaining L9 `chase_sword_step` clears onto the engine.
+3. rr-qb6w: the dungeon keys the ledger reports untaken (L2 0x3E, L5 0x26,
+   0x47, L6 0x2D, 0x58, L8 0x4C, L9 0x61); taking them is how the key
+   top-ups retire (rr-doua).
+4. Slow visits: L7 0x0D Wallmasters 8,448f, L2 0x6E 4,302f, L5 0x65 3,940f.
+5. Overworld hearts still skipped: ladder heart 0x5F, raft heart 0x2F
+   (rr-ps7.4.*), for 16 containers.
 
 ## This sitting's leftover
 

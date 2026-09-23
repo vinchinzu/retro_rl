@@ -321,6 +321,10 @@ def make_natural_silver_arrows_controller(
     return NaturalSilverArrowsController(handoff=handoff)
 
 
+# West end of 0x04's north aisle, clear of the (32,93) corner blade trap.
+ROOM04_NORTH_AISLE_WEST = (56, 93)
+
+
 class PatraJoinPhase(Enum):
     SOUTH_10 = auto()
     CLEAR_20 = auto()
@@ -836,7 +840,11 @@ class NaturalPatraJoinController(_NaturalEndingController):
         if self.phase == PatraJoinPhase.NAV_BOMB_04:
             x, y = snap.link_x, snap.link_y
             if y > 95 and x > 52:
-                return self._action(nes_action("UP"), "nav_bomb_04_to_north_aisle")
+                # The aisle's west end on the lattice: a bare UP from under
+                # the centre block diamond ((152,165)) pressed stone for
+                # 14000f and took 87 hearts (Blue Ring power-on 8).
+                step = room_step(snap, ROOM04_NORTH_AISLE_WEST, tol=2)
+                return self._action(nes_action(step or "UP"), "nav_bomb_04_to_north_aisle")
             if x > 48:
                 return self._action(nes_action("LEFT"), "nav_bomb_04_west_aisle")
             if y < 141:
