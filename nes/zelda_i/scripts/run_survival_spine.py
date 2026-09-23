@@ -29,6 +29,8 @@ No ``--from-state``. Stop at first failed stage.
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 
 from retro_harness.audit import AuditCapabilities, AuditedEnv
 from retro_harness.env import make_env, reset_obs
@@ -142,6 +144,12 @@ def main(argv: list[str] | None = None) -> int:
         metavar="STAGE",
         help="Load the STAGE save point and play on from it (dev tape, not continuous).",
     )
+    parser.add_argument(
+        "--trace",
+        default=None,
+        metavar="PATH",
+        help="Write the per-frame (frame, room, x, y, mode, buttons) tape as JSON.",
+    )
     add_video_args(parser, default_on=True)
     add_headed_flag(parser)
     parser.add_argument(
@@ -212,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
                     hud=_headed_hud,
                 )
             tap.attach(env, obs)
-            ledger = RunLedger()
+            ledger = RunLedger(trace=[] if args.trace else None)
             ledger.attach(env)
             # VideoTap wraps env.step; do not also pass on_frame (double encode).
             run = run_survival_spine(
@@ -262,9 +270,11 @@ def main(argv: list[str] | None = None) -> int:
         if payload is None:
             raise RuntimeError("survival spine trial ended before a report")
         payload["video"] = video_info
-        if args.through == "level5" and payload.get("ok"):
+        if args.through == "level5" and payload.get("ok") and not args.resume:
             validate_l5_endpoint(payload)
         write_json_report(RECORDINGS_DIR / f"{tag}.json", payload)
+        if args.trace:
+            Path(args.trace).write_text(json.dumps(ledger.trace))
         results.append(payload)
         video = payload.get("video") or {}
         kills = _spine_kills(payload)

@@ -51,6 +51,7 @@ HEALING_KINDS = frozenset({"heart", "fairy"})
 PICKUP_DX = 13
 PICKUP_DY = 14
 FLUTTER_WINDOW = 8
+_BUTTONS = ("B", "", "s", "S", "U", "D", "L", "R", "A")
 TOP_VISITS = 15
 
 
@@ -118,6 +119,8 @@ class RunLedger:
     _hearts: float | None = None
     _to_add: int = 0
     _axes: tuple[_Axis, _Axis] = field(default_factory=lambda: (_Axis(), _Axis()))
+    # Opt-in per-frame tape: (frame, room, x, y, mode, buttons). ``--trace``.
+    trace: list[tuple] | None = None
 
     # ----------------------------------------------------------------- wiring
     def attach(self, env: Any) -> None:
@@ -127,7 +130,13 @@ class RunLedger:
         def step(action, *args, **kwargs):
             out = inner(action, *args, **kwargs)
             ram = env.get_ram()
-            self.observe(read_snapshot(ram), to_add=int(ram[ADDR_RUPEES_TO_ADD]))
+            snap = read_snapshot(ram)
+            self.observe(snap, to_add=int(ram[ADDR_RUPEES_TO_ADD]))
+            if self.trace is not None:
+                pressed = "".join(n for n, b in zip(_BUTTONS, action) if b)
+                self.trace.append(
+                    (self.frame, room_key(snap), int(snap.link_x), int(snap.link_y), int(snap.mode), pressed)
+                )
             return out
 
         env.step = step

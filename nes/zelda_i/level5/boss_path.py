@@ -49,6 +49,7 @@ from zelda_i.level5.dungeon import (
 from zelda_i.level5.path import (
     _step,
     level5_room66_west_aisle_north_step,
+    wait_ram,
     walk_axis,
 )
 from zelda_i.level5.west_path import (
@@ -116,8 +117,14 @@ def wait_play(env, assist, total: list[int], max_f: int = 240) -> None:
 
 
 def door(env, assist, total: list[int], direction: str, expect: int, **kw) -> dict:
-    rec = exit_door(env, assist, total, direction, **kw)
-    wait_play(env, assist, total)
+    room = read_snapshot(env.get_ram()).screen
+    for _ in range(2):
+        # A shutter can open a beat after the last kill; the first push may
+        # spend its budget on the shut leaf (R16 0x66 north).
+        rec = exit_door(env, assist, total, direction, **kw)
+        wait_play(env, assist, total)
+        if read_snapshot(env.get_ram()).screen != room:
+            break
     snap = read_snapshot(env.get_ram())
     ok = snap.level == LEVEL_5 and snap.screen == expect and snap.mode == PLAY_MODE
     rec["ok"] = ok
@@ -198,7 +205,17 @@ def _in_whistle_cellar(snap) -> bool:
     return snap.level == LEVEL_5 and snap.screen == ROOM_L5_WHISTLE_ITEM
 
 
+# Frames a room's wave may take to appear after the scroll lands.
+SPAWN_WAIT_FRAMES = 90
+
+
 def _fight_if_live(env, assist, total, hops, spec, types, name: str) -> bool:
+    # Count after the wave spawns, not on the scroll-in frame: a zero there
+    # skipped the 0x65/0x66 Gibdos and left both shutters shut (R16).
+    wait_ram(
+        env, assist, total, lambda s: bool(live_types(s, types)),
+        max_frames=SPAWN_WAIT_FRAMES, spec_id=f"spawn_{name}",
+    )
     snap = read_snapshot(env.get_ram())
     n = len(live_types(snap, types))
     if not n:

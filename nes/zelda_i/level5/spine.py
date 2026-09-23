@@ -266,12 +266,10 @@ def run_level5_whistle_suffix(env, *, assist, frame_base: int):
         hops.append({"hop": "fight_64", "ok": bool(fight64.get("ok"))})
         if not fight64.get("ok"):
             return False, total[0], {"failed": "fight_64", "hops": hops}
-        pushed64 = push_block_stairs(env, assist, total, ROOM_L5_BLUE_64)
-        stairs = pushed64 if pushed64.get("success") else take_center_stairs_64(
-            env, assist, total
-        )
-    else:
-        stairs = take_center_stairs_64(env, assist, total)
+    # ROM lattice first: push the pending block from a reachable face, then
+    # the stair tile. The hand push cycled four directions from fixed stands
+    # and could shove the block shut (R16: 7134 frames in 0x64).
+    stairs = take_center_stairs_64(env, assist, total)
     hops.append({"hop": "stairs_64", "ok": bool(stairs.get("success"))})
     if not stairs.get("success"):
         return False, total[0], {"failed": "stairs_64", "hops": hops}
