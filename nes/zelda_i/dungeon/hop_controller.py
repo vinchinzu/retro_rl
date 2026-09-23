@@ -16,8 +16,9 @@ from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 WAIT_SCROLL = (2, 3, 4, 6, 7)
-# Boxed: Link within BOXED_PX of one spot for BOXED_FRAMES play frames.
-BOXED_PX = 3
+# Boxed: Link within BOXED_PX (Manhattan) of one spot for BOXED_FRAMES play
+# frames. A walk covers ~36 px in 24 frames; a wall bounce stays inside 8.
+BOXED_PX = 8
 BOXED_FRAMES = 24
 WAIT_SCROLL_B = (2, 3, 4, 6, 7, 10, 16)
 DEATH_MODE = 17
@@ -95,10 +96,14 @@ BLOCK_SLOT = 11
 BLOCK_Y_OFFSET = 3
 
 
-def pending_block_push(ram: Any, snap: ZeldaSnapshot) -> tuple[int, int] | None:
-    """The push block's ``(x, y)`` when this room's secret waits on it."""
+def pending_block_push(
+    ram: Any,
+    snap: ZeldaSnapshot,
+    triggers: tuple[int, ...] = (SECRET_BLOCK_DOOR, SECRET_BLOCK_STAIRS),
+) -> tuple[int, int] | None:
+    """The push block's ``(x, y)`` when this room's secret (one of ``triggers``) waits on it."""
     trigger = int(ram[ADDR_LEVEL_BLOCK_ATTR_F]) & 0x07
-    if trigger not in (SECRET_BLOCK_DOOR, SECRET_BLOCK_STAIRS):
+    if trigger not in triggers:
         return None
     if int(ram[ADDR_BLOCK_PUSH_COMPLETE]) != 0:
         return None
@@ -108,7 +113,11 @@ def pending_block_push(ram: Any, snap: ZeldaSnapshot) -> tuple[int, int] | None:
     return int(block.x), int(block.y)
 
 
-def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
+def block_push_step(
+    env: Any,
+    snap: ZeldaSnapshot,
+    triggers: tuple[int, ...] = (SECRET_BLOCK_DOOR, SECRET_BLOCK_STAIRS),
+) -> str | None:
     """Walk to a face of the pending push block and push it, on the lattice.
 
     ``None`` when the room has no pending block secret, the tile map is not
@@ -121,7 +130,7 @@ def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
     if env is None or snap.mode != PLAY_MODE:
         return None
     ram = env.get_ram()
-    block = pending_block_push(ram, snap)
+    block = pending_block_push(ram, snap, triggers)
     if block is None:
         return None
     from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
@@ -133,7 +142,8 @@ def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
     bx, by = block
     ly = by - BLOCK_Y_OFFSET
     x, y = int(snap.link_x), int(snap.link_y)
-    best: tuple[int, str, list[tuple[int, int]]] | None = None
+    # First reachable face in a fixed order. "Nearest face" flipped between
+    # two equal routes as Link moved 2 px (L6 0x09: 160,141 <-> 160,143).
     for dx, dy, push in ((0, 16, "UP"), (0, -16, "DOWN"), (16, 0, "LEFT"), (-16, 0, "RIGHT")):
         stand = (bx + dx, ly + dy)
         landing = (bx - dx, ly - dy)
@@ -144,13 +154,8 @@ def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
         route = lattice_route(nodes, (x, y), {stand})
         if route is None:
             continue
-        cost = len(route)
-        if best is None or cost < best[0]:
-            best = (cost, push, route)
-    if best is None:
-        return None
-    route = best[2]
-    return lattice_step(x, y, route[0]) if route else best[1]
+        return lattice_step(x, y, route[0]) if route else push
+    return None
 
 
 def stairs_step(env: Any, snap: ZeldaSnapshot) -> str | None:
@@ -163,7 +168,7 @@ def stairs_step(env: Any, snap: ZeldaSnapshot) -> str | None:
     env = env if env is not None else live_env.current()
     if env is None or snap.mode != PLAY_MODE:
         return None
-    push = block_push_step(env, snap)
+    push = block_push_step(env, snap, (SECRET_BLOCK_STAIRS,))
     if push is not None:
         return push
     from zelda_i.dungeon.tilemap import has_room_tile_map, stair_cells
@@ -203,7 +208,7 @@ def lattice_door_step(env: Any, snap: ZeldaSnapshot, direction: str) -> str | No
     from zelda_i.walk.physics import lattice_route, lattice_step
 
     if int(snap.level) != 0:
-        push = block_push_step(env, snap)
+        push = block_push_step(env, snap, (SECRET_BLOCK_DOOR,))
         if push is not None:
             return push
     ram = env.get_ram()

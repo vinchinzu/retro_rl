@@ -472,6 +472,10 @@ _LATTICE_DIRS: dict[str, tuple[int, int]] = {
 }
 
 
+# Pixels from a corner that count as on it (Link can step 2 px a frame).
+LATTICE_SNAP_PX = 3
+
+
 def lattice_starts(x: int, y: int) -> tuple[tuple[int, int], ...]:
     """The lattice nodes Link at ``(x, y)`` can reach without turning.
 
@@ -557,6 +561,12 @@ def lattice_route(
     out = [c for i, c in enumerate(corners) if i == 0 or c != corners[i - 1]]
     if out and out[0] == (sx, sy):
         out = out[1:]
+    # A corner a step or two away is already reached: Link moves up to 2 px
+    # a frame and overshoots it, and routing back to it flips direction
+    # every frame (L6 0x28, 143<->145 around the 144 corner, 6000 frames).
+    # The perpendicular press that follows slides him onto the line.
+    if len(out) > 1 and abs(out[0][0] - sx) + abs(out[0][1] - sy) <= LATTICE_SNAP_PX:
+        out = out[1:]
     return out
 
 
@@ -570,6 +580,12 @@ def lattice_step(x: int, y: int, corner: tuple[int, int]) -> str | None:
     dx, dy = int(corner[0]) - x, int(corner[1]) - y
     on_col = x % LATTICE_STEP == 0
     on_row = (y - 5) % LATTICE_STEP == 0
+    # Within snap of the corner's line: press the leg's own axis and let the
+    # ROM's turn-grid slide put Link on the line.
+    if dy and dx and abs(dx) <= LATTICE_SNAP_PX:
+        return "DOWN" if dy > 0 else "UP"
+    if dx and dy and abs(dy) <= LATTICE_SNAP_PX:
+        return "RIGHT" if dx > 0 else "LEFT"
     if dx and (on_row or not on_col):
         return "RIGHT" if dx > 0 else "LEFT"
     if dy:

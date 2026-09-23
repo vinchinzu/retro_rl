@@ -29,6 +29,7 @@ from zelda_i.dungeon.ids import (
     GLEEOK_OBJECT_TYPE,
     INVULN_MOVER_OBJECT_TYPE,
 )
+from zelda_i.dungeon.hop_controller import LatticeDoorWalker
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyWalker
 
@@ -117,6 +118,12 @@ class Level6North68Controller:
     peeled: bool = False
     # LEFT+UP while y > CLIP_CLEAR_Y (0x28 v5; cardinal UP at y=181 is solid).
     clip_left_up: bool = False
+    # ROM-lattice door walk first; the hand rules below are the fallback.
+    _env: Any = field(default=None, repr=False)
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
 
     def _goal(self) -> tuple[int, int]:
         return (NORTH_DOOR_X, NORTH_DOOR_Y)
@@ -167,6 +174,11 @@ class Level6North68Controller:
             return FrameAction(
                 nes_idle_action(), f"left_0x{self.source_room:02x}"
             )
+
+        door = self._door.action(self._env, snap, "UP", "lattice_door")
+        if door is not None:
+            self.walker.last_dir = None
+            return self._emit(snap, door)
 
         xy = (int(snap.link_x), int(snap.link_y))
         prev_dir = self.walker.last_dir
