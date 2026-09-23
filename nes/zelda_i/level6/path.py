@@ -8,6 +8,8 @@ grant Whistle.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -467,15 +469,13 @@ class Level6Push38Controller:
                     Push38Phase.PUSH,
                     f"at_push_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
                 )
-            elif xy[1] < ty - PUSH_ALIGN_TOL:
-                # North of the south face: DOWN first so RIGHT misses the 0x68 west face.
-                return self._emit(snap, FrameAction(nes_action("DOWN"), "stand_y"))
-            elif abs(xy[0] - tx) > PUSH_ALIGN_TOL:
-                direction = "LEFT" if xy[0] > tx else "RIGHT"
-                return self._emit(snap, FrameAction(nes_action(direction), "stand_x"))
             else:
-                direction = "UP" if xy[1] > ty else "DOWN"
-                return self._emit(snap, FrameAction(nes_action(direction), "stand_y"))
+                # ROM lattice to the south face (the 0x68 is in the tile map,
+                # so the route goes around it). The axis rules flipped at the
+                # face for 1034 reversals (R19).
+                step = room_step(snap, (tx, ty), tol=PUSH_ALIGN_TOL)
+                if step is not None:
+                    return self._emit(snap, FrameAction(nes_action(step), "stand_path"))
 
         if self.phase is Push38Phase.PUSH:
             block = self._block(snap)
