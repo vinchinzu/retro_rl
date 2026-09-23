@@ -9,6 +9,8 @@ used by hops factories and scratch probes. Shared combat helpers live in
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import lattice_door_step
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -783,6 +785,11 @@ def room_09_down_step(
     if not saw_goriya:
         return FrameAction(nes_idle_action(), "spawn_wait")
 
+    # ROM lattice to the south door and through it; the straight drop below
+    # hit the statue row at (152,125) for 7254 frames (R19 resume).
+    step = lattice_door_step(None, snap, "DOWN")
+    if step is not None:
+        return FrameAction(nes_action(step), "down09_lattice")
     x, y = int(snap.link_x), int(snap.link_y)
     if y < ROOM_09_SOUTH_Y - DOOR_Y_TOL:
         return FrameAction(nes_action("DOWN"), "down09_drop")
