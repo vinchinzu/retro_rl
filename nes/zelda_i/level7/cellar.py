@@ -254,6 +254,7 @@ def make_nose_cellar_cross_controller(
 
 ROOM_4A = 0x4A
 ROOM1A_CANDLE_MAX_FRAMES = 40000
+ROOM4A_FLOOR_Y = 189
 # Frames of aggressive in-place clearing before switching to the perimeter
 # hunt.  The proven fixture recipe (probe_l7_candle_push --push UP) clears
 # five of six goriyas inside 3000 frames, then walks the perimeter for the
@@ -572,8 +573,10 @@ class Room1ACandleController(HopController):
         x, y = int(snap.link_x), int(snap.link_y)
         # Drop to the south band once. Never re-arm DOWN after that — the
         # old `y < 180 → DOWN` / `y > 145 → UP` pair oscillated at y≈180.
+        # The ladder ends on the floor at y=189 (measured, as L5/L8 cellars);
+        # at 181 Link is still on the rungs and RIGHT does not move him.
         if not self._cellar_dropped:
-            if y < 180:
+            if y < ROOM4A_FLOOR_Y:
                 return FrameAction(nes_action("DOWN"), "cellar_drop")
             self._cellar_dropped = True
         if not self._cellar_climbed:

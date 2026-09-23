@@ -105,6 +105,43 @@ def test_last_heart_leaves_two_hearts_and_refills_the_last() -> None:
     assert report["engage_at_whole_hearts"] == 1
 
 
+def test_observed_damage_guard_refills_after_a_survived_two_heart_hit() -> None:
+    data = _FakeData()
+    assist = LastHeartAssist(enabled=True, observed_damage_guard=True)
+    assist.apply_snapshot(data, _snap(health=0x43), frame=1)  # 4 of 5 hearts
+    assert data.values == {}
+    assist.apply_snapshot(data, _snap(health=0x41), frame=2)  # 2-heart hit
+    assert data.values["health"] == 0x44
+    report = assist.report()
+    assert report["maximum_single_frame_damage"] == 2
+    assert report["effective_floor"] == 2
+    assert report["safety_refills"] == 1
+    assert report["target_refills"] == 0
+    assert report["kind"] == "guarded_last_heart"
+
+
+def test_observed_damage_guard_keeps_one_heart_refills_separate() -> None:
+    data = _FakeData()
+    assist = LastHeartAssist(enabled=True, observed_damage_guard=True)
+    assist.apply_snapshot(data, _snap(health=0x41), frame=1)
+    assert data.values == {}
+    assist.apply_snapshot(data, _snap(health=0x40), frame=2)
+    assert data.values["health"] == 0x44
+    report = assist.report()
+    assert report["safety_refills"] == 0
+    assert report["target_refills"] == 1
+
+
+def test_two_heart_threshold_reports_its_actual_floor() -> None:
+    data = _FakeData()
+    assist = UnlimitedHealthAssist(enabled=True, engage_at_whole_hearts=2)
+    assist.apply_snapshot(data, _snap(health=0x43), frame=1)
+    assist.apply_snapshot(data, _snap(health=0x41), frame=2)
+    assert data.values["health"] == 0x44
+    assert assist.report()["kind"] == "threshold_health"
+    assert assist.report()["effective_floor"] == 2
+
+
 def test_last_heart_does_not_grant_a_container() -> None:
     data = _FakeData()
     assist = LastHeartAssist(enabled=True)

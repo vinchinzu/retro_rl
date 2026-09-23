@@ -31,6 +31,31 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-vi
 
 That command forces the health assist off. `--rollout` stays opt-in.
 
+## Blue Ring main-spine audit (rr-c5az, 2026-09-23)
+
+Read at every `BlueRingFull2_*` milestone pin. The ring stays accounted for:
+Survival writes `$066D` rupees 73→250 at the `ring` stage (disclosed; natural
+farm is rr-t49c), the shop contact sets `$0662` 0→1 and takes the 250, and
+`ring=1` holds from `exit_ring` through L7. White Sword, blue candle, letter,
+and 6 containers all reach the L1 mouth and stay held. Gaps found:
+
+- L4 Gleeok heart container was never taken (HC 9 after L4, 11 at L7). The
+  hunt walked fixed mid-room stands; the container is at (208,192), which is
+  the item slot `$0083/$0097`. It now walks there: HC 9→10, and the TF comes
+  about 800f sooner. Confirmed continuous in `blue_ring_full_poweron3`.
+- L7 0x4A Red Candle cellar: the drop stopped at y=181 on the ladder, where
+  RIGHT is dead and keese knock Link back up (36k-frame timeout). The floor
+  is y=189; the focused replay takes the candle 1→2 in 4522f.
+- Letter is carried but unused (potion, rr-sed5). Food at L7 is still the
+  disclosed `$065D` fixture.
+
+`blue_ring_full_poweron3` (L4 fix + 0x4A floor): power-on, zero state loads,
+zero deaths, L1–L5 clear, then timed out on the L6 0x19 clear (one enemy
+left; 9572 patrol + 3755 `ladder_back_off` frames). The L4 time change
+reshuffles L5/L6 (chain is frame-perfect). Next: fix 0x19 from
+`BlueRingFull3_level6_clear_0x19`, then rerun power-on; the L7 candle
+fix is still unproven continuous.
+
 ## This sitting's leftover
 
 See PRE_L1.md, "Leftover (2026-09-22, second sitting)". The default spine is green to the L1 Triforce with the pond detour. Rung 2 (L1 health off) is red at L1 0x23, and rung 3 is red at `heart_7b`. The next measure is the 0x23 chase, without moving M5's 18909f.

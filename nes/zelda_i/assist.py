@@ -76,6 +76,7 @@ class DamageEvent:
 @dataclass
 class AssistTelemetry:
     health: ResourceCounter = field(default_factory=ResourceCounter)
+    safety_refills: int = 0
     suspended_phase_frames: Counter[str] = field(default_factory=Counter)
     maximum_single_frame_damage: int = 0
     # Cumulative filled-heart units lost (observed before refill). Primary
@@ -101,6 +102,7 @@ class AssistTelemetry:
         )
         return {
             "health": asdict(self.health),
+            "safety_refills": self.safety_refills,
             "suspended_phase_frames": dict(self.suspended_phase_frames),
             "maximum_single_frame_damage": self.maximum_single_frame_damage,
             "total_damage": self.total_damage,
@@ -148,6 +150,7 @@ class UnlimitedHealthAssist:
         *,
         enabled: bool = True,
         engage_at_whole_hearts: int | None = None,
+        observed_damage_guard: bool = False,
     ) -> None:
         self.enabled = enabled
         # None: refill whenever play is short of the container max.
@@ -158,24 +161,37 @@ class UnlimitedHealthAssist:
         # dies on the next contact. A killing blow that lands in the
         # same emulator step is already mode 17 and is counted, not rewound.
         self.engage_at_whole_hearts = engage_at_whole_hearts
+        self.observed_damage_guard = observed_damage_guard
         self.telemetry = AssistTelemetry()
         self._prev_filled: int | None = None
         self._prev_phase: str | None = None
         self._accepted_containers: int | None = None
 
     def report(self) -> dict[str, object]:
-        kind = (
-            "last_heart"
-            if self.engage_at_whole_hearts is not None
-            else "unlimited_health"
-        )
+        if self.engage_at_whole_hearts is None:
+            kind = "unlimited_health"
+        elif self.engage_at_whole_hearts == 1:
+            kind = "guarded_last_heart" if self.observed_damage_guard else "last_heart"
+        else:
+            kind = "threshold_health"
         return {
             "enabled": self.enabled,
             "class": "survival",
             "kind": kind,
             "engage_at_whole_hearts": self.engage_at_whole_hearts,
+            "observed_damage_guard": self.observed_damage_guard,
+            "effective_floor": self._effective_floor(),
+            "target_refills": (
+                self.telemetry.health.writes - self.telemetry.safety_refills
+            ),
             **self.telemetry.to_dict(),
         }
+
+    def _effective_floor(self) -> int | None:
+        floor = self.engage_at_whole_hearts
+        if floor is None or not self.observed_damage_guard:
+            return floor
+        return max(floor, self.telemetry.maximum_single_frame_damage)
 
     def _record_damage(self, snap: ZeldaSnapshot, amount: int, *, frame: int) -> None:
         if amount <= 0:
@@ -256,7 +272,7 @@ class UnlimitedHealthAssist:
         # Last-heart gate. Damage above the floor is recorded and left
         # in RAM. Crossing the floor (still ordinary play, iframes up)
         # falls through and refills to the owned container max.
-        floor = self.engage_at_whole_hearts
+        floor = self._effective_floor()
         if floor is not None and int(snap.whole_hearts) > int(floor):
             self._prev_filled = filled
             return None
@@ -278,6 +294,12 @@ class UnlimitedHealthAssist:
         data.set_value("heart_partial", 0xFF)
         counter.restored += restored
         counter.writes += 1
+        if (
+            self.observed_damage_guard
+            and self.engage_at_whole_hearts is not None
+            and int(snap.whole_hearts) > self.engage_at_whole_hearts
+        ):
+            self.telemetry.safety_refills += 1
         self._prev_filled = target & 0x0F
         return None
 
@@ -300,8 +322,14 @@ class LastHeartAssist(UnlimitedHealthAssist):
     needs the ``$0670`` chip the refill erases.
     """
 
-    def __init__(self, *, enabled: bool = True) -> None:
-        super().__init__(enabled=enabled, engage_at_whole_hearts=1)
+    def __init__(
+        self, *, enabled: bool = True, observed_damage_guard: bool = False
+    ) -> None:
+        super().__init__(
+            enabled=enabled,
+            engage_at_whole_hearts=1,
+            observed_damage_guard=observed_damage_guard,
+        )
 
 
 def write_health_u8(env: Any, value: int) -> None:

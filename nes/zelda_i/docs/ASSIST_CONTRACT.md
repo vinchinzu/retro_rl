@@ -37,6 +37,16 @@ telemetry block in the run report.
 - Suspend during boot/menu modes, scroll transitions (6/7/16), and Triforce
   fanfare (mode 18).
 
+The spine's optional `--observed-damage-guard` keeps a requested refill
+threshold while raising its effective floor to the largest single-frame hit
+Link has survived so far. A two-heart hit from four to two therefore teaches
+the guard and refills on that same play frame. This is still a Survival health
+write under the rules above; it never writes capacity or progression. Reports
+separate `target_refills` (at the requested threshold) from `safety_refills`
+(above it), and include `effective_floor`. The guard is reactive: a first hit
+that immediately enters death mode cannot be undone. A zero-death run must be
+verified on the full tape before lowering its threshold.
+
 The implementation is `zelda_i.assist.UnlimitedHealthAssist`, applied from
 `zelda_i.route.chain.run_controller_stage` / probe loops—not scattered policy writes.
 
