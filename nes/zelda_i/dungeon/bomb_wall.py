@@ -25,6 +25,8 @@ BOMB_N_STAND_TOL = 4
 BOMB_N_WAIT_BLAST = 100
 BOMB_N_STEP_BACK = 6
 BOMB_N_MAX_FRAMES = 16000
+# Re-walk to the stand and place again when a press did not spend a bomb.
+PLACE_RETRIES = 3
 # Inventory select poke lives in dungeon_ops (not this path engine).
 
 
@@ -106,6 +108,7 @@ class BombWallController:
     success: bool = False
     notes: list[str] = field(default_factory=list)
     bombs_before_place: int | None = None
+    place_retries: int = 0
     bombs_after_place: int | None = None
     clear_controller: GenericDungeonRoomController | None = None
     _env: Any = field(default=None, init=False, repr=False)
@@ -451,6 +454,14 @@ class BombWallController:
                 and self.bombs_before_place is not None
                 and snap.bombs >= self.bombs_before_place
             ):
+                # A one-frame B press can be dropped (R17 L7 0x19: faced the
+                # wall, pressed, count unchanged). Walk back and place again.
+                if self.place_retries < PLACE_RETRIES:
+                    self.place_retries += 1
+                    self.bombs_before_place = None
+                    self.notes.append(f"replace_bomb_{self.place_retries}")
+                    self._set_phase(BombWallPhase.TO_STAND, "bomb_not_consumed_retry")
+                    return FrameAction(nes_idle_action(), "bomb_retry")
                 return self._fail("bomb_not_consumed")
             self._set_phase(BombWallPhase.PUSH, "blast_done")
             return FrameAction(nes_action(self.face), "push_start")
