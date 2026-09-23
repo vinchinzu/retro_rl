@@ -20,7 +20,7 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.combat import should_swing_at
-from zelda_i.dungeon.hop_controller import HopController
+from zelda_i.dungeon.hop_controller import HopController, LatticeDoorWalker
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 LEVEL_1 = 1
@@ -442,6 +442,7 @@ class Level1UnlockNorthController:
     last_health: int = 0
     north_ready_frames: int = 0
     west_waypoints: tuple[tuple[int, int], ...] | None = None
+    west_door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker)
 
     def reset(self) -> None:
         self.phase = Level1NorthPhase.RETURN_WEST
@@ -535,6 +536,12 @@ class Level1UnlockNorthController:
         if snap.mode not in (PLAY_MODE, 8):
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
 
+        if self.phase in (Level1NorthPhase.RETURN_WEST, Level1NorthPhase.ENTER_WEST):
+            # ROM lattice to the west door and through it. The hand waypoints
+            # walked into the 0x74 blocks from any pose but the old one.
+            door = self.west_door.action(None, snap, "LEFT", "return_west")
+            if door is not None:
+                return door
         if self.phase is Level1NorthPhase.RETURN_WEST:
             if self.west_waypoints is None:
                 self.west_waypoints = return_west_waypoints(snap.link_x, snap.link_y)

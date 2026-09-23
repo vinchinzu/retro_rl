@@ -484,6 +484,7 @@ def _run_stages(
             load_save_point(env, run, name)
         elif run.save_points:
             save_state(env, GAME_DIR, GAME, save_point_name(run.save_points, name))
+        poked = len((run.inventory_assist or {}).get("writes") or [])
         if name in forced_rupee_retopup:
             topup_owned_rupees(
                 env, run, rupees=SPINE_PRE_L1_SHOP_RUPEES, force=True
@@ -497,6 +498,8 @@ def _run_stages(
                 topup_owned_rupees(env, run)
         elif getattr(controller, "poke_arrows", None) is True:
             controller.poke_arrows = False
+        for write in ((run.inventory_assist or {}).get("writes") or [])[poked:]:
+            write["stage"] = name
         obs, stage = run_controller_stage(
             env,
             run.obs,
