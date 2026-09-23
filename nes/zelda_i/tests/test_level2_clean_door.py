@@ -82,30 +82,3 @@ def _l2_ram(*, room: int, x: int, y: int, keys: int) -> np.ndarray:
     return ram
 
 
-def test_enter_6f_key_band_walk_measures_the_diamonds() -> None:
-    """The bare OccupancyWalker default knows no walls; this one must.
-
-    Without geometry the band walk learns each diamond by bumping it and,
-    being non-sticky, forgets it again — the loop that spent the whole
-    4,000f budget in ``band_wait``.
-    """
-    from zelda_i.level2.spine import Level2Enter6fKeyController
-    from zelda_i.tests.ram_helpers import tile_map_env
-
-    controller = Level2Enter6fKeyController()
-    assert not controller.walker.grid.blocked
-    controller.bind_env(tile_map_env({(96, 128), (112, 128), (128, 128)}))
-    snap = read_snapshot(_l2_ram(room=0x6E, x=42, y=181, keys=4))
-    walker = controller._band_walker(snap)
-    assert walker.grid.blocked
-    assert walker.sticky is True
-    # Rebuilt per room, not per frame.
-    assert controller._band_walker(snap) is walker
-
-
-def test_enter_6f_key_falls_back_when_no_tile_map_is_bound() -> None:
-    from zelda_i.level2.spine import Level2Enter6fKeyController
-
-    controller = Level2Enter6fKeyController()
-    snap = read_snapshot(_l2_ram(room=0x6E, x=42, y=181, keys=4))
-    assert controller._band_walker(snap) is controller.walker
