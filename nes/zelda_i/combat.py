@@ -31,6 +31,7 @@ from zelda_i.dungeon.ids import (
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
     STEPLADDER_OBJECT_TYPE,
+    RAFT_OBJECT_TYPE,
 )
 from zelda_i.dungeon.species import (
     BURROWER_DORMANT_STATE,
@@ -199,7 +200,7 @@ def should_swing_at(
 # deployed stepladder under Link's feet (hp 64). The reactive layer turned
 # and swung at both -- 4000f on 0x17's generator, ~8500f on its ladder.
 NON_COMBATANT_TYPES = frozenset(
-    {BOULDER_GENERATOR_OBJECT_TYPE, STEPLADDER_OBJECT_TYPE}
+    {BOULDER_GENERATOR_OBJECT_TYPE, STEPLADDER_OBJECT_TYPE, RAFT_OBJECT_TYPE}
 )
 FLOOR_DROP_TYPES = frozenset(
     {

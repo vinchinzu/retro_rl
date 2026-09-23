@@ -28,6 +28,8 @@ bounds). Halt on the first occupancy miss (do not batch). No RAM writes.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -203,9 +205,9 @@ class Level7PondDrainController:
         return FrameAction(nes_action("B"), "whistle_blow")
 
     def _walk_to_stand(self, snap: ZeldaSnapshot) -> FrameAction:
-        direction = _toward(
-            (int(snap.link_x), int(snap.link_y)), BLOW_STAND, tol=ARRIVE_TOL
-        )
+        # ROM lattice: the greedy axis step flipped 112<->114 at y=205 for
+        # 3200 frames once Link reached the shore off the stand column.
+        direction = room_step(snap, BLOW_STAND, tol=ARRIVE_TOL)
         if direction is not None:
             axis = "y" if direction in ("UP", "DOWN") else "x"
             return FrameAction(nes_action(direction), f"stand_{axis}")

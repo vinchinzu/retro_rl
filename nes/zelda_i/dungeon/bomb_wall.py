@@ -16,7 +16,7 @@ from typing import Any, Callable, Protocol
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.hop_controller import lattice_goto
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.engine import DungeonPhase, DungeonRoomSpec, GenericDungeonRoomController
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -113,7 +113,6 @@ class BombWallController:
     clear_controller: GenericDungeonRoomController | None = None
     _env: Any = field(default=None, init=False, repr=False)
     _select: PauseSelectController | None = field(default=None, init=False, repr=False)
-    _lattice_arrived: bool = field(default=False, init=False, repr=False)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -154,51 +153,16 @@ class BombWallController:
         ) <= self.stand_tol
 
     def _goto_stand(self, snap: ZeldaSnapshot) -> FrameAction:
-        """Walk to bomb stand. Prefer y-band near stand then x, else dominant axis.
+        """Walk to the bomb stand on the ROM lattice (``room_step``).
 
-        0x1e south-band approach is x-first (live): diamond mid-y blocks UP
-        before the stand column is centered.
+        The axis rules this replaced walked L3 0x59 into block rows, and
+        handing between them and the lattice flipped 2px for 2500f (L4 0x61)
+        and 860 reversals at the L7 pond (112 <-> 114, 205).
         """
-        tx, ty = self.stand
-        dx = tx - snap.link_x
-        dy = ty - snap.link_y
-        if abs(dx) + abs(dy) > 2 * self.stand_tol and not self._lattice_arrived:
-            # ROM-collision route first: the axis rules below walked L3
-            # 0x59 (gathered spine) into the block rows short of the stand.
-            step = lattice_goto(self._env, snap, (tx, ty))
-            if step is not None:
-                return FrameAction(nes_action(step), "stand_lattice")
-            # On a goal node: the axis rules finish. Handing back to the
-            # lattice one step later was a 2px tug-of-war on L4 0x61
-            # ((112,109) <-> (114,109) for 2500f, power-on gathered spine).
-            self._lattice_arrived = self._env is not None
-        if self.south_band_first:
-            if abs(dx) > self.stand_tol:
-                return FrameAction(
-                    nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_x"
-                )
-            if abs(dy) > self.stand_tol:
-                return FrameAction(
-                    nes_action("UP" if dy < 0 else "DOWN"), "stand_y"
-                )
+        step = room_step(snap, self.stand, tol=self.stand_tol, env=self._env)
+        if step is None:
             return FrameAction(nes_idle_action(), "stand_ready")
-        if abs(snap.link_y - ty) <= 12 and abs(dx) > self.stand_tol:
-            if abs(dy) > self.stand_tol:
-                return FrameAction(
-                    nes_action("UP" if dy < 0 else "DOWN"), "stand_band_y"
-                )
-            return FrameAction(
-                nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_band_x"
-            )
-        if abs(dx) > self.stand_tol and abs(dx) >= abs(dy):
-            return FrameAction(
-                nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_x"
-            )
-        if abs(dy) > self.stand_tol:
-            return FrameAction(
-                nes_action("UP" if dy < 0 else "DOWN"), "stand_y"
-            )
-        return FrameAction(nes_idle_action(), "stand_ready")
+        return FrameAction(nes_action(step), "stand_lattice")
 
     def _push_dir(self, snap: ZeldaSnapshot) -> FrameAction:
         """Align to stand x (for UP/DOWN faces) or y (for LEFT/RIGHT) then push."""
