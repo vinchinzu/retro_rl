@@ -15,6 +15,9 @@ from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 WAIT_SCROLL = (2, 3, 4, 6, 7)
+# Boxed: Link within BOXED_PX of one spot for BOXED_FRAMES play frames.
+BOXED_PX = 3
+BOXED_FRAMES = 24
 WAIT_SCROLL_B = (2, 3, 4, 6, 7, 10, 16)
 DEATH_MODE = 17
 CELLAR_MODE = 9
@@ -63,6 +66,217 @@ def dungeon_align_then_push(
     return FrameAction(nes_action(push_dir), f"{reason}_push")
 
 
+def door_nodes(nodes, direction: str) -> set[tuple[int, int]]:
+    """Lattice nodes on the room edge ``direction`` faces (the door mouth)."""
+    if not nodes:
+        return set()
+    if direction in ("UP", "DOWN"):
+        ys = [y for _, y in nodes]
+        edge = min(ys) if direction == "UP" else max(ys)
+        return {n for n in nodes if n[1] == edge}
+    xs = [x for x, _ in nodes]
+    edge = min(xs) if direction == "LEFT" else max(xs)
+    return {n for n in nodes if n[0] == edge}
+
+
+# Room secrets (``Z_05.asm`` ``CheckUnderworldSecrets``): the low three bits
+# of ``LevelBlockAttrsByteF`` pick the trigger. 4 opens the shutters when the
+# push block has moved, 5 reveals stairs. The block is object ``$68`` in slot
+# 11, placed on the first ``$B0`` tile in play-area row ``$A`` (y=$90).
+ADDR_LEVEL_BLOCK_ATTR_F = 0x04CD
+ADDR_BLOCK_PUSH_COMPLETE = 0x04CF
+SECRET_BLOCK_DOOR = 4
+SECRET_BLOCK_STAIRS = 5
+BLOCK_OBJECT_TYPE = 0x68
+BLOCK_SLOT = 11
+# ``UpdateBlock0Idle``: Link's (y + 3) is compared with the block's y, and a
+# push needs 16 frames of the input facing the block (``BlockPushDirections``).
+BLOCK_Y_OFFSET = 3
+
+
+def pending_block_push(ram: Any, snap: ZeldaSnapshot) -> tuple[int, int] | None:
+    """The push block's ``(x, y)`` when this room's secret waits on it."""
+    trigger = int(ram[ADDR_LEVEL_BLOCK_ATTR_F]) & 0x07
+    if trigger not in (SECRET_BLOCK_DOOR, SECRET_BLOCK_STAIRS):
+        return None
+    if int(ram[ADDR_BLOCK_PUSH_COMPLETE]) != 0:
+        return None
+    block = snap.object_in_slot(BLOCK_SLOT)
+    if block is None or int(block.type_id) != BLOCK_OBJECT_TYPE:
+        return None
+    return int(block.x), int(block.y)
+
+
+def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
+    """Walk to a face of the pending push block and push it, on the lattice.
+
+    ``None`` when the room has no pending block secret, the tile map is not
+    bound, or no face is reachable. L3 0x6B (gathered spine, 2026-09-22):
+    the north and south shutters are trigger 4, so every door walk stood on
+    the shut leaf; the old hand policy only ever opened it by stumbling on
+    the block during an 2700-frame wiggle.
+    """
+    if env is None or snap.mode != PLAY_MODE:
+        return None
+    ram = env.get_ram()
+    block = pending_block_push(ram, snap)
+    if block is None:
+        return None
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.walk.physics import lattice_route, lattice_step
+
+    if not has_room_tile_map(ram):
+        return None
+    nodes = ow_walkable_nodes(ram, overworld=False)
+    bx, by = block
+    ly = by - BLOCK_Y_OFFSET
+    x, y = int(snap.link_x), int(snap.link_y)
+    best: tuple[int, str, list[tuple[int, int]]] | None = None
+    for dx, dy, push in ((0, 16, "UP"), (0, -16, "DOWN"), (16, 0, "LEFT"), (-16, 0, "RIGHT")):
+        stand = (bx + dx, ly + dy)
+        landing = (bx - dx, ly - dy)
+        if stand not in nodes or landing not in nodes:
+            continue
+        if (x, y) == stand:
+            return push
+        route = lattice_route(nodes, (x, y), {stand})
+        if route is None:
+            continue
+        cost = len(route)
+        if best is None or cost < best[0]:
+            best = (cost, push, route)
+    if best is None:
+        return None
+    route = best[2]
+    return lattice_step(x, y, route[0]) if route else best[1]
+
+
+def lattice_door_step(env: Any, snap: ZeldaSnapshot, direction: str) -> str | None:
+    """First step of the ROM-collision route to the ``direction`` door.
+
+    ``None`` without a bound env or a room tile map, or when no door node is
+    reachable. On a door node it is ``direction`` itself (the push).
+    """
+    if env is None:
+        return None
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.walk.physics import lattice_route, lattice_step
+
+    if int(snap.level) != 0:
+        push = block_push_step(env, snap)
+        if push is not None:
+            return push
+    ram = env.get_ram()
+    if not has_room_tile_map(ram):
+        return None
+    nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
+    x, y = int(snap.link_x), int(snap.link_y)
+    goals = door_nodes(nodes, direction)
+    if past_door_node(x, y, goals, direction):
+        return direction
+    route = lattice_route(nodes, (x, y), goals)
+    if route is None:
+        return None
+    return lattice_step(x, y, route[0]) if route else direction
+
+
+def lattice_goto(
+    env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
+) -> str | None:
+    """First lattice step toward the nodes nearest ``goal``.
+
+    ``None`` without tiles, when unreachable, or when Link is already on one
+    of those nodes (the caller's own fine alignment takes over there).
+    """
+    if env is None:
+        return None
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.walk.physics import lattice_route, lattice_step
+
+    ram = env.get_ram()
+    if not has_room_tile_map(ram):
+        return None
+    nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
+    if not nodes:
+        return None
+    gx, gy = int(goal[0]), int(goal[1])
+    near = sorted(nodes, key=lambda n: abs(n[0] - gx) + abs(n[1] - gy))[:8]
+    best = abs(near[0][0] - gx) + abs(near[0][1] - gy)
+    goals = {n for n in near if abs(n[0] - gx) + abs(n[1] - gy) <= best + slack}
+    x, y = int(snap.link_x), int(snap.link_y)
+    route = lattice_route(nodes, (x, y), goals)
+    if not route:
+        return None
+    return lattice_step(x, y, route[0])
+
+
+def past_door_node(x: int, y: int, goals, direction: str, slack: int = 8) -> bool:
+    """Link is on a door node's line and at or beyond it toward the door.
+
+    The push moves him off the lattice (y=68 past the 69 node on L3 0x6B),
+    and a route back to the node is a one-pixel tug-of-war with the push.
+    """
+    for gx, gy in goals:
+        if direction == "UP" and abs(x - gx) <= 2 and 0 <= gy - y <= slack:
+            return True
+        if direction == "DOWN" and abs(x - gx) <= 2 and 0 <= y - gy <= slack:
+            return True
+        if direction == "LEFT" and abs(y - gy) <= 2 and 0 <= gx - x <= slack:
+            return True
+        if direction == "RIGHT" and abs(y - gy) <= 2 and 0 <= x - gx <= slack:
+            return True
+    return False
+
+
+# At the door node: frames of held push before a release, and its length.
+# L3 0x6B (gathered spine): UP held at (120,68) for 3500 frames never
+# passed; 120 idle frames then UP scrolled on the first try.
+DOOR_PUSH_FRAMES = 48
+DOOR_RELEASE_FRAMES = 32
+
+
+@dataclass
+class LatticeDoorWalker:
+    """``lattice_door_step`` plus a release-and-repush at a stuck door."""
+
+    pushed: int = 0
+    released: int = 0
+    frames: int = 0
+
+    def action(
+        self, env: Any, snap: ZeldaSnapshot, direction: str, reason: str
+    ) -> FrameAction | None:
+        step = lattice_door_step(env, snap, direction)
+        if step is None:
+            return None
+        self.frames += 1
+        at_door = step == direction and at_door_node(env, snap, direction)
+        if not at_door:
+            self.pushed = self.released = 0
+            return FrameAction(nes_action(step), reason)
+        if self.released:
+            self.released -= 1
+            if not self.released:
+                self.pushed = 0
+            return FrameAction(nes_idle_action(), f"{reason}_release")
+        self.pushed += 1
+        if self.pushed >= DOOR_PUSH_FRAMES:
+            self.released = DOOR_RELEASE_FRAMES
+        return FrameAction(nes_action(step), f"{reason}_push")
+
+
+def at_door_node(env: Any, snap: ZeldaSnapshot, direction: str) -> bool:
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+
+    ram = env.get_ram()
+    if not has_room_tile_map(ram):
+        return False
+    nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
+    return past_door_node(
+        int(snap.link_x), int(snap.link_y), door_nodes(nodes, direction), direction
+    )
+
+
 @dataclass(frozen=True)
 class CellarCross:
     """Two-ladder cellar: drop to floor, cross, climb."""
@@ -104,6 +318,18 @@ class HopController:
     damage: DamageLog = field(default_factory=DamageLog)
     tracked: tuple[TrackedObject, ...] = ()
     last_reason: str = ""
+    # The door this hop leaves by. When set and Link is boxed (a hand
+    # policy walking into a block), the frame goes to the ROM-collision
+    # lattice route to that door instead. ``bind_env`` supplies the tiles.
+    exit_dir: str | None = None
+    _env: Any = field(default=None, repr=False)
+    _box_anchor: tuple[int, int] | None = field(default=None, repr=False)
+    _box_frames: int = field(default=0, repr=False)
+    _lattice_room: tuple[int, int] | None = field(default=None, repr=False)
+    _door_walker: "LatticeDoorWalker | None" = field(default=None, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
         return False
@@ -137,7 +363,42 @@ class HopController:
             "notes": list(self.notes),
             "spec_id": self.spec_id,
             "damage": self.damage.report(),
+            "lattice_frames": self.lattice_frames,
         }
+
+    def _boxed(self, snap: ZeldaSnapshot) -> bool:
+        xy = (int(snap.link_x), int(snap.link_y))
+        anchor = self._box_anchor
+        if anchor is None or abs(xy[0] - anchor[0]) + abs(xy[1] - anchor[1]) > BOXED_PX:
+            self._box_anchor = xy
+            self._box_frames = 0
+            return False
+        self._box_frames += 1
+        return self._box_frames >= BOXED_FRAMES
+
+    def lattice_exit(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Lattice step to the ``exit_dir`` door once the hand policy is boxed.
+
+        Latched per room: once boxed, the rest of this room is walked on the
+        lattice, so the first step off the block does not hand the frame
+        back to the policy that walked into it.
+        """
+        if self.exit_dir is None or self._env is None or snap.mode != PLAY_MODE:
+            return None
+        room = (int(snap.level), int(snap.screen))
+        if self._lattice_room != room:
+            if not self._boxed(snap):
+                return None
+            self._lattice_room = room
+        if self._door_walker is None:
+            self._door_walker = LatticeDoorWalker()
+        return self._door_walker.action(
+            self._env, snap, self.exit_dir, f"{self.done_reason}_lattice"
+        )
+
+    @property
+    def lattice_frames(self) -> int:
+        return 0 if self._door_walker is None else self._door_walker.frames
 
     def _note(self, note: str) -> None:
         if note not in self.notes:
@@ -194,6 +455,6 @@ class HopController:
         elif self.arrived(snap):
             action = self.emit(snap, self.mark_done(snap), force=True)
         else:
-            action = self.emit(snap, self.policy(snap))
+            action = self.emit(snap, self.lattice_exit(snap) or self.policy(snap))
         self.last_reason = action.reason
         return action

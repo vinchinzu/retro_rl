@@ -39,6 +39,7 @@ from zelda_i.dungeon.tilemap import (
     blocked_link_cells,
     has_room_tile_map,
 )
+from zelda_i.beam import beam_aim, beam_ready
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
@@ -174,6 +175,8 @@ class CombatTuning:
     # Closing BODY/shot: honor threat.decide before chase. Off by default;
     # 0x42's block-push leftover moved when every room peeled.
     evade: bool = False
+    # Fire the full-health sword shot at a body already in a lane.
+    beam: bool = True
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -431,6 +434,8 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _last_engage_frame: int = field(default=0, init=False, repr=False)
     _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _box_frames: int = field(default=0, init=False, repr=False)
+    _beam_pressed: bool = field(default=False, init=False, repr=False)
+    beam_presses: int = field(default=0, init=False)
     # Cached scoop-heart unreachable verdict (goal cell -> hold-until frame).
     # See ``_scoop_heart_occupancy``.
     _scoop_unreachable_goal: tuple[int, int] | None = field(
@@ -625,6 +630,43 @@ class GenericDungeonRoomController(EntryRouteWalker):
         else:
             return FrameAction(nes_idle_action(), "combat_wait")
         return FrameAction(nes_action(direction), "combat_patrol")
+
+    def _beam_shot(
+        self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
+    ) -> FrameAction | None:
+        """Fire the full-health sword shot at a body already in a lane.
+
+        The blade only swings inside reach, so a body parked on a raised
+        block (L3 0x6B Zols, gathered spine: 3500 frames of ``combat_engage``
+        under a Zol 24 px up a block) was never hit, though the White Sword
+        at full hearts throws a screen-long shot. It fires only when Link
+        already faces the lane, and A is an edge.
+        """
+        if not self.spec.combat.beam or not beam_ready(snap):
+            self._beam_pressed = False
+            return None
+        if self._beam_pressed:
+            self._beam_pressed = False
+            return FrameAction(nes_idle_action(), "beam_release")
+        if snap.objects and int(snap.objects[0].slot) == 0 and int(snap.objects[0].state) != 0:
+            return None
+        try:
+            held = _combat.facing_to_direction(int(snap.facing))
+        except ValueError:
+            held = None
+        aim = beam_aim(int(snap.link_x), int(snap.link_y), live, prefer=held)
+        if aim is None:
+            return None
+        face, _body = aim
+        if held != face:
+            # No turn frames: a turn is a held direction, which walks Link
+            # off the lane, and the chase walks him back (L3 0x59, gathered
+            # spine: 8597 beam_turn / 8536 hunt frames at (96,116..117)).
+            # The chase faces bodies on its own; fire when it has.
+            return None
+        self._beam_pressed = True
+        self.beam_presses += 1
+        return FrameAction(nes_action(face, "A"), "beam_fire")
 
     def _boxed(self, snap: ZeldaSnapshot) -> bool:
         """Link has stayed within ``BOXED_PX`` of one spot for ``BOXED_FRAMES``.
@@ -885,6 +927,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
         off_wall = self._off_wall_step(snap)
         if off_wall is not None:
             return off_wall
+        shot = self._beam_shot(snap, live)
+        if shot is not None:
+            return shot
         target = fight_target(snap.link_x, snap.link_y, live)
         if target is None:
             # Parked Wallmasters (and other illegal slots) stay in ``live``.
@@ -933,6 +978,11 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 transient_occupants=bodies,
             )
             direction = self._lattice_chase(snap, target) or direction
+            if self._boxed(snap):
+                # The one-pixel walker's step is into a block (L3 0x6B
+                # diagonal blocks, gathered spine: 11929 engage frames at
+                # (112,117)). The lattice knows both feet.
+                direction = self._lattice_dir(snap, (int(target.x), int(target.y))) or direction
             blocked = direction is not None and blocked_by_projectile(
                 snap.link_x, snap.link_y, direction, snap.objects
             )

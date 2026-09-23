@@ -308,22 +308,28 @@ class NaturalMilestoneRun:
         return payload
 
 
-def bind_controller_env(controller: Any, env: Any) -> None:
-    """``bind_env`` on the controller, else on the ``inner`` it wraps.
+def bind_controller_env(controller: Any, env: Any, _depth: int = 0) -> None:
+    """``bind_env`` on the controller and on the sub-controllers it holds.
 
-    Room wrappers (``Level2Clear6eController`` and kin) hold a
-    ``GenericDungeonRoomController`` as ``inner`` and never forwarded the
-    env, so the inner room had no ``$6530`` geometry: L2 0x6E bounced on a
-    wall for 7511 frames with the lattice one call away.
+    Composite stages hold their rooms and door hops as fields (``inner``,
+    ``door``, ``combat`` ...) and never forwarded the env, so those had no
+    ``$6530`` geometry: L2 0x6E bounced on a wall for 7511 frames with the
+    lattice one call away.
     """
-    seen = 0
-    while controller is not None and seen < 4:
-        bind_env = getattr(controller, "bind_env", None)
-        if callable(bind_env):
-            bind_env(env)
-            return
-        controller = getattr(controller, "inner", None)
-        seen += 1
+    if controller is None or _depth > 2:
+        return
+    bind_env = getattr(controller, "bind_env", None)
+    if callable(bind_env):
+        bind_env(env)
+    fields = getattr(controller, "__dataclass_fields__", None)
+    if not fields:
+        return
+    for name in fields:
+        child = getattr(controller, name, None)
+        if child is controller or not hasattr(child, "__dataclass_fields__"):
+            continue
+        if callable(getattr(child, "step", None)):
+            bind_controller_env(child, env, _depth + 1)
 
 
 def run_controller_stage(

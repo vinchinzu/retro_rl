@@ -16,6 +16,7 @@ from typing import Any, Callable, Protocol
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import lattice_goto
 from zelda_i.dungeon.engine import DungeonPhase, DungeonRoomSpec, GenericDungeonRoomController
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -157,6 +158,12 @@ class BombWallController:
         tx, ty = self.stand
         dx = tx - snap.link_x
         dy = ty - snap.link_y
+        if abs(dx) + abs(dy) > 2 * self.stand_tol:
+            # ROM-collision route first: the axis rules below walked L3
+            # 0x59 (gathered spine) into the block rows short of the stand.
+            step = lattice_goto(self._env, snap, (tx, ty))
+            if step is not None:
+                return FrameAction(nes_action(step), "stand_lattice")
         if self.south_band_first:
             if abs(dx) > self.stand_tol:
                 return FrameAction(
