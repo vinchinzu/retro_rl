@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 
-from typing import Iterable
+from typing import Callable, Iterable
 
 from retro_harness.predict import grade_claims
 
@@ -42,6 +42,7 @@ WALK_DELTA: dict[str, tuple[int, int]] = {
 # Dungeon playfield (Link collision). North door approach y≈93 sits inside.
 DEFAULT_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 205)
 _DRIFT_REPLAN = 8
+LATTICE_STEP = 8
 
 
 def predicted_xy(x: int, y: int, direction: str) -> tuple[int, int]:
@@ -63,6 +64,11 @@ class OccupancyGrid:
     xmax: int = DEFAULT_BOUNDS[1]
     ymin: int = DEFAULT_BOUNDS[2]
     ymax: int = DEFAULT_BOUNDS[3]
+    # Plan on the ROM turn lattice: horizontal only on rows (y % 8 == 5),
+    # vertical only on columns (x % 8 == 0). A pixel path off it is one the
+    # game will not walk — pressing RIGHT on y=137 slides Link to 139, the
+    # plan says UP, and he flips every frame (live 0x7A: 574 reversals).
+    lattice: bool = True
 
     def in_bounds(self, x: int, y: int) -> bool:
         return self.xmin <= x <= self.xmax and self.ymin <= y <= self.ymax
@@ -141,6 +147,34 @@ class OccupancyGrid:
         specifies temporary obstacles (e.g. live enemy disks) for this search
         without mutating ``blocked``.
         """
+        if self.lattice:
+            path = self._shortest_path(start, self.lattice_goal(goal), extra_blocked, True)
+            if path is not None:
+                return path
+        return self._shortest_path(start, goal, extra_blocked, False)
+
+    def lattice_goal(self, goal: tuple[int, int]) -> tuple[int, int]:
+        """Nearest open pixel to ``goal`` that lies on a lattice row or column."""
+        gx, gy = int(goal[0]), int(goal[1])
+        if on_lattice(gx, gy) or not self.in_bounds(gx, gy):
+            return (gx, gy)
+        row = gy - (gy - 5) % LATTICE_STEP
+        col = gx - gx % LATTICE_STEP
+        options = [
+            (gx, row), (gx, row + LATTICE_STEP), (col, gy), (col + LATTICE_STEP, gy)
+        ]
+        options = [c for c in options if self.passable(*c)]
+        if not options:
+            return (gx, gy)
+        return min(options, key=lambda c: abs(c[0] - gx) + abs(c[1] - gy))
+
+    def _shortest_path(
+        self,
+        start: tuple[int, int],
+        goal: tuple[int, int],
+        extra_blocked: Iterable[tuple[int, int]] | None,
+        lattice: bool,
+    ) -> list[tuple[int, int]] | None:
         sx, sy = int(start[0]), int(start[1])
         gx, gy = int(goal[0]), int(goal[1])
         if (sx, sy) == (gx, gy):
@@ -181,6 +215,8 @@ class OccupancyGrid:
                 cell = (x + dx, y + dy)
                 if cell in dist or not ok(*cell):
                     continue
+                if lattice and not _lattice_move(x, y, dx):
+                    continue
                 dist[cell] = step
                 queue.append(cell)
         if (sx, sy) not in dist:
@@ -207,9 +243,19 @@ class OccupancyGrid:
         return path
 
 
+def on_lattice(x: int, y: int) -> bool:
+    return int(x) % LATTICE_STEP == 0 or (int(y) - 5) % LATTICE_STEP == 0
+
+
+def _lattice_move(x: int, y: int, dx: int) -> bool:
+    """A 1 px step from ``(x, y)`` the ROM lets Link take (``dx`` 0 = vertical)."""
+    return (int(y) - 5) % LATTICE_STEP == 0 if dx else int(x) % LATTICE_STEP == 0
+
+
 def follow_path(
     path: list[tuple[int, int]] | None,
     xy: tuple[int, int],
+    passable: Callable[[int, int], bool] | None = None,
 ) -> str | None:
     """Cardinal toward the next BFS node, or None when the path is stale."""
     if not path or len(path) < 2:
@@ -227,9 +273,47 @@ def follow_path(
     dx, dy = nx - x, ny - y
     if dx == 0 and dy == 0:
         return None
+    first = _cardinal(dx, dy)
+    # A short sidestep before a long leg is a pixel the game will not stop on:
+    # Link steps 1-2 px and turns only on the ROM's 8 px grid, so "DOWN 1,
+    # then RIGHT" overshoots and flips every frame (live 0x79: y 121<->123
+    # for ~1300 frames). Press the long leg; the ROM snap absorbs the offset.
+    leg = _leg(path, idx, first)
+    if leg <= SIDESTEP_PX and idx + leg + 1 < len(path):
+        ax, ay = path[idx + leg]
+        bx, by = path[idx + leg + 1]
+        second = _cardinal(bx - ax, by - ay)
+        run = _leg(path, idx + leg, second)
+        dx2, dy2 = WALK_DELTA[second]
+        if (
+            second != first
+            and run > leg
+            and passable is not None
+            and all(passable(x + dx2 * k, y + dy2 * k) for k in range(1, leg + 2))
+        ):
+            return second
+    return first
+
+
+# Legs this short are absorbed by the ROM's turn snap (see ``follow_path``).
+SIDESTEP_PX = 3
+
+
+def _cardinal(dx: int, dy: int) -> str:
     if abs(dx) >= abs(dy) and dx != 0:
         return "RIGHT" if dx > 0 else "LEFT"
     return "DOWN" if dy > 0 else "UP"
+
+
+def _leg(path: list[tuple[int, int]], start: int, direction: str) -> int:
+    """Pixels ``path`` holds ``direction`` from node ``start``."""
+    n = 0
+    for i in range(start, len(path) - 1):
+        (ax, ay), (bx, by) = path[i], path[i + 1]
+        if _cardinal(bx - ax, by - ay) != direction:
+            break
+        n += 1
+    return n
 
 
 @dataclass
@@ -390,12 +474,18 @@ class OccupancyWalker:
                 dest = open_dest
                 self.goal = dest
                 self.path = None
+        extra = frozenset(extra_blocked) if extra_blocked is not None else frozenset()
+        extra_blocked = extra if extra_blocked is not None else None
+
+        def open_cell(x: int, y: int) -> bool:
+            return self.grid.passable(x, y) and (x, y) not in extra
+
         if self.path is None:
             self.path = self.grid.shortest_path(xy, dest, extra_blocked=extra_blocked)
-        direction = follow_path(self.path, xy)
+        direction = follow_path(self.path, xy, open_cell)
         if direction is None:
             self.path = self.grid.shortest_path(xy, dest, extra_blocked=extra_blocked)
-            direction = follow_path(self.path, xy)
+            direction = follow_path(self.path, xy, open_cell)
         if direction is None and not is_sticky and self.grid.inferred:
             # Inferred blocks come from one failed 1px prediction, not ground
             # truth — a wall hug or a slide fences off a free cell. A walker
@@ -408,7 +498,7 @@ class OccupancyWalker:
             self.grid.inferred.clear()
             self.forgets += 1
             self.path = self.grid.shortest_path(xy, dest, extra_blocked=extra_blocked)
-            direction = follow_path(self.path, xy)
+            direction = follow_path(self.path, xy, open_cell)
         self.last_dir = direction
         return direction
 
@@ -460,7 +550,6 @@ def measured_walker(
 # ``dungeon.tilemap.ow_walkable_nodes`` is the ROM's own collision test on
 # the 8 px turn grid. A route over it is a list of corners Link can actually
 # turn on, so a walk never has to learn a rock by bumping it.
-LATTICE_STEP = 8
 # One turn costs about as much as this many 8 px steps. Link loses ~3 frames
 # snapping at each corner, and a staircase is how walkers here fail.
 LATTICE_TURN_COST = 2

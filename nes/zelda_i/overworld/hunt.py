@@ -113,6 +113,8 @@ HUNT_SPAWN_WAIT_FRAMES = 110  # wave is not live the moment the scroll ends
 HUNT_MIN_HEARTS = 1
 HUNT_LANE_TOL = 6  # walk back to the hop lane; align_and_push has no answer to a bush
 HUNT_LANE_MAX_FRAMES = 240
+# Frames the lane return stands down after another layer interrupts it.
+LANE_YIELD_FRAMES = 16
 # How far a drop is worth walking to *while the screen still has a wave*.
 # Manhattan, from Link. The whole box was the first shape and it priced
 # itself: 0x7E is four octorok_fast plus a Zora, and one pass spent 240
@@ -750,6 +752,11 @@ class ScreenHunter:
     since_enter: int = 0
     settle: int = 0
     lane_frames: int = 0
+    # Lane return is tidying, not safety: when another layer took the frame
+    # between two lane frames, stand down for ``LANE_YIELD_FRAMES``. Without
+    # it the evader and the lane walk swapped frames 1-2 px apart (live 0x7B).
+    _lane_last: int = field(default=-10, repr=False)
+    _lane_yield_until: int = field(default=-1, repr=False)
     done: set[int] = field(default_factory=set)
     # ``done`` is "stop chasing here"; ``cleared`` is the stronger claim that
     # the wave is actually gone. They are not the same screen set — a budget
@@ -1436,6 +1443,12 @@ class ScreenHunter:
         if off <= self.lane_tol:
             self.lane_frames = 0
             return None
+        if frames <= self._lane_yield_until:
+            return None
+        if frames == self._lane_last + 2:
+            self._lane_yield_until = frames + LANE_YIELD_FRAMES
+            return None
+        self._lane_last = frames
         self.lane_frames += 1
         if self.lane_frames > self.lane_max_frames:
             return None
