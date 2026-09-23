@@ -23,6 +23,22 @@ measurement. Compare a row against the row above it only when the code changed.
 |---|---|---|---|---|---|---|---|---|---|
 | full_poweron12 (92e7a315, = poweron11 code) | ok (unlimited_health) | level9-credits | 292742 | 17942 | 67/176 | 32 | 441 / 667 | 82 / 6 / 9 | 9:03 12842f |
 
+## Stabilization loop after the lattice walkers (2026-09-23)
+
+Each continuous run failed one stage later than the last; each stall was
+fixed from its `R<n>_<stage>` save point and the next run started from
+power-on. Frames and flutter count only up to the failure.
+
+| run | failed stage | TF | frames | flutter | slowest visit | fix |
+|---|---|---|---|---|---|---|
+| full_poweron13 | north | 0x00 | 39136 | 716 | 1:74 3552f | L1 return-west on the lattice; dungeon door lanes |
+| full_poweron14 | enter_6f_key | 0x01 | 62619 | 3033 | 2:6e 5806f | 0x6E key door lattice-only |
+| full_poweron16 | level5_whistle_stairs_64 | 0x0F | 129348 | 5823 | 5:64 7131f | stairs_step first; wait for the wave; door retry |
+| full_poweron17 | level7_room19_east_bomb | 0x3F | 195890 | 11521 | 0:52 7194f | bomb re-place (3x) |
+| full_poweron18 | level5 west_did_not_enter_24 | 0x0F | 140771 | 5293 | 2:6e 5118f | L5 west hops = exit_door |
+| full_poweron19 | level7_pond_approach | 0x3F | 209046 | 37106 | 0:55 29890f | raft 0x61 not a combatant |
+| full_poweron20 | enter_level4 | 0x07 | 132867 | 1889 | 0:45 37835f | L4 mouth approach row south of the mouth |
+
 ## Pre-l1 prefix (assist off)
 
 | run | result | frames | flutter | note |
