@@ -207,6 +207,8 @@ def test_a_clear_drop_is_banked_while_the_wave_is_still_up() -> None:
     snap = _snap(link_x=120, objects=(_foe(slot=1, x=200), _drop(slot=2, x=80)))
     act = hunter.step(snap, 1)
     assert act is not None and act.reason.startswith("hunt_scoop")
+    # Toward the drop on the left, away from the body on the right.
+    assert pressed_nes_buttons(list(act.action)) == ["LEFT"]
 
 
 def test_a_drop_is_taken_once_the_wave_is_dead() -> None:
@@ -1058,6 +1060,20 @@ def test_a_dwelling_fireball_is_stepped_away_from() -> None:
     # Perpendicular to the muzzle bearing, never along it.
     assert pressed_nes_buttons(list(act.action))[0] in ("UP", "DOWN")
     assert hunter.shield_policy.census.ducks > 0
+
+
+def test_a_spit_south_of_the_exit_band_is_dodged_along_it() -> None:
+    """pre_l1_shortfall1, 0x7D f=8130: spit at (162, 194), Link at y=138
+    inside 137–145. The bearing is mostly east, so the old dodge walked UP
+    onto the rock at y=109. The shot is not on the band."""
+    hunter = ScreenHunter()
+    snap = _snap(
+        screen=0x7D, link_x=72, link_y=138, objects=(_fireball(x=162, y=194),)
+    )
+    hunter.observe(snap)
+    act = hunter.step(snap, 1, y_band=(137, 145))
+    assert act is not None and act.reason == "hunt_duck"
+    assert pressed_nes_buttons(list(act.action))[0] == "LEFT"
 
 
 def test_the_duck_can_be_switched_off_without_the_shield() -> None:

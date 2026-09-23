@@ -156,6 +156,7 @@ class ZeldaSnapshot:
     arrows: int = 0  # ADDR_ARROWS; wooden=1 silver=2
     candle: int = 0  # ADDR_CANDLE; blue=1 red=2
     food: int = 0  # ADDR_FOOD (meat)
+    letter: int = 0  # ADDR_LETTER; 1 once the 0x0E old man's letter is taken
     magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
     # Forced-drop kill counters. Link_BeHarmed (collision) zeros all three.
     # Defaults keep older ZeldaSnapshot(...) test constructors working.
@@ -322,6 +323,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         arrows=read_u8(ram, ADDR_ARROWS),
         candle=read_u8(ram, ADDR_CANDLE),
         food=read_u8(ram, ADDR_FOOD),
+        letter=read_u8(ram, ADDR_LETTER),
         world_kill_count=read_u8(ram, ADDR_WORLD_KILL_COUNT),
         help_drop_count=read_u8(ram, ADDR_HELP_DROP_COUNT),
         help_drop_value=read_u8(ram, ADDR_HELP_DROP_VALUE),

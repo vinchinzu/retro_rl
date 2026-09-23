@@ -1,0 +1,124 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T15:34:26.889543+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "candle",
+        "from": 0,
+        "msg": "memory.assign",
+        "to": 1
+      },
+      {
+        "field": "selected_item",
+        "msg": "memory.assign",
+        "to": 4
+      }
+    ],
+    "save_as": "GatherBurnEnter",
+    "segment": "gather_burn",
+    "start_state": "BFS_48",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 0,
+      "candle": 1,
+      "cur_opened_doors": 8,
+      "facing": 4,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 72,
+      "objects": [
+        {
+          "hp": 32,
+          "slot": 1,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 32,
+          "slot": 2,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 192,
+          "y": 173
+        },
+        {
+          "hp": 32,
+          "slot": 10,
+          "state": 1,
+          "type_id": 17,
+          "type_name": "zora",
+          "x": 16,
+          "y": 125
+        },
+        {
+          "hp": 240,
+          "slot": 11,
+          "state": 0,
+          "type_id": 100,
+          "type_name": "unknown_object_0x64",
+          "x": 208,
+          "y": 96
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 72,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 2,
+      "rupees": 6,
+      "screen_hex": "0x48",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 112,
+      "y": 61
+    },
+    "ok": true,
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "candle",
+        "from": 0,
+        "msg": "memory.assign",
+        "to": 1
+      },
+      {
+        "field": "selected_item",
+        "msg": "memory.assign",
+        "to": 4
+      }
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/BFS_48.state",
+  "source_state_sha256": "6eb3d7f675bb5be9cb55583cbe4f2f1f2c3cd7757e207eeb66c027e12ac195b7",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherBurnEnter.state",
+  "state_sha256": "8f80f93efcc6541f7952b144c72c5a8105f9f7e4d177791e6ab9f601b54c5021"
+}

@@ -143,18 +143,37 @@ class UnlimitedHealthAssist:
     know which rooms hurt most without blocking first-pass geometry work.
     """
 
-    def __init__(self, *, enabled: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        enabled: bool = True,
+        engage_at_whole_hearts: int | None = None,
+    ) -> None:
         self.enabled = enabled
+        # None: refill whenever play is short of the container max.
+        # 1: write only once ``whole_hearts`` is the last heart. Two or
+        # more hearts take real damage. The write itself is still the
+        # owned container max — the iframe after the hit that spent the
+        # second heart is the window, and holding the byte at one heart
+        # dies on the next contact. A killing blow that lands in the
+        # same emulator step is already mode 17 and is counted, not rewound.
+        self.engage_at_whole_hearts = engage_at_whole_hearts
         self.telemetry = AssistTelemetry()
         self._prev_filled: int | None = None
         self._prev_phase: str | None = None
         self._accepted_containers: int | None = None
 
     def report(self) -> dict[str, object]:
+        kind = (
+            "last_heart"
+            if self.engage_at_whole_hearts is not None
+            else "unlimited_health"
+        )
         return {
             "enabled": self.enabled,
             "class": "survival",
-            "kind": "unlimited_health",
+            "kind": kind,
+            "engage_at_whole_hearts": self.engage_at_whole_hearts,
             **self.telemetry.to_dict(),
         }
 
@@ -234,6 +253,14 @@ class UnlimitedHealthAssist:
             damage = max(0, self._prev_filled - filled)
             self._record_damage(snap, damage, frame=frame)
 
+        # Last-heart gate. Damage above the floor is recorded and left
+        # in RAM. Crossing the floor (still ordinary play, iframes up)
+        # falls through and refills to the owned container max.
+        floor = self.engage_at_whole_hearts
+        if floor is not None and int(snap.whole_hearts) > int(floor):
+            self._prev_filled = filled
+            return None
+
         target = health_byte_for_containers(accepted)
         partial = int(getattr(snap, "heart_partial", 0xFF)) & 0xFF
         if accepted <= 0:
@@ -262,6 +289,21 @@ class UnlimitedHealthAssist:
         self.apply_snapshot(env.data, snap, frame=frame)
 
 
+class LastHeartAssist(UnlimitedHealthAssist):
+    """Survival refill that stays idle until the last heart.
+
+    ``whole_hearts <= 1`` (``$066F`` low nibble 0: one heart left, the
+    byte the coast walk dies on as ``0x20``). Until that frame, health
+    is not written. The refill is the owned container max, not a clamp
+    at one heart — one heart dies on the next hit after iframes end.
+    Does not grant containers. Not the pre-l1 coast farm: that walk
+    needs the ``$0670`` chip the refill erases.
+    """
+
+    def __init__(self, *, enabled: bool = True) -> None:
+        super().__init__(enabled=enabled, engage_at_whole_hearts=1)
+
+
 def write_health_u8(env: Any, value: int) -> None:
     """Low-level health write (tests / diagnostics). Prefer the assist class."""
     env.data.set_value("health", int(value) & 0xFF)
@@ -272,6 +314,7 @@ __all__ = [
     "DamageEvent",
     "HEART_CONTAINER_ITEM",
     "ResourceCounter",
+    "LastHeartAssist",
     "UnlimitedHealthAssist",
     "assist_phase_name",
     "location_key",

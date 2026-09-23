@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # Parallel build plan — Zelda I Levels 7–9
 
 **Status:** implementation plan; no route claim.  The continuous Survival tip

@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # rr-8t4.4 — natural L6 → bait shop `0x34`
 
 Living Survival residual. Do not STATUS. Do not add Food/bomb/key pokes.

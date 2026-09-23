@@ -70,8 +70,14 @@ def test_buy_climbs_then_right_at_mid_pedestal_y149() -> None:
     )
     act = ctl._buy_step(touch)
     assert list(act.action) == list(nes_action("UP"))
-    done = read_snapshot(
+    unpaid = read_snapshot(
         _ram(mode=CAVE_MODE, x=BOMB_BUY_X, y=BOMB_BUY_Y, rupees=20, bombs=1)
+    )
+    act = ctl._buy_step(unpaid)
+    assert not ctl.success
+    assert list(act.action) == list(nes_action("UP"))
+    done = read_snapshot(
+        _ram(mode=CAVE_MODE, x=BOMB_BUY_X, y=BOMB_BUY_Y, rupees=0, bombs=1)
     )
     act = ctl._buy_step(done)
     assert ctl.success

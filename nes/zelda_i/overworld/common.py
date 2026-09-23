@@ -228,6 +228,181 @@ def perpendicular(
     return None
 
 
+# ------------------------------------------------ the shot escape ---
+# ``Z_01.asm`` ``CheckLinkCollision``: a shot hits when its middle is inside
+# 9 px of Link's middle on both axes. Link's middle is ``(x+8, y+8)``; a
+# half-width shot's is ``(x+4, y+8)``, a full one's ``(x+8, y+8)``.
+SHOT_HIT_PX = 9
+# Link's walk, measured: 1 and 2 px frames alternating.
+LINK_WALK_PX = 1.5
+SHOT_ESCAPE_HORIZON = 48
+# Contact with a body inside this many frames costs the candidate its tie.
+SHOT_ESCAPE_BODY_FRAMES = 16
+_LATTICE = 8
+
+
+def _sim_walk(
+    x: int, y: int, direction: str | None, n: int,
+    nodes: frozenset[tuple[int, int]] | None, box: tuple[int, int, int, int],
+) -> list[tuple[float, float]]:
+    """Link's position for ``n`` frames holding ``direction``.
+
+    Turn rule (measured on ``OW_39``): off the grid on the other axis, he
+    first slides at walk speed to the nearest grid line, then turns. With
+    ``nodes`` he stops on the last walkable lattice node before rock.
+    """
+    fx, fy = float(x), float(y)
+    out: list[tuple[float, float]] = []
+    xlo, xhi, ylo, yhi = box
+    for _ in range(n):
+        if direction is not None:
+            step = LINK_WALK_PX
+            vertical = direction in ("UP", "DOWN")
+            off = (fx % _LATTICE) if vertical else ((fy - 5) % _LATTICE)
+            if off:
+                # Slide to the nearest line on the other axis first.
+                back = off
+                fwd = _LATTICE - off
+                delta = -min(step, back) if back < fwd else min(step, fwd)
+                if vertical:
+                    fx += delta
+                else:
+                    fy += delta
+            else:
+                sign = -1 if direction in ("UP", "LEFT") else 1
+                cur = fy if vertical else fx
+                base = (cur - 5) if vertical else cur
+                # The ROM tests the next node only from a node; between two
+                # he is already committed to the far one.
+                if nodes is not None and base % _LATTICE == 0:
+                    line = base + sign * _LATTICE
+                    node = (int(fx), int(line + 5)) if vertical else (int(line), int(fy))
+                    if node not in nodes:
+                        step = 0.0
+                nxt = cur + sign * step
+                # Land on the next grid line rather than step over it, as the
+                # ROM's 1/2 px frames do, so the node test above sees it.
+                ahead = (base // _LATTICE + 1) * _LATTICE if sign > 0 else (
+                    (base // _LATTICE - (0 if base % _LATTICE else 1)) * _LATTICE
+                )
+                if abs(nxt - cur) > abs(ahead - base):
+                    nxt = ahead + (5 if vertical else 0)
+                if vertical:
+                    fy = min(max(nxt, ylo), yhi)
+                else:
+                    fx = min(max(nxt, xlo), xhi)
+        out.append((fx, fy))
+    return out
+
+
+def shot_escape(
+    lx: int,
+    ly: int,
+    shots: Iterable[tuple[float, float, float, float, int]],
+    box: tuple[int, int, int, int],
+    *,
+    nodes: frozenset[tuple[int, int]] | None = None,
+    bodies: tuple[ZeldaObject, ...] = (),
+    prefer: tuple[str, ...] = (),
+    horizon: int = SHOT_ESCAPE_HORIZON,
+) -> tuple[str | None, bool]:
+    """Best held input against shots flying straight, and whether it is needed.
+
+    ``shots`` is ``(x, y, vx, vy, x_off)``: position, measured velocity and
+    the middle's x offset (4 half-width, 8 full). Candidates are standing and
+    the four walks, each simulated with the turn rule and the lattice. Score
+    is: never hit, then latest first hit, then no body contact early, then
+    distance off each shot's line at the horizon, then the widest miss. Returns ``(direction, needed)``: ``needed`` is False when
+    every candidate is safe, so the caller's own ladder can keep the frame.
+    """
+    shots = tuple(shots)
+    candidates: tuple[str | None, ...] = (None, "UP", "DOWN", "LEFT", "RIGHT")
+    scored: list[tuple[tuple, str | None]] = []
+    all_safe = True
+    for cand in candidates:
+        path = _sim_walk(lx, ly, cand, horizon, nodes, box)
+        first_hit = horizon + 1
+        margin = 10**6
+        for sx, sy, vx, vy, ox in shots:
+            for k, (px, py) in enumerate(path, start=1):
+                mx = sx + vx * k + ox - (px + 8)
+                my = sy + vy * k - py
+                m = max(abs(mx), abs(my)) - SHOT_HIT_PX
+                if m < 0:
+                    first_hit = min(first_hit, k)
+                    break
+                margin = min(margin, m)
+        # Off the line, not ahead of it: fleeing down a shot's own line is
+        # "not hit yet" for a long horizon and still ends on it (the 0x7B
+        # hits that ran with the spit). Score the end pose's distance from
+        # each shot's line through Link's middle.
+        ex, ey = path[-1]
+        off_line = min(
+            (
+                abs((ex + 8 - sx - ox) * vy - (ey - sy) * vx)
+                / max(1e-6, (vx * vx + vy * vy) ** 0.5)
+                for sx, sy, vx, vy, ox in shots
+            ),
+            default=0.0,
+        )
+        touch = any(
+            max(abs(px - int(b.x)), abs(py - int(b.y))) < MIN_DODGE_BODY
+            for px, py in path[:SHOT_ESCAPE_BODY_FRAMES]
+            for b in bodies
+        )
+        safe = first_hit > horizon
+        all_safe = all_safe and safe
+        rank = prefer.index(cand) if cand in prefer else len(prefer)
+        scored.append(((safe, first_hit, not touch, min(off_line, 24.0), min(margin, 24), -rank), cand))
+    scored.sort(key=lambda t: t[0], reverse=True)
+    return scored[0][1], not all_safe
+
+
+def keep_y_band(
+    step: str | None,
+    lx: int,
+    ly: int,
+    sx: int,
+    sy: int,
+    box: tuple[int, int, int, int],
+    bodies: tuple[ZeldaObject, ...] = (),
+    band: tuple[int, int] | None = None,
+    avoid: frozenset[str] | set[str] = frozenset(),
+) -> str | None:
+    """Stay on a hop's y-band when the shot is not on it.
+
+    ``perpendicular`` crosses the bearing's major axis. A spit in the water
+    south of the band is still mostly east of Link, so that rule walks UP.
+    Live ``pre_l1_shortfall1`` on 0x7D: five of those UP steps left
+    ``SCREEN_7E_EAST_BAND`` (137–145) and the last one died on the octorok
+    rock at y=109. A shot already inside the band still leaves the row.
+    Two pixels is the step ``box_step`` already uses; one pixel still reads
+    as inside on the frame that walks out.
+    """
+    if step not in ("UP", "DOWN") or band is None:
+        return step
+    lo, hi = int(band[0]), int(band[1])
+    ly, sy = int(ly), int(sy)
+    if not (lo <= ly <= hi):
+        return step
+    ny = ly - 2 if step == "UP" else ly + 2
+    if lo <= ny <= hi or lo <= sy <= hi:
+        return step
+    options = ("LEFT", "RIGHT") if int(sx) >= int(lx) else ("RIGHT", "LEFT")
+    for direction in options:
+        if direction in avoid:
+            continue
+        if _room(int(lx), ly, direction, box) < MIN_DODGE_BODY:
+            continue
+        nx = int(lx) + _STEP[direction][0] * MIN_DODGE_BODY
+        if any(
+            chebyshev(nx, ly, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
+        ):
+            continue
+        return direction
+    return None
+
+
 def _room(lx: int, ly: int, direction: str, box: tuple[int, int, int, int]) -> int:
     """Pixels of ``direction`` left inside ``box``. Negative outside it."""
     xlo, xhi, ylo, yhi = box
@@ -487,6 +662,17 @@ def scoop_toward_drop(
     if travel_dir == "DOWN" and obj.y < EDGE_NORTH_Y + 16:
         return None
     if travel_dir == "UP" and obj.y > EDGE_SOUTH_Y - 16:
+        return None
+    # A drop in a live body's pad is not a pickup, it is a contact: 10 of 33
+    # 0x7B hits over twelve RNG offsets (``e3``) were ``scoop_rupee`` walking
+    # onto a rupee with a red leever beside it or beside Link. The drop
+    # outlasts the wave; leave it until the body has moved.
+    bodies = overworld_threat_objects(snap)
+    if any(
+        chebyshev(int(obj.x), int(obj.y), int(b.x), int(b.y)) <= MIN_DODGE_BODY
+        or chebyshev(int(snap.link_x), int(snap.link_y), int(b.x), int(b.y)) <= MIN_DODGE_BODY
+        for b in bodies
+    ):
         return None
     if dist <= 4:
         return _stand_on_drop(snap, reason)

@@ -137,6 +137,31 @@ class EntryRouteWalker:
         self._route_walker_room = room
         return self._route_walker
 
+    def _lattice_step(self, snap: ZeldaSnapshot, target: tuple[int, int]) -> str | None:
+        """First step of the ROM-collision lattice route to ``target``.
+
+        ``measured_walker`` samples one pixel under Link, so it reads the
+        cell beside a block as floor: L1 0x43 walled (144, 133) LEFT into the
+        centre block, the walker replanned 16 frames and every waypoint was
+        skipped (5897 frames pushing UP at (144, 93), beside the door). The
+        lattice tests both feet tiles the way ``GetCollidingTileMoving`` does.
+        """
+        if self._env is None:
+            return None
+        from zelda_i.dungeon.tilemap import ow_walkable_nodes
+        from zelda_i.walk.physics import lattice_route, lattice_step
+
+        ram = self._env.get_ram()
+        if not has_room_tile_map(ram):
+            return None
+        nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
+        tx, ty = int(target[0]), int(target[1])
+        goals = {n for n in nodes if abs(n[0] - tx) <= 4 and abs(n[1] - ty) <= 4}
+        route = lattice_route(nodes, (int(snap.link_x), int(snap.link_y)), goals)
+        if not route:
+            return None
+        return lattice_step(int(snap.link_x), int(snap.link_y), route[0])
+
     def _route_escape(
         self, snap: ZeldaSnapshot, target: tuple[int, int], n_waypoints: int
     ) -> FrameAction:
@@ -151,6 +176,10 @@ class EntryRouteWalker:
         on its own budget rather than cycling.
         """
         xy = (int(snap.link_x), int(snap.link_y))
+        step = self._lattice_step(snap, target)
+        if step is not None:
+            self._route_replanning = True
+            return FrameAction(nes_action(step), "entry_route_lattice")
         walker = self._route_walker_for(snap)
         if walker is not None:
             direction = walker.next_dir(xy, target)

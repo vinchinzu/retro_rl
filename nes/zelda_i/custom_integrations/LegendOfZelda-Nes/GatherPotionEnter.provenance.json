@@ -1,0 +1,111 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T15:17:15.731911+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      }
+    ],
+    "save_as": "GatherPotionEnter",
+    "segment": "gather_potion",
+    "start_state": "BFS_65",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 0,
+      "candle": 0,
+      "cur_opened_doors": 8,
+      "facing": 4,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 101,
+      "objects": [
+        {
+          "hp": 16,
+          "slot": 1,
+          "state": 0,
+          "type_id": 8,
+          "type_name": "octorok_fast",
+          "x": 160,
+          "y": 189
+        },
+        {
+          "hp": 16,
+          "slot": 2,
+          "state": 0,
+          "type_id": 7,
+          "type_name": "octorok",
+          "x": 192,
+          "y": 173
+        },
+        {
+          "hp": 16,
+          "slot": 3,
+          "state": 0,
+          "type_id": 8,
+          "type_name": "octorok_fast",
+          "x": 48,
+          "y": 173
+        },
+        {
+          "hp": 16,
+          "slot": 4,
+          "state": 0,
+          "type_id": 7,
+          "type_name": "octorok",
+          "x": 112,
+          "y": 141
+        },
+        {
+          "hp": 32,
+          "slot": 11,
+          "state": 1,
+          "type_id": 17,
+          "type_name": "zora",
+          "x": 96,
+          "y": 125
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 101,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 4,
+      "rupees": 6,
+      "screen_hex": "0x65",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 112,
+      "y": 61
+    },
+    "ok": true,
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      }
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/BFS_65.state",
+  "source_state_sha256": "6e7f278e6f7551b126c4990384eb33b004fa6c0cc3b6710a6ddb997417cb2a4e",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherPotionEnter.state",
+  "state_sha256": "f6fba0fe8627baa68b0804015438ddb1fd2905ee75e3185399b5c5cfdf0c9eb5"
+}

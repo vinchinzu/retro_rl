@@ -23,9 +23,10 @@ and the wave on the far side has never been touched.
 ``SHOP_P7_TOPUP_EXCURSIONS`` is measured, not painted —
 ``scratch/probe_6f_neighbours.py`` sweeps each exit off 0x6F row by row from a
 restored arrival state, pushes, counts what spawned, and pushes back, which is
-the same shape ``probe_coast_lane.py`` used for the east lanes. An empty table
-stays a legitimate state: the controller then finishes on the shop screen and
-lets the buy stage report the real failure, rather than inventing a lane.
+the same shape ``probe_coast_lane.py`` used for the east lanes. An empty
+neighbour table is not a short finish. The fallback then hunts the nearest
+coast screen ``RoomHistory`` has dropped and comes home. Inland screens are
+not that hunt. The buy runs only once the wallet can pay.
 """
 
 from __future__ import annotations
@@ -36,9 +37,21 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
 from zelda_i.overworld.common import recover_off_edge
 from zelda_i.overworld.graph import ScreenHop
-from zelda_i.overworld.hunt import ScreenHunter, hop_lane
+from zelda_i.overworld.hunt import (
+    HUNT_DESTINATION_FRAMES,
+    HUNT_SCREEN_MAX_FRAMES,
+    ScreenHunter,
+    hop_lane,
+)
 from zelda_i.overworld.path import OverworldPathController
-from zelda_i.overworld.shop_p7 import SHOP_P7_SCREEN
+from zelda_i.overworld.respawn import RoomHistory
+from zelda_i.overworld.shop_p7 import (
+    SHOP_P7_HOPS,
+    SHOP_P7_NOT_ON_WALK,
+    SHOP_P7_SCREEN,
+    SHOP_P7_TRANSIT_SCREENS,
+    shop_p7_screens,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 # Back hop travel → the way into the neighbour. An out-and-back lands on
@@ -52,14 +65,15 @@ __all__ = [
     "TOPUP_MAX_FRAMES",
     "Excursion",
     "RupeeTopUpController",
+    "coast_fallback_hops",
     "excursion_hops",
     "make_shop_p7_topup_controller",
 ]
 
-# One excursion is out, fight, back. Three screens of hunting budget
-# (``HUNT_SCREEN_MAX_FRAMES`` is 600) plus the walking either way, times the
-# table, with room for the wave to spawn on each entry.
-TOPUP_MAX_FRAMES = 14000
+# Neighbours first, then each coast screen the walk has already left behind,
+# hunted out to the destination cap while the wallet is short. 600f is how a
+# screen used to retire with the drop still on it.
+TOPUP_MAX_FRAMES = 30000
 
 
 @dataclass(frozen=True)
@@ -94,6 +108,54 @@ def excursion_hops(
             )
         hops.extend((trip.out, trip.back))
     return tuple(hops)
+
+
+def _mirror_lane(fwd: ScreenHop, target: int, direction: str) -> ScreenHop:
+    """Same measured lane, opposite push. ``align_y`` alone accepts a dead row."""
+    if direction in ("LEFT", "RIGHT"):
+        return ScreenHop(
+            target,
+            direction,
+            align_y=fwd.align_y,
+            y_band_lo=fwd.y_band_lo,
+            y_band_hi=fwd.y_band_hi,
+        )
+    return ScreenHop(target, direction, align_x=fwd.align_x)
+
+
+def coast_fallback_hops(
+    visited: tuple[int, ...], *, skip: frozenset[int] = frozenset()
+) -> tuple[int | None, tuple[ScreenHop, ...]]:
+    """Nearest coast screen history would reopen, then back to the shop.
+
+    ``visited`` is the coast walk plus whatever this stage already entered.
+    Transit screens were crossed, not cleared, so a history miss there does
+    not bring a wave back. Inland screens are not candidates. ``skip`` is
+    the set this stage already walked out to hunt: entering one evicts
+    another, and chasing that rotation is not a farm.
+    """
+    history = RoomHistory()
+    for screen in visited:
+        history.enter(int(screen))
+    screens = shop_p7_screens()
+    target: int | None = None
+    for screen in reversed(screens[:-1]):
+        if screen in history.slots or screen in skip:
+            continue
+        if screen in SHOP_P7_TRANSIT_SCREENS or screen in SHOP_P7_NOT_ON_WALK:
+            continue
+        target = int(screen)
+        break
+    if target is None:
+        return None, ()
+    shop_i = len(screens) - 1
+    target_i = screens.index(target)
+    out: list[ScreenHop] = []
+    for i in range(shop_i, target_i, -1):
+        fwd = SHOP_P7_HOPS[i - 1]
+        out.append(_mirror_lane(fwd, screens[i - 1], _INWARD[fwd.direction]))
+    out.extend(SHOP_P7_HOPS[target_i:shop_i])
+    return target, tuple(out)
 
 
 # Measured off the coast shop (``scratch/probe_6f_neighbours.py``, tag ``n4``:
@@ -145,7 +207,10 @@ class RupeeTopUpController(OverworldPathController):
 
     A walk that already has the price finishes on its first frame, which is
     what makes this safe to leave in the stage list unconditionally — it is a
-    no-op on every pass that did not need it.
+    no-op on every pass that did not need it. A walk that does not is not
+    finished here. The neighbours are hunted first; still short, the nearest
+    coast screen the ring has dropped is next. The buy does not run until
+    this stage is home with the price.
     """
 
     shop_screen: int = 0
@@ -162,9 +227,27 @@ class RupeeTopUpController(OverworldPathController):
     shot_history: int = 2
     hunt_destination: bool = True
     max_frames: int = TOPUP_MAX_FRAMES
+    _shortfall_targets: set[int] = field(default_factory=set, repr=False)
+
+    def reset(self) -> None:
+        super().reset()
+        self._shortfall_targets.clear()
 
     def _short(self, snap: ZeldaSnapshot) -> bool:
         return int(snap.rupees) < int(self.price)
+
+    def _visited(self) -> tuple[int, ...]:
+        return shop_p7_screens() + tuple(int(hop.target) for hop in self.hops)
+
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """While the pack is short, do not retire the wave at 600f."""
+        if self.hunter is not None:
+            self.hunter.screen_max_frames = (
+                HUNT_DESTINATION_FRAMES
+                if self._short(snap)
+                else HUNT_SCREEN_MAX_FRAMES
+            )
+        return None
 
     def _home(self, snap: ZeldaSnapshot) -> bool:
         return (
@@ -187,16 +270,20 @@ class RupeeTopUpController(OverworldPathController):
         because y>200 is the DOWN arrival edge, ``recover_off_edge`` allowed
         DOWN, and the hop retraced in 87f with ``peak_live`` 0. 0x6E was the
         same one-frame visit. Both neighbours measured a six-body wave;
-        neither got a hunt frame.
+        neither got a hunt frame. The same hold applies to a coast screen
+        the shortfall walked out to. A wallet that can already pay skips it
+        and takes the hop home. Transit screens are crossed.
         """
-        if self.hunter is None or hop.target != int(self.shop_screen):
+        if self.hunter is None or not self._short(snap):
             return None
         screen = int(snap.screen)
-        if screen == int(self.shop_screen):
+        if screen == int(self.shop_screen) or screen in self.hunter.transit_screens:
             return None
         hunted = None
         if screen not in self.hunter.done:
-            hunted = self.hunter.step(snap, self.frames, lane=hop_lane(hop))
+            hunted = self.hunter.step(
+                snap, self.frames, lane=hop_lane(hop), y_band=hop.y_band
+            )
             # ``FarmOccupancy`` stands when the 1px grid has no path. On 0x6E
             # that is the bush maze, and extra returning the stand left Link
             # on the east scroll line for 214f (live t2). The hold's inward
@@ -218,22 +305,33 @@ class RupeeTopUpController(OverworldPathController):
                 return self._swing(inward, "topup_hold")
         return FrameAction(nes_idle_action(), "topup_hold")
 
-    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
-        """Table exhausted. Home is a finish even when it is still short.
+    def _keep_hunting(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Home, still short. Leave again. Do not hand the buy a short wallet."""
+        target, extra = coast_fallback_hops(
+            self._visited(), skip=frozenset(self._shortfall_targets)
+        )
+        if target is None or not extra:
+            return self._fail(f"topup_short_{int(snap.rupees)}")
+        self._shortfall_targets.add(int(target))
+        self.hops = tuple(self.hops) + extra
+        self.notes.append(f"topup_hunt_{target:02x}")
+        return FrameAction(nes_idle_action(), f"topup_hunt_{target:02x}")
 
-        The buy stage owns the "could not afford it" answer — it is the one
-        that reads ``ADDR_BOMBS`` — and a fail here would hide the rupee count
-        behind a walk failure.
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Home with the price is the stop. Home without it keeps hunting.
+
+        Fighting the shop screen itself is the cave-mode deadlock. The
+        neighbours, then a coast screen the ring has dropped, are the hunt.
         """
+        if self._home(snap) and not self._short(snap):
+            return self._finish("topup_done")
+        if self._home(snap):
+            return self._keep_hunting(snap)
         final = self._final_hunt(snap)
         if final is not None:
             return final
         if not self.destination_hunted(snap):
             return FrameAction(nes_idle_action(), "topup_hunt_settle")
-        if self._home(snap):
-            return self._finish(
-                "topup_done" if not self._short(snap) else "topup_short"
-            )
         return self._fail("topup_not_home")
 
 
@@ -254,5 +352,8 @@ def make_shop_p7_topup_controller(
         shop_screen=int(shop_screen),
         price=int(price),
         excursions=excursions,
-        hunter=ScreenHunter(reopen_on_enter=True),
+        hunter=ScreenHunter(
+            reopen_on_enter=True,
+            transit_screens=SHOP_P7_TRANSIT_SCREENS,
+        ),
     )

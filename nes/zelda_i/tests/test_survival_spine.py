@@ -13,11 +13,14 @@ from zelda_i.level2.tf_spine import level2_tf_stages
 from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_KEYS,
+    ADDR_RUPEES,
 )
 from zelda_i.spine.survival import (
     BOOT_POLICY,
     SPINE_BOMB_RETOPUP,
     SPINE_L1_KEY_RETOPUP,
+    SPINE_PRE_L1_RUPEE_RETOPUP,
+    SPINE_PRE_L1_SHOP_RUPEES,
     SPINE_THROUGH,
     SpineRun,
     merge_inventory_assist,
@@ -119,6 +122,38 @@ def test_pre_l1_is_dedicated_gathering_not_l1_tf() -> None:
     assert "clear53" not in boot_src
     run = SpineRun(through="pre-l1", success=True, boot_frames=1)
     assert run.report()["stop"] == "pre_l1_shop_p7"
+
+
+def test_gather_is_the_default_prefix_and_stops_on_the_l1_mouth() -> None:
+    """Default spine gathers first; the chain's refill is the only lever."""
+    import inspect
+
+    from zelda_i.assist import LastHeartAssist
+    from zelda_i.overworld.gather_segments import chain_stages
+    from zelda_i.spine.survival import (
+        GATHER_ENGAGE_HEARTS,
+        gather_assist,
+        gather_stages,
+        gathered_level1_stages,
+        run_survival_spine,
+    )
+
+    params = inspect.signature(run_survival_spine).parameters
+    assert params["gather"].default is True
+    assert params["gather_engage_hearts"].default == GATHER_ENGAGE_HEARTS
+    assert "gather" in SPINE_THROUGH
+    assert SpineRun(through="gather", success=True, boot_frames=1).report()[
+        "stop"
+    ] == "gather_l1_mouth_0x37"
+    names = [name for name, _, _ in gather_stages()]
+    assert names == [name for name, _ in chain_stages()]
+    assert names[0] == "exit_6f" and names[-1] == "walk_37"
+    assert all(limit > 0 for _, _, limit in gather_stages())
+    l1 = [name for name, _, _ in gathered_level1_stages()]
+    assert l1 == ["enter_level1", "first_key", "north", "clear63", "clear53"]
+    assert gather_assist(0) is None
+    assert isinstance(gather_assist(1), LastHeartAssist)
+    assert gather_assist(2).engage_at_whole_hearts == 2
 
 
 def test_pre_l1_forces_assist_off() -> None:
@@ -401,6 +436,126 @@ def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
     assert run_on.inventory_assist is not None
 
 
+def test_forced_rupee_retopup_writes_pack_price_when_short() -> None:
+    """pre-l1 coast pack: rupee count only, even with allow_pokes off."""
+    from zelda_i.spine.survival import _run_stages
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_RUPEES] = 10
+    ram[ADDR_BOMBS] = 0
+    ram[ADDR_KEYS] = 0
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    run = SpineRun(through="pre-l1", success=True, boot_frames=1, allow_pokes=False)
+
+    import zelda_i.spine.survival as surv
+
+    orig = surv.run_controller_stage
+
+    def fake_stage(env, obs, **kw):
+        del env, obs
+        return None, SimpleNamespace(
+            success=True, end_frame=1, name=kw["name"], report=lambda: {}
+        )
+
+    try:
+        surv.run_controller_stage = fake_stage
+        assert _run_stages(
+            env,
+            run,
+            (("bomb_topup", SimpleNamespace(), 10),),
+            assist=None,
+            forced_rupee_retopup=frozenset({"bomb_topup"}),
+        )
+    finally:
+        surv.run_controller_stage = orig
+
+    assert values == {"rupees": 20}
+    assert SPINE_PRE_L1_SHOP_RUPEES == 20
+    assert run.inventory_assist is not None
+    writes = run.inventory_assist["writes"]
+    assert [w["field"] for w in writes] == ["rupees"]
+    assert writes[0]["from"] == 10 and writes[0]["to"] == 20
+    assert run.inventory_assist["select_bomb"] is False
+    assert "bombs" not in values
+    assert "keys" not in values
+    assert "selected_item" not in values
+
+
+def test_forced_rupee_retopup_noop_when_already_funded() -> None:
+    """A funded walk (rupees already >= 20) must write nothing."""
+    from zelda_i.spine.survival import _run_stages
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_RUPEES] = 20
+    values: dict[str, int] = {}
+
+    class _Data:
+        memory = None
+
+        def set_value(self, key: str, value: int) -> None:
+            values[key] = int(value)
+
+    env = SimpleNamespace(
+        get_ram=lambda: ram,
+        unwrapped=SimpleNamespace(data=_Data(), em=None),
+    )
+    run = SpineRun(through="pre-l1", success=True, boot_frames=1, allow_pokes=False)
+
+    import zelda_i.spine.survival as surv
+
+    orig = surv.run_controller_stage
+
+    def fake_stage(env, obs, **kw):
+        del env, obs
+        return None, SimpleNamespace(
+            success=True, end_frame=1, name=kw["name"], report=lambda: {}
+        )
+
+    try:
+        surv.run_controller_stage = fake_stage
+        assert _run_stages(
+            env,
+            run,
+            (("bomb_topup", SimpleNamespace(), 10),),
+            assist=None,
+            forced_rupee_retopup=frozenset({"bomb_topup"}),
+        )
+    finally:
+        surv.run_controller_stage = orig
+
+    assert values == {}
+    assert run.inventory_assist is None
+
+
+def test_pre_l1_wires_forced_rupee_retopup_only_on_pre_l1() -> None:
+    """forced_rupee_retopup is assigned inside the pre-l1 path only."""
+    import inspect
+
+    from zelda_i.spine.survival import _continue_level1_spine
+
+    continue_src = inspect.getsource(_continue_level1_spine)
+    assert "forced_rupee_retopup" in continue_src
+    assert "SPINE_PRE_L1_RUPEE_RETOPUP" in continue_src
+    assert SPINE_PRE_L1_RUPEE_RETOPUP == frozenset({"bomb_topup"})
+    pre_l1 = continue_src.split('if through == "pre-l1":', 1)[1]
+    assert "forced_rupee_retopup" in pre_l1.split("attach_hops", 1)[0]
+    assert "SPINE_PRE_L1_RUPEE_RETOPUP" in pre_l1.split("attach_hops", 1)[0]
+    after_hops = continue_src.split("attach_hops", 1)[1]
+    assert "forced_rupee_retopup" not in after_hops
+    assert "SPINE_PRE_L1_RUPEE_RETOPUP" not in after_hops
+
+
 def test_survival_spine_cli_wraps_audited_env() -> None:
     import inspect
 
@@ -520,6 +675,7 @@ PINNED_SPINE_THROUGH: tuple[str, ...] = (
     "level1-bow-pickup",
     "level1-arrows",
     "level1-bombs",
+    "gather",
     "level2-entry",
     "level2",
     "level3",

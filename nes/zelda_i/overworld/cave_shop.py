@@ -10,12 +10,12 @@ Templated from two live buy state machines:
   a different pedestal (Blue Candle, right pedestal, mid = Key 100R).
 
 Both shops share one buy shape: dialog idle wait, walk UP the stairs to a
-lateral ``buy_y``, walk to ``buy_x``, then touch/hold the pedestal until the
-success RAM value crosses ``success_threshold`` — with a ``buy_budget``
-timeout and a rupee-insufficiency fail-close computed from ``snap.rupees``
-(never a poke). This module extracts that shape as ``CaveShopBuyController``
-so any shop chapter can instantiate it instead of writing a bespoke buy
-state machine.
+lateral ``buy_y``, walk to ``buy_x``, then touch/hold until purchase is
+confirmed (item at threshold plus a debit, free price, or already owned) —
+with a ``buy_budget`` timeout and a rupee-insufficiency fail-close from
+``snap.rupees`` (never a poke). This module extracts that shape as
+``CaveShopBuyController`` so any shop chapter can instantiate it instead of
+writing a bespoke buy state machine.
 
 Cost check: the cost is read from ``snap.rupees`` only. When short, the
 controller either calls the supplied ``RupeeFarmController`` (``farm``) to
@@ -125,6 +125,7 @@ class CaveShopBuyController(OverworldPathController):
     farm_frames: int = 0
     empty_frames: int = 0
     _rupees_at_buy: int | None = None
+    _item_owned_at_start: bool | None = None
     leftover: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
@@ -141,6 +142,7 @@ class CaveShopBuyController(OverworldPathController):
         self.farm_frames = 0
         self.empty_frames = 0
         self._rupees_at_buy = None
+        self._item_owned_at_start = None
         self.leftover = None
         if self.farm is not None:
             self.farm.reset()
@@ -158,8 +160,22 @@ class CaveShopBuyController(OverworldPathController):
             and snap.screen == self.shop_screen
         )
 
+    def _purchase_done(self, snap: ZeldaSnapshot) -> bool:
+        if self._item_owned_at_start is None:
+            self._item_owned_at_start = (
+                self.success_getter(snap) >= self.success_threshold
+            )
+        if self.success_getter(snap) < self.success_threshold:
+            return False
+        if self.price <= 0 or self._item_owned_at_start:
+            return True
+        return (
+            self._rupees_at_buy is not None
+            and snap.rupees <= self._rupees_at_buy - self.price
+        )
+
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
-        return self.success_getter(snap) >= self.success_threshold
+        return self._purchase_done(snap)
 
     def _record(self, snap: ZeldaSnapshot) -> None:
         self.leftover = {
@@ -252,7 +268,7 @@ class CaveShopBuyController(OverworldPathController):
 
     def _buy_step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.buy_frames += 1
-        if self.success_getter(snap) >= self.success_threshold:
+        if self._purchase_done(snap):
             return self._finish(self.success_note)
         if self.buy_frames > self.buy_budget:
             return self._fail(

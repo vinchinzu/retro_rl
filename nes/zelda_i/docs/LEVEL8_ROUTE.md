@@ -1,5 +1,7 @@
 # Level 8 — The Lion (route notes)
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 > **Probe names below are historical provenance labels, not paths.** The
 > one-shot probe CLIs under `scratch/` were deleted 2026-09-07 once their
 > beads closed; the measurements they produced live on in the constants and
@@ -713,9 +715,9 @@ Fixture-live evidence added 2026-09-03/04 (all `route_eligible=false`):
 
 ## Gleeok family model (merged from `docs/tasks/rr-5eb2-gleeok-model.md`, 2026-09-07)
 
-Live-measured, not walkthrough. This is the source table for the Phase 2.6
-`BossSpec` consolidation in [CLEANUP_PLAN.md](CLEANUP_PLAN.md) — the three
-Gleeok fights differ only in these fields.
+Live-measured, not walkthrough. The three Gleeok fights differ only in
+these fields. The cleanup campaign that was going to fold them into one
+`BossSpec` is retired. This table is the note.
 
 | Field | L4 (2-head) | L6 (3-head) | L8 (4-head) |
 |-------|-------------|-------------|-------------|

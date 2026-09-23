@@ -153,10 +153,15 @@ than requiring positive HP.
 
 ## Overworld path notes
 
-Verified Level 1 approach (2026-07-28): east-then-north via screens
-`0x77→0x78→0x68→0x58→0x48→0x38→0x37`, enter tree door UP at x≈112 from y≈140.
-Mode 8 appears after hits; treat as brief freeze.
+Wooden Level 1 approach, verified 2026-07-28: east then north,
+`0x77→0x78→0x68→0x58→0x48→0x38→0x37`, tree door UP at x≈112 from y≈140.
+Mode 8 after a hit is a short freeze.
 
-Post-Triforce: mode 18 fanfare → idle ~704 frames → overworld **0x37** (engine
-return). Walk prefix toward Level 2: `0x37→38→48→58→59→49→4A`. Avoid `0x79`
-(rocky dead-end). Walkthrough Level 2 door screen: **0x3C**.
+That north corridor is the Clean mouth. It is not the gathering walk.
+Gathering buys bombs on the south coast and does cross `0x79`, on the beach
+at y=165. The inland center of `0x79` is still a rocky dead end. See
+`docs/PRE_L1.md`.
+
+Post-Triforce the engine returns to overworld `0x37` after mode 18.
+The later arrow cave is `0x4A`. The Level 2 door screen in the walkthrough
+is `0x3C`. Neither is the open row. The open row is `pre_l1`.

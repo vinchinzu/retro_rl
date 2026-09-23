@@ -27,6 +27,9 @@ __all__ = [
     "follow_path",
     "measured_walker",
     "predicted_xy",
+    "lattice_route",
+    "lattice_starts",
+    "lattice_step",
 ]
 
 WALK_SPEED = 1
@@ -451,3 +454,126 @@ def measured_walker(
         # verdict can turn it back off.
         retarget_blocked_goal=retarget_blocked_goal,
     )
+
+
+# ---------------------------------------------- overworld lattice walk ---
+# ``dungeon.tilemap.ow_walkable_nodes`` is the ROM's own collision test on
+# the 8 px turn grid. A route over it is a list of corners Link can actually
+# turn on, so a walk never has to learn a rock by bumping it.
+LATTICE_STEP = 8
+# One turn costs about as much as this many 8 px steps. Link loses ~3 frames
+# snapping at each corner, and a staircase is how walkers here fail.
+LATTICE_TURN_COST = 2
+_LATTICE_DIRS: dict[str, tuple[int, int]] = {
+    "UP": (0, -LATTICE_STEP),
+    "DOWN": (0, LATTICE_STEP),
+    "LEFT": (-LATTICE_STEP, 0),
+    "RIGHT": (LATTICE_STEP, 0),
+}
+
+
+def lattice_starts(x: int, y: int) -> tuple[tuple[int, int], ...]:
+    """The lattice nodes Link at ``(x, y)`` can reach without turning.
+
+    On a row (y % 8 == 5) that is the two nodes either side on that row; on a
+    column (x % 8 == 0) the two above and below; both when he is on a node.
+    Knocked fully off the grid he is between four, and all four are offered.
+    """
+    x, y = int(x), int(y)
+    xs = sorted({x - x % LATTICE_STEP, x - x % LATTICE_STEP + (LATTICE_STEP if x % LATTICE_STEP else 0)})
+    oy = (y - 5) % LATTICE_STEP
+    ys = sorted({y - oy, y - oy + (LATTICE_STEP if oy else 0)})
+    return tuple((nx, ny) for nx in xs for ny in ys)
+
+
+def lattice_route(
+    nodes: frozenset[tuple[int, int]] | set[tuple[int, int]],
+    start: tuple[int, int],
+    goals: set[tuple[int, int]] | frozenset[tuple[int, int]],
+) -> list[tuple[int, int]] | None:
+    """Fewest-turns-then-shortest route from ``start`` to any goal node.
+
+    Returns the corners after ``start`` (the last is the goal), ``[]`` when
+    Link already stands on a goal, ``None`` when no goal is reachable.
+    ``start`` may be off the lattice; it joins at :func:`lattice_starts`.
+    """
+    import heapq
+
+    goals = set(goals) & set(nodes)
+    if not goals:
+        return None
+    sx, sy = int(start[0]), int(start[1])
+    if (sx, sy) in goals:
+        return []
+    heap: list[tuple[int, int, tuple[int, int], str | None]] = []
+    prev: dict[tuple[tuple[int, int], str | None], tuple[tuple[int, int], str | None] | None] = {}
+    best: dict[tuple[tuple[int, int], str | None], int] = {}
+    tick = 0
+    for node in lattice_starts(sx, sy):
+        if node not in nodes:
+            continue
+        d = abs(node[0] - sx) + abs(node[1] - sy)
+        key = (node, None)
+        cost = (d + LATTICE_STEP - 1) // LATTICE_STEP
+        if cost < best.get(key, 10**9):
+            best[key] = cost
+            prev[key] = None
+            heapq.heappush(heap, (cost, tick, node, None))
+            tick += 1
+    end: tuple[tuple[int, int], str | None] | None = None
+    while heap:
+        cost, _, node, heading = heapq.heappop(heap)
+        key = (node, heading)
+        if cost > best.get(key, 10**9):
+            continue
+        if node in goals:
+            end = key
+            break
+        for direction, (dx, dy) in _LATTICE_DIRS.items():
+            nxt = (node[0] + dx, node[1] + dy)
+            if nxt not in nodes:
+                continue
+            step = 1 + (LATTICE_TURN_COST if heading not in (None, direction) else 0)
+            nkey = (nxt, direction)
+            if cost + step < best.get(nkey, 10**9):
+                best[nkey] = cost + step
+                prev[nkey] = key
+                heapq.heappush(heap, (cost + step, tick, nxt, direction))
+                tick += 1
+    if end is None:
+        return None
+    chain: list[tuple[tuple[int, int], str | None]] = []
+    cur: tuple[tuple[int, int], str | None] | None = end
+    while cur is not None:
+        chain.append(cur)
+        cur = prev[cur]
+    chain.reverse()
+    corners: list[tuple[int, int]] = [chain[0][0]]
+    for (node, heading), (_nxt, nheading) in zip(chain[1:], chain[2:]):
+        if nheading != heading:
+            corners.append(node)
+    corners.append(chain[-1][0])
+    # Drop a repeated goal (a one-node route) and a start Link is already on.
+    out = [c for i, c in enumerate(corners) if i == 0 or c != corners[i - 1]]
+    if out and out[0] == (sx, sy):
+        out = out[1:]
+    return out
+
+
+def lattice_step(x: int, y: int, corner: tuple[int, int]) -> str | None:
+    """Direction toward ``corner`` that Link can take from ``(x, y)`` now.
+
+    Off the grid on one axis he can only move along the other, which is
+    also the axis the corner is reached on for any route this module plans.
+    """
+    x, y = int(x), int(y)
+    dx, dy = int(corner[0]) - x, int(corner[1]) - y
+    on_col = x % LATTICE_STEP == 0
+    on_row = (y - 5) % LATTICE_STEP == 0
+    if dx and (on_row or not on_col):
+        return "RIGHT" if dx > 0 else "LEFT"
+    if dy:
+        return "DOWN" if dy > 0 else "UP"
+    if dx:
+        return "RIGHT" if dx > 0 else "LEFT"
+    return None

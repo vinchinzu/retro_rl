@@ -1,5 +1,7 @@
 # Level 9 — Death Mountain (route notes)
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 > **Probe names below are historical provenance labels, not paths.** The
 > one-shot probe CLIs under `scratch/` were deleted 2026-09-07 once their
 > beads closed; the measurements they produced live on in the constants and

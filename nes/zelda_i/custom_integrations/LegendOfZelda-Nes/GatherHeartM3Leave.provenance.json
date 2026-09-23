@@ -1,0 +1,158 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:39:24.153536+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "save_as": "GatherHeartM3Leave",
+    "segment": "heart_m3",
+    "start_state": "GatherHeartM3Enter",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "assist": {
+      "accepted_containers": 4,
+      "capacity_writes": 0,
+      "class": "survival",
+      "container_clamps": 0,
+      "damage_by_location": {
+        "L0:0x2c": 1
+      },
+      "damage_events": 1,
+      "damage_samples": [
+        {
+          "amount": 1,
+          "frame": 769,
+          "level": 0,
+          "link_x": 118,
+          "link_y": 189,
+          "location": "L0:0x2c",
+          "screen": 44,
+          "screen_hex": "0x2c"
+        }
+      ],
+      "deaths": 0,
+      "enabled": true,
+      "engage_at_whole_hearts": 1,
+      "health": {
+        "first_active_frame": null,
+        "restored": 0,
+        "writes": 0
+      },
+      "kind": "last_heart",
+      "maximum_single_frame_damage": 1,
+      "progression_writes": 0,
+      "suspended_phase_frames": {
+        "transition": 62
+      },
+      "total_damage": 1
+    },
+    "controller": {
+      "farm_attempts": 0,
+      "frames": 1536,
+      "hits_taken": 1,
+      "hop": null,
+      "hop_index": 0,
+      "need_rupees": 0,
+      "notes": [
+        "path_stop"
+      ],
+      "phase": "DONE",
+      "reason_by_screen": {
+        "0x2c": {
+          "approach": 70,
+          "bomb_cell": 894,
+          "bomb_cell_slash": 16,
+          "bomb_cell_turn": 29,
+          "cave_settle": 31,
+          "done": 1,
+          "heart": 228,
+          "into_wall": 126,
+          "off_blast": 78,
+          "place_bomb": 1,
+          "scroll_idle": 62
+        }
+      },
+      "rung_census": {
+        "hop_edge": 0,
+        "hop_extra": 0,
+        "hop_hunt": 0,
+        "hop_lane": 0,
+        "hop_maze": 0,
+        "hop_occupancy": 0,
+        "hop_scoop": 0,
+        "hop_stall_escape": 0,
+        "hop_unstick": 0,
+        "push": 0
+      },
+      "rung_frames": 0,
+      "rupee_farm_attempts": 0,
+      "stuck": 0,
+      "success": true
+    },
+    "frames": 1536,
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "facing": 1,
+      "health": 50,
+      "heart_containers": 4,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 11,
+      "mode_name": "cave_play",
+      "next_room": 44,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 4,
+          "type_id": 107,
+          "type_name": "unknown_object_0x6b",
+          "x": 120,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 72,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 168,
+          "y": 128
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 44,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 6,
+      "screen_hex": "0x2C",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 152,
+      "y": 149
+    },
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherHeartM3Enter.state",
+  "source_state_sha256": "4a2ba17e1e71704653d16a1ac5ebe443562d3716c9970fb009bc4712b48ec8d1",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherHeartM3Leave.state",
+  "state_sha256": "74a10d6e27161a9006f37428f41d290d32277ae6aaf305c84f4e2f9c8b52a6db"
+}

@@ -1,0 +1,131 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:39:23.374974+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "bombs",
+        "from": 0,
+        "msg": "bombs=8",
+        "to": 8
+      },
+      {
+        "field": "selected_item",
+        "msg": "selected_item=bomb"
+      }
+    ],
+    "save_as": "GatherHeartM3Enter",
+    "segment": "heart_m3",
+    "start_state": "BFS_2C",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 8,
+      "candle": 0,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 44,
+      "objects": [
+        {
+          "hp": 16,
+          "slot": 1,
+          "state": 0,
+          "type_id": 14,
+          "type_name": "tektite",
+          "x": 192,
+          "y": 173
+        },
+        {
+          "hp": 16,
+          "slot": 2,
+          "state": 0,
+          "type_id": 14,
+          "type_name": "tektite",
+          "x": 208,
+          "y": 141
+        },
+        {
+          "hp": 16,
+          "slot": 3,
+          "state": 0,
+          "type_id": 14,
+          "type_name": "tektite",
+          "x": 80,
+          "y": 93
+        },
+        {
+          "hp": 16,
+          "slot": 4,
+          "state": 0,
+          "type_id": 14,
+          "type_name": "tektite",
+          "x": 80,
+          "y": 189
+        },
+        {
+          "hp": 240,
+          "slot": 11,
+          "state": 0,
+          "type_id": 99,
+          "type_name": "unknown_object_0x63",
+          "x": 144,
+          "y": 160
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 44,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 4,
+      "rupees": 6,
+      "screen_hex": "0x2C",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 0,
+      "y": 85
+    },
+    "ok": true,
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "bombs",
+        "from": 0,
+        "msg": "bombs=8",
+        "to": 8
+      },
+      {
+        "field": "selected_item",
+        "msg": "selected_item=bomb"
+      }
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/BFS_2C.state",
+  "source_state_sha256": "5d17caf350e09e7e50dcccb599ced871890c2f75f7860e466df0ae7e0f534185",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherHeartM3Enter.state",
+  "state_sha256": "4a2ba17e1e71704653d16a1ac5ebe443562d3716c9970fb009bc4712b48ec8d1"
+}

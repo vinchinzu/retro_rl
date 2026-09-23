@@ -1,0 +1,75 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T15:17:16.031846+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      }
+    ],
+    "save_as": "GatherRingEnter",
+    "segment": "gather_ring",
+    "start_state": "BFS_37",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 0,
+      "candle": 0,
+      "cur_opened_doors": 1,
+      "facing": 2,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 55,
+      "objects": [
+        {
+          "hp": 16,
+          "slot": 1,
+          "state": 0,
+          "type_id": 8,
+          "type_name": "octorok_fast",
+          "x": 160,
+          "y": 93
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 55,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 6,
+      "screen_hex": "0x37",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 240,
+      "y": 133
+    },
+    "ok": true,
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      }
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/BFS_37.state",
+  "source_state_sha256": "aa88b6d1774ea25f8fd5dd6d0dacde25ea821c13777933ee804370ded5d6d9c2",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherRingEnter.state",
+  "state_sha256": "44234051684745160e266e5f99d8e786a56e77f2cf6898968695bb36931dac1e"
+}

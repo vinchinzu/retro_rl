@@ -739,3 +739,86 @@ class HeartFarmController:
             "occupancy_retargets": self._occ.retargets,
             "notes": list(self.notes),
         }
+
+
+# Pond fairies (``Z_04.asm`` ``UpdatePondFairy``). The OW room table holds
+# object list 0x2F on two first-quest screens only, 0x39 and 0x43
+# (``LevelBlockAttrsC``/``D``, read live). The fairy wakes when Link's Y is
+# exactly $AD and his X is $70..$80, then fills every heart; nothing else on
+# the screen matters. It is a full refill with no RAM write.
+POND_FAIRY_TYPE = 0x2F
+POND_SCREENS = frozenset({0x39, 0x43})
+POND_EDGE_Y = 0xAD
+POND_EDGE_X = 120  # inside $70..$80
+POND_MAX_FRAMES = 900
+# ``World_IsFillingHearts`` ran 1 -> 3 hearts in 95 frames (``OW_39``), then
+# the fairy holds Link for $50 more.
+POND_SETTLE_FRAMES = 16
+
+
+@dataclass
+class PondFairyController:
+    """Stand on the pond edge until the fairy has filled every heart.
+
+    Starts on a pond screen, south of the basin, in play. Lines up on
+    ``POND_EDGE_X``, walks UP until Link's Y is ``POND_EDGE_Y``, then idles
+    while the ROM fills. ``success`` is full health, read from RAM.
+    """
+
+    max_frames: int = POND_MAX_FRAMES
+    frames: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    start_hearts: float = -1.0
+    settle: int = 0
+    _last_y: int = -1
+    _still: int = 0
+
+    def _fail(self, note: str) -> FrameAction:
+        self.failed = True
+        self.notes.append(note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.frames > self.max_frames:
+            return self._fail("pond_timeout")
+        if snap.mode != PLAY_MODE or snap.transitioning:
+            return FrameAction(nes_idle_action(), "pond_wait_mode")
+        if int(snap.screen) not in POND_SCREENS:
+            return self._fail(f"pond_off_screen_{int(snap.screen):02x}")
+        if self.start_hearts < 0:
+            self.start_hearts = float(snap.whole_hearts)
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        on_edge = ly == POND_EDGE_Y and 0x70 <= lx <= 0x80
+        if on_edge or self.settle:
+            self.settle += 1
+            if snap.health_is_full and int(snap.heart_partial) == 0xFF:
+                # The fairy halts Link (slot 0 ObjState $40) through the
+                # fill and $50 frames after; done is the ROM letting go.
+                if self.settle >= POND_SETTLE_FRAMES and int(snap.objects[0].state) == 0:
+                    self.success = True
+                    self.notes.append("pond_full")
+                    return FrameAction(nes_idle_action(), "pond_done")
+            elif self.settle > POND_MAX_FRAMES // 2:
+                return self._fail("pond_no_fill")
+            return FrameAction(nes_idle_action(), "pond_fill")
+        if abs(lx - POND_EDGE_X) > 1:
+            return FrameAction(
+                nes_action("RIGHT" if lx < POND_EDGE_X else "LEFT"), "pond_align"
+            )
+        if ly > POND_EDGE_Y:
+            return FrameAction(nes_action("UP"), "pond_up")
+        # North of the edge row (the basin blocks this, but a knockback or
+        # a grid snap can land there): step back down onto it.
+        return FrameAction(nes_action("DOWN"), "pond_down")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "frames": self.frames,
+            "start_hearts": self.start_hearts,
+            "settle": self.settle,
+            "notes": list(self.notes),
+        }

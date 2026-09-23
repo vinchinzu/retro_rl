@@ -17,7 +17,11 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
 from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.graph import SCREEN_START, ScreenHop, path_screens_from_hops
-from zelda_i.overworld.hunt import ScreenHunter
+from zelda_i.overworld.hunt import (
+    HUNT_DESTINATION_FRAMES,
+    HUNT_SCREEN_MAX_FRAMES,
+    ScreenHunter,
+)
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.zd_map import mirror_screen_hops
 from zelda_i.ram import ADDR_BOMBS, PLAY_MODE, ZeldaSnapshot
@@ -234,6 +238,21 @@ class ShopP7WalkController(OverworldPathController):
             return self._leave_79_east(snap)
         if snap.screen == 0x79 and hop.target == 0x78:
             return self._leave_79_west(snap)
+        return None
+
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Keep the coast wave open until the pack is banked.
+
+        600f retires a screen with the drop still on the floor, which is how
+        a pass reaches 0x6F a rupee or two short. Once the wallet can pay,
+        the cap drops back so the rest of the walk is travel.
+        """
+        if self.hunter is not None:
+            self.hunter.screen_max_frames = (
+                HUNT_DESTINATION_FRAMES
+                if int(snap.rupees) < SHOP_P7_PRICE
+                else HUNT_SCREEN_MAX_FRAMES
+            )
         return None
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:

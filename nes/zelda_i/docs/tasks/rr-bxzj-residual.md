@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # rr-bxzj residual — Clean L4 Entrance→TF heart-safe Gleeok
 
 CLEAN RUN COMPLETE: `ok=True`, `failed=None`, `tf08=True`, `deaths=0`.

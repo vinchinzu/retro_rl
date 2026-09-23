@@ -214,5 +214,5 @@ routing.
 
 This is the geometry `NaturalBaitPurchaseController` (`level7/entry.py:107`)
 needs to stop failing closed — it wants `shop_geometry_verified=True` plus
-`shop_cave_xy` on `BaitPurchasePlan`. See Phase 6.5 in
-[CLEANUP_PLAN.md](CLEANUP_PLAN.md).
+`shop_cave_xy` on `BaitPurchasePlan`. The cleanup campaign that tracked
+this as a phase is retired. The geometry in this section is the note.

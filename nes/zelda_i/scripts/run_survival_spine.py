@@ -5,13 +5,23 @@
     uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --headed --no-video --trials 1
     uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --rollout --headed --no-video --trials 1
+    uv run python nes/zelda_i/scripts/run_survival_spine.py --through gather --no-video --trials 1
+    uv run python nes/zelda_i/scripts/run_survival_spine.py --no-gather --no-video --trials 1
+
+Gathering is the default prefix: pre-l1 bombs, the gather chain to the L1
+mouth 0x37 (6 containers, White Sword), then L1 from its door. The chain's
+own health refill engages at ``--gather-engage-hearts`` (default 2; 1 is
+last-heart, 0 is off; ``--clean`` sets 0). ``--no-gather`` is the legacy
+wooden-sword prefix.
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
 unless ``--no-video``. ``--headed`` opens a pygame window (``[ ]`` speed,
 TAB turbo, ESC quit) and skips dummy SDL. Heart assist is on by default;
 ``--no-infinite-life`` turns it off for combat practice. ``--through pre-l1``
 forces it off: the refill hides the ``$0670`` chip that zeros the 10-kill
-5-rupee. Inventory pokes stay on unless ``--no-pokes``; ``--clean`` is both
+5-rupee. Pre-l1 still forces heart assist and bomb/key/food pokes off, and
+writes the rupee count up to the 20R pack price before ``bomb_topup``.
+Inventory pokes stay on unless ``--no-pokes``; ``--clean`` is both
 off. Does not overwrite Clean M5.
 No ``--from-state``. Stop at first failed stage.
 """
@@ -36,6 +46,7 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_HELP_DROP_COUNT, ADDR_WORLD_KILL_COUNT, read_snapshot
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
 from zelda_i.spine.survival import (
+    GATHER_ENGAGE_HEARTS,
     SPINE_THROUGH,
     run_survival_spine,
     spine_final_fields,
@@ -105,6 +116,18 @@ def main(argv: list[str] | None = None) -> int:
             "Does not change Survival defaults when omitted."
         ),
     )
+    parser.add_argument(
+        "--gather",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Gathering prefix before L1 (default on). --no-gather is legacy.",
+    )
+    parser.add_argument(
+        "--gather-engage-hearts",
+        type=int,
+        default=GATHER_ENGAGE_HEARTS,
+        help="Gather-chain health refill at N whole hearts (1 last-heart, 0 off).",
+    )
     add_video_args(parser, default_on=True)
     add_headed_flag(parser)
     parser.add_argument(
@@ -149,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         allow_pokes = not args.no_pokes and not args.clean
         infinite_life = bool(args.infinite_life) and not args.clean
+        gather_engage = 0 if args.clean else int(args.gather_engage_hearts)
         if args.through == "pre-l1":
             # Survival refill writes $0670 back to $FF the same frame
             # Link_BeHarmed zeros $50/$627. The bomb walk is a Clean farm.
@@ -170,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
             if headed:
                 pygame_mod = attach_headed(
                     env,
-                    title=f"Zelda I BOT: {args.through} (no assist)",
+                    title=f"Zelda I BOT: {args.through} (assist {env._zelda_assist})",
                     hud=_headed_hud,
                 )
             tap.attach(env, obs)
@@ -181,6 +205,8 @@ def main(argv: list[str] | None = None) -> int:
                 assist=assist,
                 through=args.through,
                 allow_pokes=allow_pokes,
+                gather=bool(args.gather),
+                gather_engage_hearts=gather_engage,
             )
             run.apply_state_audit(int(env.audit().mid_run_loads or 0))
             final_ram = env.get_ram()

@@ -1,5 +1,7 @@
 # Level 4 — The Snake (route notes)
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 **Status:** continuous power-on Survival holds L4 TF `0x08`
 (`l4_tf_continuous_v1` 2/2, mode 18 room `0x03` `(120,149)`, TF
 `0x0F`, 128,971f). Path: 0x12 leftover `(128,117)` x-first to push

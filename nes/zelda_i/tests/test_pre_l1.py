@@ -203,6 +203,43 @@ def test_shop_bomb_hops_follow_map1_coast_with_79_beach() -> None:
     assert 120 <= int(painted.hops[2].align_y or 0) <= 145
 
 
+def test_a_spit_south_of_the_7e_band_does_not_walk_north() -> None:
+    """The same 0x7D leave as the hunt duck, on the walk's own rung.
+
+    ``pre_l1_shortfall1`` died at (44, 109) after ``spit_duck`` held UP off
+    the 137–145 band. The shot was in the water. A spit on the band still
+    leaves the row; this one is not on it.
+    """
+    from retro_harness.nes import nes_action
+    from zelda_i.dungeon.behaviors import FIREBALL_TYPE
+    from zelda_i.ram import ZeldaObject, ZeldaSnapshot
+
+    hop = next(h for h in SHOP_P7_HOPS if h.target == 0x7E)
+    ctl = make_shop_p7_walk_controller()
+    act = None
+    for i in range(4):
+        shot_x = 180 - 8 * i
+        shot_y = 200 - 3 * i
+        snap = ZeldaSnapshot(
+            mode=PLAY_MODE, level=0, screen=0x7D, next_screen=0x7D,
+            link_x=72, link_y=138, facing=0x01, sword=1, bombs=0, rupees=9,
+            keys=0, health=0x21, heart_partial=0x7F, triforce=0, compass=0,
+            dialog_timer=0, colliding_tile=0, room_item_id=0, room_all_dead=0,
+            room_obj_count=0, cur_opened_doors=0, open_doorway_mask=0,
+            objects=(
+                ZeldaObject(
+                    slot=10, type_id=FIREBALL_TYPE, x=shot_x, y=shot_y,
+                    facing=0x0A, hp=0, state=0x10,
+                ),
+            ),
+        )
+        ctl._observe_threats(snap)
+        act = ctl._threat_action(snap, hop)
+    assert act is not None and act.reason == "spit_duck"
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert list(act.action) != list(nes_action("UP"))
+
+
 def test_7d_exit_band_walks_down_off_the_dead_133_row() -> None:
     """y=131 is outside SCREEN_7E_EAST_BAND; the 0x7D→0x7E hop must DOWN."""
     from zelda_i.overworld.common import align_and_push
@@ -297,6 +334,23 @@ def test_pre_l1_stages_are_sword_then_walk_then_topup_then_buy() -> None:
 
     assert inland_bomb_shop.BOMB_SHOP_SCREEN == 0x4A
     assert inland_bomb_shop.BOMB_SHOP_HOPS != walk_ctl.hops
+
+
+def test_under_the_price_the_coast_hunt_stays_open() -> None:
+    """600f retires a wave with the drop still down. Under 20 the cap is
+    the destination budget; at the price it drops back to travel."""
+    from zelda_i.overworld.hunt import HUNT_DESTINATION_FRAMES, HUNT_SCREEN_MAX_FRAMES
+
+    ctl = make_shop_p7_walk_controller()
+    assert ctl.hunter is not None
+    assert ctl._before_play(read_snapshot(_shop_p7_ram(rupees=0))) is None
+    assert ctl.hunter.screen_max_frames == HUNT_DESTINATION_FRAMES
+    assert ctl._before_play(read_snapshot(_shop_p7_ram(rupees=SHOP_P7_PRICE))) is None
+    assert ctl.hunter.screen_max_frames == HUNT_SCREEN_MAX_FRAMES
+    assert ctl._before_play(
+        read_snapshot(_shop_p7_ram(rupees=SHOP_P7_PRICE + 8))
+    ) is None
+    assert ctl.hunter.screen_max_frames == HUNT_SCREEN_MAX_FRAMES
 
 
 def test_arrival_short_stops_so_topup_can_leave() -> None:
