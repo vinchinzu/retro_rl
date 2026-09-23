@@ -18,7 +18,6 @@ from zelda_i.level8.hops import l8_hops
 from zelda_i.level8.north_column import (
     DARKNUT_KEY_ROOMS,
     NORTH_MANHANDLA_ROOMS,
-    ROOM_3E_STATUE_BLOCKS,
     ROOM_BLUE_DARKNUTS,
     ROOM_DARKNUT_KEY,
     ROOM_ENTRY,

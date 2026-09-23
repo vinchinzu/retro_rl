@@ -23,12 +23,12 @@ from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.overworld.common import (
     HEART_FAIRY_DROP_STATES,
     HEART_FAIRY_DROP_TYPES,
-    RUPEE_DROP_STATES,
     scoop_floor_drop,
     track_stuck,
     wake_or_wait_mode,
     walk_or_swing,
 )
+from zelda_i.combat import RUPEE_DROP_STATES
 from zelda_i.overworld.heart_farm import (
     BAND_SWEEP_WAYPOINTS,
     HeartFarmController,

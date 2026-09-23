@@ -44,8 +44,6 @@ from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_FOOD,
     ADDR_KEYS,
-    ADDR_LINK_X,
-    ADDR_LINK_Y,
     ADDR_RAFT,
     ADDR_RUPEES,
     ADDR_SELECTED_ITEM,

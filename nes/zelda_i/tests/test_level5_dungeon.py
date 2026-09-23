@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import GenericDungeonRoomController
@@ -12,14 +11,13 @@ from zelda_i.level5.dungeon import (
     LEVEL_5,
     POLS_VOICE_OBJECT_TYPE,
     ROOM_66_SPEC,
-    ROOM_77_SPEC,
     ROOM_L5_ENTRY,
     ROOM_L5_GIBDO_66,
     ROOM_L5_POLS_77,
     level5_room_66_cleared,
     level5_room_77_key_success,
 )
-from zelda_i.level5.path import make_pols_south_controller, make_room66_controller
+from zelda_i.level5.path import make_room66_controller
 from zelda_i.level5.spine import ROOM_66_SPINE_SPEC
 from zelda_i.ram import (
     ADDR_CUR_OPENED_DOORS,
@@ -29,13 +27,10 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_OBJ_HP,
-    ADDR_OBJ_STATE,
     ADDR_OBJ_TYPE,
     ADDR_ROOM_ALL_DEAD,
     ADDR_SCREEN,
     PLAY_MODE,
-    ZeldaObject,
-    ZeldaSnapshot,
     read_snapshot,
 )
 

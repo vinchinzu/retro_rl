@@ -16,14 +16,12 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import direction_to_facing
+from retro_harness.nes import nes_action
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
     DoorRoute,
     DungeonRoomSpec,
-    GenericDungeonRoomController,
     KEESE_OBJECT_TYPE,
     RewardKind,
     RewardSpec,
@@ -32,7 +30,7 @@ from zelda_i.dungeon.engine import (
     register_room_spec,
 )
 from zelda_i.dungeon import ids as _ids
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 LEVEL_5 = 5
 ROOM_L5_ENTRY = 0x76

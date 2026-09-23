@@ -47,7 +47,7 @@ from zelda_i.level2.dungeon import (
     ROOM_3F_SPEC,
 )
 from zelda_i.level2.enter_1e import ENTER_1E_MAX_FRAMES, Level2Enter1eController
-from zelda_i.level2.puzzles import DOOR_UP, LEVEL2_TRIFORCE_BIT, ROOM_L2_TF
+from zelda_i.level2.puzzles import DOOR_UP, LEVEL2_TRIFORCE_BIT
 from zelda_i.level2.spine import Level2RoomWalkController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 

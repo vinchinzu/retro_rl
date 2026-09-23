@@ -1,4 +1,3 @@
-import sys
 from collections import deque
 from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_action
@@ -6,7 +5,7 @@ from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.ram import read_snapshot, PLAY_MODE
 from zelda_i.runner import make_assist
 from zelda_i.overworld.path import OverworldPathController
-from zelda_i.overworld.sword_cave import SwordCaveController, SEGMENT_MAX_FRAMES as SWORD_MAX
+from zelda_i.overworld.sword_cave import SwordCaveController
 from zelda_i.overworld.zd_map import map1_route
 from zelda_i.route.chain import boot_to_ready
 

@@ -15,7 +15,7 @@ See ``docs/LEVEL4_ROUTE.md``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
@@ -25,10 +25,6 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
 from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
 from zelda_i.overworld.path import OverworldPathController
-from zelda_i.overworld.settle import (
-    POST_L3_SETTLE_MAX_FRAMES,
-    PostL3TriforceSettleController,
-)
 from zelda_i.walk.physics import lattice_route, lattice_step
 from zelda_i.ram import (
     ADDR_LADDER,

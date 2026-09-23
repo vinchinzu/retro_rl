@@ -9,7 +9,6 @@ from retro_harness.nes import nes_action
 from zelda_i.level6.inland29 import (
     CLIP_Y,
     WEST_SPAWN_XMIN,
-    Level6Inland29Controller,
     level6_inland29_success,
     make_inland29_controller,
 )

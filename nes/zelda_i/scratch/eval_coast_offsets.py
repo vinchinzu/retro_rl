@@ -8,7 +8,7 @@ model without rocks), anything else is the committed default. Scratch, not STATU
     QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/eval_coast_offsets.py \
         --offset 13 --arm rocks --out /tmp/e_13.json
 """
-import argparse, json, sys
+import argparse, json
 from pathlib import Path
 from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_idle_action

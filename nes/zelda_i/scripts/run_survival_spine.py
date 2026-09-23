@@ -51,8 +51,8 @@ from zelda_i.spine.survival import (
     SPINE_THROUGH,
     run_survival_spine,
     spine_final_fields,
-    validate_l5_endpoint,
 )
+from zelda_i.level5.spine import validate_l5_endpoint
 
 
 def _spine_kills(payload: dict) -> int:

@@ -20,7 +20,7 @@ import argparse
 import json
 
 from retro_harness.env import make_env, reset_obs
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.shop_p7 import SHOP_P7_HOPS
