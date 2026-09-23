@@ -9,10 +9,12 @@ OccupancyWalker is banned. No RAM writes. Not on L8_THROUGH.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.passage import passage_step
+
 from dataclasses import dataclass
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_idle_action
 from zelda_i.dungeon.door_hop import RoomHopController, RoomHopSpec
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 
@@ -55,32 +57,7 @@ _SAMPLE_PERIOD = 12
 
 def magic_key_cellar_return_step(snap: ZeldaSnapshot) -> FrameAction:
     """RIGHT to east, LEFT+DOWN, floor LEFT, UP west. Never LEFT at y=141."""
-    x, y = int(snap.link_x), int(snap.link_y)
-    tile = int(snap.colliding_tile)
-    on_west = abs(x - WEST_X) <= ALIGN
-    on_floor = y >= FLOOR_Y - ALIGN
-    if on_floor:
-        if x > WEST_X + ALIGN:
-            return FrameAction(nes_action("LEFT"), "cellar_floor_west")
-        if x < WEST_X - ALIGN:
-            return FrameAction(nes_action("RIGHT"), "cellar_floor_east")
-        return FrameAction(nes_action("UP"), "cellar_west_climb")
-    if on_west:
-        if y > EXIT_STAIRS[1] + ALIGN:
-            return FrameAction(nes_action("UP"), "cellar_west_up")
-        if tile in STAIRS_TILES:
-            return FrameAction(nes_idle_action(), "cellar_exit_warp")
-        # Tile 0x6F at (48,93) does not CheckWarp.
-        return FrameAction(nes_action("UP"), "cellar_west_lip")
-    # F1: cardinal DOWN at (136,141) tile 36 did not move (south brick).
-    # F2: LEFT+DOWN at x=160 y=141 is still the pit (tile 250). Stay RIGHT
-    # until the east column; inbound climbed this ladder at x=176.
-    # The drop works on the ladder column only. At EAST_X - ALIGN the LEFT
-    # half walked Link back 2px and RIGHT re-advanced him: 4000 frames of
-    # 172<->174 (L8 0x0F).
-    if x >= EAST_X:
-        return FrameAction(nes_action("LEFT", "DOWN"), "cellar_east_drop")
-    return FrameAction(nes_action("RIGHT"), "cellar_to_east")
+    return passage_step(snap, east_x=EAST_X, align=ALIGN, drop=("LEFT", "DOWN"))
 
 
 def _cellar_return_policy(ctl: RoomHopController, snap: ZeldaSnapshot) -> FrameAction:

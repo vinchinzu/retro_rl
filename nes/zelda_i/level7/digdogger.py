@@ -11,6 +11,8 @@ is banned. No RAM writes. ``route_eligible`` stays False.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.passage import passage_step
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -531,22 +533,10 @@ def play_of_room4a_ram_id() -> int | None:
 
 
 def room_4a_return_step(snap: ZeldaSnapshot) -> FrameAction:
-    """One-frame 0x4A stairs return: east drop, floor west, west-ladder UP.
-
-    Dead: walk off the candle pad at y=141 (tile 243) as the return.
-    """
-    x, y = int(snap.link_x), int(snap.link_y)
-    if y >= ROOM_4A_FLOOR_Y - ROOM_4A_ALIGN:
-        if abs(x - ROOM_4A_WEST_X) > ROOM_4A_ALIGN:
-            btn = "LEFT" if x > ROOM_4A_WEST_X else "RIGHT"
-            return FrameAction(nes_action(btn), "cellar_floor_west")
-        return FrameAction(nes_action("UP"), "cellar_west_climb")
-    if abs(x - ROOM_4A_WEST_X) <= 8:
-        return FrameAction(nes_action("UP"), "cellar_west_up")
-    # Drop on the column itself; short of it LEFT+DOWN walks back (L8 0x0F).
-    if x < ROOM_4A_EAST_COL:
-        return FrameAction(nes_action("RIGHT"), "cellar_to_east")
-    return FrameAction(nes_action("LEFT", "DOWN"), "cellar_east_drop")
+    """One-frame 0x4A stairs return: east drop, floor west, west-ladder UP."""
+    return passage_step(
+        snap, east_x=ROOM_4A_EAST_COL, align=ROOM_4A_ALIGN, drop=("LEFT", "DOWN")
+    )
 
 
 @dataclass(kw_only=True)

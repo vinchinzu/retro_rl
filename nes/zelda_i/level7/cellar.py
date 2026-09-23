@@ -9,6 +9,8 @@ east_x then UP). OccupancyWalker is banned. No RAM writes.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.passage import passage_step
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -103,34 +105,8 @@ RAM_CLAIM = (
 
 
 def nose_cellar_cross_step(snap: ZeldaSnapshot) -> FrameAction:
-    """DOWN the east/source column, floor LEFT to x=48, UP west. Never source UP.
-
-    ``cellar_cross_dir`` always targets east_x then UP (L6 A→B). This is the
-    inverse B→A. Do not LEFT at y=141 if colliding_tile is the L8 pit 250 —
-    go RIGHT to the east column and drop there.
-    """
-    x, y = int(snap.link_x), int(snap.link_y)
-    tile = int(snap.colliding_tile)
-    on_west = abs(x - WEST_X) <= ALIGN
-    on_floor = y >= FLOOR_Y - ALIGN
-    if on_floor:
-        if x > WEST_X + ALIGN:
-            return FrameAction(nes_action("LEFT"), "cellar_floor_west")
-        if x < WEST_X - ALIGN:
-            return FrameAction(nes_action("RIGHT"), "cellar_floor_east")
-        return FrameAction(nes_action("UP"), "cellar_west_climb")
-    if on_west:
-        if y > MOUTH_Y + ALIGN:
-            return FrameAction(nes_action("UP"), "cellar_west_up")
-        if tile in STAIRS_TILES:
-            return FrameAction(nes_idle_action(), "cellar_exit_warp")
-        return FrameAction(nes_action("UP"), "cellar_west_lip")
-    # Mid-height, not west. Never UP: x>=$80 is CheckSubroom AttrB → 0x0D.
-    if tile == PIT_TILE and x < EAST_X - ALIGN:
-        return FrameAction(nes_action("RIGHT"), "cellar_pit_to_east")
-    if x < EAST_X - ALIGN:
-        return FrameAction(nes_action("RIGHT"), "cellar_to_east")
-    return FrameAction(nes_action("DOWN"), "cellar_east_drop")
+    """DOWN the east/source column, floor LEFT to x=48, UP west. Never source UP."""
+    return passage_step(snap, east_x=EAST_X, align=ALIGN)
 
 
 def _leftover(snap: ZeldaSnapshot) -> dict[str, Any]:

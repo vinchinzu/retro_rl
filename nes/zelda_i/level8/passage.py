@@ -8,10 +8,12 @@ east then west). OccupancyWalker banned. No RAM writes. Not on L8_THROUGH.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.passage import passage_step
+
 from dataclasses import dataclass
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.nes import nes_idle_action
 from zelda_i.dungeon.door_hop import HopFail, RoomHopController, RoomHopSpec
 from zelda_i.level8.path import GLEEOK_HYP
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
@@ -70,28 +72,7 @@ RAM_CLAIM = (
 
 def passage_2f_step(snap: ZeldaSnapshot) -> FrameAction:
     """DOWN east column, floor LEFT to x=48, UP west. Never source UP."""
-    x, y = int(snap.link_x), int(snap.link_y)
-    tile = int(snap.colliding_tile)
-    on_west = abs(x - WEST_X) <= ALIGN
-    on_floor = y >= FLOOR_Y - ALIGN
-    if on_floor:
-        if x > WEST_X + ALIGN:
-            return FrameAction(nes_action("LEFT"), "cellar_floor_west")
-        if x < WEST_X - ALIGN:
-            return FrameAction(nes_action("RIGHT"), "cellar_floor_east")
-        return FrameAction(nes_action("UP"), "cellar_west_climb")
-    if on_west:
-        if y > MOUTH_Y + ALIGN:
-            return FrameAction(nes_action("UP"), "cellar_west_up")
-        if tile in STAIRS_TILES:
-            return FrameAction(nes_idle_action(), "cellar_exit_warp")
-        return FrameAction(nes_action("UP"), "cellar_west_lip")
-    if tile == PIT_TILE and x < EAST_X - ALIGN:
-        return FrameAction(nes_action("RIGHT"), "cellar_pit_to_east")
-    if abs(x - EAST_X) > ALIGN:
-        btn = "RIGHT" if x < EAST_X else "LEFT"
-        return FrameAction(nes_action(btn), "cellar_to_east")
-    return FrameAction(nes_action("DOWN"), "cellar_east_drop")
+    return passage_step(snap, east_x=EAST_X, align=ALIGN, both_ways=True)
 
 
 def _passage_2f_policy(ctl: RoomHopController, snap: ZeldaSnapshot) -> FrameAction:
