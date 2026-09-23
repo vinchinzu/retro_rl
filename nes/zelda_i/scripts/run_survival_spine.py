@@ -51,6 +51,7 @@ from zelda_i.runner import VideoTap, add_video_args, resolve_video
 from zelda_i.spine.survival import (
     GATHER_ENGAGE_HEARTS,
     SPINE_THROUGH,
+    gather_assist,
     run_survival_spine,
     spine_final_fields,
 )
@@ -132,6 +133,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Gather-chain health refill at N whole hearts (1 last-heart, 0 off).",
     )
     parser.add_argument(
+        "--engage-hearts",
+        type=int,
+        default=None,
+        help=(
+            "Whole-run refill only at N whole hearts (1 = last heart), so the "
+            "refill count is deaths prevented. Default: refill after every hit."
+        ),
+    )
+    parser.add_argument(
         "--save-points",
         nargs="?",
         const="Spine",
@@ -201,9 +211,12 @@ def main(argv: list[str] | None = None) -> int:
             # No heart assist, no inventory pokes. Ever.
             infinite_life = False
             allow_pokes = False
-        assist = (
-            UnlimitedHealthAssist(enabled=True) if infinite_life else None
-        )
+        if not infinite_life:
+            assist = None
+        elif args.engage_hearts:
+            assist = gather_assist(args.engage_hearts)
+        else:
+            assist = UnlimitedHealthAssist(enabled=True)
         payload: dict | None = None
         pygame_mod = None
         try:

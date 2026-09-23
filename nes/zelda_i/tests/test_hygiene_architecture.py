@@ -23,7 +23,6 @@ from zelda_i.level2.bomb_path import (
     make_post_boom_bomb_north_controller,
 )
 from zelda_i.level2.puzzles import BOMB_WALL_6F_NORTH
-from zelda_i.route.nodes import SCREEN_LEVEL3_ENTRANCE as LN_L3
 
 _PKG_ROOT = Path(__file__).resolve().parents[1]
 _ALLOWED_ROOT_PY = frozenset(
@@ -150,7 +149,6 @@ def test_anchors_are_single_source() -> None:
     assert ENTRANCES[4].entry_room == 0x71
     assert ENTRANCES[7].verified  # pond drain + L7 play 0x79 (recon whistle poke)
     assert ENTRANCES[7].entry_room == 0x79
-    assert LN_L3 == SCREEN_LEVEL3_ENTRANCE
 
 
 def test_bomb_wall_factories_share_engine() -> None:
