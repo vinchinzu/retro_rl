@@ -101,7 +101,9 @@ class PostLevel7Handoff:
             return "post_l7_y_mismatch"
         if snap.triforce != POST_L7_TRIFORCE:
             return "post_l7_triforce_mismatch"
-        if not snap.health_is_full or snap.heart_containers != self.heart_containers:
+        # Full health only; the container count is route history (see
+        # OverworldHandoff.mismatch).
+        if not snap.health_is_full:
             return "post_l7_health_mismatch"
         # Consumables are lower bounds, as on the post-L6 handoff: the
         # gathered spine arrives richer than the fixture tape measured.

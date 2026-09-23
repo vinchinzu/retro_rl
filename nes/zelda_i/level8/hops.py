@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Callable
 
 from zelda_i.level8.dungeon import (
@@ -43,7 +44,7 @@ from zelda_i.level8.suffix import (
 )
 from zelda_i.level8.overworld import L7_POND_TO_LEVEL8_BUSH_HOPS
 from zelda_i.overworld.graph import ScreenHop
-from zelda_i.ram import ADDR_CANDLE, ADDR_MAGIC_KEY, ZeldaSnapshot, read_u8
+from zelda_i.ram import ADDR_CANDLE, ADDR_MAGIC_KEY, ZeldaSnapshot, read_snapshot, read_u8
 from zelda_i.spine.hops import SpineHop
 
 Stage = tuple[str, object, int]
@@ -156,11 +157,26 @@ def l8_hops(
             magic_key_before=magic_key_before.get("value"),
         )
 
+    # Containers at the chapter start, read live (the measured 12 -> 13 is
+    # one run's history; a continuous run that skipped another heart
+    # arrives with fewer). A resume inside the chapter keeps the endpoint.
+    containers: dict[str, int] = {}
+
+    def capture_containers(hop_env, _run) -> None:
+        containers["in"] = int(read_snapshot(hop_env.get_ram()).heart_containers)
+
     def clear_ok(snap: ZeldaSnapshot, **_) -> bool:
+        endpoint = clear_endpoint
+        if "in" in containers and endpoint.complete():
+            endpoint = replace(
+                endpoint,
+                incoming_heart_containers=containers["in"],
+                outgoing_heart_containers=containers["in"] + 1,
+            )
         return level8_clear_stop(
             snap,
             magic_key=read_u8(env.get_ram(), ADDR_MAGIC_KEY),
-            endpoint=clear_endpoint,
+            endpoint=endpoint,
         )
 
     return (
@@ -186,6 +202,7 @@ def l8_hops(
             "level8_triforce_0x80",
             lambda: _clear_stages(topology=topology, suffix=suffix),
             clear_ok,
+            before=capture_containers,
         ),
     )
 

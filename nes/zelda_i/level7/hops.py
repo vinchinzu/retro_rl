@@ -553,14 +553,21 @@ def _red_candle_success(env):
     return success
 
 
-def _complete_success(env, incoming_heart_containers: int):
+def _complete_success(env, incoming_heart_containers):
+    """``incoming_heart_containers``: an int, or a callable read at check time."""
+
     def success(snap: ZeldaSnapshot, **_) -> bool:
         ram = env.get_ram()
+        incoming = (
+            incoming_heart_containers()
+            if callable(incoming_heart_containers)
+            else incoming_heart_containers
+        )
         return level7_complete_stop(
             snap,
             candle=read_u8(ram, ADDR_CANDLE),
             whistle=read_u8(ram, ADDR_WHISTLE),
-            incoming_heart_containers=incoming_heart_containers,
+            incoming_heart_containers=incoming,
         )
 
     return success
@@ -595,14 +602,24 @@ def l7_hops(
             survival=survival,
         )
 
-    # The measured post-L6 packet when there is one: this function runs
-    # before a --resume loads its save point, so a live read there is the
-    # boot RAM (3 containers) and failed level7_complete on a green leave.
-    incoming_containers = (
+    # Containers are read live when the complete chapter starts (its
+    # ``before`` hook): continuous runs arrive with different counts. A
+    # --resume inside the chapter skips the hook, and this function itself
+    # runs before the save point loads (boot RAM), so that case falls back
+    # to the measured post-L6 packet.
+    fallback = (
         int(handoff.heart_containers)
         if handoff.complete() and handoff.heart_containers is not None
-        else int(read_snapshot(env.get_ram()).heart_containers)
+        else None
     )
+    containers: dict[str, int] = {}
+
+    def capture_containers(hop_env, _run) -> None:
+        containers["in"] = int(read_snapshot(hop_env.get_ram()).heart_containers)
+
+    def incoming_containers() -> int | None:
+        return containers.get("in", fallback)
+
     return (
         SpineHop(
             "level7-bait-shop",
@@ -628,6 +645,7 @@ def l7_hops(
             "level7_complete",
             level7_complete_chapter_stages,
             _complete_success(env, incoming_containers),
+            before=capture_containers,
         ),
     )
 
