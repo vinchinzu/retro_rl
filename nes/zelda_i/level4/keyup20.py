@@ -13,6 +13,8 @@ LEFT. Do not LEFT at y=149. Do not retouch 0x40.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import release_action
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -196,11 +198,11 @@ class Level4Maze31WestController:
         if direction is None:
             self.path_index += 1
             return FrameAction(nes_idle_action(), "wp_idle")
+        # Off the stepladder before a sideways press (R22: DOWN at (88,101)
+        # with the ladder at (96,104) is locked by the ROM).
         if (self.frames % 6) < 3:
-            return FrameAction(
-                nes_action(direction, "A"), "join_maze_west"
-            )
-        return FrameAction(nes_action(direction), "join_maze_west")
+            return release_action(snap, FrameAction(nes_action(direction, "A"), "join_maze_west"))
+        return release_action(snap, FrameAction(nes_action(direction), "join_maze_west"))
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1

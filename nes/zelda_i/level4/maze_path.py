@@ -13,7 +13,12 @@ from typing import Any, Callable
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
-from zelda_i.dungeon.hop_controller import LatticeDoorWalker, axis_dir, lattice_goto_route
+from zelda_i.dungeon.hop_controller import (
+    LatticeDoorWalker,
+    axis_dir,
+    lattice_goto_route,
+    release_action,
+)
 from zelda_i.walk.physics import lattice_step
 from zelda_i.level4.dungeon import (
     COMPASS_PICKUP_XY,
@@ -265,7 +270,10 @@ class MazeHop:
                 step = lattice_step(xy[0], xy[1], route[0])
                 if step is not None:
                     return _act(step, "lattice_goal")
-        return self.policy(snap, xy)
+        # The water maze is off the lattice, so the hand policy crosses it on
+        # the stepladder; a sideways press there is locked (R22 0x31: DOWN
+        # at (88,101) with the ladder at (96,104)).
+        return release_action(snap, self.policy(snap, xy))
 
     def report_base(self, segment: str, **extra: Any) -> dict[str, Any]:
         return {
