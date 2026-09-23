@@ -324,5 +324,25 @@ def ow_walkable_nodes(ram: np.ndarray, *, overworld: bool = True) -> frozenset[t
         for x in OW_LATTICE_X:
             col = x // TILE_PX
             if ok[row, col] and (col + 1 >= TILE_COLS or ok[row, col + 1]):
-                nodes.add((x, y))
+                if overworld or _in_dungeon_lane(x, y):
+                    nodes.add((x, y))
     return frozenset(nodes)
+
+
+# Dungeon interior on the lattice; outside it only the door lanes are floor.
+# The door mouth's tiles read walkable a row either side of the lane, and a
+# route along y=133 into the 0x74 west wall pressed LEFT for 3000 frames.
+_DUNGEON_X = (32, 208)
+_DUNGEON_Y = (85, 189)
+_DOOR_LANE_X = 120
+_DOOR_LANE_Y = 141
+
+
+def _in_dungeon_lane(x: int, y: int) -> bool:
+    inside_x = _DUNGEON_X[0] <= x <= _DUNGEON_X[1]
+    inside_y = _DUNGEON_Y[0] <= y <= _DUNGEON_Y[1]
+    if inside_x and inside_y:
+        return True
+    if not inside_x and not inside_y:
+        return False
+    return y == _DOOR_LANE_Y if not inside_x else x == _DOOR_LANE_X
