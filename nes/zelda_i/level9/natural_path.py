@@ -807,6 +807,12 @@ class NaturalPatraJoinController(_NaturalEndingController):
             if snap.mode in (CELLAR_MODE, 10, 16) or stair_transition_modes(snap.mode):
                 self._set_phase(PatraJoinPhase.CELLAR_67)
                 return self._action(nes_idle_action(), "stairs_30_transition")
+            if snap.mode == PLAY_MODE and not snap.transitioning:
+                # ROM block + stairs first (0x03 / 0x20 shape): walk_align_y
+                # spent 15542f here on the continuous run 9 lineage.
+                step = stairs_step(None, snap)
+                if step is not None:
+                    return self._action(nes_action(step), "rom_stairs_30")
             act = room30_stairs_step(snap)
             return self._action(act.action, act.reason)
 
