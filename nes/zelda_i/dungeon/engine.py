@@ -20,6 +20,7 @@ from zelda_i import combat as _combat
 from zelda_i.walk import live_env
 from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
+from zelda_i.dungeon.hop_controller import inland_lattice_step
 from zelda_i.dungeon.behaviors import (
     blocked_by_projectile,
     fight_target,
@@ -106,6 +107,7 @@ PATROL_HUNT_FRAMES = 600
 # a Darknut's shield is its front (L8 0x1F, power-on gathered spine: three
 # frozen Darknuts outlasted the 16000f clear while Link lapped the patrol).
 STATIC_ENEMY_FRAMES = 120
+OFF_WALL_SLACK = 3
 STRIKE_SLASH_MIN = 10
 STILL_NO_PROGRESS_FRAMES = 30
 STILL_BACKOFF_FRAMES = 300
@@ -785,6 +787,12 @@ class GenericDungeonRoomController(EntryRouteWalker):
         x, y = int(snap.link_x), int(snap.link_y)
         tuning = self.spec.combat
         lo_x, hi_x, lo_y, hi_y = tuning.avoid_wall_bounds
+        # Hysteresis: a patrol waypoint on the band edge (L6 0x39 (160,109))
+        # walks Link to 108, and a 1 px leave_wall swapped with the patrol
+        # every frame for 12515f.
+        m = OFF_WALL_SLACK
+        if lo_x - m <= x <= hi_x + m and lo_y - m <= y <= hi_y + m:
+            return None
         if x < lo_x:
             # Tunnel x<24 only accepts RIGHT. At the mouth (x≈32) the
             # door row y≈141 blocks eastbound movement — step off it first.
@@ -800,6 +808,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
             direction = "UP"
         else:
             return None
+        step = inland_lattice_step(x, y, direction, (lo_x, hi_x), (lo_y, hi_y))
+        if step is not None:
+            direction = step
         if tuning.occupancy_patrol:
             self.walker.last_dir = direction
         return self._swing(

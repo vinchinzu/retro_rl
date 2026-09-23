@@ -46,6 +46,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
     dungeon_align_then_push,
+    inland_lattice_step,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level7.graph import (
@@ -368,51 +369,12 @@ def _leave_wall(
         direction = "UP"
     else:
         return None
-    step = _leave_wall_lattice(x, y, direction, inland_x, inland_y)
+    step = inland_lattice_step(x, y, direction, inland_x, inland_y)
     if step is not None:
         return FrameAction(nes_action(step), "leave_wall_lattice")
     return FrameAction(nes_action(direction), "leave_wall")
 
 
-_STEP = {"UP": (0, -8), "DOWN": (0, 8), "LEFT": (-8, 0), "RIGHT": (8, 0)}
-
-
-def _leave_wall_lattice(
-    x: int, y: int, direction: str, inland_x: tuple[int, int], inland_y: tuple[int, int]
-) -> str | None:
-    """Lattice route inland, only when the cardinal step is into a block.
-
-    0x38 (power-on gathered spine) pressed UP at (200,181) for 14000f: x=200
-    is not one of the room's open columns. An open cardinal keeps the old
-    step, so rooms that already leave the wall walk it unchanged.
-    """
-    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
-    from zelda_i.walk import live_env
-    from zelda_i.walk.physics import lattice_route, lattice_starts, lattice_step
-
-    env = live_env.current()
-    if env is None or not has_room_tile_map(env.get_ram()):
-        return None
-    nodes = ow_walkable_nodes(env.get_ram(), overworld=False)
-    starts = [n for n in lattice_starts(x, y) if n in nodes]
-    if not starts:
-        return None
-    sx, sy = min(starts, key=lambda n: abs(n[0] - x) + abs(n[1] - y))
-    dx, dy = _STEP[direction]
-    if (sx + dx, sy + dy) in nodes:
-        return None
-    goals = {
-        n for n in nodes
-        if inland_x[0] <= n[0] <= inland_x[1] and inland_y[0] <= n[1] <= inland_y[1]
-    }
-    if not goals:
-        return None
-    near = min(abs(n[0] - x) + abs(n[1] - y) for n in goals)
-    goals = {n for n in goals if abs(n[0] - x) + abs(n[1] - y) <= near + 16}
-    route = lattice_route(nodes, (x, y), goals)
-    if not route:
-        return None
-    return lattice_step(x, y, route[0])
 
 
 def _east_push(snap: ZeldaSnapshot) -> FrameAction:
