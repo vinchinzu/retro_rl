@@ -595,7 +595,14 @@ def l7_hops(
             survival=survival,
         )
 
-    incoming = read_snapshot(env.get_ram())
+    # The measured post-L6 packet when there is one: this function runs
+    # before a --resume loads its save point, so a live read there is the
+    # boot RAM (3 containers) and failed level7_complete on a green leave.
+    incoming_containers = (
+        int(handoff.heart_containers)
+        if handoff.complete() and handoff.heart_containers is not None
+        else int(read_snapshot(env.get_ram()).heart_containers)
+    )
     return (
         SpineHop(
             "level7-bait-shop",
@@ -620,7 +627,7 @@ def l7_hops(
             "level7",
             "level7_complete",
             level7_complete_chapter_stages,
-            _complete_success(env, incoming.heart_containers),
+            _complete_success(env, incoming_containers),
         ),
     )
 
