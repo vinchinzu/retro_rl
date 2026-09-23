@@ -80,6 +80,8 @@ LEAVE_GOALS: dict[str, tuple[int, int]] = {
     "DOWN": (RESTOCK_LANE_X, 216),
 }
 FARM_SWING_PERIOD = 8
+# Occupancy arrival: a goal within this many px on both axes is reached.
+ARRIVE_PX = 1
 # Bomb top-up bar, and the budget one bomb slot may hold the farm for. A
 # reachable contact drop is banked in well under a second; a slot still
 # sitting there after this is the phantom, not a bomb.
@@ -327,7 +329,10 @@ class FarmOccupancy:
                 walker.goal = dest
                 walker.path = None
                 path = walker.grid.shortest_path(xy, dest)
-        if path is None or xy == dest:
+        # Link steps 1-2 px, so an exact-pixel stop on an odd goal overshoots
+        # forever (live 0x79: y 121<->123 for ~1300 frames of flutter).
+        arrived = max(abs(xy[0] - dest[0]), abs(xy[1] - dest[1])) <= ARRIVE_PX
+        if path is None or arrived:
             walker.path = None
             walker.last_dir = None
             self.frame = frames

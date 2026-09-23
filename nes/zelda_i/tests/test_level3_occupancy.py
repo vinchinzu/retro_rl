@@ -252,7 +252,8 @@ def test_up_5d_bind_env_seeds_plus_not_door_column() -> None:
         ctl.walker.grid.shortest_path((120, 175), ctl.goal), ctl.goal
     )
     stuck = ctl.step(leftover)
-    assert list(stuck.action) != list(nes_action("UP"))
+    # The first press missed (the synthetic RAM never moves Link): do not repeat it.
+    assert list(stuck.action) != list(first.action)
     assert (120, 164) in ctl.walker.grid.blocked
     assert (120, 164) not in ctl.walker.grid.inferred
 

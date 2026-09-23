@@ -7,6 +7,8 @@ primitives. Keep route-specific geometry in the owning module.
 
 from __future__ import annotations
 
+from zelda_i.walk.physics import lattice_step
+
 from collections.abc import Iterable
 from typing import Callable
 
@@ -676,13 +678,12 @@ def scoop_toward_drop(
         return None
     if dist <= 4:
         return _stand_on_drop(snap, reason)
-    dx = obj.x - snap.link_x
-    dy = obj.y - snap.link_y
-    if abs(dx) >= abs(dy) and abs(dx) > 2:
-        direction = "RIGHT" if dx > 0 else "LEFT"
-    elif abs(dy) > 2:
-        direction = "DOWN" if dy > 0 else "UP"
-    else:
+    if max(abs(obj.x - snap.link_x), abs(obj.y - snap.link_y)) <= 2:
+        return _stand_on_drop(snap, reason)
+    # A press Link can take from here: UP off a column slides him sideways,
+    # which fought the hunt's scoop frame by frame (live 0x79 x 80<->82).
+    direction = lattice_step(snap.link_x, snap.link_y, (obj.x, obj.y))
+    if direction is None:
         return _stand_on_drop(snap, reason)
     return FrameAction(nes_action(direction), reason)
 

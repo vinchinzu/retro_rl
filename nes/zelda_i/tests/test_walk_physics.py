@@ -161,7 +161,7 @@ def test_walker_slide_allows_overworld_2px_step() -> None:
 
 def test_walker_extra_blocked_routes_around_live_bodies() -> None:
     """extra_blocked avoids dynamic bodies without modifying persistent grid.blocked."""
-    grid = OccupancyGrid(xmin=0, xmax=20, ymin=0, ymax=20)
+    grid = OccupancyGrid(xmin=0, xmax=20, ymin=0, ymax=20, lattice=False)
     walker = OccupancyWalker(grid=grid, goal=(10, 5))
     # Direct path north from (10, 10) would step UP to (10, 9)
     extra = {(10, 9), (10, 8)}
@@ -244,7 +244,7 @@ def test_extra_blocked_alone_still_blocks_on_miss() -> None:
     sticky) block; only a caller that explicitly opts in gets the new
     transient behavior.
     """
-    grid = OccupancyGrid(xmin=0, xmax=20, ymin=0, ymax=20)
+    grid = OccupancyGrid(xmin=0, xmax=20, ymin=0, ymax=20, lattice=False)
     walker = OccupancyWalker(grid=grid, goal=(10, 5))
     start = (10, 10)
     walker.observe(start)

@@ -326,7 +326,8 @@ def test_heart_l8_aims_at_the_right_item_not_the_old_man() -> None:
     )
     action = ctrl._after_hops(stood)
     assert action.reason == "heart"
-    assert action.action == nes_action("DOWN")
+    # x=115 is off a column: DOWN would only slide him sideways. Row first.
+    assert action.action == nes_action("RIGHT")
 
 
 def test_heart_l8_red_pose_is_not_a_leave() -> None:

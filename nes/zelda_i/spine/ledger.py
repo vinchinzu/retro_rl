@@ -235,9 +235,10 @@ class RunLedger:
         for d in self.drops:
             tally = by_kind.setdefault(d.kind, {})
             tally[d.outcome] = tally.get(d.outcome, 0) + 1
-        missed_hearts = [
-            d for d in self.missed() if d.kind in HEALING_KINDS and d.hurt
-        ]
+        # Under the Survival refill Link is nearly always full, so ``hurt``
+        # undercounts: every missed heart is one the refill paid for instead.
+        missed_heal = [d for d in self.missed() if d.kind in HEALING_KINDS]
+        missed_hearts = [d for d in missed_heal if d.hurt]
         slow = sorted(self.visits, key=lambda v: v.frames, reverse=True)
         return {
             "frames": self.frame,
@@ -249,6 +250,7 @@ class RunLedger:
                 "total": len(self.drops),
                 "by_kind": by_kind,
                 "missed": len(self.missed()),
+                "missed_hearts": len(missed_heal),
                 "missed_hearts_while_hurt": len(missed_hearts),
                 "missed_rows": [d.row() for d in self.missed()],
             },
@@ -260,7 +262,8 @@ class RunLedger:
         lines = [
             f"ledger: {rep['frames']}f {rep['visits']} visits "
             f"flutters={rep['flutters']} drops={drops['total']} "
-            f"missed={drops['missed']} missed_hearts_hurt={drops['missed_hearts_while_hurt']}",
+            f"missed={drops['missed']} missed_hearts={drops['missed_hearts']} "
+            f"(hurt {drops['missed_hearts_while_hurt']})",
             "  drops by kind: "
             + " ".join(
                 f"{k}={'/'.join(f'{o}:{n}' for o, n in sorted(v.items()))}"

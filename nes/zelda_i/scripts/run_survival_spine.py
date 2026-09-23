@@ -44,7 +44,7 @@ from zelda_i.combat import facing_to_direction
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_HELP_DROP_COUNT, ADDR_WORLD_KILL_COUNT, read_snapshot
-from zelda_i.run_ledger import RunLedger
+from zelda_i.spine.ledger import RunLedger
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
 from zelda_i.spine.survival import (
     GATHER_ENGAGE_HEARTS,
