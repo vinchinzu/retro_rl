@@ -410,6 +410,14 @@ def _goriya_fight(
         return leave
     if hint.retreat:
         return FrameAction(nes_action(_OPP[hint.face]), "goriya_retreat")
+    # Chase into a block: lattice to the goriya instead (0x38, power-on
+    # gathered spine: 13891f of goriya_chase at (96,141)).
+    tx, ty = int(target.x), int(target.y)
+    step = inland_lattice_step(
+        int(snap.link_x), int(snap.link_y), hint.face, (tx - 16, tx + 16), (ty - 16, ty + 16)
+    )
+    if step is not None:
+        return FrameAction(nes_action(step), "goriya_chase_lattice")
     return FrameAction(nes_action(hint.face), "goriya_chase")
 
 
