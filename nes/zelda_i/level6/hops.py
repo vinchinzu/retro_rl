@@ -51,12 +51,10 @@ from zelda_i.level6.path import (
     make_north_58_controller,
     make_settle_18_controller,
 )
+from zelda_i.dungeon.engine import GenericDungeonRoomController
 from zelda_i.level6.room19 import SETTLE_19_MAX_FRAMES
 from zelda_i.level6.stairs18 import make_stairs_18_controller
-from zelda_i.level6.wizzrobe import (
-    make_east_key_controller,
-    make_west_wizzrobe_controller,
-)
+from zelda_i.level6.wizzrobe import make_east_key_controller
 from zelda_i.ram import ADDR_WHISTLE, PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot, read_u8
 from zelda_i.spine.hops import SpineHop, fight_stage, play_ready, ready
 
@@ -280,7 +278,10 @@ def _east_key_stages():
 def _west_stages():
     back = Level6Return79Controller()
     door = Level6WestKeyDoorController()
-    fight = make_west_wizzrobe_controller()
+    # The generic controller (lattice walls, beam) cleared 0x78 from the
+    # gathered spine in ~130f; the backstep controller timed out at 12000f
+    # under 206 hearts of refilled damage (2026-09-22).
+    fight = GenericDungeonRoomController(spec=ROOM_78_SPEC)
     return (
         ("level6_return_0x79", back, back.max_frames),
         ("level6_west_key_0x78", door, door.max_frames),

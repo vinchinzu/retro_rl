@@ -244,6 +244,9 @@ class DoorHopController(HopController):
         self.max_frames = spec.max_frames
         self.wait_modes = spec.wait_modes
         self.walker = _walker(spec)
+        # Boxed on the occupancy walk: the lattice route to this door.
+        if self.exit_dir is None:
+            self.exit_dir = spec.hold_dir
 
     def _tag(self) -> str:
         return _TAG[self.spec.hold_dir]

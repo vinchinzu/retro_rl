@@ -75,10 +75,17 @@ def test_route_is_none_when_the_goal_is_sealed_off() -> None:
 
 
 def test_lattice_step_slides_on_the_free_axis_first() -> None:
-    # Off column (x=122) on a row: a corner straight above is reached by
-    # first sliding along the row to the column.
-    assert lattice_step(122, 141, (120, 61)) == "LEFT"
+    # Four px off the column on a row: slide along the row to it first.
+    assert lattice_step(124, 141, (120, 61)) == "LEFT"
     assert lattice_step(120, 141, (120, 61)) == "UP"
+
+
+def test_lattice_step_lets_the_rom_snap_a_near_column() -> None:
+    # Within LATTICE_SNAP_PX the column is the nearest grid line, and UP
+    # slides Link onto it (see the sim test below). Walking LEFT instead
+    # overshot by 2 px and flipped every frame on L6 0x28.
+    assert lattice_step(122, 141, (120, 61)) == "UP"
+    assert lattice_step(118, 141, (120, 61)) == "UP"
 
 
 def test_sim_walk_snaps_to_the_nearest_grid_line_before_turning() -> None:

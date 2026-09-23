@@ -102,7 +102,7 @@ PATROL_STALL_FRAMES = 24
 # Combat frames with no engage before the patrol gives way to a lattice hunt.
 PATROL_HUNT_FRAMES = 600
 # ``_boxed``: frames within this many px of one spot before a replan.
-BOXED_PX = 3
+BOXED_PX = 8
 BOXED_FRAMES = 24
 
 # Enemy type IDs come from dungeon.ids; names below are the engine re-exports.
