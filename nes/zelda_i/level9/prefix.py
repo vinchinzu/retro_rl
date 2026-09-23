@@ -23,7 +23,7 @@ from zelda_i.dungeon.hop_controller import (
     stairs_step,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
-from zelda_i.level9.patra import patra_action
+from zelda_i.level9.patra import PATRA_STAND_DY, patra_action
 from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP, SILVER_ARROWS
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -1287,6 +1287,7 @@ class Level9Stairs61Controller(Level9StairsHopController):
     # ~4000f against the real power-on pin L9Room61EntryReal, vs ~180f/eye in
     # 0x52) -- budget generously (same lesson as stairs_05) rather than
     # re-tune the policy for speed.
+    patra_stand_dy: int = PATRA_STAND_DY
     max_frames: int = 20_000
     _cleared: bool = False
     _pushed: bool = False
@@ -1359,7 +1360,7 @@ class Level9Stairs61Controller(Level9StairsHopController):
                     self._stuck_frames = 0
                     return FrameAction(nes_action(self._escape_dir), "patra_stuck_escape")
                 action, reason, self._patra_cooldown = patra_action(
-                    snap, cooldown=self._patra_cooldown,
+                    snap, cooldown=self._patra_cooldown, stand_dy=self.patra_stand_dy,
                 )
                 return FrameAction(action, reason)
 

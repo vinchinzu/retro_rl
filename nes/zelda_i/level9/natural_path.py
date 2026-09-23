@@ -67,7 +67,7 @@ from zelda_i.level9.path import (
     final_patra_to_ganon_step,
     leftover_door_step,
 )
-from zelda_i.level9.patra import final_patra_north_door_earned, patra_action
+from zelda_i.level9.patra import PATRA_STAND_DY, final_patra_north_door_earned, patra_action
 from zelda_i.level9.room51 import room51_to_41_step
 from zelda_i.level9.stairs import (
     BOMB_WALL_04_WEST,
@@ -997,6 +997,7 @@ class NaturalFinalPatraController(_NaturalEndingController):
     max_frames: int = 6000
     cooldown: int = 0
     start_checked: bool = False
+    stand_dy: int = PATRA_STAND_DY
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -1013,6 +1014,7 @@ class NaturalFinalPatraController(_NaturalEndingController):
         action, reason, self.cooldown = patra_action(
             snap,
             cooldown=self.cooldown,
+            stand_dy=self.stand_dy,
         )
         return self._action(action, reason)
 

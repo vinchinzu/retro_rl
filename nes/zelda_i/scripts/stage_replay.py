@@ -11,7 +11,8 @@ room alone, in seconds, with the frames that matter printed::
         zelda_i.level6.dungeon:ROOM_29_SPEC --window 14960-14964 --save-end /tmp/end.state
 
 ``TARGET`` is ``module:NAME``: a ``DungeonRoomSpec`` (run by the generic
-engine) or a zero-argument controller factory/class. ``--idle N`` plays N idle frames first (an RNG offset: score a
+engine) or a zero-argument controller factory/class. ``--set ADDR=VAL`` is a what-if RAM write at load (a measurement,
+never a route result). ``--idle N`` plays N idle frames first (an RNG offset: score a
 combat change over several). ``--assist`` adds the Survival refill and reports the
 damage it absorbed. ``--window A-B`` prints
 each frame's pose, press, reason, the pre-filter press, the stepladder and
@@ -68,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--idle", type=int, default=0, help="idle frames first: an RNG offset for combat evals"
     )
+    parser.add_argument(
+        "--set", action="append", default=[], metavar="ADDR=VAL",
+        help="what-if RAM write at load (e.g. 0x0676=1 Magical Shield); never a route result",
+    )
     args = parser.parse_args(argv)
 
     configure_headless()
@@ -77,6 +82,9 @@ def main(argv: list[str] | None = None) -> int:
     if not (path.suffix == ".state" and path.exists()):
         path = state_path(GAME_DIR, GAME, args.state)
     env.em.set_state(read_state_bytes(path))
+    for item in args.set:
+        addr, _, value = item.partition("=")
+        env.unwrapped.data.memory.assign(int(addr, 0), "|u1", int(value, 0) & 0xFF)
     for _ in range(max(0, args.idle)):
         env.step(nes_idle_action())
     ctl, spec = build(args.target)
@@ -130,9 +138,12 @@ def main(argv: list[str] | None = None) -> int:
         + (f" (assist hits {assist.report().get('damage_events')})" if assist else "")
     )
     print("reasons:", " ".join(f"{r}={n}" for r, n in reasons.most_common(14)))
-    notes = ctl.report().get("notes") if hasattr(ctl, "report") else None
-    if notes:
-        print("notes:", notes[-12:])
+    report = ctl.report() if hasattr(ctl, "report") else {}
+    if report.get("notes"):
+        print("notes:", report["notes"][-12:])
+    damage = report.get("damage")
+    if isinstance(damage, dict) and damage.get("hits_by_cause"):
+        print("hits by cause:", damage["hits_by_cause"])
     if args.save_end:
         Path(args.save_end).write_bytes(env.em.get_state())
         print(f"saved {args.save_end}")

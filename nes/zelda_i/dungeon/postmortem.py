@@ -8,6 +8,11 @@ stand line gets tuned three times and still dies.
 ``DamageLog`` watches the heart value and names the hazard responsible using
 the previous frame's ``dungeon.tracking`` tracks, because the shot that
 landed is often already despawned by the time the hearts change.
+
+A hit is a heart drop *or* the rising edge of Link's invincibility timer
+``$04F0``. Under the Survival refill the hearts are topped up before the
+next snapshot, so a drop alone never shows: every engine room reported
+``hits_by_cause {}`` while losing 10-13 hearts (Blue Ring power-on 9).
 """
 
 from __future__ import annotations
@@ -114,6 +119,7 @@ class DamageLog:
     _room: tuple[int, int] | None = field(
         default=None, init=False, repr=False
     )
+    _iframes: int = field(default=0, init=False, repr=False)
 
     def observe(
         self,
@@ -137,10 +143,13 @@ class DamageLog:
             self._prev_xy = None
         self._room = room
         value = heart_value(snap)
+        iframes = int(getattr(snap, "link_iframes", 0))
+        armed = iframes > 0 and self._iframes == 0
+        self._iframes = iframes
         event: HitEvent | None = None
         if (
             self._value is not None
-            and value < self._value
+            and (value < self._value or armed)
             and self.frames - self._last_hit > self.debounce
         ):
             event = self._attribute(snap, value, action=action, phase=phase)

@@ -399,6 +399,29 @@ def test_hit_is_blamed_on_the_shot_not_the_idle_body() -> None:
     assert "0x59" in hit.label
 
 
+def test_a_hit_the_refill_hid_is_still_a_hit() -> None:
+    """Survival tops the hearts up before the next snapshot; the ROM's
+    invincibility timer ($04F0) arming is the hit that survives it."""
+    import dataclasses
+
+    tracker = ObjectTracker()
+    log = DamageLog()
+    events = []
+    for i in range(6):
+        snap = _snap(
+            (144, 141),
+            ((2, WIZZ_BEAM_TYPE, 176 - 8 * i, 141, 0, 0, FACE_WEST),) if i < 5 else (),
+            screen=0x78,
+            level=6,
+        )
+        iframes = {5: 24, 6: 23}.get(i, 0)
+        snap = dataclasses.replace(snap, link_iframes=iframes)
+        events.append(log.observe(snap, tracker.observe(snap), action="patrol"))
+    assert [e is not None for e in events] == [False] * 5 + [True]
+    assert events[-1].type_id == WIZZ_BEAM_TYPE
+    assert len(log.hits) == 1
+
+
 def test_half_heart_loss_is_a_hit() -> None:
     """Only the partial byte moves on a half heart; whole hearts miss it."""
     log = DamageLog()
