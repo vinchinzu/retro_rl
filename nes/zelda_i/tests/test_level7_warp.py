@@ -21,11 +21,19 @@ from zelda_i.level7.overworld import (
 )
 from zelda_i.level7.warp import (
     MAX_BLOWS,
+    WHIRLWIND_MISS_FRAMES,
+    WHIRLWIND_OBJECT_TYPE,
     RecorderWarpController,
     WarpPhase,
     make_recorder_warp_controller,
 )
-from zelda_i.ram import ADDR_SCREEN, PLAY_MODE, read_snapshot
+from zelda_i.ram import (
+    ADDR_OBJ_TYPE,
+    ADDR_SCREEN,
+    ADDR_WHIRLWIND_SUMMONED,
+    PLAY_MODE,
+    read_snapshot,
+)
 from zelda_i.tests.ram_helpers import make_ram
 
 _DEFAULTS = {
@@ -153,6 +161,55 @@ def test_warp_keeps_blowing_through_intermediate_door_screens() -> None:
     assert ctl.landings[0] == "0x22"
 
 
+def test_warp_waits_for_the_whirlwind_before_the_next_blow() -> None:
+    """rr-p8rg: a still Link is not a landing while $0508 is set.
+
+    Re-facing under an inbound whirlwind made it miss Link on 0x0B and left
+    $0508 stuck, so every later blow no-oped.
+    """
+    ram = _ram()
+    ctl = make_recorder_warp_controller(
+        target_screen=WARP_ISLAND_SCREEN, launch_screen=WARP_LAUNCH_SCREEN
+    )
+    ctl.bind_env(_env(ram))
+    while ctl.blows < 1:
+        ctl.step(read_snapshot(ram))
+    ram[ADDR_WHIRLWIND_SUMMONED] = 1
+    ram[ADDR_OBJ_TYPE + 2] = WHIRLWIND_OBJECT_TYPE  # still crossing
+    for _ in range(1000):
+        act = ctl.step(read_snapshot(ram))
+    assert ctl.phase is WarpPhase.SETTLE and ctl.blows == 1
+    assert act.reason == "warp_settle"
+    ram[ADDR_WHIRLWIND_SUMMONED] = 0
+    ram[ADDR_OBJ_TYPE + 2] = 0
+    ram[ADDR_SCREEN] = WARP_ISLAND_SCREEN
+    for _ in range(200):
+        ctl.step(read_snapshot(ram))
+    assert ctl.success and ctl.landings == ["0x45"]
+
+
+def test_a_missed_whirlwind_walks_off_the_screen() -> None:
+    """$0508 set with no $2E crossing: leave the screen (the load clears it).
+
+    The fake RAM has no tile map, so every leave direction is unroutable and
+    the controller names the boxed screen instead of blowing into a no-op.
+    """
+    ram = _ram()
+    ctl = make_recorder_warp_controller(
+        target_screen=WARP_ISLAND_SCREEN, launch_screen=WARP_LAUNCH_SCREEN
+    )
+    ctl.bind_env(_env(ram))
+    while ctl.blows < 1:
+        ctl.step(read_snapshot(ram))
+    ram[ADDR_WHIRLWIND_SUMMONED] = 1
+    for _ in range(WHIRLWIND_MISS_FRAMES + 1):
+        ctl.step(read_snapshot(ram))
+    assert ctl.failed and ctl.report()["misses"] == 1
+    notes = ctl.report()["notes"]
+    assert "warp_whirlwind_missed_leave" in notes
+    assert notes[-1] == "warp_leave_boxed_0x24"
+
+
 def test_warp_gives_up_after_max_blows() -> None:
     ram = _ram()
     ctl = make_recorder_warp_controller(
@@ -203,3 +260,32 @@ def test_warp_refuses_unbound_env_and_leaving_the_overworld() -> None:
     act = ctl.step(read_snapshot(in_dungeon))
     assert ctl.failed
     assert act.reason == "warp_left_overworld_L7"
+
+
+def test_warp_faces_up_when_the_cycle_passed_the_target() -> None:
+    """Landing on L3 0x74 while aiming at L4 0x45: the next blow faces UP."""
+    ram = _ram()
+    ctl = make_recorder_warp_controller(
+        target_screen=WARP_ISLAND_SCREEN, launch_screen=WARP_LAUNCH_SCREEN
+    )
+    ctl.bind_env(_env(ram))
+    _drive(ctl, ram, land_on=0x74, budget=800)
+    assert ctl.landings[0] == "0x74"
+    assert ctl.facings[:2] == ["DOWN", "UP"]
+
+
+def test_a_missed_summon_is_spent() -> None:
+    """Miss on L5 0x0B facing DOWN spends L4; the cursor moves on to it."""
+    ram = _ram()
+    ctl = make_recorder_warp_controller(
+        target_screen=0x74, launch_screen=WARP_LAUNCH_SCREEN
+    )
+    ctl.bind_env(_env(ram))
+    ctl._cursor = 5
+    ctl._blow_face = "DOWN"
+    ctl._spend_cursor(read_snapshot(ram))
+    assert ctl._cursor == 4
+    assert ctl._choose_facing() == "DOWN"
+    ctl._cursor = 1
+    ctl._spend_cursor(read_snapshot(ram))  # DOWN off the lowest owned wraps
+    assert ctl._cursor == 6

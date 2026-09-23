@@ -27,6 +27,7 @@ ADDR_HELP_DROP_COUNT = 0x0050  # 10 kills → forced 5-rupee (or bomb if VALUE s
 ADDR_HELP_DROP_VALUE = 0x0051  # nonzero → the 10-kill force is a bomb
 ADDR_WORLD_KILL_COUNT = 0x0627  # 16 kills → forced fairy
 ADDR_LINK_IFRAMES = 0x04F0  # ObjInvincibilityTimer[0]; 24 on Link_BeHarmed
+ADDR_WHIRLWIND_SUMMONED = 0x0508  # 1 from a Recorder blow until the carry lands
 ADDR_WORLD_KILL_CYCLE = 0x052A  # 0-9 random-drop table column; not a streak
 ADDR_LINK_X = 0x0070
 ADDR_LINK_Y = 0x0084
