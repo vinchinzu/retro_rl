@@ -41,6 +41,7 @@ from zelda_i.overworld.graph import (
     is_5c_maze_hop,
     path_screens_from_hops,
 )
+from zelda_i.dungeon.hop_controller import ow_edge_band_step
 from zelda_i.level8.dungeon import LIVE_RECON_LEVEL8_TOPOLOGY
 from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.path import OverworldPathController
@@ -234,6 +235,11 @@ def pond_reverse_to_l8_extra_hop_action(
             return swing(btn, "42r_gap_ax")
         return swing("DOWN", "42r_gap_down")
     if scr == 0x52 and hop.target == 0x53:
+        # ROM lattice to the bottom corridor's east edge first: the hand rule
+        # below held RIGHT for 39,498f on the power-on gathered spine.
+        step = ow_edge_band_step(None, snap, "RIGHT", POND_52_BOTTOM_Y - 8, POND_52_BOTTOM_Y)
+        if step is not None:
+            return swing(step, "52r_lattice")
         if y < 82:
             return swing("DOWN", "52r_off_top")
         if y < 108 and x > POND_52_WEST_COL_X + 5:

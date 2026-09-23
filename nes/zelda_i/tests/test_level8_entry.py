@@ -167,7 +167,7 @@ def test_measured_l7_handoff_copies_power_on_leave() -> None:
     assert MEASURED_POST_L7_HANDOFF.link_y == 93
     assert MEASURED_POST_L7_HANDOFF.bombs == 1
     assert MEASURED_POST_L7_HANDOFF.rupees == 66
-    assert MEASURED_POST_L7_HANDOFF.heart_containers == 9
+    assert MEASURED_POST_L7_HANDOFF.heart_containers == 12
     assert MEASURED_POST_L7_HANDOFF.selected_item == 1
     assert MEASURED_POST_L7_HANDOFF.arrows == 1
     assert MEASURED_POST_L7_HANDOFF.candle == CANDLE_RED
@@ -183,7 +183,7 @@ def test_isolated_factory_empty_hops_fail_closed() -> None:
         x=96,
         y=93,
         triforce=0x7F,
-        health=0x88,
+        health=0xBB,
         keys=1,
         bombs=1,
         rupees=66,
@@ -203,6 +203,22 @@ def test_isolated_factory_empty_hops_fail_closed() -> None:
     assert ctl.phase.name == "FAILED"
     assert "post_l7_path_unmeasured" in ctl.notes
     assert list(act.action) == list(nes_idle_action())
+
+
+def test_post_l7_consumables_are_lower_bounds() -> None:
+    """The gathered spine left L7 with 132R; the fixture measured 66R."""
+    leave = dict(
+        level=0, screen=0x42, x=96, y=93, triforce=0x7F, health=0xBB,
+        keys=1, bombs=1, rupees=132, selected=1, whistle=1, food=0,
+        rod=1, bow=1, arrows=1, candle=CANDLE_RED, sword=1,
+    )
+    ram = _ram(**leave)
+    assert MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram) is None
+    ram = _ram(**{**leave, "rupees": 65})
+    assert (
+        MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram)
+        == "post_l7_rupees_mismatch"
+    )
 
 
 def test_incomplete_handoff_refuses_to_move() -> None:
