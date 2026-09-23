@@ -19,6 +19,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
     dungeon_align_then_push,
+    stairs_step,
 )
 from zelda_i.combat import should_swing_at
 from zelda_i.dungeon.ops import DOOR_TARGETS
@@ -1443,6 +1444,14 @@ class Level9Stairs61Controller(Level9StairsHopController):
                     snap, cooldown=self._patra_cooldown,
                 )
                 return FrameAction(action, reason)
+
+        if self._stage >= 1:
+            # ROM block secret + stair tile first. The west-aisle cardinals
+            # below held LEFT at (144,173) for 13726f on the power-on
+            # gathered spine; they stay as the fallback.
+            step = stairs_step(None, snap)
+            if step is not None:
+                return FrameAction(nes_action(step), "rom_stairs")
 
         if self._stage == 1:
             if snap.link_x <= 64:
