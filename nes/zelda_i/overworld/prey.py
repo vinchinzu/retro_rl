@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 from zelda_i.dungeon.ids import (
     ARMOS_OBJECT_TYPE,
+    BOULDER_GENERATOR_OBJECT_TYPE,
     BOULDER_OBJECT_TYPE,
     OBJECT_NAMES,
     ZORA_OBJECT_TYPE,
@@ -167,7 +168,12 @@ def prey_name(type_id: int) -> str:
 # a streak tick and the chase is the walk that stands Link on its firing row.
 # Armos and Boulder are drop row X in ``locations.py`` — no drop code at all.
 SKIP_TYPES = frozenset(
-    {ZORA_OBJECT_TYPE, ARMOS_OBJECT_TYPE, BOULDER_OBJECT_TYPE}
+    {
+        ZORA_OBJECT_TYPE,
+        ARMOS_OBJECT_TYPE,
+        BOULDER_GENERATOR_OBJECT_TYPE,
+        BOULDER_OBJECT_TYPE,
+    }
 )
 # A body this close is already paid for: one or two swings, no walk, and
 # stepping away from it is how the reactive layer used to trade a kill for a

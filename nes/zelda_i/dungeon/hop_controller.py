@@ -89,6 +89,7 @@ ADDR_LEVEL_BLOCK_ATTR_F = 0x04CD
 ADDR_BLOCK_PUSH_COMPLETE = 0x04CF
 SECRET_BLOCK_DOOR = 4
 SECRET_BLOCK_STAIRS = 5
+ANY_BLOCK_TRIGGER = tuple(range(8))
 BLOCK_OBJECT_TYPE = 0x68
 BLOCK_SLOT = 11
 # ``UpdateBlock0Idle``: Link's (y + 3) is compared with the block's y, and a
@@ -204,7 +205,17 @@ def stairs_step(env: Any, snap: ZeldaSnapshot) -> str | None:
     x, y = int(snap.link_x), int(snap.link_y)
     sx, sy = min(cells, key=lambda c: abs(c[0] - x) + abs(c[1] - BLOCK_Y_OFFSET - y))
     goal = (sx, sy - BLOCK_Y_OFFSET)
-    route = lattice_goto_route(env, snap, goal)
+    # Slack 0: the stair cell is exact. With the default 8 the neighbour
+    # node one step short is a goal too, and the last-pixels press swapped
+    # with a route back to it (L9 0x61: 120 <-> 121 beside the stairs).
+    route = lattice_goto_route(env, snap, goal, slack=0)
+    if route is None:
+        # Visible stairs sealed in by blocks with no block secret (L9 0x61:
+        # trigger 0, stairs inside the diamond). The free 0x68 still slides;
+        # push it from a reachable face, then the route opens.
+        push = block_push_step(env, snap, ANY_BLOCK_TRIGGER)
+        if push is not None:
+            return push
     if route:
         from zelda_i.walk.physics import lattice_step
 

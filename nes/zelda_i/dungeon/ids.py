@@ -106,6 +106,9 @@ KEESE_OBJECT_TYPE = 0x1B
 VIRE_SPLIT_KEESE_TYPE = 0x1C  # L4 Vire → red Keese-like split
 KEESE_BLACK_OBJECT_TYPE = 0x1D  # third Keese; ROM HP 0 like 0x1B/0x1C
 ARMOS_OBJECT_TYPE = 0x1E  # awake; statue is tile $66/$67 not an object slot
+# Invisible spawner for the 0x20 rocks: hp 240, parked where it was placed
+# (L9 0x17 (128,141)); the reactive layer turned Link toward it for 4000f.
+BOULDER_GENERATOR_OBJECT_TYPE = 0x1F
 BOULDER_OBJECT_TYPE = 0x20  # falling mountain rock
 GHINI_OBJECT_TYPE = 0x21
 GHINI_FLYING_OBJECT_TYPE = 0x22

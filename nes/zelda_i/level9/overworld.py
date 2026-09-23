@@ -15,6 +15,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import ow_edge_band_step
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.dungeon import (
     BOMBS_NOT_NATURAL,
@@ -735,8 +736,18 @@ class Level9PostL8OverworldController(OverworldPathController):
             return self._swing("UP", "27_north_0x17")
 
         if snap.screen == 0x17 and hop.target == 0x07:
-            if snap.link_y > 133:
-                return self._swing("UP", "17_climb_y133")
+            # ROM lattice first: the x=64 dock column is the only way north.
+            # The cardinals below spent 12000f at (128,141) on the power-on
+            # gathered spine.
+            step = ow_edge_band_step(None, snap, "UP", 60, 68)
+            if step is not None:
+                return self._swing(step, "17_lattice")
+            # East of the x~96 water strip the lattice has no route (the
+            # stepladder crosses it). Cross on the y=133 row itself: drifting
+            # to y~128 pressed LEFT into the mountain lip for 12000f.
+            if abs(snap.link_y - 133) > 2:
+                btn = "UP" if snap.link_y > 133 else "DOWN"
+                return self._swing(btn, "17_climb_y133")
             if abs(snap.link_x - 64) > 4:
                 btn = "LEFT" if snap.link_x > 64 else "RIGHT"
                 return self._swing(btn, "17_raft_x64")
