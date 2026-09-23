@@ -90,6 +90,9 @@ def open_env(
     env.reset()
     if from_state:
         resync_custom_state(env, GAME_DIR, GAME, from_state)
+    from zelda_i.walk import live_env
+
+    live_env.bind(env)
     return env
 
 

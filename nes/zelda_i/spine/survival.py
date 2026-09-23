@@ -1051,8 +1051,21 @@ def run_survival_spine(
             run_stages=_run_stages, **hop_kw,
         )
         if not run.success or through == "gather":
+            _save_fail(env, run)
             return run
     runtime = {"level8_overrides": level8_overrides or {}}
+    _run_levels(env, run, through, runtime, hop_kw)
+    _save_fail(env, run)
+    return run
+
+
+def _save_fail(env, run: SpineRun) -> None:
+    """The red frame itself, as ``<prefix>_fail``, for a probe to load."""
+    if run.save_points and not run.success and not run.skipping:
+        save_state(env, GAME_DIR, GAME, save_point_name(run.save_points, "fail"))
+
+
+def _run_levels(env, run: SpineRun, through: str, runtime: dict, hop_kw: dict) -> None:
     for row in SPINE_LEVELS:
         extra = dict(row.extra)
         if row.overrides_kw is not None:
@@ -1066,5 +1079,4 @@ def run_survival_spine(
             **extra,
         )
         if not run.success or through in row.through:
-            return run
-    return run
+            return

@@ -1462,7 +1462,7 @@ def test_reward_waypoints_only_drive_the_walk_under_occupancy_patrol() -> None:
     runs its reached / stuck / stale bookkeeping and then falls through to
     ``reward.target``, so the hunt pattern those specs carry is never walked —
     the specs below each ship a list the engine ignores. That is a real gap
-    (L5 0x77 and L6 0x7a are two of them, and both are blocked Clean rows),
+    (L6 0x7a is one; L5 0x77 left the gap when it moved to occupancy),
     but closing it moves rooms that are green today, so it is recorded here
     rather than changed in passing. ``_reward_nudge`` handles the case this
     actually cost a run: idling 2px off the target.
@@ -1483,12 +1483,12 @@ def test_reward_waypoints_only_drive_the_walk_under_occupancy_patrol() -> None:
         "level2_room6f_compass",
         "level4_room40_zols_key",
         "level4_room51_keese_key",
-        "level5_room77_pols_voice",
         "level6_room7a_east_key",
     } <= unwalked
     # Rooms that do walk their hunt pattern must stay out of the gap.
     assert "level1_room23" not in unwalked
     assert "level1_room45" not in unwalked
+    assert "level5_room77_pols_voice" not in unwalked
 
 
 def _recording_evader(controller):

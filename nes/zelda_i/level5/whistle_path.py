@@ -37,6 +37,7 @@ from zelda_i.level5.dungeon import (
     ROOM_L5_WHISTLE_ITEM,
 )
 from zelda_i.dungeon.door_hop import door_band_goal
+from zelda_i.dungeon.hop_controller import stairs_step
 from zelda_i.level5.path import _step, wait_ram, walk_axis
 from zelda_i.level9.stairs import BLOCK_STAIRS_X, BLOCK_STAIRS_Y, PUSHABLE_BLOCK
 from zelda_i.ram import ADDR_SELECTED_ITEM, ADDR_WHISTLE, PLAY_MODE, read_snapshot, read_u8
@@ -322,6 +323,9 @@ def bomb_east_from_65(env, assist, total: list[int]) -> dict:
     return bomb_wall(env, assist, total, BOMB_EAST_65)
 
 
+STAIRS_LATTICE_FRAMES = 900
+
+
 def take_center_stairs_64(env, assist, total: list[int]) -> dict:
     """Walk the south (then north) gap onto visible center stairs in 0x64.
 
@@ -344,6 +348,16 @@ def take_center_stairs_64(env, assist, total: list[int]) -> dict:
         (("y", 189), ("x", 120), ("y", 141)),
         (("y", 173), ("x", 120), ("y", 141), ("x", 120)),
     )
+    # ROM-driven first: push the block secret if it is pending, then walk
+    # the lattice onto the stair tile. The hand paths below are the fallback.
+    for _ in range(STAIRS_LATTICE_FRAMES):
+        snap = _rs(env.get_ram())
+        if done(snap) or snap.screen != ROOM_L5_BLUE_64:
+            break
+        step = stairs_step(env, snap)
+        if step is None:
+            break
+        _step(env, assist, total, nes_action(step))
     for name_i, steps in enumerate(paths):
         if done(_rs(env.get_ram())):
             break
