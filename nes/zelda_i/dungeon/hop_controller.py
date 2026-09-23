@@ -247,6 +247,38 @@ def lattice_door_step(env: Any, snap: ZeldaSnapshot, direction: str) -> str | No
     return lattice_step(x, y, route[0]) if route else direction
 
 
+def ow_edge_band_step(
+    env: Any, snap: ZeldaSnapshot, direction: str, lo: int, hi: int
+) -> str | None:
+    """Lattice step to the ``direction`` screen edge inside a cross-axis band.
+
+    The band is the hop's exit row (LEFT/RIGHT: y) or column (UP/DOWN: x),
+    so a scroll lands where the next hop expects. On an edge node in the
+    band it is ``direction`` (the scroll push). ``None`` without tiles or
+    when no band node is reachable; callers keep their hand walk behind it.
+    """
+    env = env if env is not None else live_env.current()
+    if env is None or snap.mode != PLAY_MODE:
+        return None
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.walk.physics import lattice_route, lattice_step
+
+    ram = env.get_ram()
+    if not has_room_tile_map(ram):
+        return None
+    nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
+    edge = door_nodes(nodes, direction)
+    cross = 1 if direction in ("LEFT", "RIGHT") else 0
+    goals = {n for n in edge if lo <= n[cross] <= hi}
+    x, y = int(snap.link_x), int(snap.link_y)
+    if past_door_node(x, y, goals, direction):
+        return direction
+    route = lattice_route(nodes, (x, y), goals)
+    if route is None:
+        return None
+    return lattice_step(x, y, route[0]) if route else direction
+
+
 def lattice_goto(
     env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
 ) -> str | None:

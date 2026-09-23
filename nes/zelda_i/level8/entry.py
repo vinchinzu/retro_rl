@@ -20,7 +20,8 @@ from zelda_i.level8.overworld import (
     pond_42_north_strip_action,
     pond_reverse_to_l8_extra_hop_action,
 )
-from zelda_i.overworld.graph import ScreenHop, is_5c_maze_hop
+from zelda_i.dungeon.hop_controller import ow_edge_band_step
+from zelda_i.overworld.graph import ScreenHop, hop_exit_band, is_5c_maze_hop
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.stitch import OverworldHandoff
 from zelda_i.ram import (
@@ -102,10 +103,16 @@ class PostLevel7Handoff:
             return "post_l7_triforce_mismatch"
         if not snap.health_is_full or snap.heart_containers != self.heart_containers:
             return "post_l7_health_mismatch"
-        for label, actual, expected in (
+        # Consumables are lower bounds, as on the post-L6 handoff: the
+        # gathered spine arrives richer than the fixture tape measured.
+        for label, actual, floor in (
             ("keys", snap.keys, self.keys),
             ("bombs", snap.bombs, self.bombs),
             ("rupees", snap.rupees, self.rupees),
+        ):
+            if int(actual) < int(floor):
+                return f"post_l7_{label}_mismatch"
+        for label, actual, expected in (
             ("selected_item", read_u8(ram, ADDR_SELECTED_ITEM), self.selected_item),
             ("whistle", read_u8(ram, ADDR_WHISTLE), self.whistle),
             ("food", read_u8(ram, ADDR_FOOD), self.food),
@@ -274,6 +281,7 @@ class PostLevel7ToBushController(OverworldPathController):
     maze_hop_pred: Any = None
     _env: Any = field(default=None, init=False, repr=False)
     _handoff_checked: bool = field(default=False, init=False, repr=False)
+    _lattice_hop: int | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.maze_hop_pred is None:
@@ -314,6 +322,17 @@ class PostLevel7ToBushController(OverworldPathController):
         )
         if extra is not None:
             return extra
+        if self.stuck > self.stuck_threshold:
+            self._lattice_hop = self.hop_index
+        source = self.hops[self.hop_index - 1].target if self.hop_index else None
+        if self._lattice_hop == self.hop_index and snap.screen == source:
+            # Stalled on this hop: the ROM lattice to its exit band for the
+            # rest of it. The idle below sat 34,960f in the 0x5C maze on the
+            # power-on gathered spine.
+            lo, hi = hop_exit_band(hop)
+            step = ow_edge_band_step(self._env, snap, hop.direction, lo, hi)
+            if step is not None:
+                return self._swing(step, "post_l7_lattice")
         if self.stuck > self.stuck_threshold:
             return FrameAction(nes_idle_action(), "post_l7_path_stuck_wait")
         return None

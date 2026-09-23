@@ -147,7 +147,7 @@ def test_measured_leave_accepts_and_walks_west_ring() -> None:
         x=96,
         y=93,
         triforce=0x7F,
-        health=0x88,
+        health=0xBB,
         keys=1,
         bombs=1,
         rupees=66,

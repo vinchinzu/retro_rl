@@ -101,6 +101,16 @@ LATTICE_GOAL_SLACK = 8
 PATROL_STALL_FRAMES = 24
 # Combat frames with no engage before the patrol gives way to a lattice hunt.
 PATROL_HUNT_FRAMES = 600
+# Every live enemy still this long: a clock freeze (or a parked body) that
+# the engage distance never reaches. Strike each from behind its facing --
+# a Darknut's shield is its front (L8 0x1F, power-on gathered spine: three
+# frozen Darknuts outlasted the 16000f clear while Link lapped the patrol).
+STATIC_ENEMY_FRAMES = 120
+STRIKE_SLASH_MIN = 10
+STRIKE_TURN_MIN = 16
+STRIKE_TURN_MAX = 20
+_OPPOSITE = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
+_BEHIND = {0x08: (0, 16, "UP"), 0x04: (0, -16, "DOWN"), 0x01: (-16, 0, "RIGHT"), 0x02: (16, 0, "LEFT")}
 # ``_boxed``: frames within this many px of one spot before a replan.
 BOXED_PX = 8
 BOXED_FRAMES = 24
@@ -433,6 +443,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _patrol_since: int = field(default=0, init=False, repr=False)
     _patrol_lattice: bool = field(default=False, init=False, repr=False)
     _last_engage_frame: int = field(default=0, init=False, repr=False)
+    _still: dict[int, tuple[tuple[int, int], int]] = field(default_factory=dict, init=False, repr=False)
     _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _box_frames: int = field(default=0, init=False, repr=False)
     _beam_pressed: bool = field(default=False, init=False, repr=False)
@@ -935,6 +946,11 @@ class GenericDungeonRoomController(EntryRouteWalker):
         if target is None:
             # Parked Wallmasters (and other illegal slots) stay in ``live``.
             return self._patrol(snap)
+        still = self._all_still(live)
+        if still is not None:
+            strike = self._strike_from_behind(snap, still)
+            if strike is not None:
+                return strike
         distance = abs(target.x - snap.link_x) + abs(target.y - snap.link_y)
         if self.spec.combat.evade and distance < MIN_DODGE_BODY:
             parry = self._parry(snap, live)
@@ -1016,6 +1032,67 @@ class GenericDungeonRoomController(EntryRouteWalker):
             if step is not None:
                 return FrameAction(nes_action(step), "combat_hunt_lattice")
         return self._patrol(snap)
+
+    def _all_still(self, live) -> tuple | None:
+        """All live bodies, once *every* one has held still ``STATIC_ENEMY_FRAMES``."""
+        seen: dict[int, tuple[tuple[int, int], int]] = {}
+        for obj in live:
+            xy = (int(obj.x), int(obj.y))
+            prev = self._still.get(int(obj.slot))
+            seen[int(obj.slot)] = (xy, prev[1] + 1 if prev and prev[0] == xy else 0)
+        self._still = seen
+        if not seen or min(n for _, n in seen.values()) < STATIC_ENEMY_FRAMES:
+            return None
+        return tuple(live)
+
+    def _strike_from_behind(self, snap: ZeldaSnapshot, still: tuple) -> FrameAction | None:
+        """Walk to exactly 16 px behind a still body, turn, slash.
+
+        The stand is off the 8 px lattice in general, but a lattice row
+        (column) is free along its own axis: route to a node on the strike
+        line, then slide along it. Closer than 16 px is body contact (L8 0x1F
+        stood at 10 px and took hits instead of turning). Nearest body first;
+        one with no reachable strike line is skipped.
+        """
+        nodes = self._lattice_nodes(snap)
+        if not nodes:
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        for target in sorted(still, key=lambda o: manhattan(lx, ly, o.x, o.y)):
+            dx, dy, face = _BEHIND.get(int(target.facing), (0, 16, "UP"))
+            sx, sy = int(target.x) + dx, int(target.y) + dy
+            horizontal = face in ("LEFT", "RIGHT")
+            if horizontal:
+                line = [n for n in nodes if abs(n[1] - sy) <= 3 and abs(n[0] - sx) <= 8]
+            else:
+                line = [n for n in nodes if abs(n[0] - sx) <= 3 and abs(n[1] - sy) <= 8]
+            if not line:
+                continue
+            node = min(line, key=lambda n: abs(n[0] - sx) + abs(n[1] - sy))
+            on_line = abs(ly - node[1]) <= 1 if horizontal else abs(lx - node[0]) <= 1
+            along = abs(lx - sx) <= 8 if horizontal else abs(ly - sy) <= 8
+            if on_line and along:
+                # Distance to the body along the strike axis, with hysteresis:
+                # the turn press walks Link 1-2 px, so the slash window is
+                # wider than the turn window (a single stand swapped align and
+                # turn every frame at (96,101)/(96,102)).
+                dist = abs(lx - int(target.x)) if horizontal else abs(ly - int(target.y))
+                faced = int(snap.facing) == _combat.direction_to_facing(face)
+                if faced and STRIKE_SLASH_MIN <= dist <= STRIKE_TURN_MAX + 2:
+                    self.swings += 1
+                    self.swings_authorized += 1
+                    hold = (self.frames % 8) < 4
+                    return FrameAction(nes_action("A") if hold else nes_idle_action(), "still_slash")
+                if dist < STRIKE_TURN_MIN:
+                    return FrameAction(nes_action(_OPPOSITE[face]), "still_back")
+                if dist > STRIKE_TURN_MAX:
+                    return FrameAction(nes_action(face), "still_close")
+                return FrameAction(nes_action(face), "still_face")
+            route = lattice_route(nodes, (lx, ly), {node})
+            if not route:
+                continue
+            return FrameAction(nes_action(lattice_step(lx, ly, route[0])), "still_approach")
+        return None
 
     def _lattice_nodes(self, snap: ZeldaSnapshot) -> frozenset[tuple[int, int]] | None:
         """ROM-collision lattice for this room, cached per screen."""

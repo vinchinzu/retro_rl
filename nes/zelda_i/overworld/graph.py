@@ -47,6 +47,18 @@ def path_screens_from_hops(
     return (start,) + tuple(hop.target for hop in hops)
 
 # Grid geometry
+def hop_exit_band(hop: ScreenHop, slack: int = 4) -> tuple[int, int]:
+    """Cross-axis band a hop leaves its screen in: the y band, else the align."""
+    if hop.direction in ("LEFT", "RIGHT"):
+        if hop.y_band_lo is not None and hop.y_band_hi is not None:
+            return hop.y_band_lo, hop.y_band_hi
+        if hop.align_y is not None:
+            return hop.align_y - slack, hop.align_y + slack
+    elif hop.align_x is not None:
+        return hop.align_x - slack, hop.align_x + slack
+    return 0, 255
+
+
 OVERWORLD_COLS = 16
 OVERWORLD_ROWS = 8
 

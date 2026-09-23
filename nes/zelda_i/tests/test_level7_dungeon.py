@@ -133,7 +133,7 @@ def test_complete_stop_promoted_and_fails_closed_on_wrong_screen() -> None:
     assert MEASURED_POST_L7_EXIT.keys == 1
     assert MEASURED_POST_L7_EXIT.bombs == 1
     assert MEASURED_POST_L7_EXIT.rupees == 66
-    assert MEASURED_POST_L7_EXIT.heart_containers == 9
+    assert MEASURED_POST_L7_EXIT.heart_containers == 12
     assert MEASURED_POST_L7_EXIT.selected_item == 1
     assert MEASURED_POST_L7_EXIT.arrows == 1
     assert MEASURED_POST_L7_EXIT.candle == 2
