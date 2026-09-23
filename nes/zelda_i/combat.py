@@ -14,6 +14,7 @@ from typing import Any, Iterable
 
 from zelda_i.dungeon.ids import (
     BOMB_DROP_OBJECT_TYPE,
+    BOULDER_GENERATOR_OBJECT_TYPE,
     BOMB_DROP_STATE,
     CLOCK_DROP_OBJECT_TYPE,
     FAIRY_DROP_OBJECT_TYPE,
@@ -29,6 +30,7 @@ from zelda_i.dungeon.ids import (
     PROJECTILE_TYPES,
     RUPEE_DROP_OBJECT_TYPE,
     RUPEE_DROP_STATE,
+    STEPLADDER_OBJECT_TYPE,
 )
 from zelda_i.dungeon.species import (
     BURROWER_DORMANT_STATE,
@@ -193,6 +195,12 @@ def should_swing_at(
 # Live At4A: every floor drop is ObjType 0x60. Item code is ObjState
 # (0x22 heart, 0x23 fairy, 0x18 rupee, 0x0F 5-rupee, 0x21 clock).
 # Type 0x22 is ghini_flying, never a heart.
+# Slots that are not bodies: the invisible rock spawner (hp 240) and the
+# deployed stepladder under Link's feet (hp 64). The reactive layer turned
+# and swung at both -- 4000f on 0x17's generator, ~8500f on its ladder.
+NON_COMBATANT_TYPES = frozenset(
+    {BOULDER_GENERATOR_OBJECT_TYPE, STEPLADDER_OBJECT_TYPE}
+)
 FLOOR_DROP_TYPES = frozenset(
     {
         RUPEE_DROP_OBJECT_TYPE,
@@ -383,6 +391,7 @@ def overworld_threat_objects(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         if obj.slot >= 1
         and obj.type_id not in (0, 0xFF)
         and int(obj.type_id) not in FLOOR_DROP_TYPES
+        and int(obj.type_id) not in NON_COMBATANT_TYPES
         and int(obj.hp) > 0
         and 40 < obj.y < 220
         and 8 < obj.x < 248
