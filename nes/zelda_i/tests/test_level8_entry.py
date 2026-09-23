@@ -221,6 +221,22 @@ def test_post_l7_consumables_are_lower_bounds() -> None:
     )
 
 
+def test_post_l7_containers_are_route_history() -> None:
+    """Full health passes whatever the count; a chipped heart does not."""
+    leave = dict(
+        level=0, screen=0x42, x=96, y=93, triforce=0x7F, health=0x99,
+        keys=1, bombs=1, rupees=132, selected=1, whistle=1, food=0,
+        rod=1, bow=1, arrows=1, candle=CANDLE_RED, sword=1,
+    )
+    ram = _ram(**leave)  # 10 containers, full: run 9's arrival shape
+    assert MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram) is None
+    ram = _ram(**{**leave, "health": 0x98})
+    assert (
+        MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram)
+        == "post_l7_health_mismatch"
+    )
+
+
 def test_incomplete_handoff_refuses_to_move() -> None:
     ram = _ram()
     ctl = make_post_l7_to_bush_controller()
