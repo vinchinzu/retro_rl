@@ -10,6 +10,8 @@ See ``docs/LEVEL7_ROUTE.md``.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import ow_edge_band_step
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -281,6 +283,11 @@ def pond_suffix_extra_hop_action(
     if hop.target == 0x52 and snap.screen == 0x53:
         return pond_53_to_52_action(snap, walker=pond53_walker, swing=swing)
     if hop.target == SCREEN_LEVEL7_POND_HYP and snap.screen == 0x52:
+        # ROM lattice to the north gap. The hand climb below pressed RIGHT
+        # into a rock at (48,117) for 6608 frames (R17).
+        step = ow_edge_band_step(None, snap, "UP", POND_52_GAP_X - 24, POND_52_GAP_X + 4)
+        if step is not None:
+            return swing(step, "52_lattice_north")
         # 0x52 rock field (probe_52_wall): climb the open west column x≈48
         # from the bottom corridor to the mid-band y≈120, traverse RIGHT to
         # x≈132, then a UP push funnels Link through the boulder-wall gap

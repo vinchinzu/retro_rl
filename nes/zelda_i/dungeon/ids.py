@@ -113,6 +113,9 @@ BOULDER_OBJECT_TYPE = 0x20  # falling mountain rock
 # The deployed stepladder: drawn under Link's feet on the water tile (L9 OW
 # 0x17 (96,136), Link at (96,133)), hp 64. Not a body.
 STEPLADDER_OBJECT_TYPE = 0x5F
+# The raft at a dock: on Link's own pixel at the L7 pond pier (OW 0x55
+# (128,133)), hp 64. Not a body; facing it flipped Link 128<->130 for 30000f.
+RAFT_OBJECT_TYPE = 0x61
 GHINI_OBJECT_TYPE = 0x21
 GHINI_FLYING_OBJECT_TYPE = 0x22
 WIZZROBE_BLUE_OBJECT_TYPE = 0x23  # walkthrough-correlated; L6 0x38
