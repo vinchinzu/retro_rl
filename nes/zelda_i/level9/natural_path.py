@@ -8,6 +8,8 @@ doors, rooms, progression, or capacity.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -896,24 +898,30 @@ class NaturalPatraJoinController(_NaturalEndingController):
             # same policy kills in ~1,100 frames from an unblocked start.
             # Reuse the stairs_61 no-progress escape: step toward the room's
             # open center, then resume.
-            if self.escape_frames > 0:
-                self.escape_frames -= 1
-                return self._action(nes_action(self.escape_dir), "clear_03_stuck_escape")
+            # A pinned chase routes to the nearest target on the ROM lattice
+            # instead: the greedy escape toward the centre pressed LEFT/DOWN
+            # into blocks at (144,109) for 11000 frames (baseline full run).
             xy = (int(snap.link_x), int(snap.link_y))
             if xy == self.stuck_xy:
                 self.stuck_frames += 1
             else:
                 self.stuck_xy = xy
                 self.stuck_frames = 0
-            if self.stuck_frames > 90:
-                dx, dy = 120 - snap.link_x, 141 - snap.link_y
-                if abs(dx) >= abs(dy):
-                    self.escape_dir = "RIGHT" if dx > 0 else "LEFT"
-                else:
-                    self.escape_dir = "DOWN" if dy > 0 else "UP"
-                self.escape_frames = 20
+            if self.stuck_frames > 30:
+                self.escape_frames = 40
                 self.stuck_frames = 0
-                return self._action(nes_action(self.escape_dir), "clear_03_stuck_escape")
+            if self.escape_frames > 0:
+                self.escape_frames -= 1
+                targets = [o for o in live_combat_objects(snap) if o.type_id in (0x13, 0x14, 0x17)]
+                goal = (
+                    min(targets, key=lambda o: abs(o.x - xy[0]) + abs(o.y - xy[1]))
+                    if targets else None
+                )
+                step = room_step(
+                    snap, (120, 141) if goal is None else (int(goal.x), int(goal.y)), tol=12
+                )
+                if step is not None:
+                    return self._action(nes_action(step), "clear_03_stuck_escape")
             act, self.cooldown = chase_sword_step(snap, self.cooldown, types=(0x13, 0x14, 0x17))
             return self._action(act.action, "clear_03_combat")
 
