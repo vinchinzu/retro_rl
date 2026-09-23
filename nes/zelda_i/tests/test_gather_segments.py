@@ -443,10 +443,11 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
     names = [name for name, _ in chain_stages()]
     assert names == [
         "exit_6f", "walk_7c", "heart_7b", "exit_7b", "walk_pond", "pond_39",
-            "walk_2c", "heart_2c",
+        "walk_2c", "heart_2c",
         "exit_2c", "ne_100", "exit_0f", "letter", "exit_0e", "candle",
         "exit_0c", "white", "back_1a", "walk_48", "select_candle",
-        "rupees_48", "exit_48", "heart_47", "exit_47", "walk_37",
+        "rupees_48", "exit_48", "heart_47", "exit_47",
+        "walk_pond_l1", "pond_39_l1", "walk_37",
     ]
     stages = dict(chain_stages())
     assert _targets(stages["letter"].hops) == (0x1F, 0x1E, 0x0E)

@@ -42,7 +42,13 @@ from zelda_i.dungeon.tilemap import (
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
-from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
+from zelda_i.walk.physics import (
+    DEFAULT_BOUNDS,
+    OccupancyGrid,
+    OccupancyWalker,
+    lattice_route,
+    lattice_step,
+)
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
 CLEAR_SETTLE_ALL_DEAD = 20
@@ -87,6 +93,15 @@ _SCOOP_REPLAN_HOLD = 20
 # trip the in-place stuck detector (L1 0x45 sat at (144,141) for 7666f).
 # Skip the waypoint if manhattan to it has not dropped in this many frames.
 _COLLECT_STALE = 48
+# Lattice chase goals: every node this close to the nearest one.
+LATTICE_GOAL_SLACK = 8
+# Patrol frames without getting closer to the waypoint before the lattice.
+PATROL_STALL_FRAMES = 24
+# Combat frames with no engage before the patrol gives way to a lattice hunt.
+PATROL_HUNT_FRAMES = 600
+# ``_boxed``: frames within this many px of one spot before a replan.
+BOXED_PX = 3
+BOXED_FRAMES = 24
 
 # Enemy type IDs come from dungeon.ids; names below are the engine re-exports.
 AQUAMENTUS_OBJECT_TYPE = _ids.AQUAMENTUS_OBJECT_TYPE
@@ -407,6 +422,15 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _collect_best_dist: int | None = None
     _collect_no_progress: int = 0
     _env: Any = field(default=None, init=False, repr=False)
+    _lattice: frozenset[tuple[int, int]] | None = field(default=None, init=False, repr=False)
+    _lattice_room: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _patrol_goal: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _patrol_best: int | None = field(default=None, init=False, repr=False)
+    _patrol_since: int = field(default=0, init=False, repr=False)
+    _patrol_lattice: bool = field(default=False, init=False, repr=False)
+    _last_engage_frame: int = field(default=0, init=False, repr=False)
+    _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _box_frames: int = field(default=0, init=False, repr=False)
     # Cached scoop-heart unreachable verdict (goal cell -> hold-until frame).
     # See ``_scoop_heart_occupancy``.
     _scoop_unreachable_goal: tuple[int, int] | None = field(
@@ -582,6 +606,18 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 return FrameAction(nes_idle_action(), "combat_wait")
             self.walker.last_dir = direction
             return FrameAction(nes_action(direction), "combat_patrol")
+        if self._patrol_stalled(snap, (tx, ty)):
+            route = self._lattice_route(snap, (tx, ty))
+            if route == []:
+                # As close as the walls allow (the waypoint sits in a block,
+                # e.g. L2 0x6E p4 (128,141)): that is arrival.
+                self.patrol_index = (self.patrol_index + 1) % len(tuning.patrol)
+                self._patrol_goal = None
+                return FrameAction(nes_idle_action(), "combat_patrol_arrived")
+            if route:
+                step = lattice_step(int(snap.link_x), int(snap.link_y), route[0])
+                if step is not None:
+                    return FrameAction(nes_action(step), "combat_patrol_lattice")
         if abs(dx) > tuning.tolerance and abs(dx) >= abs(dy):
             direction = "RIGHT" if dx > 0 else "LEFT"
         elif abs(dy) > tuning.tolerance:
@@ -589,6 +625,43 @@ class GenericDungeonRoomController(EntryRouteWalker):
         else:
             return FrameAction(nes_idle_action(), "combat_wait")
         return FrameAction(nes_action(direction), "combat_patrol")
+
+    def _boxed(self, snap: ZeldaSnapshot) -> bool:
+        """Link has stayed within ``BOXED_PX`` of one spot for ``BOXED_FRAMES``.
+
+        Latches until he gets clear, so the replan it triggers is not undone
+        the frame he takes his first step. Catches a one-pixel wall bounce,
+        which a same-``xy`` counter does not.
+        """
+        xy = (int(snap.link_x), int(snap.link_y))
+        anchor = self._box_anchor
+        if anchor is None or abs(xy[0] - anchor[0]) + abs(xy[1] - anchor[1]) > BOXED_PX:
+            self._box_anchor = xy
+            self._box_frames = 0
+            return False
+        self._box_frames += 1
+        return self._box_frames >= BOXED_FRAMES
+
+    def _patrol_stalled(self, snap: ZeldaSnapshot, goal: tuple[int, int]) -> bool:
+        """No progress toward this patrol waypoint for ``PATROL_STALL_FRAMES``.
+
+        Position-equality stuck checks miss a wall that bounces Link one
+        pixel each frame: L2 0x6E (gathered spine, 2026-09-22) flipped
+        (80,189)<->(81,189) for 7511 frames of ``combat_patrol``. Distance
+        to the goal is what does not move.
+        """
+        dist = abs(goal[0] - int(snap.link_x)) + abs(goal[1] - int(snap.link_y))
+        if self._patrol_goal != goal or self._patrol_best is None or dist < self._patrol_best:
+            if self._patrol_goal != goal:
+                self._patrol_lattice = False
+            self._patrol_goal = goal
+            self._patrol_best = dist
+            self._patrol_since = 0
+            return self._patrol_lattice
+        self._patrol_since += 1
+        if self._patrol_since >= PATROL_STALL_FRAMES:
+            self._patrol_lattice = True
+        return self._patrol_lattice
 
     def _wall_step(self, x: int, y: int, direction: str) -> tuple[int, int]:
         if direction == "LEFT":
@@ -755,7 +828,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
         self._update_stuck(snap)
         if self.combat_frames == 1:
             self._snap_patrol_nearest(snap)
-        if not occupancy and self._stuck_frames >= 24:
+        # With the tile map bound, ``_patrol`` replans on the lattice; the
+        # skip-a-waypoint rule would reset that replan every 24 frames.
+        if not occupancy and self._stuck_frames >= 24 and not self._lattice_nodes(snap):
             n = len(self.spec.combat.patrol)
             self._snap_patrol_nearest(snap)
             self.patrol_index = (self.patrol_index + 1) % n
@@ -857,6 +932,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 extra_blocked=extra,
                 transient_occupants=bodies,
             )
+            direction = self._lattice_chase(snap, target) or direction
             blocked = direction is not None and blocked_by_projectile(
                 snap.link_x, snap.link_y, direction, snap.objects
             )
@@ -872,8 +948,81 @@ class GenericDungeonRoomController(EntryRouteWalker):
             self.patrol_frames += 1
             return FrameAction(nes_action(direction), "combat_patrol")
         if distance < self.spec.combat.engage_distance:
+            self._last_engage_frame = self.combat_frames
+            if self._boxed(snap):
+                # The greedy engage axis is into a wall: L2 0x1E (gathered
+                # spine) held DOWN at (120,93) for 19894 frames against a
+                # block, a Goriya parked 64 px below. Walk round instead.
+                step = self._lattice_dir(snap, (int(target.x), int(target.y)))
+                if step is not None:
+                    return self._engage(snap, target, direction=step)
             return self._engage(snap, target)
+        if self.combat_frames - self._last_engage_frame >= PATROL_HUNT_FRAMES:
+            # The patrol loop is a trap for a body that parks off it: L2 0x6E
+            # (gathered spine) left a rope standing at (208,149) while Link
+            # lapped x 96..152 for 7000 frames. Go to it.
+            step = self._lattice_dir(snap, (int(target.x), int(target.y)))
+            if step is not None:
+                return FrameAction(nes_action(step), "combat_hunt_lattice")
         return self._patrol(snap)
+
+    def _lattice_nodes(self, snap: ZeldaSnapshot) -> frozenset[tuple[int, int]] | None:
+        """ROM-collision lattice for this room, cached per screen."""
+        if self._env is None:
+            return None
+        room = (int(snap.level), int(snap.screen))
+        if self._lattice_room == room and self._lattice is not None:
+            return self._lattice
+        ram = self._env.get_ram()
+        if not has_room_tile_map(ram):
+            return None
+        from zelda_i.dungeon.tilemap import ow_walkable_nodes
+
+        xmin, xmax, ymin, ymax = self.spec.combat.occupancy_bounds or DEFAULT_BOUNDS
+        self._lattice = frozenset(
+            (x, y)
+            for x, y in ow_walkable_nodes(ram, overworld=False)
+            if xmin <= x <= xmax and ymin <= y <= ymax
+        )
+        self._lattice_room = room
+        return self._lattice
+
+    def _lattice_chase(self, snap: ZeldaSnapshot, target: ZeldaObject) -> str | None:
+        """First step of the ROM-collision route to the target's nearest node.
+
+        The occupancy walker samples one pixel under Link, so it reads a
+        block's edge as floor. L1 0x23 (rung 2, 2026-09-22): a red Goriya
+        walked the inner ring's bottom row while Link pushed DOWN into the
+        water from the top row; the only vertical passages are x=64 and
+        x=176, and the walker never went round. The lattice tests both feet
+        tiles the way ``GetCollidingTileMoving`` does. Only rooms that
+        already measure walls (``occupancy_from_tilemap``) take it.
+        """
+        if not self.spec.combat.occupancy_from_tilemap:
+            return None
+        return self._lattice_dir(snap, (int(target.x), int(target.y)))
+
+    def _lattice_dir(self, snap: ZeldaSnapshot, goal: tuple[int, int]) -> str | None:
+        """First lattice step toward the nodes nearest ``goal``; ``None`` if none."""
+        route = self._lattice_route(snap, goal)
+        if not route:
+            return None
+        return lattice_step(int(snap.link_x), int(snap.link_y), route[0])
+
+    def _lattice_route(
+        self, snap: ZeldaSnapshot, goal: tuple[int, int]
+    ) -> list[tuple[int, int]] | None:
+        """Lattice corners to the nodes nearest ``goal``; ``[]`` on one, ``None`` if none."""
+        nodes = self._lattice_nodes(snap)
+        if not nodes:
+            return None
+        tx, ty = int(goal[0]), int(goal[1])
+        near = sorted(nodes, key=lambda n: abs(n[0] - tx) + abs(n[1] - ty))
+        if not near:
+            return None
+        best = abs(near[0][0] - tx) + abs(near[0][1] - ty)
+        goals = {n for n in near[:8] if abs(n[0] - tx) + abs(n[1] - ty) <= best + LATTICE_GOAL_SLACK}
+        return lattice_route(nodes, (int(snap.link_x), int(snap.link_y)), goals)
 
     def _chase_goal(self, target) -> tuple[int, int]:
         """The enemy's cell, or the nearest open cell to it.

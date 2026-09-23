@@ -26,7 +26,9 @@ from zelda_i.route.chain import (
     run_controller_stage,
     run_natural_to_milestone,
 )
+from retro_harness.env import read_state_bytes, save_state, state_path
 from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist
+from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.overworld.gather_segments import chain_stages as gather_chain_stages
 from zelda_i.overworld.nav import NavPhase, OverworldToLevel1Controller
 from zelda_i.level1.bow import level1_bow_stages, level1_bow_success
@@ -275,11 +277,30 @@ class SpineRun:
     set_state_count: int | None = None
     allow_pokes: bool = True
     gather: dict[str, Any] | None = None
+    # Save points: ``<save_points>_<stage>`` is written at every stage start
+    # of a continuous run. ``resume_from`` skips to that stage and loads its
+    # save point instead of playing up to it (one disclosed state load).
+    save_points: str | None = None
+    resume_from: str | None = None
+    resumed_from: str | None = None
+
+    @property
+    def skipping(self) -> bool:
+        """True while a resume is still walking past stages it did not play."""
+        return self.resume_from is not None
 
     def apply_state_audit(self, count: int) -> None:
-        """Record measured post-reset ``env.em.set_state`` calls. Fail if any."""
+        """Record measured post-reset ``env.em.set_state`` calls. Fail if any.
+
+        A resume's own load is disclosed as ``resumed_from`` and not failed;
+        the tape is still not a continuous one.
+        """
         self.set_state_count = int(count)
-        if self.set_state_count:
+        if self.skipping:
+            self.success = False
+            self.failed_stage = f"resume_stage_not_found:{self.resume_from}"
+            return
+        if self.set_state_count - (1 if self.resumed_from else 0):
             self.success = False
             if self.failed_stage is None:
                 self.failed_stage = "mid_run_state_load"
@@ -311,7 +332,8 @@ class SpineRun:
         return {
             "ok": self.success,
             "through": self.through,
-            "continuous_emulator_session": True,
+            "continuous_emulator_session": self.resumed_from is None,
+            "resumed_from": self.resumed_from,
             "tape_kind": "continuous_survival_spine",
             "set_state_count": self.set_state_count,
             "mid_run_state_load": (
@@ -367,6 +389,8 @@ def merge_inventory_assist(
 
 def topup_owned_inventory(env, run: SpineRun) -> None:
     """Documented Survival bomb/key count top-up + B-slot bombs. Not Clean."""
+    if run.skipping:
+        return
     if not _pokes_allowed(run):
         return
     extra = apply_owned_inventory(
@@ -380,6 +404,8 @@ def topup_owned_inventory(env, run: SpineRun) -> None:
 
 def topup_owned_bombs(env, run: SpineRun) -> None:
     """Documented Survival count refill at the L3 boss suffix; preserves keys."""
+    if run.skipping:
+        return
     if not _pokes_allowed(run):
         return
     extra = apply_owned_inventory(
@@ -390,6 +416,8 @@ def topup_owned_bombs(env, run: SpineRun) -> None:
 
 def topup_owned_keys(env, run: SpineRun, *, keys: int = SPINE_L1_KEY_POKE) -> None:
     """Restore the key spent on 0x23 W. Survival only. No bomb write."""
+    if run.skipping:
+        return
     if not _pokes_allowed(run):
         return
     extra = apply_owned_inventory(env, keys=keys, select_bomb=False)
@@ -414,6 +442,8 @@ def topup_owned_rupees(
     ``force`` writes even when ``allow_pokes`` is off (pre-l1 coast pack).
     Already-funded wallets write nothing.
     """
+    if run.skipping:
+        return
     if not force and not _pokes_allowed(run):
         return
     if int(read_snapshot(env.get_ram()).rupees) >= int(rupees):
@@ -448,6 +478,12 @@ def _run_stages(
     """Run named controller stages onto ``run``. False if a stage failed."""
     pokes = bool(getattr(run, "allow_pokes", True))
     for name, controller, max_frames in stages:
+        if run.skipping:
+            if name != run.resume_from:
+                continue
+            load_save_point(env, run, name)
+        elif run.save_points:
+            save_state(env, GAME_DIR, GAME, save_point_name(run.save_points, name))
         if name in forced_rupee_retopup:
             topup_owned_rupees(
                 env, run, rupees=SPINE_PRE_L1_SHOP_RUPEES, force=True
@@ -482,6 +518,23 @@ def _run_stages(
                 _record_bombs_out(env, run)
             return False
     return True
+
+
+SAVE_POINT_PREFIX = "Spine"
+
+
+def save_point_name(prefix: str, stage: str) -> str:
+    return f"{prefix}_{stage}"
+
+
+def load_save_point(env, run: SpineRun, stage: str) -> None:
+    """Load ``<prefix>_<stage>`` into the live env and stop skipping."""
+    path = state_path(GAME_DIR, GAME, save_point_name(run.save_points or SAVE_POINT_PREFIX, stage))
+    if not path.exists():
+        raise FileNotFoundError(f"no save point for stage {stage!r}: {path}")
+    env.em.set_state(read_state_bytes(path))
+    run.resume_from = None
+    run.resumed_from = stage
 
 
 def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
@@ -564,6 +617,8 @@ def _continue_level1_spine(
     ):
         return
     snap = read_snapshot(env.get_ram())
+    if run.skipping:
+        return
     run.success = bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
     if not run.success:
         run.failed_stage = "triforce_bit"
@@ -585,7 +640,7 @@ def _continue_level2_spine(
         return
 
     snap = read_snapshot(env.get_ram())
-    if not (
+    if not run.skipping and not (
         snap.level == 2
         and snap.mode == PLAY_MODE
         and bool(snap.triforce & LEVEL1_TRIFORCE_BIT)
@@ -613,7 +668,7 @@ def _continue_level2_spine(
         return
 
     snap = read_snapshot(env.get_ram())
-    if not level2_boom_success(snap):
+    if not run.skipping and not level2_boom_success(snap):
         run.success = False
         run.failed_stage = "magic_boomerang"
         _record_bombs_out(env, run)
@@ -630,6 +685,8 @@ def _continue_level2_spine(
         return
 
     snap = read_snapshot(env.get_ram())
+    if run.skipping:
+        return
     run.success = level2_through_success(snap)
     if not run.success:
         run.failed_stage = "triforce_bit_02"
@@ -662,7 +719,7 @@ def _continue_level3_spine(
         assist=assist,
         on_frame=on_frame,
     )
-    if not run.success:
+    if not run.success or run.skipping:
         return
 
     # Temporary Survival shortcut until rr-doua supplies the natural farm.
@@ -882,12 +939,12 @@ def _run_gathered_prefix(
         env, run, pre_l1_stages(),
         forced_rupee_retopup=SPINE_PRE_L1_RUPEE_RETOPUP, **pre_kw,
     )
-    if ok and not pre_l1_bomb_shop_success(read_snapshot(env.get_ram())):
+    if ok and not run.skipping and not pre_l1_bomb_shop_success(read_snapshot(env.get_ram())):
         ok = run.success = False
         run.failed_stage = "pre_l1_shop_p7"
     if ok:
         ok = _run_gather_chain(env, run, chain_assist, run_stages, hop_kw)
-    if ok and not gather_success(read_snapshot(env.get_ram())):
+    if ok and not run.skipping and not gather_success(read_snapshot(env.get_ram())):
         ok = run.success = False
         run.failed_stage = _L1_STOPS["gather"]
     run.allow_pokes = allow_pokes
@@ -908,6 +965,8 @@ def run_survival_spine(
     allow_pokes: bool = True,
     gather: bool = True,
     gather_engage_hearts: int = GATHER_ENGAGE_HEARTS,
+    save_points: str | None = None,
+    resume_from: str | None = None,
 ) -> SpineRun:
     """Power-on → requested dungeon stop. One env. No state reload.
 
@@ -927,6 +986,10 @@ def run_survival_spine(
     bombs, the gather chain to 0x37 under ``gather_assist(gather_engage_hearts)``,
     then L1 from its door. ``gather=False`` is the legacy wooden-sword
     clear53 prefix. ``through="gather"`` stops on 0x37.
+
+    ``save_points`` writes ``<prefix>_<stage>`` at every stage start.
+    ``resume_from`` boots, skips to that stage, loads its save point, and
+    plays on from there (a disclosed load; the tape is not continuous).
     """
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
@@ -970,6 +1033,8 @@ def run_survival_spine(
         obs=prefix.obs,
         failed_stage=None if prefix.success else fail_name,
         allow_pokes=allow_pokes,
+        save_points=save_points or (SAVE_POINT_PREFIX if resume_from else None),
+        resume_from=resume_from,
     )
     if not run.success:
         return run
