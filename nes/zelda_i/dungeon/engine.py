@@ -23,6 +23,7 @@ from zelda_i.dungeon import ids as _ids
 from zelda_i.dungeon.hop_controller import (
     inland_lattice_step,
     ladder_release,
+    release_action,
     lattice_goto,
     lattice_goto_route,
 )
@@ -471,6 +472,8 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _scoop_unreachable_until: int = field(default=0, init=False, repr=False)
     _ladder_still: int = field(default=0, init=False, repr=False)
     _ladder_cross: str | None = field(default=None, init=False, repr=False)
+    _ladder_stuck: int = field(default=0, init=False, repr=False)
+    _ladder_stuck_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _ladder_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     # Post-clear floor sweep: frames spent and drops given up as unreachable.
     sweep_frames: int = field(default=0, init=False)
@@ -1595,9 +1598,36 @@ class GenericDungeonRoomController(EntryRouteWalker):
             action=self.last_reason,
             phase=self.phase.name,
         )
-        action = self._step_policy(snap)
+        action = self._ladder_guard(snap, self._step_policy(snap))
         self.last_reason = action.reason
         self._record_reason(snap, action)
+        return action
+
+    def _ladder_guard(self, snap: ZeldaSnapshot, action: FrameAction) -> FrameAction:
+        """Off a deployed stepladder that goes nowhere.
+
+        A sideways press is turned onto the ladder axis (``release_action``).
+        A ladder at a water gap wider than one tile does not cross, and a
+        chase toward the far bank pressed UP on it for 14000 frames (R25 L6
+        0x29): after 8 still frames, back off the way Link came.
+        """
+        action = release_action(snap, action)
+        xy = (int(snap.link_x), int(snap.link_y))
+        on_ladder = any(
+            int(o.type_id) == _ids.STEPLADDER_OBJECT_TYPE
+            and abs(int(o.x) - xy[0]) <= 8
+            and abs(int(o.y) - 3 - xy[1]) <= 8
+            for o in snap.objects
+        )
+        if not on_ladder:
+            self._ladder_stuck = 0
+            return action
+        self._ladder_stuck = self._ladder_stuck + 1 if xy == self._ladder_stuck_xy else 0
+        self._ladder_stuck_xy = xy
+        pressed = [d for d, i in (("UP", 4), ("DOWN", 5), ("LEFT", 6), ("RIGHT", 7)) if action.action[i]]
+        if self._ladder_stuck >= 8 and len(pressed) == 1:
+            back = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}[pressed[0]]
+            return FrameAction(nes_action(back), "ladder_back_off")
         return action
 
     def _record_reason(self, snap: ZeldaSnapshot, action: FrameAction) -> None:
