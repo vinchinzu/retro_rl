@@ -36,6 +36,24 @@ fixes route through the ROM lattice (`dungeon/hop_controller.py`:
 `inland_lattice_step`) behind a stall gate. Heart containers are route
 history, not a handoff gate.
 
+## 2026-09-23 (later): lattice walkers, credits again — faster and steadier
+
+`full_poweron27` (commit `b0a328e9`) went power-on → credits in one session:
+`ok=True`, `set_state_count=0`, 277,687 frames (−15,055 vs `full_poweron12`),
+TF `0xFF`, 12 containers, mode 19. Same Survival disclosure as below.
+
+What changed: every walk plans on the ROM turn lattice (x%8==0, y%8==5).
+Presses off it were the flutter source; flutter (1-2 px reversals, ledger in
+`spine/ledger.py`) fell 17,942 → 8,178. Hand walks were replaced by shared
+helpers in `dungeon/hop_controller.py` (`room_step`, `mouth_step`,
+`ladder_release`/`release_action`, `exit_door`), cleared rooms sweep their
+floor drops (bombs poked 82 → 67, rupees 9 → 0), and bomb walls retry a
+dropped press. Runs 13–26 each stopped one stage later; every stall was
+fixed from its save point. Metrics per run: [RUN_METRICS.md](RUN_METRICS.md).
+
+Last-heart refill (`--engage-hearts 1`, refills = deaths prevented): power-on
+→ L1 TF needed 2 refills; through L2, 4. The full run under it is bead rr-k3vj.
+
 ## What is open
 
 `spine/clean_tip.py` `next_open()` is `pre_l1`. Route and the one live tape are in [PRE_L1.md](PRE_L1.md). One flagged rollout trial bought bombs. The default walk is not accepted.
