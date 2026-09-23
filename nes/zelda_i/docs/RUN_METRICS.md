@@ -39,6 +39,15 @@ power-on. Frames and flutter count only up to the failure.
 | full_poweron19 | level7_pond_approach | 0x3F | 209046 | 37106 | 0:55 29890f | raft 0x61 not a combatant |
 | full_poweron20 | enter_level4 | 0x07 | 132867 | 1889 | 0:45 37835f | L4 mouth approach row south of the mouth |
 
+## Last-heart refill (`--engage-hearts 1`)
+
+The refill writes only at the last heart, so `refills` counts deaths the
+assist prevented. This is the number potions and better combat must drive to zero.
+
+| run | through | result | frames | refills (deaths prevented) | hits | note |
+|---|---|---|---|---|---|---|
+| lasth_l1 (fed68421) | level1 | ok | 48874 | 2 | 11 | gather chain keeps its own last-heart refill |
+
 ## Pre-l1 prefix (assist off)
 
 | run | result | frames | flutter | note |

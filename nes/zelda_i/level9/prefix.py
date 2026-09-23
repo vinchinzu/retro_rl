@@ -6,6 +6,8 @@ Natural-spine factories in ``natural_path`` stay fail-closed.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.passage import passage_step
+
 import os
 
 from dataclasses import dataclass, field
@@ -612,28 +614,7 @@ def make_stairs_55_controller(*, dest: int | None = None) -> Level9Stairs55Contr
 
 def cellar_60_step(snap: ZeldaSnapshot) -> FrameAction:
     """DOWN right column to floor, LEFT along floor to x=48, UP west ladder."""
-    x, y = int(snap.link_x), int(snap.link_y)
-    tile = int(snap.colliding_tile)
-    on_west = abs(x - CELLAR_60_WEST_X) <= _DOOR_TOL
-    on_floor = y >= CELLAR_60_FLOOR_Y - _DOOR_TOL
-
-    if on_floor:
-        if x > CELLAR_60_WEST_X + _DOOR_TOL:
-            return FrameAction(nes_action("LEFT"), "cellar_floor_west")
-        if x < CELLAR_60_WEST_X - _DOOR_TOL:
-            return FrameAction(nes_action("RIGHT"), "cellar_floor_east")
-        return FrameAction(nes_action("UP"), "cellar_west_climb")
-
-    if on_west:
-        if y > CELLAR_60_MOUTH_Y + _DOOR_TOL:
-            return FrameAction(nes_action("UP"), "cellar_west_up")
-        if tile in STAIRS_TILES:
-            return FrameAction(nes_idle_action(), "cellar_exit_warp")
-        return FrameAction(nes_action("UP"), "cellar_west_lip")
-
-    if x < CELLAR_60_EAST_X - _DOOR_TOL:
-        return FrameAction(nes_action("RIGHT"), "cellar_to_east")
-    return FrameAction(nes_action("DOWN"), "cellar_east_drop")
+    return passage_step(snap, east_x=CELLAR_60_EAST_X, align=_DOOR_TOL, mouth_y=CELLAR_60_MOUTH_Y)
 
 @dataclass(kw_only=True)
 class Level9CellarHopController(Level9PrefixHopController):
