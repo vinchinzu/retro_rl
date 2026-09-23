@@ -20,6 +20,7 @@ from zelda_i.overworld.nav import (
     SEGMENT_MAX_FRAMES as NAV_MAX_FRAMES,
 )
 from zelda_i.overworld.nav import OverworldToLevel1Controller
+from zelda_i.walk import live_env
 from zelda_i.ram import hearts_held, is_level1_ready, ram_hearts, read_snapshot
 from zelda_i.screen_glance import leftover_from_controller
 from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX_FRAMES
@@ -318,6 +319,8 @@ def bind_controller_env(controller: Any, env: Any, _depth: int = 0) -> None:
     """
     if controller is None or _depth > 2:
         return
+    if _depth == 0:
+        live_env.bind(env)
     bind_env = getattr(controller, "bind_env", None)
     if callable(bind_env):
         bind_env(env)

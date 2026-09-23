@@ -352,6 +352,8 @@ def continue_level4_spine(
     )
     if not run.success or (through in L4_STOPS and through != "level4"):
         return
+    if getattr(run, "skipping", False):
+        return
     attach_level4_tf_suffix(env, run, assist=assist)
 
 

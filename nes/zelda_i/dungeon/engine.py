@@ -17,6 +17,7 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i import combat as _combat
+from zelda_i.walk import live_env
 from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
 from zelda_i.dungeon.behaviors import (
@@ -1018,12 +1019,13 @@ class GenericDungeonRoomController(EntryRouteWalker):
 
     def _lattice_nodes(self, snap: ZeldaSnapshot) -> frozenset[tuple[int, int]] | None:
         """ROM-collision lattice for this room, cached per screen."""
-        if self._env is None:
+        env = self._env if self._env is not None else live_env.current()
+        if env is None:
             return None
         room = (int(snap.level), int(snap.screen))
         if self._lattice_room == room and self._lattice is not None:
             return self._lattice
-        ram = self._env.get_ram()
+        ram = env.get_ram()
         if not has_room_tile_map(ram):
             return None
         from zelda_i.dungeon.tilemap import ow_walkable_nodes

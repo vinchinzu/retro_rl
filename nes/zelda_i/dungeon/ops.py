@@ -19,6 +19,7 @@ from typing import Any, Sequence
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.door_graph.core import DoorDir
+from zelda_i.dungeon.hop_controller import LatticeDoorWalker, lattice_goto
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
@@ -214,12 +215,19 @@ def goto(
     tol: int = 4,
     max_f: int = 500,
 ) -> bool:
-    """Walk Link toward (tx, ty). Returns True if within *tol*."""
+    """Walk Link toward (tx, ty). Returns True if within *tol*.
+
+    The ROM-collision lattice route leads while it has one; the x-then-y
+    axis walk does the last pixels (and everything, without a tile map).
+    """
     for _ in range(max_f):
         snap = read_snapshot(env.get_ram())
         if abs(snap.link_x - tx) <= tol and abs(snap.link_y - ty) <= tol:
             return True
-        if abs(snap.link_x - tx) > tol:
+        step = lattice_goto(env, snap, (tx, ty)) if snap.mode == PLAY_MODE else None
+        if step is not None:
+            act = nes_action(step)
+        elif abs(snap.link_x - tx) > tol:
             act = nes_action("RIGHT" if snap.link_x < tx else "LEFT")
         else:
             act = nes_action("DOWN" if snap.link_y < ty else "UP")
@@ -527,6 +535,9 @@ def apply_owned_inventory(
     }
 
 
+LATTICE_EXIT_FRAMES = 900
+
+
 def exit_door(
     env: Any,
     assist: Any | None,
@@ -537,9 +548,42 @@ def exit_door(
     x_force: int | None = None,
     push: int = PUSH_FRAMES,
 ) -> dict[str, Any]:
-    """Align to door target and push; return before/after room fields."""
+    """Align to door target and push; return before/after room fields.
+
+    The lattice door walk goes first (``LatticeDoorWalker``); the aligned
+    push below is the fallback when it cannot reach a door node.
+    """
     snap0 = read_snapshot(env.get_ram())
     before = room_fields(snap0, env.get_ram())
+    walker = LatticeDoorWalker()
+    for _ in range(LATTICE_EXIT_FRAMES):
+        snap = read_snapshot(env.get_ram())
+        if snap.screen != snap0.screen:
+            break
+        if snap.mode != PLAY_MODE or snap.transitioning:
+            act = nes_action(direction)
+        else:
+            step = walker.action(env, snap, direction, "exit_lattice")
+            if step is None:
+                break
+            act = step.action
+        env.step(act)
+        total[0] += 1
+        if assist is not None:
+            assist.apply_env(env, frame=total[0])
+    snap = read_snapshot(env.get_ram())
+    if snap.screen != snap0.screen:
+        idle(env, assist, total, SETTLE_FRAMES)
+        after = room_fields(read_snapshot(env.get_ram()), env.get_ram())
+        return {
+            "direction": direction,
+            "before": before,
+            "at_door": after,
+            "after": after,
+            "changed_room": True,
+            "result": "room_change",
+            "via": "lattice",
+        }
     tx, ty = DOOR_TARGETS[direction]
     if y_force is not None:
         ty = y_force

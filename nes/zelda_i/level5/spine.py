@@ -26,6 +26,7 @@ from zelda_i.level5.path import (
     make_pols_south_controller,
     make_return_66_controller,
     make_room66_controller,
+    wait_ram,
 )
 from zelda_i.level5.whistle_path import (
     BLUE_DARKNUT_TYPE,
@@ -115,6 +116,9 @@ def level5_clear66_success(snap: ZeldaSnapshot, **_) -> bool:
         == spec.required_open_doors
         and snap.ladder > 0
     )
+
+
+DARKNUT_SPAWN_FRAMES = 90
 
 
 def _east77_stages():
@@ -240,12 +244,21 @@ def run_level5_whistle_suffix(env, *, assist, frame_base: int):
     if not bomb65.get("success"):
         return False, total[0], {"failed": "bomb_west_65", "hops": hops}
 
-    snap = read_snapshot(env.get_ram())
-    n_dn = sum(
-        1
-        for obj in snap.objects
-        if 1 <= obj.slot <= 12 and obj.type_id == BLUE_DARKNUT_TYPE and obj.hp > 0
+    def _blue_darknuts(snap) -> int:
+        return sum(
+            1
+            for obj in snap.objects
+            if 1 <= obj.slot <= 12 and obj.type_id == BLUE_DARKNUT_TYPE and obj.hp > 0
+        )
+
+    # The count used to be read on the scroll-in frame, before the wave
+    # spawns: 0 Darknuts, no fight, and the 0x64 push block (which needs
+    # RoomAllDead) never moved (gathered spine, 2026-09-22).
+    wait_ram(
+        env, assist, total, lambda snap: _blue_darknuts(snap) > 0,
+        max_frames=DARKNUT_SPAWN_FRAMES, spec_id="spawn_64",
     )
+    n_dn = _blue_darknuts(read_snapshot(env.get_ram()))
     if n_dn:
         fight64 = fight_blue_darknuts(
             env, assist, total, ROOM_L5_BLUE_64, expected=n_dn, source=0x65
@@ -470,7 +483,7 @@ def continue_level5_spine(
         assist=assist,
         on_frame=on_frame,
     )
-    if not run.success or through in _L5_PREFIX:
+    if not run.success or through in _L5_PREFIX or getattr(run, "skipping", False):
         return
     attach_level5_whistle_suffix(env, run, assist=assist)
     if not run.success or through == "level5-whistle":

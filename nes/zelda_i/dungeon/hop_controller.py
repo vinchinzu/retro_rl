@@ -10,6 +10,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.walk import live_env
 from zelda_i.dungeon.postmortem import DamageLog
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -116,6 +117,7 @@ def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
     the shut leaf; the old hand policy only ever opened it by stumbling on
     the block during an 2700-frame wiggle.
     """
+    env = env if env is not None else live_env.current()
     if env is None or snap.mode != PLAY_MODE:
         return None
     ram = env.get_ram()
@@ -151,12 +153,50 @@ def block_push_step(env: Any, snap: ZeldaSnapshot) -> str | None:
     return lattice_step(x, y, route[0]) if route else best[1]
 
 
+def stairs_step(env: Any, snap: ZeldaSnapshot) -> str | None:
+    """Push a pending block secret, then walk onto the room's stair tile.
+
+    ``None`` when there is neither a pending block nor a visible staircase,
+    or no tile map. Link stands on a stair cell at ``(x, y - 3)`` like a
+    block face (``BLOCK_Y_OFFSET``); the last few pixels are a direct press.
+    """
+    env = env if env is not None else live_env.current()
+    if env is None or snap.mode != PLAY_MODE:
+        return None
+    push = block_push_step(env, snap)
+    if push is not None:
+        return push
+    from zelda_i.dungeon.tilemap import has_room_tile_map, stair_cells
+
+    ram = env.get_ram()
+    if not has_room_tile_map(ram):
+        return None
+    cells = stair_cells(ram)
+    if not cells:
+        return None
+    x, y = int(snap.link_x), int(snap.link_y)
+    sx, sy = min(cells, key=lambda c: abs(c[0] - x) + abs(c[1] - BLOCK_Y_OFFSET - y))
+    goal = (sx, sy - BLOCK_Y_OFFSET)
+    route = lattice_goto_route(env, snap, goal)
+    if route:
+        from zelda_i.walk.physics import lattice_step
+
+        return lattice_step(x, y, route[0])
+    dx, dy = goal[0] - x, goal[1] - y
+    if abs(dx) > abs(dy):
+        return "RIGHT" if dx > 0 else "LEFT"
+    if dy:
+        return "DOWN" if dy > 0 else "UP"
+    return "UP"
+
+
 def lattice_door_step(env: Any, snap: ZeldaSnapshot, direction: str) -> str | None:
     """First step of the ROM-collision route to the ``direction`` door.
 
     ``None`` without a bound env or a room tile map, or when no door node is
     reachable. On a door node it is ``direction`` itself (the push).
     """
+    env = env if env is not None else live_env.current()
     if env is None:
         return None
     from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
@@ -200,6 +240,7 @@ def lattice_goto_route(
     env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
 ) -> list[tuple[int, int]] | None:
     """Lattice corners to the nodes nearest ``goal``: ``[]`` on one, ``None`` if none."""
+    env = env if env is not None else live_env.current()
     if env is None:
         return None
     from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
@@ -276,6 +317,9 @@ class LatticeDoorWalker:
 def at_door_node(env: Any, snap: ZeldaSnapshot, direction: str) -> bool:
     from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
 
+    env = env if env is not None else live_env.current()
+    if env is None:
+        return False
     ram = env.get_ram()
     if not has_room_tile_map(ram):
         return False
@@ -391,7 +435,7 @@ class HopController:
         lattice, so the first step off the block does not hand the frame
         back to the policy that walked into it.
         """
-        if self.exit_dir is None or self._env is None or snap.mode != PLAY_MODE:
+        if self.exit_dir is None or snap.mode != PLAY_MODE:
             return None
         room = (int(snap.level), int(snap.screen))
         if self._lattice_room != room:

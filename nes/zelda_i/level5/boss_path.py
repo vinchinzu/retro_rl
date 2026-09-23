@@ -62,6 +62,7 @@ from zelda_i.level5.whistle_path import (
     exit_whistle_04,
     select_b_item_menu,
 )
+from zelda_i.route.chain import bind_controller_env
 from zelda_i.ram import (
     ADDR_HEALTH,
     ADDR_SELECTED_ITEM,
@@ -128,6 +129,7 @@ def door(env, assist, total: list[int], direction: str, expect: int, **kw) -> di
 
 def fight_ctl(env, assist, total: list[int], spec, controller_cls=GenericDungeonRoomController) -> dict:
     ctl = controller_cls(spec)
+    bind_controller_env(ctl, env)
     for _ in range(spec.max_frames):
         snap = read_snapshot(env.get_ram())
         action = ctl.step(snap)
