@@ -20,7 +20,8 @@ from zelda_i import combat as _combat
 from zelda_i.walk import live_env
 from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
-from zelda_i.dungeon.hop_controller import inland_lattice_step
+from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
+from zelda_i.dungeon.hop_controller import inland_lattice_step, lattice_goto
 from zelda_i.dungeon.behaviors import (
     blocked_by_projectile,
     fight_target,
@@ -44,7 +45,7 @@ from zelda_i.dungeon.tilemap import (
 from zelda_i.beam import beam_aim, beam_ready
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import ADDR_LADDER, PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 from zelda_i.walk.physics import (
     DEFAULT_BOUNDS,
     OccupancyGrid,
@@ -780,6 +781,29 @@ class GenericDungeonRoomController(EntryRouteWalker):
         # Approach without slashing until in blade range.
         return FrameAction(nes_action(direction), "combat_engage")
 
+    def _owns_ladder(self) -> bool:
+        env = self._env if self._env is not None else live_env.current()
+        return env is not None and int(env.get_ram()[ADDR_LADDER]) != 0
+
+    def _all_in_wall_zone(self, live) -> bool:
+        """Every live body sits outside the avoid-wall band.
+
+        Then the band is where Link cannot win: L6 0x68's last Zol parked at
+        (208,96) above y=109 and leave_wall pushed Link back off every
+        approach for 12000f (continuous power-on run 8).
+        """
+        if not live or not self.spec.combat.avoid_walls:
+            return False
+        # Only bodies that have held still: a teleporting Wizzrobe or a body
+        # crossing the band is not a stalemate (L6 0x29 north door).
+        counts = [self._still.get(int(o.slot)) for o in live]
+        if any(c is None or c[1] < STATIC_ENEMY_FRAMES for c in counts):
+            return False
+        lo_x, hi_x, lo_y, hi_y = self.spec.combat.avoid_wall_bounds
+        return all(
+            not (lo_x <= int(o.x) <= hi_x and lo_y <= int(o.y) <= hi_y) for o in live
+        )
+
     def _off_wall_step(self, snap: ZeldaSnapshot) -> FrameAction | None:
         """Step toward the playable interior when avoid_walls is set."""
         if not self.spec.combat.avoid_walls:
@@ -952,7 +976,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 period=self.spec.combat.engage_attack_period,
                 hold=self.spec.combat.engage_attack_hold,
             )
-        off_wall = self._off_wall_step(snap)
+        off_wall = None if self._all_in_wall_zone(live) else self._off_wall_step(snap)
         if off_wall is not None:
             return off_wall
         shot = self._beam_shot(snap, live)
@@ -1356,6 +1380,27 @@ class GenericDungeonRoomController(EntryRouteWalker):
             self.success = True
             self._set_phase(DungeonPhase.DONE, "leftover")
             return FrameAction(nes_idle_action(), "done")
+        # ROM lattice first: the waist-elbow cardinals below held RIGHT+DOWN
+        # into a wall for 13653f (L6 0x29, power-on gathered spine resume).
+        # Still on the deployed stepladder: Link moves only along its axis
+        # until it retracts (0x29: LEFT at (168,181), ladder at (168,176)).
+        ladder = next(
+            (o for o in snap.objects if int(o.type_id) == STEPLADDER_OBJECT_TYPE), None
+        )
+        if ladder is not None and abs(int(ladder.x) - x) <= 8 and abs(int(ladder.y) - y) <= 16:
+            # Keep crossing toward the target: "away from the ladder" turned
+            # Link back the moment he stepped onto it (158 <-> 160).
+            return FrameAction(nes_action("DOWN" if ty > y else "UP"), "leftover_off_ladder")
+        # Whole-room lattice: the fight lattice is clipped to the occupancy
+        # bounds, and a leftover like (120,189) sits outside them.
+        step = lattice_goto(self._env, snap, (int(tx), int(ty)), slack=0)
+        if step is not None:
+            return FrameAction(nes_action(step), "leftover_lattice")
+        if self._owns_ladder() and abs(ty - y) > 2:
+            # No lattice route: the fight crossed a moat on the stepladder
+            # (L6 0x29 island, 13273f of leftover_clip). A straight press
+            # toward the target re-deploys it; the lattice resumes beyond.
+            return FrameAction(nes_action("DOWN" if ty > y else "UP"), "leftover_ladder")
         waypoints = self.spec.reward.waypoints
         if waypoints:
             # Waist elbow first; cardinals cannot round the plus from the north.
