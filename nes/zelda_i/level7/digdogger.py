@@ -543,7 +543,8 @@ def room_4a_return_step(snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("UP"), "cellar_west_climb")
     if abs(x - ROOM_4A_WEST_X) <= 8:
         return FrameAction(nes_action("UP"), "cellar_west_up")
-    if x < ROOM_4A_EAST_COL - ROOM_4A_ALIGN:
+    # Drop on the column itself; short of it LEFT+DOWN walks back (L8 0x0F).
+    if x < ROOM_4A_EAST_COL:
         return FrameAction(nes_action("RIGHT"), "cellar_to_east")
     return FrameAction(nes_action("LEFT", "DOWN"), "cellar_east_drop")
 
