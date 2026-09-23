@@ -298,8 +298,10 @@ MEASURED_LEVEL8_CLEAR = Level8ClearEndpoint(
     level=0,
     screen=0x6D,
     mode=5,
-    incoming_heart_containers=9,
-    outgoing_heart_containers=10,
+    # 12 -> 13 on the gathered spine (2026-09-23, power-on save points
+    # resumed through L8); the wooden-sword fixture lineage was 9 -> 10.
+    incoming_heart_containers=12,
+    outgoing_heart_containers=13,
     evidence="spine-green",
     route_eligible=True,
 )

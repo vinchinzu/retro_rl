@@ -41,9 +41,20 @@ from zelda_i.dungeon.door_hop import (
     door_band_goal,
 )
 from zelda_i.dungeon.ids import (
+    DARKNUT_OBJECT_TYPE,
     GOHMA_BLUE_OBJECT_TYPE,
     GOHMA_OBJECT_TYPE,
     MANHANDLA_OBJECT_TYPE,
+)
+from zelda_i.dungeon.engine import (
+    AliveRule,
+    CombatTuning,
+    DoorRoute,
+    DungeonPhase,
+    DungeonRoomSpec,
+    GenericDungeonRoomController,
+    RewardKind,
+    RewardSpec,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, PauseSelectController
@@ -73,7 +84,8 @@ from zelda_i.level8.north_column import (
     ROOM_MAP_MANHANDLA,
     make_north_manhandla_controller as _make_north_manhandla_controller,
 )
-from zelda_i.ram import ZeldaSnapshot
+from zelda_i.level8.north_column import TYPE_0C, _SWORD_PATROL
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 WEST_DOOR = DOOR_TARGETS["LEFT"]  # (32, 141)
 WEST_ORIGIN = 0x1F
@@ -244,11 +256,53 @@ class Level8South2EController(RoomHopController):
     spec: RoomHopSpec = SOUTH_2E_GATE
 
 
+def _clear_3e_spec() -> DungeonRoomSpec:
+    """0x3E Darknut census: the east shutter opens only on the clear."""
+    return DungeonRoomSpec(
+        spec_id="l8_clear_0x3e_east_shutter",
+        source_room=EAST_3E_ORIGIN,
+        room_id=EAST_3E_ORIGIN,
+        entry=DoorRoute("DOWN", ((120, 93),)),
+        enemy_types=(TYPE_0C, DARKNUT_OBJECT_TYPE),
+        expected_enemy_count=1,
+        alive_rule=AliveRule.TYPE_AND_HP,
+        combat=CombatTuning(
+            patrol=_SWORD_PATROL,
+            engage_distance=48,
+            attack_phase=2,
+            patrol_attack_period=6,
+            patrol_attack_hold=3,
+            engage_attack_period=5,
+            engage_attack_hold=3,
+        ),
+        reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+        max_frames=_EAST_MAX_FRAMES,
+        level=LEVEL8,
+    )
+
+
 @dataclass(kw_only=True)
 class Level8East3EController(RoomHopController):
-    """0x3E leftover → east door RIGHT. Dest is RAM; fail 0x0F / 0x3C."""
+    """0x3E leftover → east door RIGHT. Dest is RAM; fail 0x0F / 0x3C.
+
+    The fixture arrived with the room already dead, so the step idles for the
+    RIGHT bit. On the power-on gathered spine four Darknuts were alive and
+    the idle took 68 hearts in 4000f: clear first while the shutter is shut.
+    """
 
     spec: RoomHopSpec = EAST_3E_GATE
+    _clear: GenericDungeonRoomController | None = field(default=None, init=False, repr=False)
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        shut = not (int(snap.cur_opened_doors) & EAST_RIGHT_BIT)
+        if shut and snap.mode == PLAY_MODE and snap.screen == EAST_3E_ORIGIN:
+            if self._clear is None:
+                self._clear = GenericDungeonRoomController(_clear_3e_spec())
+                self._clear.phase = DungeonPhase.FIGHT
+                self._clear.bind_env(self._env)
+            if self._clear.phase not in (DungeonPhase.DONE, DungeonPhase.FAILED):
+                return self._clear.step(snap)
+        return super().policy(snap)
 
 
 def make_west_1f_controller(
