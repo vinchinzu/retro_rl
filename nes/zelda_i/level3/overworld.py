@@ -29,6 +29,8 @@ Track: assisted first-pass only — do **not** promote Clean STATUS.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import mouth_step
+
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
@@ -59,6 +61,8 @@ from zelda_i.anchors import (
 
 LEVEL3_DOOR_X = 128  # exit-spawn x; UP re-enter after y>130 approach
 LEVEL3_DOOR_APPROACH_Y = 140
+# The approach row on the ROM lattice (y % 8 == 5) the mouth push starts from.
+LEVEL3_DOOR_APPROACH_ROW = 141
 LEVEL3 = 3
 # Post-L2 return (Moon mouth); TF bits after L1+L2 shards.
 SCREEN_POST_L2_RETURN = 0x3C
@@ -262,35 +266,8 @@ class OverworldToLevel3Controller(OverworldPathController):
                 # Drifted off door screen — nudge back from 0x73.
                 btn = "RIGHT" if snap.screen == 0x73 else "LEFT"
                 return self._swing(btn, "door_return")
-            # Light rock-maze tour if simple hunt stalls.
-            if self.phase_frames > 0 and self.phase_frames % self.door_tour_period >= (
-                self.door_tour_period * 3 // 5
-            ):
-                wps = (
-                    (40, 140),
-                    (100, 140),
-                    (160, 140),
-                    (200, 140),
-                    (200, 100),
-                    (128, 100),
-                    (128, 160),
-                    (80, 160),
-                )
-                wp = wps[(self.phase_frames // 50) % len(wps)]
-                if abs(snap.link_x - wp[0]) > 6:
-                    btn = "RIGHT" if snap.link_x < wp[0] else "LEFT"
-                    return self._swing(btn, "door_tour_x")
-                if abs(snap.link_y - wp[1]) > 6:
-                    btn = "DOWN" if snap.link_y < wp[1] else "UP"
-                    return self._swing(btn, "door_tour_y")
-                return self._swing("UP", "door_tour_up")
-            # Approach from south of mouth then align x and push UP.
-            if snap.link_y < LEVEL3_DOOR_APPROACH_Y - 10:
-                return self._swing("DOWN", "door_south")
-            if abs(snap.link_x - self.door_x) > 5:
-                btn = "LEFT" if snap.link_x > self.door_x else "RIGHT"
-                return self._swing(btn, "door_ax")
-            return self._swing("UP", "door_hunt")
+            step = mouth_step(snap, self.door_x, LEVEL3_DOOR_APPROACH_ROW)
+            return self._swing(step, "door_hunt")
         return self._finish("hops_complete")
 
     def _finish(self, note: str = "path_stop") -> FrameAction:
