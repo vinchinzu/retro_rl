@@ -7,6 +7,8 @@ TF suffixes stay on the owning level module.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+
 from retro_harness.nes import nes_action
 from zelda_i.dungeon import ids as _ids
 from zelda_i.ram import ZeldaSnapshot
@@ -101,12 +103,11 @@ def _south_stand_action(
     """Walk to (body.x + stand_dx, body.y+stand_dy) then face UP + A."""
     sx = int(body.x) + stand_dx
     sy = min(173, int(body.y) + stand_dy)
-    if abs(snap.link_x - sx) > 3 or abs(snap.link_y - sy) > 3:
-        if abs(snap.link_y - sy) >= abs(snap.link_x - sx):
-            face = "DOWN" if snap.link_y < sy else "UP"
-        else:
-            face = "RIGHT" if snap.link_x < sx else "LEFT"
-        return nes_action(face)
+    # ROM lattice to the stand: the greedy axis step flipped L/R and U/D
+    # around off-grid stands (L8 0x3C: 874 reversals).
+    step = room_step(snap, (sx, sy), tol=3)
+    if step is not None:
+        return nes_action(step)
     return nes_action("UP", "A")
 
 
