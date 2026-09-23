@@ -205,6 +205,8 @@ def _in_whistle_cellar(snap) -> bool:
     return snap.level == LEVEL_5 and snap.screen == ROOM_L5_WHISTLE_ITEM
 
 
+# Cap on clearing a west room whose Gibdos block the door lane.
+WEST_FIGHT_MAX_FRAMES = 4000
 # Frames a room's wave may take to appear after the scroll lands.
 SPAWN_WAIT_FRAMES = 90
 
@@ -227,9 +229,32 @@ def _fight_if_live(env, assist, total, hops, spec, types, name: str) -> bool:
 
 
 def _walk_west(env, assist, total, hops, walker, expect: int, name: str) -> bool:
-    west = walker(env, assist, total)
-    wait_play(env, assist, total, max_f=180)
-    snap = read_snapshot(env.get_ram())
+    room = read_snapshot(env.get_ram()).screen
+
+    def attempt() -> tuple[dict, object]:
+        rec = walker(env, assist, total)
+        wait_play(env, assist, total, max_f=180)
+        return rec, read_snapshot(env.get_ram())
+
+    west, snap = attempt()
+    if snap.screen == room and snap.mode == PLAY_MODE:
+        # A key door can outlast the first push budget (0x27): walk again.
+        west, snap = attempt()
+    if snap.screen == room and snap.mode == PLAY_MODE:
+        # Live Gibdos on the door column knock Link off the lane (R21 0x26:
+        # 600 frames of 133<->134 knockback). Clear them, then walk again.
+        spec = replace(
+            ROOM_66_SPEC,
+            spec_id=f"level5_west_{room:02x}_gibdos",
+            source_room=room + 1,
+            room_id=room,
+            entry=DoorRoute("RIGHT", ((32, 141),)),
+            reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+            max_frames=WEST_FIGHT_MAX_FRAMES,
+            level=LEVEL_5,
+        )
+        _fight_if_live(env, assist, total, hops, spec, (GIBDO_OBJECT_TYPE,), f"fight_{room:02x}")
+        west, snap = attempt()
     west["dest"] = snap.screen
     west["mode"] = snap.mode
     west["success"] = snap.screen == expect and snap.mode == PLAY_MODE

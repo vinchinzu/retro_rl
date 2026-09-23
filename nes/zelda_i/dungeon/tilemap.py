@@ -324,7 +324,7 @@ def ow_walkable_nodes(ram: np.ndarray, *, overworld: bool = True) -> frozenset[t
         for x in OW_LATTICE_X:
             col = x // TILE_PX
             if ok[row, col] and (col + 1 >= TILE_COLS or ok[row, col + 1]):
-                if overworld or _in_dungeon_lane(x, y):
+                if overworld or (_in_dungeon_lane(x, y) and not _head_in_water(tiles, x, y)):
                     nodes.add((x, y))
     return frozenset(nodes)
 
@@ -336,6 +336,23 @@ _DUNGEON_X = (32, 208)
 _DUNGEON_Y = (85, 189)
 _DOOR_LANE_X = 120
 _DOOR_LANE_Y = 141
+
+
+# Dungeon moat/water. The ROM collision reads Link's feet row only, but a
+# body over water with the stepladder owned deploys it, and on the ladder
+# sideways input is locked (L5 0x26: LEFT at (48,181) forever, head in the
+# moat's bottom row).
+DUNGEON_WATER_TILES = frozenset({0xF4})
+LINK_HEAD_OFFSET = 3
+
+
+def _head_in_water(tiles: np.ndarray, x: int, y: int) -> bool:
+    row = (y + LINK_HEAD_OFFSET - PLAYFIELD_TOP_Y) // TILE_PX
+    if not 0 <= row < TILE_ROWS:
+        return False
+    col = x // TILE_PX
+    cols = (col, col + 1) if col + 1 < TILE_COLS else (col,)
+    return any(int(tiles[row, c]) in DUNGEON_WATER_TILES for c in cols)
 
 
 def _in_dungeon_lane(x: int, y: int) -> bool:
