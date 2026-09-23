@@ -22,6 +22,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | run | result (assist) | through | frames | flutter | drops picked | hearts missed | hits / refills | poked b/k/R | slowest |
 |---|---|---|---|---|---|---|---|---|---|
 | full_poweron12 (92e7a315, = poweron11 code) | ok (unlimited_health) | level9-credits | 292742 | 17942 | 67/176 | 32 | 441 / 667 | 82 / 6 / 9 | 9:03 12842f |
+| full_poweron26 (3ce0a056), stopped in L9 | level9_natural_silver_arrows (unlimited_health) | level9-credits | 270230 | 6529 | 68/177 | 47 | 324 / 533 | 55 / 5 / 0 | 9:4f 13993f |
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
@@ -38,6 +39,11 @@ power-on. Frames and flutter count only up to the failure.
 | full_poweron18 | level5 west_did_not_enter_24 | 0x0F | 140771 | 5293 | 2:6e 5118f | L5 west hops = exit_door |
 | full_poweron19 | level7_pond_approach | 0x3F | 209046 | 37106 | 0:55 29890f | raft 0x61 not a combatant |
 | full_poweron20 | enter_level4 | 0x07 | 132867 | 1889 | 0:45 37835f | L4 mouth approach row south of the mouth |
+| full_poweron21 | level5 west_did_not_enter_25 | 0x0F | - | - | 5:26 | moat: ladder_release; west hops retry then clear |
+| full_poweron22 | level4_west_0x31 | 0x07 | - | - | 4:32 | L4 west door lattice; maze ladder release |
+| full_poweron23 | level6_clear_0x29 | 0x1F | - | - | 6:29 | latched ladder crossing heading |
+| full_poweron25 | level6_clear_0x29 | 0x1F | - | - | 6:29 | engine backs off a ladder that goes nowhere |
+| full_poweron26 | level9_natural_silver_arrows | 0xFF | 270230 | 6529 | 9:4f 13993f | passes on later code from the same pose |
 
 ## Last-heart refill (`--engage-hearts 1`)
 
