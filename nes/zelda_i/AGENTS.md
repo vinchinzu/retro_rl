@@ -11,7 +11,10 @@ Tracker: `bd ready -l zelda_i -l spine`. Living residual: `docs/PRE_L1.md`.
 Survival health refill is not Clean. `--through pre-l1` forces that assist off.
 Gathering is the spine's default prefix (`spine/survival.py` `_run_gathered_prefix`):
 pre-l1 assist-off, gather chain under its own refill (`--gather-engage-hearts`,
-default 1 = last-heart; 0 is the next rung), then L1 from the 0x37 door.
+default 1 = last-heart; 0 is the next rung), Blue Ring purchase at 0x34,
+then L1 from the 0x37 door. Survival tops rupees to 250 before the shop and
+records that count write. Ringless L1 and later saves are obsolete on the
+main spine; `--resume` rejects them. Regenerate from power-on.
 Planner owns `docs/STATUS.md`. The 18909f wooden M5 oracle is retired (2026-09-22); do not protect it.
 Clean re-measure is `run_level1_complete` without `--infinite-life`.
 
@@ -37,7 +40,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --no-gather --no-video -
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1
 uv run python nes/zelda_i/scripts/clean_tip.py
 uv run python -m zelda_i.overworld.gather_segments pin     # power-on pre-l1 → PreL1BombLeave
-uv run python -m zelda_i.overworld.gather_segments chain   # → 0x37, 6 HC + White Sword; chain:<stage> resumes
+uv run python -m zelda_i.overworld.gather_segments chain   # → 0x37, 6 HC + White Sword + Blue Ring; chain:<stage> resumes
 uv run python nes/zelda_i/scripts/run_level1_complete.py --natural-entry --trials 2
 uv run pytest nes/zelda_i/tests/test_pre_l1.py nes/zelda_i/tests/test_clean_tip.py -q
 uv run pytest nes/zelda_i/tests -q

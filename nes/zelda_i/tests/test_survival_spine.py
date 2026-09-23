@@ -50,11 +50,38 @@ def test_spine_final_fields_records_rupees() -> None:
         rod=1,
         bow=1,
         arrows=1,
+        ring=1,
     )
     fields = spine_final_fields(snap)
     assert fields["rupees"] == 42
     assert fields["bombs"] == 8
     assert fields["arrows"] == 1
+    assert fields["ring"] == 1
+
+
+def test_main_spine_requires_blue_ring_at_l1_mouth() -> None:
+    from zelda_i.spine.survival import gather_success
+
+    snap = SimpleNamespace(level=0, screen=0x37, sword=2, ring=0)
+    assert not gather_success(snap)
+    snap.ring = 1
+    assert gather_success(snap)
+
+
+def test_ringless_downstream_save_point_is_obsolete(tmp_path, monkeypatch) -> None:
+    from zelda_i.spine import survival
+
+    path = tmp_path / "Old_level5_clear_0x77.state"
+    path.write_bytes(b"old state")
+    monkeypatch.setattr(survival, "state_path", lambda *_: path)
+    monkeypatch.setattr(survival, "read_state_bytes", lambda _: b"old state")
+    monkeypatch.setattr(survival, "read_snapshot", lambda _: SimpleNamespace(ring=0))
+    env = SimpleNamespace(em=SimpleNamespace(set_state=lambda _: None), get_ram=lambda: None)
+    run = SpineRun(through="level5", success=True, boot_frames=1)
+    run.gather = {"engage_hearts": 1}
+    run.save_points = "Old"
+    with pytest.raises(ValueError, match="obsolete ringless main-spine save point"):
+        survival.load_save_point(env, run, "level5_clear_0x77")
 
 
 def test_level1_arrows_is_dedicated_not_on_default_tf() -> None:
@@ -148,6 +175,7 @@ def test_gather_is_the_default_prefix_and_stops_on_the_l1_mouth() -> None:
     names = [name for name, _, _ in gather_stages()]
     assert names == [name for name, _ in chain_stages()]
     assert names[0] == "exit_6f" and names[-1] == "walk_37"
+    assert names.index("ring") < names.index("walk_37")
     assert all(limit > 0 for _, _, limit in gather_stages())
     l1 = [name for name, _, _ in gathered_level1_stages()]
     assert l1 == ["enter_level1", "first_key", "north", "clear63", "clear53"]

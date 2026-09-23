@@ -59,6 +59,14 @@ before `bomb_topup`): the walk arrives on `0x6F` short of 20R and one hit from
 death, so the owned rupee count is topped to `SHOP_P7_PRICE` (20) — rupees
 only, heart assist off. Same rules as the L7 Bait top-up. Not a Clean farm
 and not bead rr-ttyu.3.
+Extended 2026-09-23 to the gathering Blue Ring at `0x34`: immediately before
+the `ring` stage, the Survival spine tops the owned rupee count up to 250R
+when short. Link then wakes the Armos and buys the ring through the shop;
+`ADDR_RING` is never written by the assist. The standalone `gather_segments
+chain` development runner discloses the same count write in
+`inventory_assist`. The prior gathered leave had 72R, so a natural 250R
+farm remains open. Main-spine checkpoints made before this purchase are
+obsolete even when their later dungeon stages were green.
 **Not Clean.** Strip or replace with farms during the later resource pass; do
 not treat a top-up tape as natural inventory.
 
@@ -68,7 +76,7 @@ Allowed fields only:
 |-------|--------------------|------|
 | bombs | `$0658` / `bombs` | Count top-up at a verified route bomb gate, through the assisted full-game clear. Never write `max_bombs` (`$067C`). |
 | keys | `$066E` / `keys` | Count top-up of the already-used key item. |
-| rupees | `$066D` / `rupees` | Count top-up to a verified shop cost (L7 Bait 60R; pre-l1 coast pack 20R before `bomb_topup`). Never grants an item. |
+| rupees | `$066D` / `rupees` | Count top-up to a verified shop cost (L7 Bait 60R; pre-l1 coast pack 20R; gathering Blue Ring 250R). Never grants an item. |
 | selected_item | `$0656` / `selected_item` | B-slot select of an **already owned** item (bombs=`1`). |
 
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`

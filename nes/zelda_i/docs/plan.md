@@ -2,7 +2,13 @@
 
 ## Now
 
-Gather before the next Level 1 measure. The clean tip is still `l1_tf`.
+Gather the Blue Ring before the next Level 1 measure. The clean tip is still `l1_tf`.
+The default main spine buys it at `0x34` after the `0x47` heart, then returns
+via the `0x39` pond to the L1 mouth. Survival tops the wallet to 250R at the
+ring stage and the shop itself changes `$0662` from 0 to 1. Ringless L1 and
+later checkpoints, including the old L5 pins, are obsolete for this main
+spine. Rebuild them from power-on; `--resume` rejects a ringless downstream
+state. A natural 250R farm remains future work.
 The first open ladder row is `pre_l1` in `spine/clean_tip.py`: hypothesis,
 inventory gap. The spec is [PRE_L1.md](PRE_L1.md).
 
@@ -11,9 +17,9 @@ Zelda Dungeon calls this The Gathering. Order:
 1. Wooden sword on `0x77`.
 2. South-coast walk to bombs at `0x6F`. Stop when `ADDR_BOMBS >= 1`.
 3. Heart at `0x7B` (taken from a `BFS_7C` pin, `GatherHeartL8Leave`), then the heart at `0x2C` (taken from a `BFS_2C` pin, `GatherHeartM3Leave`).
-4. Northeast cluster: 100 rupees `0x0F`, letter `0x0E`, candle `0x0C`, White Sword `0x0A`. Go around Lost Hills `0x1B`. Items 2 to 5 and the walk to item 7's screen are green as one pass: `gather_segments pin` (power-on pre-l1), then `gather_segments chain` (21609 frames to `0x37`, 6 containers, refill at 2 hearts). Item 6 is short on money (72 rupees). The chain is now the spine's default prefix and reaches the L1 Triforce with the L1 health assist off. See PRE_L1.md, "In the default spine". Next: heal before `exit_6f` so the chain can run with no refill, then drop the key poke at `backtrack44`.
+4. Northeast cluster: 100 rupees `0x0F`, letter `0x0E`, candle `0x0C`, White Sword `0x0A`. Go around Lost Hills `0x1B`. The older 21609-frame chain ended ringless at L1 and is historical evidence only. Next: heal before `exit_6f` so the chain can run with no refill, then drop the key poke at `backtrack44`.
 5. Burn heart `0x47` and the 90-rupee shield at `0x46`.
-6. Arrows at `0x4A` only if the wallet has 80 rupees. Potion at `0x64`. Blue Ring at `0x34`.
+6. Blue Ring at `0x34` is mandatory before L1. Arrows at `0x4A` and potion at `0x64` remain separate route work.
 7. Then the Level 1 mouth at `0x37`, and only then a new Clean Level 1 measure.
 
 Do not overwrite the 18909f oracle while this prefix is open.
@@ -49,9 +55,8 @@ and Link entered the room with four. The L5 0x64 fight currently survives
 under full refill by absorbing 28 hearts of damage, so a combat change is
 needed before a whole last-heart baseline can finish.
 
-Reproduce from `LastHeart28_level5_clear_0x77.state`, resuming
-`level5_clear_0x77` under `--engage-hearts 1`; the next stage is a custom
-suffix and has no save point. The short replays `l5h_diag2`, `l5h_evade1`,
+The old `LastHeart28_level5_clear_0x77.state` is ringless and cannot serve
+as a main-spine predecessor. The short replays `l5h_diag2`, `l5h_evade1`,
 `l5h_south1`, `l5h_backstep1`, and `l5h_occupancy1` all died in 0x64.
 The saved `LastHeart28_fight64_entry.state` is an isolated combat pin,
 not natural-entry proof. The suffix now records its full fight report,

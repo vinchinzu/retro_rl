@@ -15,6 +15,8 @@ from zelda_i.overworld.gather_segments import (
     NE_HOPS,
     POTION_HOPS,
     RING_HOPS,
+    RING_RETURN_HOPS,
+    RING_PRICE,
     WHITE_HOPS,
     ArrivalController,
     BombWallController,
@@ -27,6 +29,7 @@ from zelda_i.overworld.gather_segments import (
     make_heart_m3_controller,
     make_letter_controller,
     make_potion_controller,
+    make_ring_controller,
     make_white_controller,
 )
 from zelda_i.overworld.graph import ScreenHop
@@ -89,7 +92,8 @@ def test_every_hop_direction_matches_the_screen_grid() -> None:
         0x0E: CANDLE_HOPS,
         0x0C: WHITE_HOPS,
         0x65: POTION_HOPS,
-        0x37: RING_HOPS,
+        0x47: RING_HOPS,
+        0x34: RING_RETURN_HOPS,
         0x7C: HEART_L8_HOPS,
         0x7B: HEART_WALK_HOPS,
         0x0F: LETTER_FROM_0F_HOPS,
@@ -155,8 +159,22 @@ def test_white_cave_under_five_containers_fails_fast() -> None:
 def test_late_arrivals_do_not_enter_level_1() -> None:
     assert _targets(POTION_HOPS) == (0x64,)
     assert POTION_HOPS[0].direction == "LEFT"
-    assert _targets(RING_HOPS) == (0x36, 0x35, 0x34)
-    assert all(hop.direction == "LEFT" for hop in RING_HOPS)
+    assert _targets(RING_HOPS) == (
+        0x48, 0x58, 0x57, 0x56, 0x55, 0x65, 0x64, 0x54, 0x44, 0x34
+    )
+    assert _targets(RING_RETURN_HOPS)[-1] == 0x58
+
+
+def test_ring_stage_buys_the_middle_shop_item() -> None:
+    from zelda_i.ram import ADDR_RING
+
+    ctrl = make_ring_controller()
+    assert ctrl.price == RING_PRICE == 250
+    assert ctrl.success_addr == ADDR_RING
+    assert ctrl.shop_screen == 0x34
+    assert ctrl.buy_x == 120
+    assert ctrl.success_getter(_snap(ring=0)) == 0
+    assert ctrl.success_getter(_snap(ring=1)) == 1
 
 
 def _moblin() -> ZeldaObject:
@@ -448,12 +466,14 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
         "exit_2c", "ne_100", "exit_0f", "letter", "exit_0e", "candle",
         "exit_0c", "white", "back_1a", "walk_48", "select_candle",
         "rupees_48", "exit_48", "heart_47", "exit_47",
-        "walk_pond_l1", "pond_39_l1", "walk_37",
+        "ring", "exit_ring", "ring_return", "walk_pond_l1", "pond_39_l1", "walk_37",
     ]
     stages = dict(chain_stages())
     assert _targets(stages["letter"].hops) == (0x1F, 0x1E, 0x0E)
     assert stages["select_candle"].want == 4
     assert _targets(stages["walk_37"].hops)[-1] == 0x37
+    assert stages["ring"].price == 250
+    assert _targets(stages["walk_pond_l1"].hops)[0] == 0x59
     # Burn caves exit by stairs: nothing to clear, DOWN would re-enter.
     assert stages["exit_47"].clear == 0 and stages["exit_48"].clear == 0
     assert stages["exit_0c"].clear > 0

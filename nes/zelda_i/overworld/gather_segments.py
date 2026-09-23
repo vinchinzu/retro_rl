@@ -32,7 +32,7 @@ from zelda_i.overworld.white_sword import (
     WhiteSwordDetourController,
     WhiteSwordPhase,
 )
-from zelda_i.ram import ADDR_CANDLE, CAVE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import ADDR_CANDLE, ADDR_RING, CAVE_MODE, PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
 BLAST_FRAMES = 80
@@ -247,11 +247,31 @@ LETTER_FROM_0F_HOPS = (
 ) + LETTER_HOPS
 
 POTION_HOPS = (ScreenHop(0x64, "LEFT", align_y=141),)
+# 0x37's west edge is sealed. Reach 0x34 from the south through the
+# measured western forest and the 0x54/0x44 north gaps.
 RING_HOPS = (
-    ScreenHop(0x36, "LEFT", align_y=133),
-    ScreenHop(0x35, "LEFT", align_y=133),
-    ScreenHop(0x34, "LEFT", align_y=133),
+    ScreenHop(0x48, "RIGHT", align_y=141),
+    ScreenHop(0x58, "DOWN", align_x=120),
+    ScreenHop(0x57, "LEFT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x56, "LEFT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x55, "LEFT", align_y=133),
+    ScreenHop(0x65, "DOWN", align_x=112),
+    ScreenHop(0x64, "LEFT", align_y=141),
+    ScreenHop(0x54, "UP"),
+    ScreenHop(0x44, "UP", align_x=116),
+    ScreenHop(0x34, "UP", align_x=132),
 )
+RING_RETURN_HOPS = (
+    ScreenHop(0x44, "DOWN", align_x=132),
+    ScreenHop(0x54, "DOWN", align_x=116),
+    ScreenHop(0x64, "DOWN", align_x=60),
+    ScreenHop(0x65, "RIGHT", align_y=141),
+    ScreenHop(0x55, "UP", align_x=128),
+    ScreenHop(0x56, "RIGHT", align_y=133),
+    ScreenHop(0x57, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x58, "RIGHT", y_band_lo=148, y_band_hi=162),
+)
+RING_PRICE = 250
 
 
 def step_toward(
@@ -923,14 +943,26 @@ def make_potion_controller() -> ArrivalController:
     )
 
 
-def make_ring_controller() -> ArrivalController:
-    return ArrivalController(
+def make_ring_controller() -> CaveShopBuyController:
+    return CaveShopBuyController(
         hops=RING_HOPS,
-        max_frames=8000,
-        screen=0x34,
-        aim_x=128,
-        aim_y=88,
-        aim_dir="UP",
+        max_frames=18000,
+        shop_screen=0x34,
+        cave_x=64,
+        cave_y=125,
+        door_x=64,
+        door_approach_y=189,
+        door_reverse_y=100,
+        buy_x=120,
+        buy_y=165,
+        price=RING_PRICE,
+        # Live buy waited about 800 frames for the 250R debit and animation.
+        buy_budget=1500,
+        success_getter=lambda snap: int(snap.ring),
+        success_addr=ADDR_RING,
+        success_note="blue_ring_bought",
+        farm_below_hearts=0,
+        evade=False,
     )
 
 
@@ -1012,16 +1044,16 @@ SEGMENTS: dict[str, SegmentSpec] = {
     ),
     "gather_ring": SegmentSpec(
         name="gather_ring",
-        from_state="BFS_37",
+        from_state="GatherChain_exit_47",
         enter="GatherRingEnter",
         leave="GatherRingLeave",
         factory=make_ring_controller,
+        rupees=RING_PRICE,
     ),
 }
 
 
-# Bomb shop to White Sword: 0x7B heart, 0x2C heart, NE 100, letter,
-# candle, White Sword. One env, no pin between stops. The start is the
+# Bomb shop to White Sword, Blue Ring, and L1 mouth. One env. The start is the
 # power-on pre-l1 leave (``pin`` writes it).
 CHAIN_FROM = PRE_L1_LEAVE
 CHAIN_NAME = "GatherChain"
@@ -1054,7 +1086,13 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("exit_48", CaveExitController(clear=0)),
         ("heart_47", make_burn_47_controller()),
         ("exit_47", CaveExitController(clear=0)),
-        ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS, waypoints={})),
+        ("ring", make_ring_controller()),
+        ("exit_ring", CaveExitController(clear=0)),
+        (
+            "ring_return",
+            HopWalkController(hops=RING_RETURN_HOPS, max_frames=14000, waypoints={}),
+        ),
+        ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS[2:], waypoints={})),
         ("pond_39_l1", PondFairyController()),
         ("walk_37", HopWalkController(hops=L1_FROM_POND_HOPS, waypoints={})),
     ]
@@ -1094,7 +1132,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if pin_pre_l1()["ok"] else 1
     if token == "chain":
         result = run_chain(
-            chain_stages(), from_state=CHAIN_FROM, chain=CHAIN_NAME, engage_hearts=2
+            chain_stages(),
+            from_state=CHAIN_FROM,
+            chain=CHAIN_NAME,
+            engage_hearts=2,
+            rupee_topups={"ring": RING_PRICE},
         )
         return 0 if result["ok"] else 1
     if token.startswith("chain:"):
@@ -1109,6 +1151,7 @@ def main(argv: list[str] | None = None) -> int:
             from_state=f"{CHAIN_NAME}_{after}",
             chain=CHAIN_NAME,
             engage_hearts=2,
+            rupee_topups={"ring": RING_PRICE},
         )
         return 0 if result["ok"] else 1
     if token == "all":

@@ -9,7 +9,7 @@
     uv run python nes/zelda_i/scripts/run_survival_spine.py --no-gather --no-video --trials 1
 
 Gathering is the default prefix: pre-l1 bombs, the gather chain to the L1
-mouth 0x37 (6 containers, White Sword), then L1 from its door. The chain's
+mouth 0x37 (6 containers, White Sword, Blue Ring), then L1 from its door. The chain's
 own health refill engages at ``--gather-engage-hearts`` (default 2; 1 is
 last-heart, 0 is off; ``--clean`` sets 0). ``--no-gather`` is the legacy
 wooden-sword prefix.
