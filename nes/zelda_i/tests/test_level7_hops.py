@@ -172,21 +172,21 @@ def _poke_env(ram: np.ndarray) -> tuple[SimpleNamespace, _WriteThroughMem]:
 
 
 def _measured_leave_ram() -> np.ndarray:
-    """RAM matching MEASURED_POST_L6_EXIT byte-for-byte (l7p1_l6exit.json)."""
+    """RAM matching MEASURED_POST_L6_EXIT byte-for-byte (gathered spine, 2026-09-22)."""
     return _ram(
         screen=SCREEN_LEVEL6_ENTRANCE,
         x=112,
         y=125,
         triforce=0x3F,
         keys=2,
-        bombs=8,
+        bombs=7,
         arrows=1,
-        health=0x77,  # 8 containers, full
+        health=0xAA,  # 11 containers, full
         whistle=1,
         food=0,
         rod=1,
         bow=1,
-        candle=0,
+        candle=1,
         rupees=42,
         selected=2,
     )
