@@ -37,7 +37,7 @@ from zelda_i.level3.dungeon import (
     ROOM_L3_WEST_KEY,
 )
 from zelda_i.level3.overworld import LEVEL3, SCREEN_LEVEL3_ENTRY_ROOM
-from zelda_i.dungeon.hop_controller import HopController
+from zelda_i.dungeon.hop_controller import HopController, LatticeDoorWalker
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
 
@@ -137,6 +137,7 @@ class Level3NorthDoor7bController(HopController):
     max_frames: int = NORTH_ENTER_MAX_FRAMES
     wait_modes: tuple[int, ...] = ()
     done_reason: str = "north_arrived_6b"
+    exit_dir: str | None = "UP"
 
     def timeout_note(self, snap: ZeldaSnapshot) -> str:
         del snap
@@ -190,6 +191,12 @@ class Level3NorthExit6bController:
     notes: list[str] = field(default_factory=list)
     samples: list[dict[str, Any]] = field(default_factory=list)
     walker: OccupancyWalker = field(default_factory=_room_6b_walker)
+    _env: Any = field(default=None, repr=False)
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        """Tiles for the lattice route; the hand policy below is the fallback."""
+        self._env = env
 
     @property
     def grid(self) -> OccupancyGrid:
@@ -240,6 +247,11 @@ class Level3NorthExit6bController:
             return FrameAction(
                 nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
             )
+
+        door = self._door.action(self._env, snap, "UP", "north6b_lattice")
+        if door is not None:
+            self.walker.last_dir = None
+            return door
 
         xy = (snap.link_x, snap.link_y)
         prev_dir = self.walker.last_dir

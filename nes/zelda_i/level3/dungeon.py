@@ -139,6 +139,10 @@ ROOM_7B_SPEC = DungeonRoomSpec(
     enemy_types=(ZOL_OBJECT_TYPE,),
     expected_enemy_count=6,
     alive_rule=AliveRule.TYPE_AND_HP,
+    # A Zol reads HP 0 while the ROM still counts it (RoomAllDead 0, north
+    # shutter shut): gathered spine 2026-09-22, Zol at (38,93) hp 0 after
+    # White Sword hits. Presence is life for this room.
+    type_only_enemy_types=(ZOL_OBJECT_TYPE,),
     combat=CombatTuning(
         patrol=_ROOM_7B_PATROL,
         engage_distance=64,
@@ -173,6 +177,8 @@ ROOM_6B_SPEC = DungeonRoomSpec(
     enemy_types=(ZOL_OBJECT_TYPE,),
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
+    # Same HP-0 Zol as 0x7B: presence is life, or the north shutter stays shut.
+    type_only_enemy_types=(ZOL_OBJECT_TYPE,),
     combat=CombatTuning(
         patrol=_ROOM_6B_PATROL,
         engage_distance=64,
