@@ -44,6 +44,7 @@ from zelda_i.combat import facing_to_direction
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_HELP_DROP_COUNT, ADDR_WORLD_KILL_COUNT, read_snapshot
+from zelda_i.run_ledger import RunLedger
 from zelda_i.runner import VideoTap, add_video_args, resolve_video
 from zelda_i.spine.survival import (
     GATHER_ENGAGE_HEARTS,
@@ -211,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
                     hud=_headed_hud,
                 )
             tap.attach(env, obs)
+            ledger = RunLedger()
+            ledger.attach(env)
             # VideoTap wraps env.step; do not also pass on_frame (double encode).
             run = run_survival_spine(
                 env,
@@ -234,7 +237,10 @@ def main(argv: list[str] | None = None) -> int:
                 "final": spine_final_fields(snap, final_ram),
                 "screenshot": str(screenshot),
                 "assist": None if assist is None else assist.report(),
+                "ledger": ledger.report(),
             }
+            for line in ledger.summary_lines():
+                print(line)
         finally:
             try:
                 video_info = tap.close()
