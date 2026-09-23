@@ -75,7 +75,10 @@ def magic_key_cellar_return_step(snap: ZeldaSnapshot) -> FrameAction:
     # F1: cardinal DOWN at (136,141) tile 36 did not move (south brick).
     # F2: LEFT+DOWN at x=160 y=141 is still the pit (tile 250). Stay RIGHT
     # until the east column; inbound climbed this ladder at x=176.
-    if x >= EAST_X - ALIGN:
+    # The drop works on the ladder column only. At EAST_X - ALIGN the LEFT
+    # half walked Link back 2px and RIGHT re-advanced him: 4000 frames of
+    # 172<->174 (L8 0x0F).
+    if x >= EAST_X:
         return FrameAction(nes_action("LEFT", "DOWN"), "cellar_east_drop")
     return FrameAction(nes_action("RIGHT"), "cellar_to_east")
 
