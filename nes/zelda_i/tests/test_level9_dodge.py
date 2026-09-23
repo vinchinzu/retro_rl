@@ -105,7 +105,7 @@ def test_patra_cooldown_dodges_eye_at_boundary_not_idle() -> None:
         facing=FACING_NORTH,
         objects=(body, eye),
     )
-    action, reason, cooldown = patra_action(snap, cooldown=6)
+    action, reason, cooldown = patra_action(snap, cooldown=6, stand_dy=30)
     assert reason == "attack_dodge"
     assert list(action) == list(nes_action("LEFT"))
     assert cooldown == 5
@@ -121,10 +121,23 @@ def test_patra_cooldown_without_hazard_stands_idle() -> None:
         facing=FACING_EAST,
         objects=(body,),
     )
-    action, reason, cooldown = patra_action(snap, cooldown=3)
+    action, reason, cooldown = patra_action(snap, cooldown=3, stand_dy=30)
     assert reason == "cooldown_stand"
     assert list(action) == list(nes_idle_action())
     assert cooldown == 2
+
+
+def test_patra_default_stand_is_the_bottom_row_outside_the_orbit() -> None:
+    """30 px south stood inside the eyes' orbit (0x52 24h, 0x61 23h per
+    fight); the default stand clamps to y=173 under the body."""
+    body = _obj(OBJ_PATRA, 120, 120, slot=1, hp=0xB0)
+    snap = _snap(
+        screen=ROOM_BEFORE_GANON, link_x=120, link_y=150, facing=FACING_NORTH,
+        objects=(body,),
+    )
+    action, reason, _ = patra_action(snap, cooldown=0)
+    assert reason == "align_south"
+    assert list(action) == list(nes_action("DOWN"))
 
 
 def test_patra_faces_north_then_fires() -> None:
@@ -136,7 +149,7 @@ def test_patra_faces_north_then_fires() -> None:
         facing=FACING_EAST,
         objects=(body,),
     )
-    face, face_reason, face_cd = patra_action(sideways, cooldown=0)
+    face, face_reason, face_cd = patra_action(sideways, cooldown=0, stand_dy=30)
     assert face_reason == "face_up"
     assert list(face) == list(nes_action("UP"))
     assert face_cd == 0
@@ -148,7 +161,7 @@ def test_patra_faces_north_then_fires() -> None:
         facing=FACING_NORTH,
         objects=(body,),
     )
-    fire, fire_reason, fire_cd = patra_action(north, cooldown=0)
+    fire, fire_reason, fire_cd = patra_action(north, cooldown=0, stand_dy=30)
     assert fire_reason == "sword_pulse_up"
     assert list(fire) == list(nes_action("UP", "A"))
     assert fire_cd > 0

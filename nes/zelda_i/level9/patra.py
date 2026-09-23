@@ -31,7 +31,11 @@ PATRA_EYE_HP_START = 0x60
 PATRA_EYE_COUNT = 8
 NORTH_DOOR = 0x08
 
-PATRA_STAND_DY = 30
+# Stand this far south of the body; the stand clamps to the bottom row
+# (y=173), outside the eyes' orbit, and the full-health beam still reaches.
+# 30 px stood inside the orbit: over 12 RNG offsets from Blue Ring power-on
+# 9 pins, 0x52 went 24.0h -> 6.8h (2351f -> 1761f) and 0x61 23h -> 2h.
+PATRA_STAND_DY = 84
 PATRA_ATTACK_COOLDOWN = 12
 PATRA_MAX_FRAMES = 6000
 
