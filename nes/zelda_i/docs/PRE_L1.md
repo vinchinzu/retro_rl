@@ -1,5 +1,41 @@
 # Pre-L1 loadout
 
+## Blue Ring main-spine revision (2026-09-23, rr-scum)
+
+The default gathering chain now visits the Armos shop on `0x34` after the
+`0x47` heart and buys the Blue Ring before entering L1. The route goes via
+`0x48/0x58` and the western forest to `0x54/0x44/0x34`, then reverses to
+`0x58`, heals at the `0x39` pond, and reaches the `0x37` mouth. The shop's
+left-column Armos exposes stairs at `(64,125)`. Link walks past them while
+pushing UP, then turns DOWN onto the exposed stairs. The middle pedestal is
+`(120,141)` after contact from y=165. Purchase proof is `$0662: 0→1` and
+the 250R debit; the route does not poke the Ring byte.
+
+The standalone `chain:exit_47` replay from its predecessor pin was green:
+8,987 frames through `ring`, `exit_ring`, `ring_return`, pond, and `walk_37`;
+`GatherChain_ring` has Ring 1, 0R, and 6 containers. The power-on
+`blue_ring_gather1` run was 1/1 green to the L1 mouth in 41,670 frames,
+with `set_state=0`, Ring 1, White Sword, 6 containers, and 1R. Its Survival
+inventory report records the only new ring-budget write, rupees 73→250
+before the shop; `progression_writes=0`, `capacity_writes=0`. This is an
+assisted purchase and leaves a natural 250R farm open. The earlier ringless
+L1/L5 and later checkpoints are invalid for the main spine; resume rejects
+ringless saves after the `ring` stage. The 2026-09-22 chain and L1 timings
+below are historical, not current route results.
+
+`blue_ring_l1_1` then continued power-on through L1 in 53,801 frames,
+`set_state=0`, with Ring 1 at `BlueRing_enter_level1` and Ring 1 at the
+Triforce leave (`TF=0x01`, 7 containers). The run remained Survival: its
+inventory writes were rupees 73→250 at `ring` and key 0→1 at
+`backtrack44`; no progression or capacity write. Next work is a natural
+250R farm and a new L5+ baseline from this ring-bearing power-on prefix.
+`blue_ring_l1_verify_20260923` repeated the power-on route in 53,801 frames:
+ring purchase at 36,303f, L1 entry at 41,778f, and Triforce at 53,801f.
+The final glance passes on fanfare `0x36` `(128,149)`, `TF=0x01`, Ring 1,
+7 full containers, 8 bombs, 0 keys, and 8R; deaths, state loads, progression
+writes, and capacity writes are all zero. The same two inventory count writes
+remain, so this is a second Survival verification, not a natural farm.
+
 Zelda Dungeon, The Gathering, first quest only. Grid is `screen = (row << 4) | col`. Start is `0x77`.
 
 This prefix is how Level 1 gets more than three heart containers and a wooden sword. The Clean gate stays the 18909f wooden clear. Do not STATUS from a pin. Heart assist stays off. Do not poke bombs, Food, keys, the candle, or `$066F`. When the wallet is under 20, the spine writes `$066D` to 20 before `bomb_topup`. That write is not rr-ttyu.3.

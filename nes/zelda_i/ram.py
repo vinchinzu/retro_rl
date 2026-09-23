@@ -156,6 +156,7 @@ class ZeldaSnapshot:
     bow: int = 0  # ADDR_BOW
     arrows: int = 0  # ADDR_ARROWS; wooden=1 silver=2
     candle: int = 0  # ADDR_CANDLE; blue=1 red=2
+    ring: int = 0  # ADDR_RING; blue=1 red=2
     food: int = 0  # ADDR_FOOD (meat)
     letter: int = 0  # ADDR_LETTER; 1 once the 0x0E old man's letter is taken
     magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
@@ -337,6 +338,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         bow=read_u8(ram, ADDR_BOW),
         arrows=read_u8(ram, ADDR_ARROWS),
         candle=read_u8(ram, ADDR_CANDLE),
+        ring=read_u8(ram, ADDR_RING),
         food=read_u8(ram, ADDR_FOOD),
         letter=read_u8(ram, ADDR_LETTER),
         world_kill_count=read_u8(ram, ADDR_WORLD_KILL_COUNT),

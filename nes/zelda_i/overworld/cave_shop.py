@@ -116,6 +116,13 @@ class CaveShopBuyController(OverworldPathController):
     # (None) disables the check — most shops don't need it.
     north_gap_x: int | None = None
     north_gap_y_hi: int = NORTH_GAP_Y_HI
+    # A south arrival may have a solid west edge; climb to this open row
+    # before aligning with the cave's x column (0x34 Armos shop).
+    door_approach_y: int | None = None
+    # On an Armos shop, pushing UP wakes the statue and carries Link past the
+    # newly exposed stairs. Turn back onto those stairs from above.
+    door_reverse_y: int | None = None
+    _door_returning: bool = False
 
     # Rupee farm — call into it (never poke) when short of ``price``. None
     # means "no farm available": short-of-price fails closed instead.
@@ -144,6 +151,7 @@ class CaveShopBuyController(OverworldPathController):
         self._rupees_at_buy = None
         self._item_owned_at_start = None
         self.leftover = None
+        self._door_returning = False
         if self.farm is not None:
             self.farm.reset()
 
@@ -231,6 +239,24 @@ class CaveShopBuyController(OverworldPathController):
             )
         if snap.screen != self.shop_screen:
             return super()._simple_door_hunt(snap)
+        if self.door_reverse_y is not None:
+            if snap.link_y < self.door_reverse_y:
+                self._door_returning = True
+            if self._door_returning:
+                if (
+                    self.door_approach_y is not None
+                    and snap.link_y > self.door_approach_y
+                ):
+                    self._door_returning = False
+                else:
+                    return self._swing("DOWN", "door_exposed_stairs")
+        if (
+            self.door_approach_y is not None
+            and self.door_x is not None
+            and abs(snap.link_x - self.door_x) > 5
+            and snap.link_y > self.door_approach_y
+        ):
+            return self._swing("UP", "door_approach_row")
         if (
             self.north_gap_x is not None
             and snap.link_y < self.north_gap_y_hi

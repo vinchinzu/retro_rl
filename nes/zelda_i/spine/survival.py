@@ -29,7 +29,7 @@ from zelda_i.route.chain import (
 from retro_harness.env import read_state_bytes, save_state, state_path
 from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist
 from zelda_i.paths import GAME, GAME_DIR
-from zelda_i.overworld.gather_segments import chain_stages as gather_chain_stages
+from zelda_i.overworld.gather_segments import RING_PRICE, chain_stages as gather_chain_stages
 from zelda_i.overworld.nav import NavPhase, OverworldToLevel1Controller
 from zelda_i.level1.bow import level1_bow_stages, level1_bow_success
 from zelda_i.level1.bow_cellar import (
@@ -240,6 +240,7 @@ def spine_final_fields(snap: ZeldaSnapshot, ram: Any = None) -> dict[str, Any]:
         "bow": int(getattr(snap, "bow", 0)),
         "arrows": int(getattr(snap, "arrows", 0)),
         "sword": int(getattr(snap, "sword", 0)),
+        "ring": int(getattr(snap, "ring", 0)),
     }
     if ram is not None:
         fields.update(
@@ -471,6 +472,7 @@ def _run_stages(
     retopup: frozenset[str] = frozenset(),
     key_retopup: frozenset[str] = frozenset(),
     rupee_retopup: frozenset[str] = frozenset(),
+    rupee_targets: dict[str, int] | None = None,
     forced_rupee_retopup: frozenset[str] = frozenset(),
     update_bombs: bool = False,
 ) -> bool:
@@ -489,6 +491,8 @@ def _run_stages(
                 env, run, rupees=SPINE_PRE_L1_SHOP_RUPEES, force=True
             )
         if pokes:
+            if name in (rupee_targets or {}):
+                topup_owned_rupees(env, run, rupees=rupee_targets[name])
             if name in retopup:
                 topup_owned_inventory(env, run)
             if name in key_retopup:
@@ -535,6 +539,14 @@ def load_save_point(env, run: SpineRun, stage: str) -> None:
     if not path.exists():
         raise FileNotFoundError(f"no save point for stage {stage!r}: {path}")
     env.em.set_state(read_state_bytes(path))
+    if run.gather is not None:
+        chain_names = [name for name, _ in gather_chain_stages()]
+        before_ring = {name for name, _, _ in pre_l1_stages()}
+        before_ring.update(chain_names[: chain_names.index("ring") + 1])
+        if stage not in before_ring and read_snapshot(env.get_ram()).ring < 1:
+            raise ValueError(
+                f"obsolete ringless main-spine save point {stage!r}: {path}"
+            )
     run.resume_from = None
     run.resumed_from = stage
 
@@ -841,12 +853,11 @@ def _boot_only_prefix(env, *, room_timer=None, assist=None, on_frame=None):
     )
 
 
-# Gathering prefix (default): the coast bombs, then the 22-stage gather
-# chain to the L1 mouth on 0x37 (6 containers, White Sword, blue candle,
-# letter), then the L1 rooms through 0x53. The gather chain's only write is
-# a health refill at this many whole hearts. 2 (the dev chain's setting,
-# for the 0x0A Lynel's >1.5-heart hit) made 9 writes; 1 (last-heart) was
-# green to 0x37 on 2026-09-22 with 6 writes, 0 deaths. Next step is 0 (off).
+# Gathering prefix (default): coast bombs, then the Blue Ring chain to the
+# L1 mouth on 0x37 (6 containers, White Sword, blue candle, letter, ring).
+# The chain uses a health refill at this many whole hearts and a disclosed
+# 250R count top-up before the in-game ring buy. 0 disables health refill;
+# without inventory pokes the 250R shortfall fails closed at the shop.
 GATHER_ENGAGE_HEARTS = 1
 GATHER_STAGE_MAX_FRAMES = 8000
 
@@ -861,7 +872,7 @@ def gather_assist(engage_hearts: int) -> UnlimitedHealthAssist | None:
 
 
 def gather_stages() -> list[tuple[str, Any, int]]:
-    """The gather chain as spine stages: bomb-shop cave → 0x37, one env."""
+    """The gather chain as spine stages: bomb cave → Ring shop → 0x37."""
     return [
         (name, ctl, int(getattr(ctl, "max_frames", 0) or GATHER_STAGE_MAX_FRAMES))
         for name, ctl in gather_chain_stages()
@@ -884,11 +895,12 @@ def gathered_level1_stages() -> tuple[tuple[str, Any, int], ...]:
 
 
 def gather_success(snap: ZeldaSnapshot) -> bool:
-    """On the L1 mouth screen in play, White Sword in hand."""
+    """On the L1 mouth screen in play with White Sword and Blue Ring."""
     return (
         snap.level == 0
         and snap.screen == SCREEN_LEVEL1_ENTRANCE
         and int(snap.sword) >= 2
+        and int(snap.ring) >= 1
     )
 
 
@@ -903,6 +915,7 @@ GATHER_WHITE_ENGAGE_HEARTS = 2
 def _run_gather_chain(env, run: SpineRun, chain_assist: Any, run_stages, hop_kw) -> bool:
     """The gather stages, with the ``white`` stage's own refill floor."""
     stages = gather_stages()
+    hop_kw = dict(hop_kw, rupee_targets={"ring": RING_PRICE})
     floor = getattr(chain_assist, "engage_at_whole_hearts", None)
     if floor is None or floor >= GATHER_WHITE_ENGAGE_HEARTS:
         return run_stages(env, run, stages, **dict(hop_kw, assist=chain_assist))
@@ -945,6 +958,7 @@ def _run_gathered_prefix(
         ok = run.success = False
         run.failed_stage = "pre_l1_shop_p7"
     if ok:
+        run.allow_pokes = allow_pokes
         ok = _run_gather_chain(env, run, chain_assist, run_stages, hop_kw)
     if ok and not run.skipping and not gather_success(read_snapshot(env.get_ram())):
         ok = run.success = False
