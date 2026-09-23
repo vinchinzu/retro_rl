@@ -16,6 +16,16 @@ The 18909f figure is the clean-tip oracle recorded on 2026-09-14. This doc pass 
 
 Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
 
+## 2026-09-22: wooden-sword oracle retired
+
+The 18909f wooden-sword M5 run is no longer protected; code may change it.
+The default spine is now power-on → gathering (White Sword, 6 containers)
+→ dungeons. Resumed from spine save points (`--save-points` / `--resume`,
+Survival assist on), it collects L1–L6 Triforces (TF `0x3F`, 11 containers).
+It stops at the L7 recorder warp: `SummonedWhirlwind` (`$508`) stays 1 after
+landing on 0x0B, and 0x0B cannot be walked off. Not a Clean claim, and not
+one continuous tape (each fix was resumed from the previous save point).
+
 ## What is open
 
 `spine/clean_tip.py` `next_open()` is `pre_l1`. Route and the one live tape are in [PRE_L1.md](PRE_L1.md). One flagged rollout trial bought bombs. The default walk is not accepted.

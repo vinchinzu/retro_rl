@@ -12,8 +12,16 @@ Survival health refill is not Clean. `--through pre-l1` forces that assist off.
 Gathering is the spine's default prefix (`spine/survival.py` `_run_gathered_prefix`):
 pre-l1 assist-off, gather chain under its own refill (`--gather-engage-hearts`,
 default 1 = last-heart; 0 is the next rung), then L1 from the 0x37 door.
-Planner owns `docs/STATUS.md`. Leave the 18909f M5 oracle alone.
+Planner owns `docs/STATUS.md`. The 18909f wooden M5 oracle is retired (2026-09-22); do not protect it.
 Clean re-measure is `run_level1_complete` without `--infinite-life`.
+
+## Save points
+
+`run_survival_spine.py --save-points` writes `Spine_<stage>.state` at every
+stage start and `Spine_fail` on a red run; `--resume <stage>` loads one and
+plays on (disclosed as `resumed_from`). Custom suffixes (L3/L4 boss, L5
+whistle/TF) have no save point; resume from the stage before. Each stage
+reports `hearts` (in/out/damage/damage_by_room).
 
 ## Commands
 
@@ -42,6 +50,7 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Do not poke Food, bombs, keys, the candle, or `$066F`. `--through pre-l1` still forces heart assist off. It does write `$066D` up to 20 before `bomb_topup` when the wallet is short. That write is not the rr-ttyu.3 buy. Quote a tape only against the code that produced it. Read `reason_by_screen` before changing a hop.
 - A `@dataclass` copies field defaults into `__init__`. Setting the default on the class later does not change instances.
 - Walls come from `dungeon.tilemap.ow_walkable_nodes`, the ROM collision on the 8 px turn grid, not from a screenshot. The old `measured_walker` samples one pixel and misses Link's width. 0x79 y=165 dead-ends at x=192.
+- Walls, doors, stairs and block pushes go through the ROM lattice helpers in `dungeon/hop_controller.py` (`LatticeDoorWalker`, `lattice_goto`, `block_push_step`, `stairs_step`); hand waypoint policies are fallbacks only.
 - Score a combat change on the multi-offset eval, not on one tape. A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

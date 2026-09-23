@@ -60,6 +60,10 @@ POST_L6_EXIT_STATE = "Level6ExitOverworld"
 # the greened ``POST_L6_TO_POND_HOPS`` prefix reaches pond ``0x42``.  The
 # 42R -> 60R Bait gap is closed downstream by a documented Survival rupee
 # top-up (``SPINE_L7_RUPEE_RETOPUP``); a natural OW farm is a separate bead.
+# Re-measured 2026-09-22 on the gathered spine (White Sword, blue candle
+# from the gathering, three overworld hearts). Keys/bombs/rupees are lower
+# bounds; the wooden-sword arrival (8 containers, candle 0, bombs 8, 42R)
+# is retired with the 18909f oracle.
 MEASURED_POST_L6_EXIT = OverworldHandoff(
     screen=SCREEN_LEVEL6_ENTRANCE,
     link_x=112,
@@ -67,17 +71,17 @@ MEASURED_POST_L6_EXIT = OverworldHandoff(
     mode=PLAY_MODE,
     triforce=POST_L6_TRIFORCE,
     keys=2,
-    bombs=8,
+    bombs=7,
     rupees=42,
-    heart_containers=8,
+    heart_containers=11,
     selected_item=2,  # arrows still selected from the Gohma kill
     whistle=1,
     food=0,
     rod=1,
     bow=1,
     arrows=1,
-    candle=0,
-    evidence="measured-level6-exit-2of2",
+    candle=1,
+    evidence="measured-gathered-spine-2026-09-22",
     verified=True,
     route_eligible=False,
 )
