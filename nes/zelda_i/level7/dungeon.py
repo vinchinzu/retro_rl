@@ -88,7 +88,9 @@ MEASURED_POST_L7_EXIT = OverworldHandoff(
     link_y=93,
     mode=PLAY_MODE,
     triforce=TF_AFTER_LEVEL7,
-    keys=1,
+    # Lower bound (the L8 check is >=): the lattice 0x38 key door spends the
+    # key the fixture tape carried out.
+    keys=0,
     bombs=1,
     rupees=66,
     # 12 = the gathered spine's continuous power-on arrival (2026-09-23,

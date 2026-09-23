@@ -27,7 +27,7 @@ from zelda_i.dungeon.engine import (
     RewardSpec,
 )
 from zelda_i.dungeon.door_hop import door_band_goal
-from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B, lattice_goto
 from zelda_i.dungeon.ids import MANHANDLA_OBJECT_TYPE
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
@@ -534,6 +534,12 @@ class _NorthColumnBase(HopController):
             for d in ("UP", "DOWN", "LEFT", "RIGHT")
         ):
             self._walker.last_dir = None
+            # The learned grid can box a corner the ROM leaves open: (32,173)
+            # stood 55000f under Darknut contact (889 hearts) on the power-on
+            # gathered spine. Walk the lattice toward the centre instead.
+            step = lattice_goto(None, snap, (120, 141))
+            if step is not None:
+                return FrameAction(nes_action(step), "occupancy_unbox")
             return FrameAction(nes_idle_action(), "occupancy_stand")
 
         bodies = live + _live_of(snap, (STATUE_FIREBALL,))
