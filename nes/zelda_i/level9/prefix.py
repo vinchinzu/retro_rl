@@ -19,6 +19,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
     dungeon_align_then_push,
+    lattice_door_step,
     stairs_step,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
@@ -923,7 +924,8 @@ ROOM_10_WIZZROBES_SPEC = DungeonRoomSpec(
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
-        patrol=((120, 189), (72, 189), (168, 189)),
+        # Off the door column x=120: a hit there knocks Link out south.
+        patrol=((72, 189), (168, 189)),
         engage_distance=48,
         attack_phase=2,
         patrol_attack_period=8,
@@ -1078,6 +1080,7 @@ def make_stairs_05_controller(*, dest: int | None = None) -> Level9Stairs05Contr
 # L9Room10EntryReal pin (rr-sz8.6, 2026-09-06): clear -> push -> stairs ->
 # cellar pickup -> return lands `arrows == 2` back in 0x10 in ~5200 frames.
 ROOM_10_CELLAR = 0x4F
+ROOM_10_SOUTH = 0x20
 ROOM_10_BLOCK_TYPE = 0x68
 # Statue bands at y~112 and y~176 block every column except the west lane
 # x=32, so vertical travel is routed through it; the north band row y=93 and
@@ -1149,6 +1152,11 @@ class Level9Room10SilverArrowsController(HopController):
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.screen == ROOM_10_CELLAR or snap.mode == PASSAGE_MODE:
             return self._cellar_policy(snap)
+        if snap.screen == ROOM_10_SOUTH:
+            # A Wizzrobe hit knocks Link out through 0x10's open south door;
+            # idling in 0x20 cost 201 hearts on the Blue Ring L9 resume.
+            step = lattice_door_step(None, snap, "UP")
+            return FrameAction(nes_action(step or "UP"), "room10_reenter")
         if snap.screen != ROOM_10_ORIGIN:
             return FrameAction(nes_idle_action(), f"unexpected_screen_0x{snap.screen:02x}")
         return self._room_policy(snap)

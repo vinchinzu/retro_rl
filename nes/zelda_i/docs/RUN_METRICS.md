@@ -34,6 +34,20 @@ measurement. Compare a row against the row above it only when the code changed.
 | lastheart_poweron28 (01e2011f + raft fix) | level5_whistle_fight_64 (last_heart) | level9-credits | 125417 | 3873 | 57/101 | 8 | 100 / 12 | 50 / 3 / 0 | 4:20 4346f |
 | blue_ring_full_poweron2 (438f56a9 + Dodongo turn) | level7_red_candle_pickup (unlimited_health) | level9-credits | 222646 | 5804 | 57/133 | 28 | 74 / 342 | 29 / 3 / 177 | 7:4a 35911f |
 | blue_ring_full_poweron3 (+ L4 HC, 0x4A floor) | level6_clear_0x19 (unlimited_health) | level9-credits | 168184 | 5274 | 50/115 | 26 | 62 / 222 | 29 / 3 / 177 | 6:19 15310f |
+| blue_ring_full_poweron4 (+ 0x19 ladder escape, reachable_only, BFS rewrite; damage includes a 16h boot artifact, since fixed) | enter_level6 (unlimited_health) | level9-credits | 142193 | 3311 | 44/105 | 23 | 42 / 168 | 29 / 3 / 177 | 5:65 4042f | 138.52 | 1:43=map 2:1e=bombs 2:3e=key 2:3f=bombs 3:5d=rupee5 3:6b=key 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 |
+| blue_ring_full_poweron5 (+ OW 0x15 lattice start, 0x29 fixes) | level7_room59_up (unlimited_health) | level9-credits | 179712 | 4024 | 73/141 | 29 | 81 / 282 | 38 / 3 / 177 | 7:59 5150f | 199.45 | 1:43=map 2:0e=heart_container 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:29=key 6:2d=key 7:58=rupee5 7:68=bombs 7:69=bombs |
+| blue_ring_full_poweron7 (+ L7 0x59 door, arrow-budget rupee floor, L8 Gleeok HC walk, L2 Dodongo HC) | level8_return_passage_east_3e (unlimited_health) | level9-credits | 218026 | 6074 | 68/152 | 36 | 100 / 372 | 60 / 4 / 177 | 7:0d 8448f | 242.55 | 1:43=map 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 6:58=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:4e=rupee5 8:6e=rupee5 |
+| blue_ring_full_poweron8 (+ L8 0x3E door, L9 0x10/0x05 engine clears, 0x10 re-entry) | level9_natural_patra_join (unlimited_health) | level9-credits | 265684 | 6859 | 72/170 | 41 | 213 / 566 | 72 / 5 / 177 | 9:04 15296f | 430.53 | 1:43=map 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 6:58=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
+| **blue_ring_full_poweron9 (+ L9 0x04 north-aisle lattice leg)** | **ok (unlimited_health)** | level9-credits | **260248** | 7354 | 73/172 | 42 | 199 / 570 | 72 / 5 / 177 | 7:0d 8448f | 387.56 | 1:43=map 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 6:58=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
+
+Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
+stopped one stage later; each stall was fixed from its save point with
+`scripts/stage_replay.py` and the next run started from power-on. Run 6 died
+on an `ImportError` from an edit made while it was in flight (no row).
+Run 9 is the first Blue Ring run to the credits: one session, zero state
+loads, 14 containers (L2 and L4 hearts now taken), and 199 assist hits
+against 371 in full_poweron27. Per-room damage and missed room items come
+from the ledger books added the same day.
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
