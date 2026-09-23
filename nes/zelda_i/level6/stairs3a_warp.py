@@ -18,6 +18,8 @@ phase's inner helper, folded in rather than kept as a separate module.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -362,32 +364,11 @@ class _PushController:
                     f"at_push_{xy[0]}_{xy[1]}_block_{int(block.x)}_{int(block.y)}",
                 )
             else:
-                dest = south_face_stand(block)
-                bx, by = int(block.x), int(block.y)
-                tx, ty = dest
-                # If north of the push stand, detour around the center block column.
-                if xy[1] < ty - PUSH_ALIGN_TOL:
-                    if bx - 16 <= xy[0] <= bx + 24:
-                        side_x = bx + 24 if xy[0] >= bx else bx - 24
-                        if abs(xy[0] - side_x) > PUSH_ALIGN_TOL:
-                            btn = "RIGHT" if xy[0] < side_x else "LEFT"
-                            return self._emit(
-                                snap, FrameAction(nes_action(btn), "stand_path")
-                            )
-                    return self._emit(
-                        snap, FrameAction(nes_action("DOWN"), "stand_path")
-                    )
-                # At or south of the push stand: align x to tx, then align y to ty.
-                if abs(xy[0] - tx) > PUSH_ALIGN_TOL:
-                    btn = "LEFT" if xy[0] > tx else "RIGHT"
-                    return self._emit(
-                        snap, FrameAction(nes_action(btn), "stand_path")
-                    )
-                if abs(xy[1] - ty) > PUSH_ALIGN_TOL:
-                    btn = "UP" if xy[1] > ty else "DOWN"
-                    return self._emit(
-                        snap, FrameAction(nes_action(btn), "stand_path")
-                    )
+                # ROM lattice to the south face; the hand detour flipped
+                # DOWN/RIGHT at (64,157)<->(64,158) for 2457 frames (R17).
+                step = room_step(snap, south_face_stand(block), tol=PUSH_ALIGN_TOL)
+                if step is not None:
+                    return self._emit(snap, FrameAction(nes_action(step), "stand_path"))
                 return self._emit(
                     snap, FrameAction(nes_idle_action(), "stand_wait")
                 )

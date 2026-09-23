@@ -231,16 +231,3 @@ def test_east_door_region_does_not_abort_peel() -> None:
     assert list(act.action) == list(nes_action("DOWN"))
 
 
-def test_north_of_block_detours_to_south_stand() -> None:
-    from retro_harness.nes import nes_action
-
-    # Link at (124, 125) north of center block at (112, 144)
-    ram = _ram(level=6, screen=0x3A, x=124, y=125, keys=4)
-    _plant_block(ram, 11, 112, 144)
-    ctl = make_stairs_3a_warp_controller()
-    act = ctl.step(read_snapshot(ram))
-    assert not ctl.failed
-    assert ctl.phase is Stairs3AWarpPhase.PUSH
-    # First step moves right to clear block column
-    assert act.reason == "stand_path"
-    assert list(act.action) == list(nes_action("RIGHT"))

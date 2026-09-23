@@ -386,13 +386,21 @@ def room_step(
     first" press, which walks into blocks from any pose it was not tuned on
     (L1 0x53 key: UP into a block for 4500 frames) and flutters off-grid.
     """
-    from zelda_i.walk.physics import lattice_toward
+    from zelda_i.walk.physics import lattice_step, lattice_toward
 
     x, y = int(snap.link_x), int(snap.link_y)
     gx, gy = int(goal[0]), int(goal[1])
     if abs(x - gx) <= tol and abs(y - gy) <= tol:
         return None
-    return lattice_goto(env, snap, (gx, gy)) or lattice_toward(x, y, (gx, gy), tol=tol)
+    # One source of truth: the route's own nearest node, then the goal pixel
+    # from it. A slack node set plus a separate open-floor aim flipped Link
+    # between two nodes (L6 0x3A x 104<->106).
+    route = lattice_goto_route(env, snap, (gx, gy), slack=0)
+    if route:
+        return lattice_step(x, y, route[0])
+    if route == []:
+        return lattice_step(x, y, (gx, gy))
+    return lattice_toward(x, y, (gx, gy), tol=tol)
 
 
 def lattice_goto_route(
