@@ -19,7 +19,7 @@ Clean re-measure is `run_level1_complete` without `--infinite-life`.
 
 `run_survival_spine.py --save-points` writes `Spine_<stage>.state` at every
 stage start and `Spine_fail` on a red run; `--resume <stage>` loads one and
-plays on (disclosed as `resumed_from`). Custom suffixes (L3/L4 boss, L5
+plays on (disclosed as `resumed_from`). A resume proves one pose only: re-run power-on continuously before claiming a stage, and fix a continuous failure from its `Full_<stage>` point (load with no idle frame first). Custom suffixes (L3/L4 boss, L5
 whistle/TF) have no save point; resume from the stage before. Each stage
 reports `hearts` (in/out/damage/damage_by_room).
 
@@ -28,6 +28,7 @@ reports `hearts` (in/out/damage/damage_by_room).
 ```bash
 bd ready -l zelda_i -l spine
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1              # default: gather → L1 TF
+uv run python nes/zelda_i/scripts/run_survival_spine.py --through level9-credits --save-points Full --no-video --trials 1  # continuous power-on → credits (~1h); own prefix keeps Spine_*
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through gather --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-gather --no-video --trials 1   # legacy wooden-sword prefix
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1

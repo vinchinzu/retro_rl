@@ -16,15 +16,25 @@ The 18909f figure is the clean-tip oracle recorded on 2026-09-14. This doc pass 
 
 Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
 
-## 2026-09-22: wooden-sword oracle retired
+## 2026-09-23: Survival power-on → credits, one continuous run
 
-The 18909f wooden-sword M5 run is no longer protected; code may change it.
-The default spine is now power-on → gathering (White Sword, 6 containers)
-→ dungeons. Resumed from spine save points (`--save-points` / `--resume`,
-Survival assist on), it collects L1–L6 Triforces (TF `0x3F`, 11 containers).
-It stops at the L7 recorder warp: `SummonedWhirlwind` (`$508`) stays 1 after
-landing on 0x0B, and 0x0B cannot be walked off. Not a Clean claim, and not
-one continuous tape (each fix was resumed from the previous save point).
+`run_survival_spine.py --through level9-credits --save-points Full --no-video`
+went from power-on to the credits in one emulator session: `ok=True`,
+`set_state_count=0`, 292,742 frames, 234 stages, TF `0xFF`, 12 containers,
+Ganon and Zelda, final mode 19. Tape: `recordings/full_poweron11.json`.
+
+This is **Survival, not Clean**: the health refill is on (768 hearts of
+damage absorbed), bomb/key/rupee counts are topped up at declared gates
+(`SPINE_*_RETOPUP`), and L7's Bait is the disclosed Food fixture. The M5
+Clean gate above is unchanged. One run, not repeated yet.
+
+How it got there: continuous runs exposed stalls that the resumed save-point
+tapes hid (each fix moves every later frame). Almost every stall was a hand
+walk disagreeing with the ROM, or two rules swapping 1-2 px each frame; the
+fixes route through the ROM lattice (`dungeon/hop_controller.py`:
+`stairs_step`, `block_push_step`, `door_nodes`, `ow_edge_band_step`,
+`inland_lattice_step`) behind a stall gate. Heart containers are route
+history, not a handoff gate.
 
 ## What is open
 
