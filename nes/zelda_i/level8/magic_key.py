@@ -37,7 +37,13 @@ from zelda_i.dungeon.gohma import (
     eye_fresh_open,
     read_eye,
 )
-from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.hop_controller import (
+    BLOCK_Y_OFFSET,
+    HopController,
+    WAIT_SCROLL_B,
+    lattice_goto,
+    stairs_step,
+)
 from zelda_i.dungeon.ids import (
     DARKNUT_OBJECT_TYPE,
     FIREBALL_OBJECT_TYPE,
@@ -757,6 +763,17 @@ class Level8MagicKeyStairsController(HopController):
         # the clear left Link south-east of the block (power-on: (144,165),
         # tile 178 wall).  Route out via the fully-open x=192 column.
         x, y = int(snap.link_x), int(snap.link_y)
+        # ROM lattice to the north face first: the lattice treats the block
+        # tile as solid, so it never shoves the 0x68 the wrong way. The
+        # timed waypoints below walked RIGHT along y=141 from a west pose
+        # (power-on gathered spine) and slid it into the diamond, sealing
+        # the stairs for good.
+        stand = (b0x, b0y - BLOCK_Y_OFFSET - 16)
+        if abs(x - stand[0]) <= 2 and stand[1] - 2 <= y <= b0y - BLOCK_Y_OFFSET:
+            return FrameAction(nes_action("DOWN"), "push_0x68_down")
+        step = lattice_goto(None, snap, stand, slack=0)
+        if step is not None:
+            return FrameAction(nes_action(step), "push_lattice")
         waypoints = (
             (_PUSH_LANE_X, y),          # RIGHT to the open east vertical lane
             (_PUSH_LANE_X, _PUSH_NORTH_Y),  # UP the east lane to the north band
@@ -789,6 +806,12 @@ class Level8MagicKeyStairsController(HopController):
         return FrameAction(nes_idle_action(), "push_route_wait")
 
     def _stairs_policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        # ROM stair cell first (the L9 0x61 diamond shape): the fixed
+        # (128,141) goto held (96,141) for 34000f from a different push pose
+        # on the power-on gathered spine.
+        rom = stairs_step(None, snap)
+        if rom is not None:
+            return FrameAction(nes_action(rom), "rom_stairs")
         tx, ty = STAIRS_STAND_CENTER
         step = self._goto(snap, tx, ty, "revealed_stairs")
         if step is not None:
