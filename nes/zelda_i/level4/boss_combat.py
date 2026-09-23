@@ -52,7 +52,11 @@ from zelda_i.level4.dungeon import (
 )
 from zelda_i.level4.occupancy import room_13_grid
 from zelda_i.walk.physics import OccupancyWalker
+from zelda_i.dungeon.hop_controller import lattice_goto
 from zelda_i.ram import (
+    ADDR_ROOM_ITEM_ID,
+    ADDR_ROOM_ITEM_X,
+    ADDR_ROOM_ITEM_Y,
     ADDR_TRIFORCE,
     PLAY_MODE,
     ZeldaSnapshot,
@@ -61,6 +65,7 @@ from zelda_i.ram import (
 )
 
 ROOM_L4_TRIFORCE = 0x03  # north of boss 0x13 after clear
+ROOM_ITEM_HEART_CONTAINER = 0x1A
 
 # Approach-only wider dodge when start health is depleted (rr-gjey). Do **not**
 # widen mid-fight dodge thr — that walks into body and breaks ≥107 Clean.
@@ -116,6 +121,13 @@ UP_APPROACHES: tuple[tuple[int, int], ...] = (
     (140, 93),
     (120, 109),
 )
+
+
+def _room_item_heart_xy(ram: Any) -> tuple[int, int] | None:
+    """The uncollected heart container's (x, y) from item slot 0x13, else None."""
+    if int(read_u8(ram, ADDR_ROOM_ITEM_ID)) != ROOM_ITEM_HEART_CONTAINER:
+        return None
+    return int(read_u8(ram, ADDR_ROOM_ITEM_X)), int(read_u8(ram, ADDR_ROOM_ITEM_Y))
 
 
 def _room13_walker() -> OccupancyWalker:
@@ -522,8 +534,17 @@ class Level4GleeokFightController:
                         assist.apply_env(env, frame=total[0])
                     hc_hunt_i += 1
                     continue
-                tx, ty = HC_STANDS[hc_hunt_i // 28 % len(HC_STANDS)]
-                if abs(snap.link_x - tx) > 4 or abs(snap.link_y - ty) > 4:
+                item = _room_item_heart_xy(ram)
+                if item is not None:
+                    # Walk to where the ROM put the container; the fixed
+                    # stands below never reach the bottom-right (208,192).
+                    tx, ty = item
+                else:
+                    tx, ty = HC_STANDS[hc_hunt_i // 28 % len(HC_STANDS)]
+                lat = lattice_goto(env, snap, (tx, ty)) if item is not None else None
+                if lat is not None:
+                    env.step(nes_action(lat))
+                elif abs(snap.link_x - tx) > 4 or abs(snap.link_y - ty) > 4:
                     if abs(snap.link_y - ty) >= abs(snap.link_x - tx):
                         d = "DOWN" if snap.link_y < ty else "UP"
                     else:

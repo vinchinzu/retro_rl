@@ -862,13 +862,21 @@ GATHER_ENGAGE_HEARTS = 1
 GATHER_STAGE_MAX_FRAMES = 8000
 
 
-def gather_assist(engage_hearts: int) -> UnlimitedHealthAssist | None:
+def gather_assist(
+    engage_hearts: int, *, observed_damage_guard: bool = False
+) -> UnlimitedHealthAssist | None:
     """Health assist for the gather chain only. 0 is Clean for the chain."""
     if engage_hearts <= 0:
         return None
     if engage_hearts == 1:
-        return LastHeartAssist(enabled=True)
-    return UnlimitedHealthAssist(enabled=True, engage_at_whole_hearts=engage_hearts)
+        return LastHeartAssist(
+            enabled=True, observed_damage_guard=observed_damage_guard
+        )
+    return UnlimitedHealthAssist(
+        enabled=True,
+        engage_at_whole_hearts=engage_hearts,
+        observed_damage_guard=observed_damage_guard,
+    )
 
 
 def gather_stages() -> list[tuple[str, Any, int]]:

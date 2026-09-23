@@ -35,6 +35,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level9-credits
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7 --save-points R25 --resume level7_post_l6_overworld --no-video --trace /tmp/tape.json  # one level from a save point, per-frame tape
 uv run python nes/zelda_i/scripts/run_metrics.py nes/zelda_i/recordings/<tag>.json   # docs/RUN_METRICS.md row
 uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 ...        # refill at the last heart only: refills = deaths prevented
+uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 --observed-damage-guard ...  # keep last-heart target; safety refill after larger observed hits
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through gather --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-gather --no-video --trials 1   # legacy wooden-sword prefix
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1

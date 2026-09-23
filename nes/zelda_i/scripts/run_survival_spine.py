@@ -142,6 +142,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--observed-damage-guard",
+        action="store_true",
+        help=(
+            "Raise the refill floor to the largest survived single hit so far; "
+            "report safety refills separately from the requested threshold."
+        ),
+    )
+    parser.add_argument(
         "--save-points",
         nargs="?",
         const="Spine",
@@ -214,7 +222,10 @@ def main(argv: list[str] | None = None) -> int:
         if not infinite_life:
             assist = None
         elif args.engage_hearts:
-            assist = gather_assist(args.engage_hearts)
+            assist = gather_assist(
+                args.engage_hearts,
+                observed_damage_guard=args.observed_damage_guard,
+            )
         else:
             assist = UnlimitedHealthAssist(enabled=True)
         payload: dict | None = None

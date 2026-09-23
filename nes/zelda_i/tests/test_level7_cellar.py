@@ -332,6 +332,16 @@ def test_candle_cellar_drops_from_ladder_not_up() -> None:
     assert list(act.action) != UP
 
 
+def test_candle_cellar_keeps_dropping_until_the_floor() -> None:
+    # blue_ring_full_poweron2: DOWN stopped at y=181 on the rungs, RIGHT was
+    # dead there, and keese knocked Link back up for 36k frames.
+    ctl = Room1ACandleController()
+    ram = _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=48, y=181, candle=1)
+    act = _step(ctl, ram)
+    assert act.reason == "cellar_drop"
+    assert list(act.action) == DOWN
+
+
 def test_candle_cellar_does_not_oscillate_at_y180() -> None:
     ctl = Room1ACandleController()
     ram = _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=96, y=93, candle=0)

@@ -38,6 +38,10 @@ ADDR_COLLIDING_TILE = 0x049E
 
 # --- Dungeon room / object state ---
 ADDR_ROOM_ITEM_ID = 0x00AB
+# Room item position: object slot 0x13's X/Y. Measured on L4 0x13: the Gleeok
+# heart container sits at (208,192), bottom-right, where no fixed stand looked.
+ADDR_ROOM_ITEM_X = 0x0083
+ADDR_ROOM_ITEM_Y = 0x0097
 ADDR_CUR_OPENED_DOORS = 0x00EE  # bit0=R bit1=L bit2=D bit3=U
 ADDR_OPEN_DOORWAY_MASK = 0x033F
 ADDR_ROOM_ALL_DEAD = 0x034D

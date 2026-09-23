@@ -17,6 +17,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.engine import (
     DungeonPhase,
     GenericDungeonRoomController,
@@ -461,6 +462,10 @@ class Level2DodongoController:
             act, _ = goto_action(snap, dest[0], dest[1], tol=4)
             return FrameAction(act, "dodo_standoff")
         if at_mouth and front and path_ok and stable:
+            # B uses Link's facing from the previous frame. Turn first, then
+            # re-check the moving mouth before committing a bomb.
+            if int(snap.facing) != direction_to_facing(face):
+                return FrameAction(nes_action(face), "dodo_face")
             self.place_face = face
             self.place_cd = 95
             self.bombs_used += 1

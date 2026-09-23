@@ -10,6 +10,7 @@ import pytest
 from zelda_i.dungeon.gleeok import FIREBALL_DODGE_DIST
 from zelda_i.level4.boss_combat import (
     APPROACH_SOUTH_Y,
+    _room_item_heart_xy,
     FIREBALL_DODGE_DIST_LOW_HP,
     LOW_HP_THRESHOLD,
     Level4GleeokFightController,
@@ -94,3 +95,16 @@ def test_gleeok_run_does_not_call_set_state_directly() -> None:
     assert "env.em.set_state" not in run_src
     assert "_restore_state" in run_src
     assert "if self.continuous_mode:" in run_src
+
+
+def test_hc_hunt_reads_the_room_item_slot() -> None:
+    import numpy as np
+
+    from zelda_i.ram import ADDR_ROOM_ITEM_ID, ADDR_ROOM_ITEM_X, ADDR_ROOM_ITEM_Y
+
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_ROOM_ITEM_X], ram[ADDR_ROOM_ITEM_Y] = 208, 192
+    ram[ADDR_ROOM_ITEM_ID] = 0x1A  # heart container, bottom-right of 0x13
+    assert _room_item_heart_xy(ram) == (208, 192)
+    ram[ADDR_ROOM_ITEM_ID] = 0x1B  # triforce: not the container any more
+    assert _room_item_heart_xy(ram) is None

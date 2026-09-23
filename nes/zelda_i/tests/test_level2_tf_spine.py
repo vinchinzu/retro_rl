@@ -45,6 +45,7 @@ def _snap(
     dodo_hp: int | None = None,
     dodo_xy: tuple[int, int] = (140, 141),
     dodo_face: int = 0x02,
+    link_face: int = 0x08,
 ):
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_MODE] = mode
@@ -52,6 +53,7 @@ def _snap(
     ram[ADDR_SCREEN] = room
     ram[ADDR_LINK_X] = x
     ram[ADDR_LINK_Y] = y
+    ram[ADDR_LINK_FACING] = link_face
     ram[ADDR_KEYS] = keys
     ram[ADDR_BOMBS] = bombs
     ram[ADDR_MAGIC_BOOMERANG] = boom
@@ -123,7 +125,8 @@ def test_dodongo_approach_does_not_grade_moving_boss() -> None:
 def test_dodongo_places_only_on_stable_clear_mouth() -> None:
     ctl = Level2DodongoController(settle_frames=0, stable_face_frames=2)
     snap = _snap(
-        room=0x0E, x=124, y=141, dodo_hp=0x20, dodo_xy=(140, 141), dodo_face=0x02
+        room=0x0E, x=124, y=141, dodo_hp=0x20, dodo_xy=(140, 141),
+        dodo_face=0x02, link_face=0x01,
     )
     assert ctl.step(snap).reason == "dodo_wait_mouth"
     assert ctl.bombs_used == 0
@@ -131,6 +134,21 @@ def test_dodongo_places_only_on_stable_clear_mouth() -> None:
     act = ctl.step(snap)
     assert act.reason == "dodo_place"
     assert ctl.bombs_used == 1
+
+
+def test_dodongo_turns_before_bombing() -> None:
+    ctl = Level2DodongoController(settle_frames=0, stable_face_frames=2)
+    up = _snap(room=0x0E, x=124, y=141, dodo_hp=0x20, link_face=0x08)
+    for _ in range(2):
+        assert ctl.step(up).reason == "dodo_wait_mouth"
+    turn = ctl.step(up)
+    assert turn.reason == "dodo_face"
+    assert pressed_nes_buttons(list(turn.action)) == ["RIGHT"]
+    assert ctl.bombs_used == 0
+    facing = _snap(room=0x0E, x=125, y=141, dodo_hp=0x20, link_face=0x01)
+    place = ctl.step(facing)
+    assert place.reason == "dodo_place"
+    assert "B" in pressed_nes_buttons(list(place.action))
 
 
 def test_dodongo_waits_unstable_face() -> None:

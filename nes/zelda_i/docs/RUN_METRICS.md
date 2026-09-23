@@ -11,8 +11,10 @@ One row per measured continuous run, newest last. The row comes from
   were left behind on a room change.
 - **hearts missed**: heart/fairy drops not picked up. Under the refill each one
   is healing the assist paid for instead.
-- **hits / refills**: assist damage events / refill writes. Under `--engage-hearts 1`
-  (last-heart) each refill is a death the assist prevented.
+- **hits / refills**: assist damage events / refill writes. Under strict
+  `--engage-hearts 1`, each refill is a death the assist prevented. With
+  `--observed-damage-guard`, the report also separates target and safety
+  refills; safety writes protect against a larger hit observed earlier.
 - **poked b/k/R**: bombs, keys and rupees granted by Survival top-ups.
 - **slowest**: the longest single room visit, which is the first stall to look at.
 
@@ -25,6 +27,8 @@ measurement. Compare a row against the row above it only when the code changed.
 | **full_poweron27 (b0a328e9)** | **ok (unlimited_health)** | level9-credits | **277687** | **8178** | 66/163 | 42 | 371 / 596 | 67 / 6 / 0 | 7:0d 14024f |
 | full_poweron26 (3ce0a056), stopped in L9 | level9_natural_silver_arrows (unlimited_health) | level9-credits | 270230 | 6529 | 68/177 | 47 | 324 / 533 | 55 / 5 / 0 | 9:4f 13993f |
 | lastheart_poweron28 (01e2011f + raft fix) | level5_whistle_fight_64 (last_heart) | level9-credits | 125417 | 3873 | 57/101 | 8 | 100 / 12 | 50 / 3 / 0 | 4:20 4346f |
+| blue_ring_full_poweron2 (438f56a9 + Dodongo turn) | level7_red_candle_pickup (unlimited_health) | level9-credits | 222646 | 5804 | 57/133 | 28 | 74 / 342 | 29 / 3 / 177 | 7:4a 35911f |
+| blue_ring_full_poweron3 (+ L4 HC, 0x4A floor) | level6_clear_0x19 (unlimited_health) | level9-credits | 168184 | 5274 | 50/115 | 26 | 62 / 222 | 29 / 3 / 177 | 6:19 15310f |
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
