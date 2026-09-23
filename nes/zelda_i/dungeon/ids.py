@@ -110,6 +110,9 @@ ARMOS_OBJECT_TYPE = 0x1E  # awake; statue is tile $66/$67 not an object slot
 # (L9 0x17 (128,141)); the reactive layer turned Link toward it for 4000f.
 BOULDER_GENERATOR_OBJECT_TYPE = 0x1F
 BOULDER_OBJECT_TYPE = 0x20  # falling mountain rock
+# The deployed stepladder: drawn under Link's feet on the water tile (L9 OW
+# 0x17 (96,136), Link at (96,133)), hp 64. Not a body.
+STEPLADDER_OBJECT_TYPE = 0x5F
 GHINI_OBJECT_TYPE = 0x21
 GHINI_FLYING_OBJECT_TYPE = 0x22
 WIZZROBE_BLUE_OBJECT_TYPE = 0x23  # walkthrough-correlated; L6 0x38
