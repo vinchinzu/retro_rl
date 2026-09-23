@@ -25,7 +25,7 @@ from zelda_i.combat import (
     in_sword_hitbox,
     overworld_threat_objects,
 )
-from zelda_i.dungeon.behaviors import is_projectile
+from zelda_i.dungeon.behaviors import ZORA_SHOT_SPEED, is_projectile
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.dungeon.threat import (
     MIN_DODGE_BODY,
@@ -47,10 +47,12 @@ from zelda_i.overworld.common import (
     RUPEE_DROP_STATES,
     align_and_push,
     box_step,
+    keep_y_band,
     on_arrival_edge,
     perpendicular,
     recover_off_edge,
     scoop_floor_drop,
+    shot_escape,
     swing_or_turn,
     track_knockback,
     track_stuck,
@@ -70,12 +72,20 @@ from zelda_i.overworld.graph import (
     ScreenHop,
     is_5c_maze_hop,
 )
-from zelda_i.overworld.hunt import ScreenHunter, hop_lane, link_busy
+from zelda_i.overworld.hunt import SHOT_DWELL_SPEED, ScreenHunter, blade_lands, hop_lane, link_busy
 from zelda_i.overworld.locations import restock_for, worth_heart_farm, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.rollout import Rollout, RolloutEvader
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker, WALK_DELTA
+from zelda_i.walk.physics import (
+    LATTICE_STEP,
+    OccupancyGrid,
+    OccupancyWalker,
+    WALK_DELTA,
+    lattice_route,
+    lattice_starts,
+    lattice_step,
+)
 
 DEFAULT_SWING_PERIOD = 10
 DEFAULT_SWING_HOLD = 3
@@ -157,6 +167,8 @@ _SPIT_DUCK_STILL_CAP = 4
 _SPIT_DUCK_BODY_PAD = MIN_DODGE_BODY
 # Wall memory resolution. A rock blocks a place, not a screen.
 _DUCK_CELL = 16
+# Frames one body may hold the parry before the evader's step gets them back.
+_PARRY_SLOT_MAX_FRAMES = 90
 
 # --------------------------------------------------- the hop ladder ---
 # ``_do_hop`` used to be a chain of ``if act is not None: return act`` and its
@@ -188,6 +200,12 @@ HOP_RUNG_STALL_ESCAPE = 60
 HOP_RUNG_UNSTICK = 70
 HOP_RUNG_EDGE = 80
 HOP_RUNG_HUNT = 90
+# The measured route (``_rung_geo``): the blind align below it walks the
+# current row into rock whenever a knockback leaves Link off the planned row
+# (0x1E ``letter``: 2528 frames of ``unstick_wait`` against the x=96..143
+# block). Below the hunt, so a chase still owns its screen; above the lane
+# and the fall-through align, which are the two it replaces when blocked.
+HOP_RUNG_GEO = 95
 HOP_RUNG_LANE = 100
 
 # ------------------------------------------------ the threat ladder ---
@@ -370,8 +388,25 @@ class OverworldPathController:
     _hop_walker: OccupancyWalker | None = field(default=None, repr=False)
     _hop_walker_key: tuple[int, int] | None = field(default=None, repr=False)
 
+    # Measured overworld route (``_rung_geo``). Needs ``bind_env``; with no
+    # env bound the rung declines and the hop is the blind align it was.
+    geo: bool = True
+    # The spit duck scored on the lattice (``_spit_escape``); needs ``geo``.
+    shot_model: bool = True
+    # Rocks too. The small shield blocks an octorok rock only while Link faces
+    # it and is not swinging, so a rock is a shot to walk off like the spit.
+    shot_model_rocks: bool = True
+    _env: Any = field(default=None, repr=False)
+    _geo_nodes: frozenset[tuple[int, int]] | None = field(default=None, repr=False)
+    _geo_key: tuple[int, int] | None = field(default=None, repr=False)
+    _geo_route: list[tuple[int, int]] | None = field(default=None, repr=False)
+    _geo_route_key: tuple[int, int, int] | None = field(default=None, repr=False)
+    geo_frames: int = 0
+
     # Off by default. On, it runs *ahead* of the hop rules.
     evade: bool = False
+    _parry_key: tuple[int, int, int] | None = field(default=None, repr=False)
+    _parry_frames: int = 0
     evades: int = 0
     parries: int = 0
     evade_reasons: dict[str, int] = field(default_factory=dict)
@@ -512,6 +547,9 @@ class OverworldPathController:
         self.farm_attempts = self.rupee_farm_attempts = 0
         self._farm = self._rupee_farm = None
         self._hop_walker = self._hop_walker_key = None
+        self._geo_nodes = self._geo_key = None
+        self._geo_route = self._geo_route_key = None
+        self.geo_frames = 0
         self.evades = self.parries = 0
         self.evade_reasons = {}
         self.reason_by_screen = {}
@@ -527,6 +565,7 @@ class OverworldPathController:
         self.spit_ducks = 0
         self._duck_dir = self._duck_slot = None
         self._duck_frames = 0
+        self._parry_key, self._parry_frames = None, 0
         self._duck_walls = set()
         self._duck_xy = None
         self._duck_still = 0
@@ -1119,6 +1158,9 @@ class OverworldPathController:
         """
         if not self.evade:
             return None
+        nodes = self._geo_walkable(snap) if self.shot_model else None
+        if nodes:
+            return self._spit_escape(snap, nodes)
         lx, ly = int(snap.link_x), int(snap.link_y)
         best: TrackedObject | None = None
         best_gap = 10**9
@@ -1166,6 +1208,11 @@ class OverworldPathController:
         slot = int(best.slot)
         step: str | None = None
         bodies = overworld_threat_objects(snap)
+        walls = {
+            direction
+            for direction in ("UP", "DOWN", "LEFT", "RIGHT")
+            if (direction, cell[0], cell[1]) in self._duck_walls
+        }
         if (
             self._duck_dir is not None
             and self._duck_slot == slot
@@ -1179,16 +1226,16 @@ class OverworldPathController:
         ):
             step = self._duck_dir
         else:
-            walls = {
-                direction
-                for direction in ("UP", "DOWN", "LEFT", "RIGHT")
-                if (direction, cell[0], cell[1]) in self._duck_walls
-            }
             step = perpendicular(
                 lx, ly, int(best.x), int(best.y), _EVADE_BOUNDS, bodies,
                 avoid=walls,
             )
             self._duck_frames = 0
+        band = None if self._threat_hop is None else self._threat_hop.y_band
+        step = keep_y_band(
+            step, lx, ly, int(best.x), int(best.y), _EVADE_BOUNDS, bodies,
+            band=band, avoid=walls,
+        )
         if step is None:
             # Boxed in on both sides of the bearing. The push is the honest
             # answer; handing back a direction that closes the gap is how the
@@ -1200,6 +1247,67 @@ class OverworldPathController:
         self.spit_ducks += 1
         self.evade_reasons["spit_duck"] = self.evade_reasons.get("spit_duck", 0) + 1
         return FrameAction(nes_action(step), "spit_duck")
+
+    def _spit_escape(
+        self, snap: ZeldaSnapshot, nodes: frozenset[tuple[int, int]]
+    ) -> FrameAction | None:
+        """The duck against the shot's own line, on the measured lattice.
+
+        ``perpendicular`` crosses the *bearing's* major axis, and when that
+        side is rock it falls back to whatever is left, which on a diagonal
+        shot is the shot's own heading: six of the seven 0x7B/0x7C spit hits
+        in ``pre_l1`` trace ``z1`` were Link walking with the fireball until
+        he stopped and it caught him. This scores every held input against
+        each shot's straight flight (``common.shot_escape``) and only takes
+        the frame when some input would be hit. A shot still on the muzzle
+        (``ZORA_MUZZLE_DWELL``, zero velocity) is flown at Link from now.
+        """
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        shots: list[tuple[float, float, float, float, int]] = []
+        nearest = 10**9
+        for track in self._tracked:
+            if track.hazard is not HazardClass.PROJECTILE:
+                continue
+            if track.blockable and not self.shot_model_rocks:
+                continue
+            tx, ty = int(track.x), int(track.y)
+            gap = chebyshev(lx, ly, tx, ty)
+            if gap > _SPIT_DUCK_RADIUS:
+                continue
+            vx, vy = float(track.vx), float(track.vy)
+            if max(abs(vx), abs(vy)) < SHOT_DWELL_SPEED:
+                ax, ay = lx + 8 - (tx + 4), ly - ty
+                norm = max(1.0, (ax * ax + ay * ay) ** 0.5)
+                vx, vy = ZORA_SHOT_SPEED * ax / norm, ZORA_SHOT_SPEED * ay / norm
+            elif not track.closing_on(lx, ly):
+                continue
+            shots.append((float(tx), float(ty), vx, vy, 4))
+            nearest = min(nearest, gap)
+        if not shots or self._body_first(snap, nearest):
+            self._duck_dir = self._duck_slot = None
+            self._duck_frames = 0
+            return None
+        prefer: list[str] = []
+        if self._duck_dir is not None and self._duck_frames < _SPIT_DUCK_COMMIT:
+            prefer.append(self._duck_dir)
+        hop = self._threat_hop
+        if hop is not None and hop.direction not in prefer:
+            prefer.append(hop.direction)
+        direction, needed = shot_escape(
+            lx, ly, shots, _EVADE_BOUNDS,
+            nodes=nodes, bodies=overworld_threat_objects(snap), prefer=tuple(prefer),
+        )
+        if not needed:
+            self._duck_dir = self._duck_slot = None
+            self._duck_frames = 0
+            return None
+        self._duck_frames = self._duck_frames + 1 if direction == self._duck_dir else 1
+        self._duck_dir = direction
+        self.spit_ducks += 1
+        self.evade_reasons["spit_duck"] = self.evade_reasons.get("spit_duck", 0) + 1
+        if direction is None:
+            return FrameAction(nes_idle_action(), "spit_stand")
+        return FrameAction(nes_action(direction), "spit_duck")
 
     def attach_rollout(self, env: Any, **kwargs: Any) -> RolloutEvader:
         """Bind the ROM-truth evader to the live env and select that arm.
@@ -1372,7 +1480,17 @@ class OverworldPathController:
             face = "RIGHT" if dx > 0 else "LEFT"
         else:
             face = "DOWN" if dy > 0 else "UP"
-        if not in_sword_hitbox(lx, ly, face, target.x, target.y):
+        # The blade's near end (``hunt.blade_lands``): a body inside it cannot
+        # be cut, so a parry there is 13 pinned frames touching it. And one
+        # slot gets ``_PARRY_SLOT_MAX_FRAMES``: 0x7D's octoroks held
+        # ``evade_parry``/``parry_recover`` for 3047 of a 4991 frame walk.
+        if not blade_lands(lx, ly, face, int(target.x), int(target.y)):
+            return None
+        key = (int(snap.screen), int(slot), int(target.type_id))
+        if key != self._parry_key:
+            self._parry_key, self._parry_frames = key, 0
+        self._parry_frames += 1
+        if self._parry_frames > _PARRY_SLOT_MAX_FRAMES:
             return None
         self.parries += 1
         if int(snap.facing) != direction_to_facing(face):
@@ -1509,7 +1627,9 @@ class OverworldPathController:
             return None
         if on_arrival_edge(hop.direction, snap):
             return None
-        return self.hunter.step(snap, self.frames, lane=hop_lane(hop))
+        return self.hunter.step(
+            snap, self.frames, lane=hop_lane(hop), y_band=hop.y_band
+        )
 
     def _grinding(self, snap: ZeldaSnapshot) -> bool:
         """True once this hop has spent its budget on this screen.
@@ -1575,6 +1695,147 @@ class OverworldPathController:
             return None
         return self._occupied_lane_action(snap, self._hop)
 
+    def bind_env(self, env: Any) -> None:
+        """Keep the env so ``_rung_geo`` can read the room tile map. Read only."""
+        self._env = env
+
+    def _geo_walkable(self, snap: ZeldaSnapshot) -> frozenset[tuple[int, int]] | None:
+        """This screen's lattice, re-read every 64 frames (a secret opens tiles)."""
+        if self._env is None or not self.geo:
+            return None
+        key = (int(snap.screen), self.frames // 64)
+        if self._geo_key != key:
+            from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+
+            ram = self._env.get_ram()
+            self._geo_nodes = ow_walkable_nodes(ram) if has_room_tile_map(ram) else None
+            self._geo_key = key
+        return self._geo_nodes
+
+    @classmethod
+    def _geo_goals(cls, hop: ScreenHop, nodes: frozenset[tuple[int, int]]) -> set[tuple[int, int]]:
+        """Edge nodes that scroll ``hop.direction`` and satisfy its align.
+
+        A hand-measured align can name a row the tile map says is rock at
+        the edge: 0x79's ``SCREEN_79_BEACH_Y`` 165 dead-ends at x=192 (y 133
+        and 141 scroll, measured by walking them). Then the nearest walkable
+        edge node to the align is the goal, not "no goal".
+        """
+        goals = cls._geo_goals_strict(hop, nodes)
+        if goals:
+            return goals
+        edge = cls._geo_goals_strict(
+            ScreenHop(hop.target, hop.direction), nodes
+        )
+        if not edge:
+            return set()
+        if hop.direction in ("UP", "DOWN") and hop.align_x is not None:
+            want, axis = int(hop.align_x), 0
+        elif hop.direction in ("LEFT", "RIGHT") and hop.y_band is not None:
+            want, axis = (int(hop.y_band[0]) + int(hop.y_band[1])) // 2, 1
+        elif hop.direction in ("LEFT", "RIGHT") and hop.align_y is not None:
+            want, axis = int(hop.align_y), 1
+        else:
+            return edge
+        gap = min(abs(c[axis] - want) for c in edge)
+        return {c for c in edge if abs(c[axis] - want) == gap}
+
+    @staticmethod
+    def _geo_goals_strict(hop: ScreenHop, nodes: frozenset[tuple[int, int]]) -> set[tuple[int, int]]:
+        xs = sorted({x for x, _ in nodes})
+        ys = sorted({y for _, y in nodes})
+        if not xs or not ys:
+            return set()
+        if hop.direction in ("UP", "DOWN"):
+            y = ys[0] if hop.direction == "UP" else ys[-1]
+            cand = {(x, y) for x in xs}
+            if hop.align_x is not None:
+                cand = {c for c in cand if abs(c[0] - int(hop.align_x)) <= 5}
+        else:
+            x = xs[0] if hop.direction == "LEFT" else xs[-1]
+            cand = {(x, y) for y in ys}
+            if hop.y_band is not None:
+                lo, hi = hop.y_band
+                cand = {c for c in cand if int(lo) <= c[1] <= int(hi)}
+            elif hop.align_y is not None:
+                cand = {c for c in cand if abs(c[1] - int(hop.align_y)) <= 5}
+        return cand & set(nodes)
+
+    @staticmethod
+    def _geo_direct_clear(
+        hop: ScreenHop,
+        nodes: frozenset[tuple[int, int]],
+        start: tuple[int, int],
+        goals: set[tuple[int, int]],
+    ) -> bool:
+        """True when the align-then-push the fall-through walks is all floor."""
+        sx, sy = start
+        if hop.direction in ("UP", "DOWN"):
+            gx = sx if hop.align_x is None or abs(sx - int(hop.align_x)) <= 5 else min(
+                (g[0] for g in goals), key=lambda gx_: abs(gx_ - int(hop.align_x))
+            )
+            gy = next(iter(goals))[1]
+            leg1 = [(x, sy) for x in range(min(sx, gx), max(sx, gx) + 1, LATTICE_STEP)]
+            leg2 = [(gx, y) for y in range(min(sy, gy), max(sy, gy) + 1, LATTICE_STEP)]
+        else:
+            gy_set = sorted(g[1] for g in goals)
+            gy = sy if sy in gy_set else min(gy_set, key=lambda v: abs(v - sy))
+            gx = next(iter(goals))[0]
+            leg1 = [(sx, y) for y in range(min(sy, gy), max(sy, gy) + 1, LATTICE_STEP)]
+            leg2 = [(x, gy) for x in range(min(sx, gx), max(sx, gx) + 1, LATTICE_STEP)]
+        return all(n in nodes for n in leg1 + leg2)
+
+    def _rung_geo(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Walk the measured route to the hop's edge when the straight one is rock.
+
+        Declines whenever the align-then-push is all floor, so a screen the
+        blind walk already crosses is walked exactly as before.
+        """
+        if self._hop_grinding or snap.level != 0 or snap.mode != PLAY_MODE:
+            return None
+        if snap.transitioning:
+            return None
+        nodes = self._geo_walkable(snap)
+        if not nodes:
+            return None
+        hop = self._hop
+        goals = self._geo_goals(hop, nodes)
+        if not goals:
+            return None
+        x, y = int(snap.link_x), int(snap.link_y)
+        starts = [n for n in lattice_starts(x, y) if n in nodes]
+        if not starts:
+            return None
+        start = min(starts, key=lambda n: abs(n[0] - x) + abs(n[1] - y))
+        key = (self.hop_index, int(snap.screen), len(goals))
+        route = self._geo_route if self._geo_route_key == key else None
+        # The fall-through walks the hop's own align; if that has no edge node
+        # it cannot finish, so only a reachable align earns the decline.
+        strict = self._geo_goals_strict(hop, nodes)
+        if route is None and strict and self._geo_direct_clear(hop, nodes, start, strict):
+            self._geo_route = self._geo_route_key = None
+            return None
+        if route:
+            # Drop corners already reached; replan when knocked off the leg.
+            while route and (x, y) == route[0]:
+                route = route[1:]
+            if route and x != route[0][0] and y != route[0][1]:
+                route = None
+        if not route:
+            route = lattice_route(nodes, (x, y), goals)
+            if route is None:
+                self._geo_route = self._geo_route_key = None
+                return None
+            if not route:
+                self._geo_route = self._geo_route_key = None
+                return None
+        self._geo_route, self._geo_route_key = route, key
+        direction = lattice_step(x, y, route[0])
+        if direction is None:
+            return None
+        self.geo_frames += 1
+        return self._swing(direction, f"hop{self.hop_index}_geo")
+
     def hop_rungs(self) -> tuple[Rung, ...]:
         """This controller's hop ladder, as data.
 
@@ -1598,6 +1859,7 @@ class OverworldPathController:
             Rung("hop_unstick", HOP_RUNG_UNSTICK, self._rung_unstick),
             Rung("hop_edge", HOP_RUNG_EDGE, self._rung_edge),
             Rung("hop_hunt", HOP_RUNG_HUNT, self._rung_hunt),
+            Rung("hop_geo", HOP_RUNG_GEO, self._rung_geo),
             Rung("hop_lane", HOP_RUNG_LANE, self._rung_lane),
         ]
         if self.hunter is not None:

@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # rr-npv.3 — Clean L7 Entrance→TF natural bait
 
 Fixture-live only. Do not STATUS. Do not poke `ADDR_FOOD`.

@@ -694,6 +694,7 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ROOM_52_SPEC,
         Room33ScoopController,
     )
+    from zelda_i.level1.east_dungeon import Room45SurvivalController
 
     room33 = ROOM_33_SPEC
     room23 = ROOM_23_SPEC
@@ -720,7 +721,11 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ("clear23_key", GenericDungeonRoomController(room23), room23.max_frames),
         ("backtrack44", Level1BacktrackTo44Controller(), BACKTRACK_TO_44_MAX_FRAMES),
         ("clear44", GenericDungeonRoomController(room44), room44.max_frames),
-        ("clear45_key", GenericDungeonRoomController(room45), room45.max_frames),
+        (
+            "clear45_key",
+            (Room45SurvivalController if survival else GenericDungeonRoomController)(room45),
+            room45.max_frames,
+        ),
         (
             "aquamentus_heart",
             Level1AquamentusController(

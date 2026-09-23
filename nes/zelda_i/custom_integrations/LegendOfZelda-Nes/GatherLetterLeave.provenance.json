@@ -1,0 +1,157 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:43:47.902152+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "save_as": "GatherLetterLeave",
+    "segment": "gather_letter",
+    "start_state": "GatherLetterEnter",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "assist": {
+      "accepted_containers": 3,
+      "capacity_writes": 0,
+      "class": "survival",
+      "container_clamps": 0,
+      "damage_by_location": {},
+      "damage_events": 0,
+      "damage_samples": [],
+      "deaths": 0,
+      "enabled": true,
+      "engage_at_whole_hearts": 1,
+      "health": {
+        "first_active_frame": null,
+        "restored": 0,
+        "writes": 0
+      },
+      "kind": "last_heart",
+      "maximum_single_frame_damage": 0,
+      "progression_writes": 0,
+      "suspended_phase_frames": {
+        "menu_or_boot": 4,
+        "transition": 144
+      },
+      "total_damage": 0
+    },
+    "controller": {
+      "farm_attempts": 0,
+      "frames": 684,
+      "hits_taken": 0,
+      "hop": null,
+      "hop_index": 1,
+      "need_rupees": 0,
+      "notes": [
+        "hop_0_0e",
+        "path_stop"
+      ],
+      "phase": "DONE",
+      "reason_by_screen": {
+        "0x0e": {
+          "cave_align": 180,
+          "cave_item": 41,
+          "cave_mouth": 94,
+          "cave_settle": 31,
+          "done": 1,
+          "hop_advance": 1,
+          "scroll": 52,
+          "scroll_idle": 63,
+          "wait_mode_4": 1,
+          "wake_mode_4": 3
+        },
+        "0x1e": {
+          "hop": 101,
+          "hop_ax": 46,
+          "hop_dodge": 13,
+          "hop_occ": 11,
+          "hop_occ_slash": 4,
+          "hop_occ_turn": 9,
+          "hop_slash": 3,
+          "hop_turn": 1,
+          "scroll": 29
+        }
+      },
+      "rung_census": {
+        "hop_edge": 0,
+        "hop_extra": 0,
+        "hop_hunt": 0,
+        "hop_lane": 0,
+        "hop_maze": 0,
+        "hop_occupancy": 24,
+        "hop_scoop": 0,
+        "hop_stall_escape": 0,
+        "hop_unstick": 0,
+        "push": 164
+      },
+      "rung_frames": 188,
+      "rupee_farm_attempts": 0,
+      "stuck": 0,
+      "success": true
+    },
+    "frames": 684,
+    "glance": {
+      "bombs": 0,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 11,
+      "mode_name": "cave_play",
+      "next_room": 14,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 4,
+          "type_id": 114,
+          "type_name": "unknown_object_0x72",
+          "x": 120,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 72,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 168,
+          "y": 128
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 14,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 6,
+      "screen_hex": "0x0E",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 120,
+      "y": 157
+    },
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherLetterEnter.state",
+  "source_state_sha256": "ed29b994d04a8551558b78e5830e0cc69ef4cd42d03cf5a3f0335510401469fc",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherLetterLeave.state",
+  "state_sha256": "c9db2e53971d216d2a8759c1a2e4270c5634d208bec2c582c0b19c06ad31a1b6"
+}

@@ -1,0 +1,158 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:35:26.452483+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "bombs",
+        "from": 0,
+        "msg": "bombs=8",
+        "to": 8
+      },
+      {
+        "field": "selected_item",
+        "msg": "selected_item=bomb"
+      }
+    ],
+    "save_as": "GatherHeartL8Enter",
+    "segment": "heart_l8",
+    "start_state": "BFS_7C",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 8,
+      "candle": 0,
+      "cur_opened_doors": 2,
+      "facing": 1,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 124,
+      "objects": [
+        {
+          "hp": 32,
+          "slot": 1,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 32,
+          "slot": 2,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 208,
+          "y": 141
+        },
+        {
+          "hp": 32,
+          "slot": 3,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 80,
+          "y": 93
+        },
+        {
+          "hp": 32,
+          "slot": 4,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 128,
+          "y": 125
+        },
+        {
+          "hp": 32,
+          "slot": 5,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 160,
+          "y": 125
+        },
+        {
+          "hp": 32,
+          "slot": 6,
+          "state": 0,
+          "type_id": 16,
+          "type_name": "leever",
+          "x": 192,
+          "y": 109
+        },
+        {
+          "hp": 32,
+          "slot": 10,
+          "state": 1,
+          "type_id": 17,
+          "type_name": "zora",
+          "x": 32,
+          "y": 173
+        },
+        {
+          "hp": 240,
+          "slot": 11,
+          "state": 0,
+          "type_id": 99,
+          "type_name": "unknown_object_0x63",
+          "x": 96,
+          "y": 80
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 124,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 6,
+      "rupees": 1,
+      "screen_hex": "0x7C",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 0,
+      "y": 109
+    },
+    "ok": true,
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "bombs",
+        "from": 0,
+        "msg": "bombs=8",
+        "to": 8
+      },
+      {
+        "field": "selected_item",
+        "msg": "selected_item=bomb"
+      }
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/BFS_7C.state",
+  "source_state_sha256": "167547cf81756803e373a95d27e8f79f384bc431b3e91dfc056cf2353a1cac05",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherHeartL8Enter.state",
+  "state_sha256": "decaad26a35fc3fd01630c372c5c83627961cb7f5142609423a80332e8fb3ee9"
+}

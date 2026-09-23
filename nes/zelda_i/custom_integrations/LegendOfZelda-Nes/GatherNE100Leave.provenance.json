@@ -1,0 +1,230 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:42:47.112919+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "save_as": "GatherNE100Leave",
+    "segment": "gather_ne",
+    "start_state": "GatherNEEnter",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "assist": {
+      "accepted_containers": 3,
+      "capacity_writes": 0,
+      "class": "survival",
+      "container_clamps": 0,
+      "damage_by_location": {
+        "L0:0x1f": 1,
+        "L0:0x2d": 1
+      },
+      "damage_events": 2,
+      "damage_samples": [
+        {
+          "amount": 1,
+          "frame": 489,
+          "level": 0,
+          "link_x": 62,
+          "link_y": 189,
+          "location": "L0:0x2d",
+          "screen": 45,
+          "screen_hex": "0x2d"
+        },
+        {
+          "amount": 1,
+          "frame": 1517,
+          "level": 0,
+          "link_x": 128,
+          "link_y": 92,
+          "location": "L0:0x1f",
+          "screen": 31,
+          "screen_hex": "0x1f"
+        }
+      ],
+      "deaths": 0,
+      "enabled": true,
+      "engage_at_whole_hearts": 1,
+      "health": {
+        "first_active_frame": 1517,
+        "restored": 2,
+        "writes": 1
+      },
+      "kind": "last_heart",
+      "maximum_single_frame_damage": 1,
+      "progression_writes": 0,
+      "suspended_phase_frames": {
+        "menu_or_boot": 21,
+        "transition": 527
+      },
+      "total_damage": 2
+    },
+    "controller": {
+      "farm_attempts": 0,
+      "frames": 2324,
+      "hits_taken": 0,
+      "hop": null,
+      "hop_index": 5,
+      "need_rupees": 0,
+      "notes": [
+        "hop_0_2d",
+        "hop_1_1d",
+        "hop_2_1e",
+        "hop_3_1f",
+        "hop_4_0f",
+        "door_hunt",
+        "path_stop"
+      ],
+      "phase": "DONE",
+      "reason_by_screen": {
+        "0x0f": {
+          "cave_settle": 31,
+          "done": 1,
+          "door_hunt": 85,
+          "hop_advance": 1,
+          "scroll": 52,
+          "scroll_idle": 65,
+          "secret_align": 180,
+          "secret_count": 188,
+          "secret_rupees": 53,
+          "wait_mode_4": 4
+        },
+        "0x1d": {
+          "climb_entry": 8,
+          "hop": 97,
+          "hop_advance": 1,
+          "hop_ay": 51,
+          "hop_ay_slash": 2,
+          "hop_ay_turn": 1,
+          "off_south": 7,
+          "scroll": 81,
+          "wait_mode_4": 5
+        },
+        "0x1e": {
+          "hop": 180,
+          "hop_advance": 1,
+          "hop_slash": 3,
+          "off_west": 11,
+          "scroll": 100,
+          "wait_mode_4": 3,
+          "wake_mode_4": 1
+        },
+        "0x1f": {
+          "hop": 149,
+          "hop_advance": 1,
+          "hop_ax": 82,
+          "hop_occ": 11,
+          "hop_occ_slash": 4,
+          "hop_occ_turn": 9,
+          "hop_slash": 15,
+          "scroll": 100,
+          "wait_mode_4": 4
+        },
+        "0x2c": {
+          "hop": 172,
+          "hop_ay": 74,
+          "off_west": 11,
+          "scroll": 29
+        },
+        "0x2d": {
+          "hop": 108,
+          "hop_advance": 1,
+          "hop_ax": 153,
+          "hop_ax_dodge": 17,
+          "hop_ax_shield": 9,
+          "hop_ax_slash": 11,
+          "hop_ax_turn": 1,
+          "hop_dodge": 14,
+          "hop_occ": 11,
+          "hop_occ_slash": 4,
+          "hop_occ_turn": 9,
+          "hop_slash": 5,
+          "hop_turn": 4,
+          "scroll": 100,
+          "wait_mode_4": 2,
+          "wake_mode_4": 2
+        }
+      },
+      "rung_census": {
+        "hop_edge": 29,
+        "hop_extra": 0,
+        "hop_hunt": 0,
+        "hop_lane": 0,
+        "hop_maze": 0,
+        "hop_occupancy": 48,
+        "hop_scoop": 0,
+        "hop_stall_escape": 0,
+        "hop_unstick": 0,
+        "push": 1156
+      },
+      "rung_frames": 1233,
+      "rupee_farm_attempts": 0,
+      "stuck": 0,
+      "success": true
+    },
+    "frames": 2324,
+    "glance": {
+      "bombs": 0,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "facing": 8,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 11,
+      "mode_name": "cave_play",
+      "next_room": 15,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 8,
+          "type_id": 124,
+          "type_name": "unknown_object_0x7c",
+          "x": 120,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 72,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 168,
+          "y": 128
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 15,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 107,
+      "screen_hex": "0x0F",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 120,
+      "y": 141
+    },
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherNEEnter.state",
+  "source_state_sha256": "b35998850bebf7da75e53e019abfd8a44d1d203dbad7b8371a5fb4c3ba912ec2",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherNE100Leave.state",
+  "state_sha256": "fad75ee12cccd4141740fff15189e4bce2dfa2566c21efb87969452bd4723302"
+}

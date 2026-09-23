@@ -56,7 +56,9 @@ def _run(through: str):
     try:
         obs, _ = reset_obs(env)
         assist = UnlimitedHealthAssist(enabled=True)
-        run = run_survival_spine(env, obs, assist=assist, through=through, allow_pokes=True)
+        run = run_survival_spine(
+            env, obs, assist=assist, through=through, allow_pokes=True, gather=False
+        )
         snap = read_snapshot(env.get_ram())
         return run, snap
     finally:
@@ -91,3 +93,24 @@ def test_live_power_on_through_level2_entry() -> None:
     assert (int(snap.link_x), int(snap.link_y)) == (120, 205)
     assert int(snap.bow) == 1
     assert 24000 <= run.end_frame <= 32000
+
+
+def test_live_power_on_gathered_level1_triforce_no_l1_assist() -> None:
+    """Default gathered spine -> L1 TF, L1 health assist off.
+
+    Measured 2026-09-22: 46193f, gather chain last-heart refill 6 writes,
+    pokes rupees=20 (bomb pack) + keys=1 (backtrack44), 0 deaths.
+    """
+    env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
+    try:
+        obs, _ = reset_obs(env)
+        run = run_survival_spine(env, obs, assist=None, through="level1")
+        snap = read_snapshot(env.get_ram())
+    finally:
+        env.close()
+    assert run.success, run.report()
+    assert int(snap.triforce) & 0x01
+    assert int(snap.sword) == 2
+    assert int(snap.heart_containers) == 7  # 6 gathered + Aquamentus
+    assert run.report()["gather"]["engage_hearts"] == 1
+    assert 42000 <= run.end_frame <= 52000

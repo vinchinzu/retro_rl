@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # rr-d6v residual — Clean L6 Entrance→TF (no Survival)
 
 **BLOCKED.** `route_eligible=false`. Do not close the bead. Not a STATUS

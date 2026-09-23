@@ -1,0 +1,77 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:44:02.531284+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "rupees",
+        "from": 6,
+        "msg": "rupees=80",
+        "to": 80
+      }
+    ],
+    "save_as": "GatherCandleEnter",
+    "segment": "gather_candle",
+    "start_state": "BFS_0E",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "glance": {
+      "bombs": 0,
+      "candle": 0,
+      "cur_opened_doors": 4,
+      "facing": 8,
+      "health": 34,
+      "heart_containers": 3,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 5,
+      "mode_name": "play",
+      "next_room": 14,
+      "objects": [],
+      "open_doorway_mask": 0,
+      "room": 14,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 1,
+      "rupees": 80,
+      "screen_hex": "0x0E",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 80,
+      "y": 221
+    },
+    "ok": true,
+    "pokes": [
+      {
+        "field": "health",
+        "from": 47,
+        "msg": "clamped incoherent heart byte to owned containers",
+        "to": 34
+      },
+      {
+        "field": "rupees",
+        "from": 6,
+        "msg": "rupees=80",
+        "to": 80
+      }
+    ]
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/BFS_0E.state",
+  "source_state_sha256": "260548df9839dafc46a03119a8a254e4f6b908a09f73a01477cf6499e98a4295",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherCandleEnter.state",
+  "state_sha256": "278ababee7cb26e51ee19c59a9d0b49aca7cec9f546034efa475200e34873804"
+}

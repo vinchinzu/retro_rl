@@ -59,6 +59,11 @@ __all__ = [
     "stair_cells",
     "tile_at",
     "tile_at_screen",
+    "ADDR_FIRST_UNWALKABLE",
+    "OW_LATTICE_X",
+    "OW_LATTICE_Y",
+    "OW_WALKABLE_EXTRA",
+    "ow_walkable_nodes",
 ]
 
 WRAM_BASE = 0x6000
@@ -281,3 +286,43 @@ def blocked_link_cells(
     hits = solid[np.ix_(rows, cols)]
     yy, xx = np.nonzero(hits)
     return frozenset(zip(xs[xx].tolist(), ys[yy].tolist()))
+
+
+# ------------------------------------------------ overworld lattice ---
+# ``Z_07.asm`` ``GetCollidingTileMoving``: Link collides on his feet row
+# (``y + $0B``) and, moving vertically, on the column at ``x + 8`` as well.
+# He only turns on the 8 px grid (x % 8 == 0 to go vertical, y % 8 == 5 to go
+# horizontal; measured on ``OW_39``: off-grid, a perpendicular press first
+# slides him to the nearest grid line). So a walkable overworld position is a
+# lattice node whose two feet tiles pass the ROM test, and every straight run
+# between two walkable neighbours is one the ROM lets him walk.
+ADDR_FIRST_UNWALKABLE = 0x034A  # ObjectFirstUnwalkableTile; $89 on the OW
+# ``WalkableTiles``: OW tiles past the threshold that ``GetCollidableTile``
+# rewrites to $26 before the test.
+OW_WALKABLE_EXTRA = frozenset({0x8D, 0x91, 0x9C, 0xAC, 0xAD, 0xCC, 0xD2, 0xD5, 0xDF})
+OW_LATTICE_X = tuple(range(0, 241, TILE_PX))
+OW_LATTICE_Y = tuple(range(61, 222, TILE_PX))  # $3D (north edge) .. $DD (south)
+
+
+def ow_walkable_nodes(ram: np.ndarray, *, overworld: bool = True) -> frozenset[tuple[int, int]]:
+    """Lattice nodes ``(x, y)`` Link can stand on, from ``$6530``.
+
+    The same collision runs in a dungeon with ``$034A`` at ``$78``; only the
+    ``WalkableTiles`` rewrite is overworld-only (``CurLevel`` skips it).
+    """
+    _require(ram)
+    tiles = read_room_tiles(ram)
+    first = int(ram[ADDR_FIRST_UNWALKABLE]) or (0x89 if overworld else 0x78)
+    ok = tiles < first
+    if overworld:
+        ok = ok | np.isin(tiles, np.fromiter(OW_WALKABLE_EXTRA, dtype=np.uint8))
+    nodes: set[tuple[int, int]] = set()
+    for y in OW_LATTICE_Y:
+        row = (y + LINK_FOOT_OFFSET - PLAYFIELD_TOP_Y) // TILE_PX
+        if not 0 <= row < TILE_ROWS:
+            continue
+        for x in OW_LATTICE_X:
+            col = x // TILE_PX
+            if ok[row, col] and (col + 1 >= TILE_COLS or ok[row, col + 1]):
+                nodes.add((x, y))
+    return frozenset(nodes)

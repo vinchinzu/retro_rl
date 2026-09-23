@@ -23,6 +23,7 @@ from zelda_i.dungeon.engine import (
     DoorRoute,
     DungeonPhase,
     DungeonRoomSpec,
+    _FIGHT_WALKABLE_TILES,
     GEL_OBJECT_TYPE,
     GORIYA_OBJECT_TYPE,
     GenericDungeonRoomController,
@@ -46,7 +47,9 @@ from zelda_i.level1.path import (
     ROOM_WEST_KEY,
     STALFOS_OBJECT_TYPE,
 )
+from zelda_i.dungeon.tilemap import blocked_link_cells, has_room_tile_map
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
 
 _STALFOS_PATROL: tuple[tuple[int, int], ...] = (
     (64, 117),
@@ -344,10 +347,14 @@ ROOM_33_SPEC = DungeonRoomSpec(
 )
 
 
+ROOM33_LOW_HEARTS = 2
+
+
 class Room33ScoopController(GenericDungeonRoomController):
     """0x33: do not key-DONE while lo < hi. Walk key-tile after clear; else fail-closed."""
 
     last_health: int = 0
+    _key_walker: OccupancyWalker | None = None
     heart_wait: int = 0
     heart_wait_limit: int = 180
     # North patrol row. Dump 1962f sandwiched at (80,173) while a Stalfos
@@ -369,8 +376,16 @@ class Room33ScoopController(GenericDungeonRoomController):
             return FrameAction(nes_idle_action(), reason)
         return FrameAction(nes_action(direction), reason)
 
+    @staticmethod
+    def _low(snap: ZeldaSnapshot) -> bool:
+        """Two whole hearts or fewer. With 3 containers that is "not full",
+        the rule this was written for; with the gathered 6 a one-heart chip
+        is not a reason to wait on a drop (and then fail holding the key).
+        """
+        return not snap.health_is_full and int(snap.whole_hearts) <= ROOM33_LOW_HEARTS
+
     def _scoop_if_low(self, snap: ZeldaSnapshot) -> FrameAction | None:
-        if snap.health_is_full:
+        if not self._low(snap):
             return None
         drop = nearest_heart_or_fairy(snap)
         if drop is None:
@@ -388,7 +403,7 @@ class Room33ScoopController(GenericDungeonRoomController):
 
     def _cleared_low(self, snap: ZeldaSnapshot) -> bool:
         """Heart-wait only after the room is empty. Live Stalfos keep fighting."""
-        if snap.health_is_full or snap.screen != self.spec.room_id:
+        if not self._low(snap) or snap.screen != self.spec.room_id:
             return False
         live = self.spec.live_enemies(snap)
         if live:
@@ -400,17 +415,48 @@ class Room33ScoopController(GenericDungeonRoomController):
         cleared = self.max_live_enemies >= self.spec.expected_enemy_count
         return bool(key_got or cleared)
 
+    def _key_xy(self, snap: ZeldaSnapshot) -> tuple[int, int]:
+        """Where the key lies: slot 1 once the room is dead, else the spec tile.
+
+        A Stalfos carries it. The engine clears the carrier's type and leaves
+        the drop's position in slot 1 (``Level1FirstKeyController`` rule).
+        (96, 173) is only where the wooden-sword tape killed it: the White
+        Sword beam killed it at (128, 148) and the fixed nudge sat 6000f.
+        """
+        fixed = self.spec.reward.target or (96, 173)
+        if self.spec.live_enemies(snap):
+            return fixed
+        slot = snap.object_in_slot(1)
+        if slot and slot.type_id == 0 and 24 <= slot.x <= 224 and 85 <= slot.y <= 205:
+            return (int(slot.x), int(slot.y))
+        return fixed
+
     def _on_key_tile(self, snap: ZeldaSnapshot) -> bool:
-        target = self.spec.reward.target or (96, 173)
+        target = self._key_xy(snap)
         return (
             abs(int(snap.link_x) - int(target[0])) <= 2
             and abs(int(snap.link_y) - int(target[1])) <= 2
         )
 
     def _walk_key_tile(self, snap: ZeldaSnapshot) -> FrameAction:
-        """Sit on the key/item tile so a 0x60 heart/fairy can be scooped."""
-        target = self.spec.reward.target or (96, 173)
-        return self._occupancy_walk(snap, target, "scoop_key_tile")
+        """Sit on the key/item tile so a 0x60 heart/fairy can be scooped.
+
+        The fight walker is blind here (no tilemap seed), so the key walk
+        seeds its own from the live ``$6530`` map once the room is dead.
+        """
+        if self._key_walker is None and self._env is not None:
+            ram = self._env.get_ram()
+            if has_room_tile_map(ram):
+                blocked = blocked_link_cells(ram, DEFAULT_BOUNDS, walkable=_FIGHT_WALKABLE_TILES)
+                xmin, xmax, ymin, ymax = DEFAULT_BOUNDS
+                self._key_walker = OccupancyWalker(
+                    grid=OccupancyGrid(
+                        blocked=set(blocked), xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+                    )
+                )
+        if self._key_walker is not None:
+            self.walker = self._key_walker
+        return self._occupancy_walk(snap, self._key_xy(snap), "scoop_key_tile")
 
     def _combat(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
         """Slash in place at sword reach. Never walk into the 16px pad."""
@@ -465,6 +511,11 @@ class Room33ScoopController(GenericDungeonRoomController):
                     return FrameAction(nes_idle_action(), "0x33_needs_heart")
             return self._walk_key_tile(snap)
         self.heart_wait = 0
+        if self.phase is DungeonPhase.COLLECT_REWARD and snap.screen == self.spec.room_id:
+            action = super().step(snap)
+            if self.phase is DungeonPhase.COLLECT_REWARD:
+                return self._walk_key_tile(snap)
+            return action
         return super().step(snap)
 
     def report(self) -> dict:

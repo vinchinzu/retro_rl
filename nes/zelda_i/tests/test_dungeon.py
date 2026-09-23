@@ -1362,7 +1362,7 @@ def test_entry_route_replans_around_measured_walls() -> None:
     reasons = []
     for _ in range(ROUTE_STALL_FRAMES + 4):
         reasons.append(controller.step(snap).reason)
-    assert "entry_route_replan" in reasons
+    assert {"entry_route_replan", "entry_route_lattice"} & set(reasons)
     assert "entry_route_skip" not in reasons
     assert controller.waypoint_index == 0
 
@@ -1388,7 +1388,7 @@ def test_entry_route_replan_latches_until_the_leg_advances() -> None:
     # Link moves a pixel east; the stall counter resets but the leg stays
     # on the walker, because the axis rule is what walled it.
     moved = read_snapshot(_room_ram(room=0x44, x=169, y=141))
-    assert controller.step(moved).reason == "entry_route_replan"
+    assert controller.step(moved).reason in ("entry_route_replan", "entry_route_lattice")
     # Reaching the leg hands it back to the cheap axis rule.
     arrived = read_snapshot(_room_ram(room=0x44, x=192, y=165))
     controller.step(arrived)

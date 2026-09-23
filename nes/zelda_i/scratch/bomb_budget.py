@@ -17,6 +17,7 @@ keys on the ROM row and prints both aliases.
 from __future__ import annotations
 
 from zelda_i.overworld.locations import Q1_SPAWNS, grid_name
+from zelda_i.overworld.shop_p7 import SHOP_P7_PRICE, shop_p7_screens
 from zelda_i.overworld.prey import (
     BOMB,
     CLOCK,
@@ -29,7 +30,7 @@ from zelda_i.overworld.prey import (
     random_rupees,
 )
 
-BOMB_PACK_PRICE = 20  # overworld.bomb_shop.BOMB_SHOP_PRICE
+BOMB_PACK_PRICE = SHOP_P7_PRICE  # coast shop_p7, not the later 0x4A cave
 
 VALUE = {RUPEE: 1, FIVE_RUPEE: 5}
 NAME = {BOMB: "bomb", FIVE_RUPEE: "5R", RUPEE: "1R", CLOCK: "clock", HEART: "heart",
@@ -46,18 +47,9 @@ ROWS = {
     for row, (rate, table, types) in DROP_ROWS.items()
 }
 
-# A "grouped" spawn byte carries a group index, not an ObjType: 0x49 reads
-# ``group_28`` and 0x28 is also Rope (row 1), which would credit the screen
-# 5.3R it does not have. These screens come from the live census instead
-# (``scratch/contact1.json`` / ``kill_streak_reach6.json``), as {type: count}.
-MEASURED: dict[int, dict[int, int]] = {
-    0x58: {0x07: 2, 0x08: 2},           # octorok / octorok_fast
-    0x49: {0x08: 5, 0x09: 1},           # octorok_fast x5 + one blue
-}
-
-# The 0x77 -> 0x4A bomb walk, plus the screen one hop off it.
-WALK = (0x78, 0x68, 0x58, 0x59, 0x49, 0x4A)
-NEAR = (0x48,)
+# South coast 0x77 → 0x6F. Not the inland 0x68 / 0x4A join.
+WALK = shop_p7_screens()
+NEAR = (0x5F,)  # north of the shop; the shortfall hunt, not inland 0x48
 
 
 row_of = drop_row
@@ -108,24 +100,12 @@ def _supply(screens: tuple[int, ...]) -> tuple[float, float, int, list[str]]:
         if spawn is None:
             lines.append(f"  0x{screen:02x} {grid_name(screen):4} -- no spawn")
             continue
-        census = MEASURED.get(screen)
-        if census is not None:
-            r = b = 0.0
-            for type_id, count in census.items():
-                rr, bb = per_kill(row_of(type_id))
-                r += rr * count
-                b += bb * count
-            n = sum(census.values())
-            rupees += r
-            bombs += b
-            bodies += n
-            rows = "+".join(
-                f"{ROWS[row_of(t)][2]}/{ROWS[row_of(t)][3]}x{c}" for t, c in census.items()
-            )
+        # A grouped byte is a group index, not an ObjType. Pricing it as a
+        # drop row credits rupees the screen does not have.
+        if spawn.grouped:
             lines.append(
-                f"  0x{screen:02x} {grid_name(screen):4} {'(live census)':14} x{n} "
-                f"{rows:14} {r:5.2f}R"
-                + (f"  {b:4.2f} bomb packs" if b else "")
+                f"  0x{screen:02x} {grid_name(screen):4} {spawn.prey:14} "
+                "-- grouped spawn, no type census"
             )
             continue
         row = row_of(spawn.monster_id)
@@ -151,7 +131,7 @@ def main() -> int:
         print(f"{row:>3} {baxter}/{loc:<6} {rate / 256:8.3f} {r:8.3f} {per_r} {b:11.3f}")
 
     walk_r, walk_b, walk_n, lines = _supply(WALK)
-    print(f"\nOne pass of the 0x77 -> 0x4A bomb walk ({walk_n} bodies)")
+    print(f"\nOne pass of the 0x77 -> 0x6F coast walk ({walk_n} bodies)")
     print("\n".join(lines))
     print(f"  random drops, whole walk: {walk_r:.1f}R" + (f" + {walk_b:.2f} bomb packs" if walk_b else ""))
 

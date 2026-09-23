@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from zelda_i.assist import UnlimitedHealthAssist, poke_wooden_arrows
+from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist, poke_wooden_arrows
 from zelda_i.dungeon.ops import B_ITEM_ARROWS, WOODEN_ARROWS
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -81,6 +81,53 @@ def test_full_health_byte_output_is_always_coherent() -> None:
     for hi in range(16):
         for lo in range(16):
             assert health_byte_is_coherent(full_health_byte(hi << 4 | lo))
+
+
+def test_last_heart_leaves_two_hearts_and_refills_the_last() -> None:
+    """Two hearts stay real. The last heart is the only write, and it is full."""
+    data = _FakeData()
+    assist = LastHeartAssist(enabled=True)
+    assist.apply_snapshot(data, _snap(health=0x22), frame=1)
+    assert data.values == {}
+    assist.apply_snapshot(data, _snap(health=0x21), frame=2)
+    assert data.values == {}
+    assert assist.telemetry.health.writes == 0
+    assist.apply_snapshot(data, _snap(health=0x20), frame=3)
+    assert data.values["health"] == 0x22
+    assert data.values["heart_partial"] == 0xFF
+    assert assist.telemetry.health.writes == 1
+    # 3→2 and 2→1 are both real damage. Only the second one writes.
+    assert assist.telemetry.total_damage == 2
+    assert assist.telemetry.capacity_writes == 0
+    assert assist.telemetry.progression_writes == 0
+    report = assist.report()
+    assert report["kind"] == "last_heart"
+    assert report["engage_at_whole_hearts"] == 1
+
+
+def test_last_heart_does_not_grant_a_container() -> None:
+    data = _FakeData()
+    assist = LastHeartAssist(enabled=True)
+    assist.apply_snapshot(data, _snap(health=0x22), frame=1)
+    assist.apply_snapshot(data, _snap(health=0x6F), frame=2)
+    assert data.values == {}
+    assert assist.telemetry.accepted_containers == 3
+    assert assist.telemetry.container_clamps >= 1
+    assert assist.telemetry.capacity_writes == 0
+
+
+def test_last_heart_refill_uses_the_owned_container_count() -> None:
+    data = _FakeData()
+    assist = LastHeartAssist(enabled=True)
+    assist.apply_snapshot(data, _snap(health=0x30), frame=1)
+    assert data.values["health"] == 0x33
+    assert assist.telemetry.accepted_containers == 4
+
+
+def test_unlimited_report_kind_stays_unlimited() -> None:
+    assist = UnlimitedHealthAssist(enabled=True)
+    assert assist.report()["kind"] == "unlimited_health"
+    assert assist.report()["engage_at_whole_hearts"] is None
 
 
 def test_assist_refills_on_ordinary_play() -> None:

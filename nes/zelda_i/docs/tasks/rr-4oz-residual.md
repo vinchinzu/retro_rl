@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # rr-4oz residual — Clean L2 heatmap hotspots 0x0e / 0x4f
 
 Fixture-live. `route_eligible=false`. Do not STATUS. Do not close the bead.

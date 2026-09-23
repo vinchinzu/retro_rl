@@ -24,6 +24,9 @@
 # that motivated this file.
 
 # reason_only
+# The body and the drop share a cell, so the press is identical either way;
+# the rung that owns the frame (chase, not scoop) is the only observable.
+test_hunt.py::test_a_body_outranks_a_drop_in_its_pad
 test_arbiter.py::test_equal_priorities_are_broken_by_name_not_insertion
 test_arbiter.py::test_stamp_appends_the_winner_without_losing_the_reason
 test_arbiter.py::test_stamp_is_off_by_default

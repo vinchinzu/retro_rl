@@ -19,9 +19,10 @@ best_video: null
 assist_contract: null
 status_doc: nes/zelda_i/docs/STATUS.md
 plan_doc: nes/zelda_i/docs/plan.md
-last_verified: 2026-07-28
-blocker: walk 0x4A → Level 2 door 0x3C (overworld health)
+last_verified: 2026-09-14
+blocker: pre_l1 gathering, coast bombs at 0x6F then hearts, candle, White Sword
 notes: >-
-  M5: Clean power-on → Triforce shard 1 (2/2 natural + 2/2 isolated).
-  Post-triforce settle + walk prefix to 0x4A encoded; Moon door 0x3C and
-  dungeon interior still open. Bronze Clean.
+  M5: Clean power-on to Triforce shard 1. Clean-tip oracle 18909f,
+  2/2 natural-entry, 2026-09-14 (spine/clean_tip.py l1_tf).
+  Next open row is pre_l1, the south-coast gathering prefix, not the
+  0x4A Level 2 walk. Gathering is not a Clean claim. Bronze Clean.

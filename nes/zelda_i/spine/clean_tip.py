@@ -181,13 +181,19 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         pose="stop on 0x37 with 6 HC, bombs, candle, White Sword",
         residual="docs/PRE_L1.md",
         note=(
-            "Zelda Dungeon The Gathering, path-checked against the Q1 "
-            "catalog. Do not right-8 from start (0x79 pocket) and do not "
-            "left-2 from candle 0x0C (Lost Hills 0x1B). Bombs 0x6F via "
-            "0x78→0x68, hearts 0x7B then 0x2C, candle 0x0C (open), White "
-            "Sword 0x0A around 0x1B, burn heart 0x47, 90R shield 0x46, "
-            "optional arrows 0x4A, Blue Ring 0x34. Dedicated --through "
-            "pre-l1. Do not poke bombs/rupees/candle/$066F."
+            "Zelda Dungeon The Gathering. Spec is docs/PRE_L1.md. "
+            "Bombs are the south coast in shop_p7.SHOP_P7_HOPS: "
+            "0x77, 0x78, 0x79 beach y=165, 0x7A band (133, 141), "
+            "0x7B and 0x7C any row, the hop that leaves 0x7D carries "
+            "SCREEN_7E_EAST_BAND (137, 145), then 0x7F UP into 0x6F. "
+            "Not 0x68, not the 0x5C maze, not candle 0x5E, not arrow "
+            "cave 0x4A. Stop is ADDR_BOMBS >= 1. Later: heart 0x7B, "
+            "heart 0x2C, candle 0x0C, White Sword 0x0A around Lost "
+            "Hills 0x1B, burn heart 0x47, shield 0x46, optional arrows "
+            "0x4A, Blue Ring 0x34, then the 0x37 mouth. --through "
+            "pre-l1 forces assist off. Do not poke bombs, rupees, "
+            "candle, or $066F. A 2026-09-20 flagged --rollout trial "
+            "bought bombs. That is not the default arm and not STATUS."
         ),
     ),
     CleanStep(

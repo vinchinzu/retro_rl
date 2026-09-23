@@ -12,11 +12,23 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from zelda_i.route.chain import (
+    CLEAR_53_MAX_FRAMES,
+    CLEAR_63_MAX_FRAMES,
+    FIRST_KEY_MAX_FRAMES,
+    NAV_MAX_FRAMES,
+    UNLOCK_NORTH_MAX_FRAMES,
     ControllerStageResult,
+    Level1Clear53Controller,
+    Level1Clear63Controller,
+    Level1FirstKeyController,
+    Level1UnlockNorthController,
     boot_to_ready,
     run_controller_stage,
     run_natural_to_milestone,
 )
+from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist
+from zelda_i.overworld.gather_segments import chain_stages as gather_chain_stages
+from zelda_i.overworld.nav import NavPhase, OverworldToLevel1Controller
 from zelda_i.level1.bow import level1_bow_stages, level1_bow_success
 from zelda_i.level1.bow_cellar import (
     level1_bow_cellar_stages,
@@ -39,6 +51,7 @@ from zelda_i.overworld.gathering import (
     pre_l1_bomb_shop_success,
     pre_l1_stages,
 )
+from zelda_i.overworld.shop_p7 import SHOP_P7_PRICE
 from zelda_i.level1.finish import LEVEL1_TRIFORCE_BIT
 from zelda_i.level2.overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
@@ -77,6 +90,7 @@ from zelda_i.ram import (
     ADDR_SELECTED_ITEM,
     ADDR_WHISTLE,
     PLAY_MODE,
+    SCREEN_LEVEL1_ENTRANCE,
     ZeldaSnapshot,
     is_level1_ready,
     read_snapshot,
@@ -113,6 +127,11 @@ SPINE_BOMB_RETOPUP: frozenset[str] = frozenset(
 # spent count (ASSIST_CONTRACT). Natural extra is L1 0x72 west of entrance.
 SPINE_L1_KEY_POKE = 1
 SPINE_L1_KEY_RETOPUP: frozenset[str] = frozenset({"backtrack44"})
+
+# Coast pack is 20R. The walk arrives short and one hit from death, so the
+# north farm is not the buy. Rupee count only. Not Clean. Not rr-ttyu.3.
+SPINE_PRE_L1_SHOP_RUPEES = SHOP_P7_PRICE
+SPINE_PRE_L1_RUPEE_RETOPUP: frozenset[str] = frozenset({"bomb_topup"})
 
 _BOW_HOPS = (
     SpineHop(
@@ -170,9 +189,11 @@ _L1_DEDICATED_HOPS = (
 _L1_DEDICATED_THROUGH: tuple[str, ...] = tuple(
     hop.through for hop in _L1_DEDICATED_HOPS
 )
-_L1_STOPS: dict[str, str] = {"level1": "level1_triforce"} | {
-    hop.through: hop.stop for hop in _L1_DEDICATED_HOPS
-}
+_L1_STOPS: dict[str, str] = (
+    {"level1": "level1_triforce"}
+    | {hop.through: hop.stop for hop in _L1_DEDICATED_HOPS}
+    | {"gather": "gather_l1_mouth_0x37"}
+)
 _L2_STOPS: dict[str, str] = {
     "level2-entry": "level2_entry",
     "level2": "level2_triforce_0x02",
@@ -217,6 +238,7 @@ def spine_final_fields(snap: ZeldaSnapshot, ram: Any = None) -> dict[str, Any]:
         "rod": int(getattr(snap, "rod", 0)),
         "bow": int(getattr(snap, "bow", 0)),
         "arrows": int(getattr(snap, "arrows", 0)),
+        "sword": int(getattr(snap, "sword", 0)),
     }
     if ram is not None:
         fields.update(
@@ -252,6 +274,7 @@ class SpineRun:
     position_assist: dict[str, Any] | None = None
     set_state_count: int | None = None
     allow_pokes: bool = True
+    gather: dict[str, Any] | None = None
 
     def apply_state_audit(self, count: int) -> None:
         """Record measured post-reset ``env.em.set_state`` calls. Fail if any."""
@@ -274,6 +297,15 @@ class SpineRun:
             if extra:
                 return extra
         return None
+
+    def _gather_report(self) -> dict[str, Any] | None:
+        if self.gather is None:
+            return None
+        chain_assist = self.gather.get("assist")
+        return {
+            "engage_hearts": self.gather.get("engage_hearts"),
+            "assist": None if chain_assist is None else chain_assist.report(),
+        }
 
     def report(self) -> dict[str, Any]:
         return {
@@ -305,6 +337,7 @@ class SpineRun:
             ),
             "poke_keys": (self.inventory_assist or {}).get("poke_keys") or False,
             "stop": SPINE_STOPS.get(self.through),
+            "gather": self._gather_report(),
             "stages": [stage.report() for stage in self.stages],
         }
 
@@ -370,10 +403,20 @@ SPINE_L7_BAIT_RUPEES = 60
 
 
 def topup_owned_rupees(
-    env, run: SpineRun, *, rupees: int = SPINE_L7_BAIT_RUPEES
+    env,
+    run: SpineRun,
+    *,
+    rupees: int = SPINE_L7_BAIT_RUPEES,
+    force: bool = False,
 ) -> None:
-    """Documented Survival rupee count top-up for the L7 Bait buy. Not Clean."""
-    if not _pokes_allowed(run):
+    """Documented Survival rupee count top-up. Not Clean.
+
+    ``force`` writes even when ``allow_pokes`` is off (pre-l1 coast pack).
+    Already-funded wallets write nothing.
+    """
+    if not force and not _pokes_allowed(run):
+        return
+    if int(read_snapshot(env.get_ram()).rupees) >= int(rupees):
         return
     extra = apply_owned_inventory(env, rupees=rupees, select_bomb=False)
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
@@ -399,11 +442,16 @@ def _run_stages(
     retopup: frozenset[str] = frozenset(),
     key_retopup: frozenset[str] = frozenset(),
     rupee_retopup: frozenset[str] = frozenset(),
+    forced_rupee_retopup: frozenset[str] = frozenset(),
     update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
     pokes = bool(getattr(run, "allow_pokes", True))
     for name, controller, max_frames in stages:
+        if name in forced_rupee_retopup:
+            topup_owned_rupees(
+                env, run, rupees=SPINE_PRE_L1_SHOP_RUPEES, force=True
+            )
         if pokes:
             if name in retopup:
                 topup_owned_inventory(env, run)
@@ -496,6 +544,8 @@ def _continue_level1_spine(
     if through in _L1_DEDICATED_THROUGH:
         if through in ("level1-arrows", "level1-bombs"):
             hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
+        if through == "pre-l1":
+            hop_kw["forced_rupee_retopup"] = SPINE_PRE_L1_RUPEE_RETOPUP
         attach_hops(
             env,
             run,
@@ -732,6 +782,120 @@ def _boot_only_prefix(env, *, room_timer=None, assist=None, on_frame=None):
     )
 
 
+# Gathering prefix (default): the coast bombs, then the 22-stage gather
+# chain to the L1 mouth on 0x37 (6 containers, White Sword, blue candle,
+# letter), then the L1 rooms through 0x53. The gather chain's only write is
+# a health refill at this many whole hearts. 2 (the dev chain's setting,
+# for the 0x0A Lynel's >1.5-heart hit) made 9 writes; 1 (last-heart) was
+# green to 0x37 on 2026-09-22 with 6 writes, 0 deaths. Next step is 0 (off).
+GATHER_ENGAGE_HEARTS = 1
+GATHER_STAGE_MAX_FRAMES = 8000
+
+
+def gather_assist(engage_hearts: int) -> UnlimitedHealthAssist | None:
+    """Health assist for the gather chain only. 0 is Clean for the chain."""
+    if engage_hearts <= 0:
+        return None
+    if engage_hearts == 1:
+        return LastHeartAssist(enabled=True)
+    return UnlimitedHealthAssist(enabled=True, engage_at_whole_hearts=engage_hearts)
+
+
+def gather_stages() -> list[tuple[str, Any, int]]:
+    """The gather chain as spine stages: bomb-shop cave → 0x37, one env."""
+    return [
+        (name, ctl, int(getattr(ctl, "max_frames", 0) or GATHER_STAGE_MAX_FRAMES))
+        for name, ctl in gather_chain_stages()
+    ]
+
+
+def gathered_level1_stages() -> tuple[tuple[str, Any, int], ...]:
+    """0x37 mouth → L1 → 0x53 clear: the natural prefix, from the door."""
+    return (
+        (
+            "enter_level1",
+            OverworldToLevel1Controller(phase=NavPhase.APPROACH_DOOR),
+            NAV_MAX_FRAMES,
+        ),
+        ("first_key", Level1FirstKeyController(), FIRST_KEY_MAX_FRAMES),
+        ("north", Level1UnlockNorthController(), UNLOCK_NORTH_MAX_FRAMES),
+        ("clear63", Level1Clear63Controller(), CLEAR_63_MAX_FRAMES),
+        ("clear53", Level1Clear53Controller(), CLEAR_53_MAX_FRAMES),
+    )
+
+
+def gather_success(snap: ZeldaSnapshot) -> bool:
+    """On the L1 mouth screen in play, White Sword in hand."""
+    return (
+        snap.level == 0
+        and snap.screen == SCREEN_LEVEL1_ENTRANCE
+        and int(snap.sword) >= 2
+    )
+
+
+# The 0x0A Lynel's hit takes a 1.5-heart Link to 0 in one frame, before a
+# last-heart refill can see him, and 0x0A's ring road is not closed (the
+# bottom band is rock at x 80..103), so the top band past it is the only
+# way to the cave. The ``white`` stage alone refills at this many whole
+# hearts, as the standalone ``gather_white`` segment always has.
+GATHER_WHITE_ENGAGE_HEARTS = 2
+
+
+def _run_gather_chain(env, run: SpineRun, chain_assist: Any, run_stages, hop_kw) -> bool:
+    """The gather stages, with the ``white`` stage's own refill floor."""
+    stages = gather_stages()
+    floor = getattr(chain_assist, "engage_at_whole_hearts", None)
+    if floor is None or floor >= GATHER_WHITE_ENGAGE_HEARTS:
+        return run_stages(env, run, stages, **dict(hop_kw, assist=chain_assist))
+    names = [name for name, _ctl, _max in stages]
+    cut = names.index("white")
+    kw = dict(hop_kw, assist=chain_assist)
+    if not run_stages(env, run, stages[:cut], **kw):
+        return False
+    chain_assist.engage_at_whole_hearts = GATHER_WHITE_ENGAGE_HEARTS
+    try:
+        if not run_stages(env, run, stages[cut : cut + 1], **kw):
+            return False
+    finally:
+        chain_assist.engage_at_whole_hearts = floor
+    return run_stages(env, run, stages[cut + 1 :], **kw)
+
+
+def _run_gathered_prefix(
+    env,
+    run: SpineRun,
+    *,
+    through: str,
+    chain_assist: Any,
+    run_stages,
+    **hop_kw,
+) -> None:
+    """Coast bombs (assist off), gather chain (``chain_assist``), L1 to 0x53.
+
+    Pre-l1 keeps its rule: no heart assist, no pokes, only the 20R top-up.
+    The L1 rooms run under the caller's ``assist`` and ``allow_pokes``.
+    """
+    allow_pokes = run.allow_pokes
+    run.allow_pokes = False
+    pre_kw = dict(hop_kw, assist=None)
+    ok = run_stages(
+        env, run, pre_l1_stages(),
+        forced_rupee_retopup=SPINE_PRE_L1_RUPEE_RETOPUP, **pre_kw,
+    )
+    if ok and not pre_l1_bomb_shop_success(read_snapshot(env.get_ram())):
+        ok = run.success = False
+        run.failed_stage = "pre_l1_shop_p7"
+    if ok:
+        ok = _run_gather_chain(env, run, chain_assist, run_stages, hop_kw)
+    if ok and not gather_success(read_snapshot(env.get_ram())):
+        ok = run.success = False
+        run.failed_stage = _L1_STOPS["gather"]
+    run.allow_pokes = allow_pokes
+    if not ok or through == "gather":
+        return
+    run_stages(env, run, gathered_level1_stages(), **hop_kw)
+
+
 def run_survival_spine(
     env,
     obs: Any,
@@ -742,6 +906,8 @@ def run_survival_spine(
     through: str = "level1",
     level8_overrides: dict[str, Any] | None = None,
     allow_pokes: bool = True,
+    gather: bool = True,
+    gather_engage_hearts: int = GATHER_ENGAGE_HEARTS,
 ) -> SpineRun:
     """Power-on → requested dungeon stop. One env. No state reload.
 
@@ -756,6 +922,11 @@ def run_survival_spine(
     ``through="pre-l1"`` strips ``assist`` and ``allow_pokes`` even if the
     caller passed them. Survival refill hides the ``$0670`` chip that zeros
     ``$50``/``$627``, so the bomb walk is a Clean farm.
+
+    ``gather`` (default) runs the gathering prefix before L1: the pre-l1
+    bombs, the gather chain to 0x37 under ``gather_assist(gather_engage_hearts)``,
+    then L1 from its door. ``gather=False`` is the legacy wooden-sword
+    clear53 prefix. ``through="gather"`` stops on 0x37.
     """
     if through not in SPINE_THROUGH:
         raise ValueError(f"unknown spine stop {through!r}; wired: {SPINE_THROUGH}")
@@ -767,6 +938,16 @@ def run_survival_spine(
             env,
             room_timer=room_timer,
             assist=assist,
+            on_frame=on_frame,
+        )
+        fail_name = "prefix_boot"
+    elif gather or through == "gather":
+        # Boot without ``assist``: it latches the container count on first
+        # sight, and a latch of 3 at boot rewrites the six gathered to 3.
+        prefix = _boot_only_prefix(
+            env,
+            room_timer=room_timer,
+            assist=None,
             on_frame=on_frame,
         )
         fail_name = "prefix_boot"
@@ -794,6 +975,18 @@ def run_survival_spine(
         return run
 
     hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
+    if through != "pre-l1" and (gather or through == "gather"):
+        chain_assist = gather_assist(gather_engage_hearts)
+        run.gather = {
+            "engage_hearts": gather_engage_hearts,
+            "assist": chain_assist,
+        }
+        _run_gathered_prefix(
+            env, run, through=through, chain_assist=chain_assist,
+            run_stages=_run_stages, **hop_kw,
+        )
+        if not run.success or through == "gather":
+            return run
     runtime = {"level8_overrides": level8_overrides or {}}
     for row in SPINE_LEVELS:
         extra = dict(row.extra)

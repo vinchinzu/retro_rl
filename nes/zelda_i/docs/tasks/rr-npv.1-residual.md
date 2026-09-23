@@ -1,3 +1,5 @@
+> Historical lane note. The live sitting is the gathering prefix in [PRE_L1.md](../PRE_L1.md). This file stays because the clean-tip ladder or a route doc still cites it. It is not the current plan.
+
 # rr-npv.1 residual — Clean L3 Entrance→TF dest hops
 
 Clean fixture-live: Level3Entrance → TF 0x04 dest hops completed green.

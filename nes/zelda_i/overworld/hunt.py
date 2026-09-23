@@ -53,6 +53,7 @@ from zelda_i.overworld.common import (
     _STEP,
     DODGE_BOX as _DODGE_BOX,  # noqa: F401  (re-export for probes)
     box_step as _box_step,
+    keep_y_band,
     perpendicular,
 )
 from zelda_i.overworld.arbiter import Arbiter, Rung
@@ -453,6 +454,7 @@ class ShotPolicy:
     def duck(
         self, snap: ZeldaSnapshot, tracked: tuple[TrackedObject, ...],
         box: tuple[int, int, int, int], bodies: tuple[ZeldaObject, ...] = (),
+        band: tuple[int, int] | None = None,
     ) -> tuple[str, str] | None:
         """Leave the line of a shot the shield cannot eat.
 
@@ -469,6 +471,10 @@ class ShotPolicy:
             return None
         step = perpendicular(
             link[0], link[1], int(shot.x), int(shot.y), box, bodies
+        )
+        step = keep_y_band(
+            step, link[0], link[1], int(shot.x), int(shot.y), box, bodies,
+            band=band,
         )
         if step is None:
             return None
@@ -764,6 +770,7 @@ class ScreenHunter:
     _arbiter: Arbiter | None = field(default=None, repr=False)
     _step_frames: int = field(default=0, repr=False)
     _step_lane: tuple[str, int] | None = field(default=None, repr=False)
+    _step_band: tuple[int, int] | None = field(default=None, repr=False)
     _close: ZeldaObject | None = field(default=None, repr=False)
     _pad: int = field(default=0, repr=False)
     _contact: bool = field(default=False, repr=False)
@@ -805,7 +812,13 @@ class ScreenHunter:
     def _tracks_by_slot(self) -> dict[int, TrackedObject]:
         return {t.slot: t for t in self._tracked}
 
-    def step(self, snap: ZeldaSnapshot, frames: int, lane: tuple[str, int] | None = None) -> FrameAction | None:
+    def step(
+        self,
+        snap: ZeldaSnapshot,
+        frames: int,
+        lane: tuple[str, int] | None = None,
+        y_band: tuple[int, int] | None = None,
+    ) -> FrameAction | None:
         """The frame the highest hunt rung claims, or ``None`` for the caller.
 
         The prologue is not a rung: entering a screen, censusing the wave and
@@ -827,6 +840,7 @@ class ScreenHunter:
         pad = 10**6 if close is None else chebyshev(lx, ly, int(close.x), int(close.y))
         self._step_frames = int(frames)
         self._step_lane = lane
+        self._step_band = y_band
         self._close = close
         self._pad = pad
         self._contact = close is not None and self._at_contact(
@@ -1196,6 +1210,7 @@ class ScreenHunter:
             self._tracked,
             self.box,
             tuple(o for o in live_enemies(snap) if not dormant_body(o)),
+            band=self._step_band,
         )
         if verdict is None:
             return None

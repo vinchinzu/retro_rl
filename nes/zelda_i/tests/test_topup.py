@@ -12,7 +12,18 @@ import pytest
 from retro_harness.controls import pressed_nes_buttons
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.respawn import RoomHistory, respawn_visits
-from zelda_i.overworld.shop_p7 import SHOP_P7_PRICE, SHOP_P7_SCREEN, shop_p7_screens
+from zelda_i.overworld.gathering import pre_l1_bomb_shop_success
+from zelda_i.overworld.hunt import HUNT_DESTINATION_FRAMES, HUNT_SCREEN_MAX_FRAMES
+from zelda_i.overworld.shop_p7 import (
+    SCREEN_7E_EAST_BAND,
+    SHOP_P7_NOT_ON_WALK,
+    SHOP_P7_PRICE,
+    SHOP_P7_SCREEN,
+    SHOP_P7_TRANSIT_SCREENS,
+    make_shop_p7_buy_controller,
+    make_shop_p7_walk_controller,
+    shop_p7_screens,
+)
 from zelda_i.overworld.topup import (
     SCREEN_6E_WEST_BAND,
     SCREEN_6F_NORTH_X,
@@ -20,6 +31,7 @@ from zelda_i.overworld.topup import (
     TOPUP_MAX_FRAMES,
     Excursion,
     RupeeTopUpController,
+    coast_fallback_hops,
     excursion_hops,
     make_shop_p7_topup_controller,
 )
@@ -172,16 +184,105 @@ def test_the_money_alone_is_not_a_stop_off_the_shop_screen() -> None:
     assert ctl._at_stop(_snap(screen=SHOP_P7_SCREEN, rupees=SHOP_P7_PRICE)) is True
 
 
-def test_an_exhausted_table_finishes_home_short_rather_than_failing() -> None:
-    """The buy stage owns "could not afford it" — it is the one that reads
-    ``ADDR_BOMBS``. Failing here would hide the rupee count behind a walk
-    failure."""
+def test_an_exhausted_table_keeps_hunting_instead_of_finishing_short() -> None:
+    """18R on the shop is not the errand. With no neighbour left to fight,
+    the fallback walks the nearest coast screen the ring has dropped.
+    Inland screens are not that walk."""
     ctl = _ctl(excursions=())
-    ctl.hunt_destination = False  # the destination wave is the walk's errand
+    ctl.hunt_destination = False
+    act = ctl.step(_snap(rupees=3))
+    assert ctl.success is False
+    assert ctl.phase.name == "HOP"
+    assert act.reason == "topup_hunt_7a"
+    assert all(h.target not in SHOP_P7_NOT_ON_WALK for h in ctl.hops)
+    assert 0x68 not in {h.target for h in ctl.hops}
+    assert "topup_short" not in " ".join(ctl.notes)
+
+
+def test_the_neighbour_table_falls_back_to_the_nearest_dropped_coast_screen() -> None:
+    """After 0x5F and 0x6E, RoomHistory has dropped 0x7C. 0x7B and 0x7D
+    were crossed, not cleared, so they are not the hunt."""
+    visited = shop_p7_screens() + tuple(
+        h.target for h in excursion_hops(SHOP_P7_SCREEN, SHOP_P7_TOPUP_EXCURSIONS)
+    )
+    target, hops = coast_fallback_hops(visited)
+    assert target == 0x7C
+    assert hops[0] == ScreenHop(0x7F, "DOWN", align_x=82)
+    onto_7d = next(h for h in hops if h.target == 0x7D and h.direction == "LEFT")
+    assert onto_7d.y_band == SCREEN_7E_EAST_BAND == (137, 145)
+    assert hops[-1].target == SHOP_P7_SCREEN
+    assert all(h.target not in SHOP_P7_NOT_ON_WALK for h in hops)
+    assert 0x7C in {h.target for h in hops}
+
+    ctl = _ctl()
+    ctl.hop_index = len(ctl.hops)
+    ctl.hunt_destination = False
+    ctl.step(_snap(rupees=SHOP_P7_PRICE - 2))
+    assert ctl.success is False
+    assert "topup_hunt_7c" in ctl.notes
+
+
+def test_a_second_shortfall_does_not_hunt_the_same_screen_again() -> None:
+    visited = shop_p7_screens()
+    first, _ = coast_fallback_hops(visited)
+    second, hops = coast_fallback_hops(visited, skip=frozenset({first}))
+    assert first == 0x7A
+    assert second != first
+    assert second not in SHOP_P7_NOT_ON_WALK
+    assert second not in SHOP_P7_TRANSIT_SCREENS
+    assert hops[-1].target == SHOP_P7_SCREEN
+
+
+def test_no_fresh_coast_screen_fails_short_instead_of_buying() -> None:
+    ctl = _ctl(excursions=())
+    ctl.hunt_destination = False
+    ctl._shortfall_targets.update(shop_p7_screens())
     ctl.step(_snap(rupees=3))
-    assert ctl.success is True
-    assert ctl.phase.name == "DONE"
-    assert "topup_short" in " ".join(ctl.notes)
+    assert ctl.success is False
+    assert ctl.phase.name == "FAILED"
+    assert "topup_short_3" in ctl.notes
+
+
+def test_the_money_on_the_shop_is_not_bombs() -> None:
+    """Arriving over 20 stops the hunt. The errand is still the pack."""
+    funded = _snap(rupees=SHOP_P7_PRICE + 4)
+    assert not pre_l1_bomb_shop_success(funded)
+    top = _ctl()
+    top.step(funded)
+    assert top.success is True
+    assert top.hop_index == 0
+    assert not pre_l1_bomb_shop_success(funded)
+
+    short_buy = make_shop_p7_buy_controller()
+    short_buy.step(_snap(rupees=18, bombs=0))
+    assert short_buy.success is False
+    assert short_buy.phase.name == "FAILED"
+    assert any(n.startswith("shop_need_20_have_18") for n in short_buy.notes)
+
+    bought = make_shop_p7_buy_controller()
+    assert bought._at_stop(_snap(bombs=4, rupees=4)) is True
+    bought.step(_snap(bombs=4, rupees=4))
+    assert bought.success is True
+    assert pre_l1_bomb_shop_success(_snap(bombs=4, rupees=4, sword=1))
+
+
+def test_a_short_topup_hunts_to_the_destination_cap() -> None:
+    ctl = _ctl()
+    assert ctl._before_play(_snap(rupees=18)) is None
+    assert ctl.hunter is not None
+    assert ctl.hunter.screen_max_frames == HUNT_DESTINATION_FRAMES
+    assert ctl.hunter.transit_screens == SHOP_P7_TRANSIT_SCREENS
+    assert ctl._before_play(_snap(rupees=SHOP_P7_PRICE)) is None
+    assert ctl.hunter.screen_max_frames == HUNT_SCREEN_MAX_FRAMES
+
+
+def test_the_walk_hands_a_short_shop_to_the_hunt() -> None:
+    """The walk stops so the fallback can leave. That stop is not the gate."""
+    walk = make_shop_p7_walk_controller()
+    short = _snap(rupees=18)
+    assert walk._at_stop(short) is True
+    assert not pre_l1_bomb_shop_success(short)
+    assert walk._at_stop(_snap(screen=0x7A, rupees=30)) is False
 
 
 def test_the_top_up_reopens_screens_it_re_enters() -> None:

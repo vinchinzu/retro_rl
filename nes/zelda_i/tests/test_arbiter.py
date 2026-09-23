@@ -241,6 +241,7 @@ def test_the_hop_ladder_is_the_old_source_order() -> None:
         "hop_unstick",
         "hop_edge",
         "hop_hunt",
+        "hop_geo",
         "hop_lane",
     ]
     # Every hook sits where the call used to: above everything.

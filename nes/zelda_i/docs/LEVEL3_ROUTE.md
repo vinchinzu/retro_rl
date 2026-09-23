@@ -1,5 +1,7 @@
 # Level 3 — Manji (route notes)
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 Status: **assisted-entry** (not Clean STATUS). Clean fixture-live dest hops
 from `Level3Entrance` are `route_eligible=false` (`rr-npv.1`); integrator
 promotes. Do not claim M5/L1+ from this file.

@@ -1,5 +1,7 @@
 # Level 1 route — The Eagle
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 This route folds the external walkthrough into the emulator-verified room
 graph. The walkthrough is a planning accelerator, not runtime assistance:
 room IDs, transitions, object types, combat policies, and stop predicates were

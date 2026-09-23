@@ -377,7 +377,31 @@ class Room44SurvivalController(GenericDungeonRoomController):
 for _spec in (ROOM_44_SPEC, ROOM_45_SPEC):
     register_room_spec(_spec)
 
+# 0x44 can end on the north band (White Sword gather, 2026-09-22: Link at
+# (168, 109)). y_first DOWN from there hits the statue under him; the stall
+# skip then pushed RIGHT at (208, 109) above the door for 9000f. From the
+# north band, walk down the east column at x=208 (measured: 0x45 key, 0 hits).
+ROOM_45_NORTH_ENTRY = DoorRoute("RIGHT", ((208, 109), (208, 141)))
+ROOM_45_NORTH_BAND_Y = 125
+
+
+class Room45SurvivalController(GenericDungeonRoomController):
+    """Pick the 0x45 entry by where 0x44 left Link: north band or south aisle."""
+
+    _entry_chosen: bool = False
+
+    def step(self, snap):
+        if not self._entry_chosen and snap.screen == self.spec.source_room:
+            self._entry_chosen = True
+            if int(snap.link_y) < ROOM_45_NORTH_BAND_Y:
+                self.spec = replace(self.spec, entry=ROOM_45_NORTH_ENTRY)
+                self.notes.append(f"north_band_entry_{snap.link_x}_{snap.link_y}")
+        return super().step(snap)
+
+
 __all__ = [
+    "ROOM_45_NORTH_ENTRY",
+    "Room45SurvivalController",
     "ROOM_44_SPEC",
     "ROOM_44_SURVIVAL_SPEC",
     "ROOM_45_SPEC",

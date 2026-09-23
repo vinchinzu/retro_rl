@@ -1,0 +1,165 @@
+{
+  "acceptance_warning": "This checkpoint is for isolated development. Route readiness still requires a successful natural-entry run from the real predecessor.",
+  "captured_at": "2026-09-22T18:35:26.776128+00:00",
+  "development_only": true,
+  "natural_entry": false,
+  "request": {
+    "save_as": "GatherHeartL8Leave",
+    "segment": "heart_l8",
+    "start_state": "GatherHeartL8Enter",
+    "track": "last_heart"
+  },
+  "schema_version": 1,
+  "selected_trial": {
+    "assist": {
+      "accepted_containers": 4,
+      "capacity_writes": 0,
+      "class": "survival",
+      "container_clamps": 0,
+      "damage_by_location": {
+        "L0:0x7b": 1
+      },
+      "damage_events": 1,
+      "damage_samples": [
+        {
+          "amount": 1,
+          "frame": 311,
+          "level": 0,
+          "link_x": 144,
+          "link_y": 100,
+          "location": "L0:0x7b",
+          "screen": 123,
+          "screen_hex": "0x7b"
+        }
+      ],
+      "deaths": 0,
+      "enabled": true,
+      "engage_at_whole_hearts": 1,
+      "health": {
+        "first_active_frame": null,
+        "restored": 0,
+        "writes": 0
+      },
+      "kind": "last_heart",
+      "maximum_single_frame_damage": 1,
+      "progression_writes": 0,
+      "suspended_phase_frames": {
+        "menu_or_boot": 4,
+        "transition": 162
+      },
+      "total_damage": 1
+    },
+    "controller": {
+      "farm_attempts": 0,
+      "frames": 641,
+      "hits_taken": 1,
+      "hop": null,
+      "hop_index": 1,
+      "need_rupees": 0,
+      "notes": [
+        "hop_0_7b",
+        "path_stop"
+      ],
+      "phase": "DONE",
+      "reason_by_screen": {
+        "0x7b": {
+          "bomb_cell": 140,
+          "bomb_cell_slash": 3,
+          "bomb_cell_turn": 21,
+          "cave_settle": 31,
+          "done": 1,
+          "heart": 228,
+          "hop_advance": 1,
+          "off_blast": 48,
+          "place_bomb": 1,
+          "scroll": 71,
+          "scroll_idle": 62,
+          "wait_mode_4": 4
+        },
+        "0x7c": {
+          "hop": 1,
+          "scroll": 29
+        }
+      },
+      "rung_census": {
+        "hop_edge": 0,
+        "hop_extra": 0,
+        "hop_hunt": 0,
+        "hop_lane": 0,
+        "hop_maze": 0,
+        "hop_occupancy": 0,
+        "hop_scoop": 0,
+        "hop_stall_escape": 0,
+        "hop_unstick": 0,
+        "push": 1
+      },
+      "rung_frames": 1,
+      "rupee_farm_attempts": 0,
+      "stuck": 0,
+      "success": true
+    },
+    "frames": 641,
+    "glance": {
+      "bombs": 7,
+      "candle": 0,
+      "cur_opened_doors": 0,
+      "facing": 1,
+      "health": 50,
+      "heart_containers": 4,
+      "is_updating_mode": 1,
+      "keys": 0,
+      "level": 0,
+      "mode": 11,
+      "mode_name": "cave_play",
+      "next_room": 123,
+      "objects": [
+        {
+          "hp": 0,
+          "slot": 1,
+          "state": 4,
+          "type_id": 107,
+          "type_name": "unknown_object_0x6b",
+          "x": 120,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 2,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 72,
+          "y": 128
+        },
+        {
+          "hp": 240,
+          "slot": 3,
+          "state": 0,
+          "type_id": 64,
+          "type_name": "bubble",
+          "x": 168,
+          "y": 128
+        }
+      ],
+      "open_doorway_mask": 0,
+      "room": 123,
+      "room_all_dead": 0,
+      "room_item_id": 26,
+      "room_item_name": "heart_container",
+      "room_obj_count": 6,
+      "rupees": 1,
+      "screen_hex": "0x7B",
+      "submode": 0,
+      "sword": 1,
+      "triforce": 0,
+      "whole_hearts": 3,
+      "x": 152,
+      "y": 149
+    },
+    "ok": true
+  },
+  "source_state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherHeartL8Enter.state",
+  "source_state_sha256": "decaad26a35fc3fd01630c372c5c83627961cb7f5142609423a80332e8fb3ee9",
+  "state_path": "/home/v/01_projects/11_games/retro_rl/nes/zelda_i/custom_integrations/LegendOfZelda-Nes/GatherHeartL8Leave.state",
+  "state_sha256": "5e203209f489783f33d89593d0ad64b9378bb8b7d466b9d3de7d33a6da16ddcb"
+}

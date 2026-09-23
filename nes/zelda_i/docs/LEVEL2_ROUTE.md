@@ -1,5 +1,7 @@
 # Level 2 route — The Moon
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 Planning sources:
 
 - [Zelda Dungeon — Level 2: The Moon](https://www.zeldadungeon.net/the-legend-of-zelda-walkthrough/level-2-the-moon/)

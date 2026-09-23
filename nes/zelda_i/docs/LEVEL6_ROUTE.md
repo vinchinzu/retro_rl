@@ -1,5 +1,7 @@
 # Level 6 — The Dragon (route notes)
 
+Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
+
 Status: **assisted pure** through 0x09 clear (not Clean STATUS)
 
 Planning sources:

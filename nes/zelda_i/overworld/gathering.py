@@ -26,12 +26,13 @@ def pre_l1_bomb_shop_success(snap: ZeldaSnapshot) -> bool:
 def pre_l1_stages() -> tuple[tuple[str, object, int], ...]:
     """Wooden sword, the hunting walk, a top-up if it arrived short, the pack.
 
-    ``bomb_topup`` is unconditional in the list and a no-op in the run: it
-    stops on its first frame when Link is already on 0x6F with the price
-    (``RupeeTopUpController._at_stop``). It is a stage rather than a branch
-    inside the walk because "arrived short" is a different errand with a
-    different stop — the walk's stop is the shop screen, the top-up's is the
-    money, and the buy's is ``ADDR_BOMBS``.
+    ``bomb_topup`` is unconditional in the list and a no-op when the walk
+    already banked the price (``RupeeTopUpController._at_stop``). Short of
+    the price it keeps hunting — the shop's neighbours, then the nearest
+    coast screen the ring has dropped — and comes home. It does not finish
+    while the wallet is short. The walk's stop is the shop screen. The
+    top-up's stop is the money, on that screen. The buy's stop is
+    ``ADDR_BOMBS``.
     """
     return (
         ("sword_cave", SwordCaveController(), SWORD_MAX),
