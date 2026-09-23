@@ -20,9 +20,9 @@ from zelda_i import combat as _combat
 from zelda_i.walk import live_env
 from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
-from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
 from zelda_i.dungeon.hop_controller import (
     inland_lattice_step,
+    ladder_release,
     lattice_goto,
     lattice_goto_route,
 )
@@ -469,6 +469,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
         default=None, init=False, repr=False
     )
     _scoop_unreachable_until: int = field(default=0, init=False, repr=False)
+    _ladder_still: int = field(default=0, init=False, repr=False)
+    _ladder_cross: str | None = field(default=None, init=False, repr=False)
+    _ladder_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     # Post-clear floor sweep: frames spent and drops given up as unreachable.
     sweep_frames: int = field(default=0, init=False)
     _sweep_skip: set[tuple[int, int]] = field(default_factory=set, init=False, repr=False)
@@ -1384,25 +1387,51 @@ class GenericDungeonRoomController(EntryRouteWalker):
             return FrameAction(nes_idle_action(), "done")
         # ROM lattice first: the waist-elbow cardinals below held RIGHT+DOWN
         # into a wall for 13653f (L6 0x29, power-on gathered spine resume).
-        # Still on the deployed stepladder: Link moves only along its axis
-        # until it retracts (0x29: LEFT at (168,181), ladder at (168,176)).
-        ladder = next(
-            (o for o in snap.objects if int(o.type_id) == STEPLADDER_OBJECT_TYPE), None
-        )
-        if ladder is not None and abs(int(ladder.x) - x) <= 8 and abs(int(ladder.y) - y) <= 16:
-            # Keep crossing toward the target: "away from the ladder" turned
-            # Link back the moment he stepped onto it (158 <-> 160).
-            return FrameAction(nes_action("DOWN" if ty > y else "UP"), "leftover_off_ladder")
         # Whole-room lattice: the fight lattice is clipped to the occupancy
-        # bounds, and a leftover like (120,189) sits outside them.
-        step = lattice_goto(self._env, snap, (int(tx), int(ty)), slack=0)
+        # bounds, and a leftover like (120,189) sits outside them. On a
+        # deployed stepladder only its axis moves (``ladder_release``); the
+        # old vertical-only rule pressed DOWN beside a horizontal ladder for
+        # 14269 frames (0x29, R19 resume).
+        step = ladder_release(snap, lattice_goto(self._env, snap, (int(tx), int(ty)), slack=0))
         if step is not None:
             return FrameAction(nes_action(step), "leftover_lattice")
-        if self._owns_ladder() and abs(ty - y) > 2:
+        ladder = next(
+            (o for o in snap.objects if int(o.type_id) == _ids.STEPLADDER_OBJECT_TYPE),
+            None,
+        )
+        if ladder is None:
+            self._ladder_cross = None
+        else:
+            # Mid-crossing with no lattice route (the far bank is only reachable
+            # over this water): keep going onto the ladder's far side. R19 0x29
+            # sat on the island's east ladder pressing DOWN, then LEFT back.
+            ldx = int(ladder.x) - x
+            ldy = int(ladder.y) - 3 - y
+            if max(abs(ldx), abs(ldy)) <= 16:
+                # The heading is chosen once, when the crossing starts: past
+                # the ladder's centre "toward it" points back (190<->193).
+                if self._ladder_cross is not None or (not ldx and not ldy):
+                    cross = self._ladder_cross
+                elif abs(ldx) >= abs(ldy):
+                    cross = "RIGHT" if ldx > 0 else "LEFT"
+                else:
+                    cross = "DOWN" if ldy > 0 else "UP"
+                if cross is not None:
+                    self._ladder_cross = cross
+                    return FrameAction(nes_action(cross), "leftover_ladder_cross")
+        if self._owns_ladder() and (abs(ty - y) > 2 or abs(tx - x) > 2):
             # No lattice route: the fight crossed a moat on the stepladder
             # (L6 0x29 island, 13273f of leftover_clip). A straight press
             # toward the target re-deploys it; the lattice resumes beyond.
-            return FrameAction(nes_action("DOWN" if ty > y else "UP"), "leftover_ladder")
+            # One axis can be walled (R19: DOWN at (184,141) for 14269f), so
+            # swap axes after 12 frames without moving.
+            self._ladder_still = self._ladder_still + 1 if (x, y) == self._ladder_xy else 0
+            self._ladder_xy = (x, y)
+            vertical = "DOWN" if ty > y else "UP"
+            horizontal = "RIGHT" if tx > x else "LEFT"
+            first, second = (vertical, horizontal) if abs(ty - y) > 2 else (horizontal, vertical)
+            direction = first if (self._ladder_still // 12) % 2 == 0 else second
+            return FrameAction(nes_action(direction), "leftover_ladder")
         waypoints = self.spec.reward.waypoints
         if waypoints:
             # Waist elbow first; cardinals cannot round the plus from the north.
