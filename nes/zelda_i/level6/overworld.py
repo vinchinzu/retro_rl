@@ -125,6 +125,30 @@ HILLS_CHANNEL_Y_HI = 152
 HILLS_NORTH_WALL_Y = 87
 HILLS_STALL_FAIL = 180
 HILLS_PUSH_STALL = 360
+def _ow15_west_band_step(x: int, y: int) -> str | None:
+    """Lattice step to 0x15's west edge inside the hop's y band, else None."""
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.walk import live_env
+    from zelda_i.walk.physics import lattice_route, lattice_step
+
+    env = live_env.current()
+    if env is None or not has_room_tile_map(env.get_ram()):
+        return None
+    nodes = ow_walkable_nodes(env.get_ram())
+    if not nodes:
+        return None
+    edge = min(n[0] for n in nodes)
+    goals = {n for n in nodes if n[0] == edge and OW15_BAND_LO <= n[1] <= OW15_BAND_HI}
+    if x <= edge + 2 and OW15_BAND_LO <= y <= OW15_BAND_HI:
+        return "LEFT"
+    route = lattice_route(nodes, (x, y), goals)
+    if route is None:
+        return None
+    return lattice_step(x, y, route[0]) if route else "LEFT"
+
+
+OW15_BAND_LO = 165
+OW15_BAND_HI = 189
 POST_L5_TO_LEVEL6_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(SCREEN_LOST_HILLS, "DOWN", align_x=112),
     ScreenHop(0x1A, "LEFT", align_y=141),
@@ -310,6 +334,12 @@ class OverworldToLevel6Controller(OverworldPathController):
         # south sand (isolated v38) then LEFT to 0x14. No occupancy BFS.
         if hop.target == 0x14 and snap.screen == 0x15:
             x, y = int(snap.link_x), int(snap.link_y)
+            # ROM lattice first: the cardinals below plus Lynel knockback
+            # parked Link in the north pocket (192,85) on the power-on
+            # gathered spine. The hand walk stays as the fallback.
+            step = _ow15_west_band_step(x, y)
+            if step is not None:
+                return self._swing(step, "ow15_lattice")
             if self.stuck > HILLS_STALL_FAIL:
                 self.notes.append(f"ow15_solid_({x},{y})")
                 return self._fail(f"ow15_solid_{x}_{y}")
