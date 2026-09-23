@@ -633,8 +633,16 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
     assert act4.reason == "rock_south_to_left_stand_x80"
     assert ctl.phase is SpectacleRockBombPhase.ROCK_LEFT_X
 
-    # Reached x=80 at y=173: faces UP
-    snap5 = _snap(level=0, screen=0x05, link_x=80, link_y=173, triforce=FULL_TRIFORCE, bombs=14)
+    # Reached x=80 at y=173 facing west: turn UP first, no bomb yet (B drops
+    # it the way Link faces).
+    snap_turn = _snap(level=0, screen=0x05, link_x=80, link_y=173, triforce=FULL_TRIFORCE, bombs=14, facing=0x02)
+    act_turn = ctl.step(snap_turn)
+    assert act_turn.action == nes_action("UP")
+    assert act_turn.reason == "left_rock_face_up"
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_FACE_UP
+
+    # Facing UP on the stand: arm the bomb
+    snap5 = _snap(level=0, screen=0x05, link_x=80, link_y=173, triforce=FULL_TRIFORCE, bombs=14, facing=0x08)
     act5 = ctl.step(snap5)
     assert act5.action == nes_action("UP")
     assert act5.reason == "left_rock_face_up"

@@ -805,6 +805,46 @@ def triforce_bits(ram) -> int:
     return int(read_u8(ram, ADDR_TRIFORCE))
 
 
+# Left Spectacle Rock secret: tile object 0x63 in slot 11; $80 in its state
+# is "revealed" (OW secrets are tile objects).
+ROCK_SECRET_TYPE = 0x63
+ROCK_MAX_BOMBS = 3
+
+
+LYNEL_BEAM_TYPE = 0x57
+
+
+def _beam_on_row(snap: ZeldaSnapshot, reach: int = 64) -> bool:
+    return any(
+        int(o.type_id) == LYNEL_BEAM_TYPE
+        and abs(int(o.y) - int(snap.link_y)) <= 8
+        and abs(int(o.x) - int(snap.link_x)) <= reach
+        for o in snap.objects
+    )
+
+
+FACING_UP = 0x08
+# A surfaced red Leever at (74,173) knocked Link off the stand on the B frame.
+_NOT_BODIES = frozenset({0x57, 0x5F, 0x60, 0x63, 0x64})
+
+
+def _body_near(snap: ZeldaSnapshot, reach: int = 24) -> bool:
+    lx, ly = int(snap.link_x), int(snap.link_y)
+    return any(
+        o.slot >= 1
+        and int(o.type_id) not in (0, 0xFF)
+        and int(o.type_id) not in _NOT_BODIES
+        and int(o.hp) > 0
+        and max(abs(int(o.x) - lx), abs(int(o.y) - ly)) <= reach
+        for o in snap.objects
+    )
+
+
+def _rock_secret_unrevealed(snap: ZeldaSnapshot) -> bool:
+    obj = snap.object_in_slot(11)
+    return obj is not None and int(obj.type_id) == ROCK_SECRET_TYPE and not int(obj.state) & 0x80
+
+
 class SpectacleRockBombPhase(Enum):
     """Phases for bombing left Spectacle Rock and entering Level 9 room 0x76."""
     ALIGN_216_X, PAUSE_OPEN, ROCK_TOP_Y = auto(), auto(), auto()
@@ -928,9 +968,9 @@ class Level9SpectacleRockBombController:
                     self._set_phase(SpectacleRockBombPhase.DUNGEON_SETTLE, "settled_l9_0x76")
                 self.dungeon_settle_frames += 1
                 if self.dungeon_settle_frames >= 24:
-                    expected_bombs = int(self.bombs_before or 0) - 1
+                    expected_bombs = int(self.bombs_before or 0) - self.b_presses
                     if int(snap.bombs) != expected_bombs:
-                        return self._fail("bomb_delta_not_exactly_one")
+                        return self._fail("bomb_delta_not_the_presses")
                     self.bombs_after = int(snap.bombs)
                     self.success = True
                     self._set_phase(SpectacleRockBombPhase.DONE, "natural_entry_0x76")
@@ -986,17 +1026,36 @@ class Level9SpectacleRockBombController:
             ax_y = self._axis(snap, axis="y", target=173, tolerance=4, reason="rock_south_realign_y173")
             if ax_y is not None:
                 return ax_y
-            ax_x = self._axis(snap, axis="x", target=80, tolerance=4, reason="rock_south_to_left_stand_x80")
+            # Exact stand: the fire check needs x within 2 of 80, and a 4 px
+            # walk tolerance swapped the two at x=84.
+            ax_x = self._axis(snap, axis="x", target=80, tolerance=1, reason="rock_south_to_left_stand_x80")
             if ax_x is not None:
                 return ax_x
             self._set_phase(SpectacleRockBombPhase.ROCK_FACE_UP, "rock_left_stand_reached")
 
         if self.phase is SpectacleRockBombPhase.ROCK_FACE_UP:
+            # Only on the stand: a Lynel beam knocked Link 4 px off x=80 on
+            # the B frame and the bomb missed the secret (power-on gathered
+            # spine).
+            # The turn press walks Link up toward the rock; a bomb from as high
+            # as y=163 still lands on it.
+            if abs(snap.link_x - 80) > 2 or not 163 <= snap.link_y <= 175:
+                self._set_phase(SpectacleRockBombPhase.ROCK_LEFT_X, "rock_stand_lost")
+                return self._action(nes_idle_action(), "rock_stand_lost")
+            # Lynel sword beams run along y=173; one landed on the B frame on
+            # all three tries. Hold the bomb until the row is clear.
+            if _beam_on_row(snap) or _body_near(snap):
+                return self._action(nes_action("UP"), "rock_hold_threat")
+            # B drops the bomb the way Link faces: a one-frame UP had not
+            # turned him yet and the bomb went east of the rock.
+            if int(snap.facing) != FACING_UP:
+                return self._action(nes_action("UP"), "left_rock_face_up")
             self._set_phase(SpectacleRockBombPhase.ROCK_FIRE, "left_rock_faced_up")
             return self._action(nes_action("UP"), "left_rock_face_up")
 
         if self.phase is SpectacleRockBombPhase.ROCK_FIRE:
             self.b_presses += 1
+            self.blast_wait_frames = 0
             self._set_phase(SpectacleRockBombPhase.ROCK_BLAST_WAIT, "one_bomb_below_left_rock")
             return self._action(nes_action("B"), "left_spectacle_rock_bomb")
 
@@ -1006,11 +1065,14 @@ class Level9SpectacleRockBombController:
                 self.bombs_after = int(snap.bombs)
             if self.blast_wait_frames < 180:
                 return self._action(nes_idle_action(), "left_rock_blast_wait")
-            if self.b_presses != 1 or self.bombs_after != int(self.bombs_before or 0) - 1:
-                return self._fail("bomb_was_not_consumed_exactly_once")
+            if self.bombs_after != int(self.bombs_before or 0) - self.b_presses:
+                return self._fail("bomb_was_not_consumed_once_per_press")
             self._set_phase(SpectacleRockBombPhase.ROCK_ENTER, "left_rock_blast_complete")
 
         if self.phase is SpectacleRockBombPhase.ROCK_ENTER:
+            if _rock_secret_unrevealed(snap) and self.b_presses < ROCK_MAX_BOMBS:
+                self._set_phase(SpectacleRockBombPhase.ROCK_LEFT_X, "rock_secret_missed_retry")
+                return self._action(nes_idle_action(), "rock_retry")
             if self.phase_frames > 500:
                 return self._fail("left_rock_mouth_did_not_enter")
             ax_x = self._axis(snap, axis="x", target=80, tolerance=4, reason="left_rock_mouth_realign")
