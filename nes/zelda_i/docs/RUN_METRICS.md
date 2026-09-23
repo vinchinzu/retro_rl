@@ -11,16 +11,17 @@ One row per measured continuous run, newest last. The row comes from
   were left behind on a room change.
 - **hearts missed**: heart/fairy drops not picked up. Under the refill each one
   is healing the assist paid for instead.
-- **hits / refill**: assist damage events / health units the refill restored.
+- **hits / refills**: assist damage events / refill writes. Under `--engage-hearts 1`
+  (last-heart) each refill is a death the assist prevented.
 - **poked b/k/R**: bombs, keys and rupees granted by Survival top-ups.
 - **slowest**: the longest single room visit, which is the first stall to look at.
 
 A deterministic emulator gives one outcome per config, so one run is the
 measurement. Compare a row against the row above it only when the code changed.
 
-| run | result | through | frames | flutter | drops picked | hearts missed | hits / refill | poked b/k/R | slowest |
+| run | result (assist) | through | frames | flutter | drops picked | hearts missed | hits / refills | poked b/k/R | slowest |
 |---|---|---|---|---|---|---|---|---|---|
-| full_poweron12 (92e7a315, = poweron11 code) | ok | level9-credits | 292742 | 17942 | 67/176 | 32 | 441 / 737 | 82 / 6 / 9 | 9:03 12842f |
+| full_poweron12 (92e7a315, = poweron11 code) | ok (unlimited_health) | level9-credits | 292742 | 17942 | 67/176 | 32 | 441 / 667 | 82 / 6 / 9 | 9:03 12842f |
 
 ## Pre-l1 prefix (assist off)
 

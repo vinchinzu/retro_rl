@@ -15,14 +15,15 @@ from pathlib import Path
 POKED = ("bombs", "keys", "rupees")
 
 
-def assist_totals(report: dict) -> dict[str, int]:
+def assist_totals(report: dict) -> dict[str, object]:
     """Units each Survival poke granted (``to - from``), plus the heart refill."""
     out = {field: 0 for field in POKED}
     for write in (report.get("inventory_assist") or {}).get("writes") or []:
         if write.get("field") in out:
             out[write["field"]] += int(write["to"]) - int(write.get("from", 0))
     assist = report.get("assist") or {}
-    out["refill"] = int((assist.get("health") or {}).get("restored", 0))
+    out["refill"] = int((assist.get("health") or {}).get("writes", 0))
+    out["kind"] = str(assist.get("kind") or "off")
     out["hits"] = int(assist.get("damage_events", 0))
     return out
 
@@ -39,7 +40,7 @@ def row(path: Path) -> str:
     a = assist_totals(report)
     slow = ledger["slowest_visits"][0]
     return (
-        f"| {path.stem} | {'ok' if report['ok'] else report.get('failed_stage')} "
+        f"| {path.stem} | {'ok' if report['ok'] else report.get('failed_stage')} ({a['kind']}) "
         f"| {report.get('through')} | {ledger['frames']} | {ledger['flutters']} "
         f"| {picked}/{drops['total']} | {missed_hearts} "
         f"| {a['hits']} / {a['refill']} | {a['bombs']} / {a['keys']} / {a['rupees']} "
