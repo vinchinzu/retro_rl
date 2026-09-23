@@ -52,6 +52,7 @@ from zelda_i.walk.physics import (
     OccupancyWalker,
     lattice_route,
     lattice_step,
+    lattice_toward,
 )
 
 # Settle frames after last kill for CLEAR_ONLY stop (was level1.CLEAR_SETTLE_ALL_DEAD).
@@ -620,13 +621,8 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 tx, ty = tuning.patrol[self.patrol_index]
             # Pocket: occupancy miss-blocked every corridor. Greedy toward
             # the maze loop instead of standing (live 0x23 (99,157) 2 Goriyas).
-            dx = tx - snap.link_x
-            dy = ty - snap.link_y
-            if abs(dx) > tuning.tolerance and abs(dx) >= abs(dy):
-                direction = "RIGHT" if dx > 0 else "LEFT"
-            elif abs(dy) > tuning.tolerance:
-                direction = "DOWN" if dy > 0 else "UP"
-            else:
+            direction = lattice_toward(snap.link_x, snap.link_y, (tx, ty), tol=tuning.tolerance)
+            if direction is None:
                 self.walker.last_dir = None
                 return FrameAction(nes_idle_action(), "combat_wait")
             self.walker.last_dir = direction
@@ -643,11 +639,8 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 step = lattice_step(int(snap.link_x), int(snap.link_y), route[0])
                 if step is not None:
                     return FrameAction(nes_action(step), "combat_patrol_lattice")
-        if abs(dx) > tuning.tolerance and abs(dx) >= abs(dy):
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > tuning.tolerance:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
+        direction = lattice_toward(snap.link_x, snap.link_y, (tx, ty), tol=tuning.tolerance)
+        if direction is None:
             return FrameAction(nes_idle_action(), "combat_wait")
         return FrameAction(nes_action(direction), "combat_patrol")
 

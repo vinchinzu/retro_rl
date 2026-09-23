@@ -30,6 +30,7 @@ __all__ = [
     "lattice_route",
     "lattice_starts",
     "lattice_step",
+    "lattice_toward",
 ]
 
 WALK_SPEED = 1
@@ -682,3 +683,27 @@ def lattice_step(x: int, y: int, corner: tuple[int, int]) -> str | None:
     if dx:
         return "RIGHT" if dx > 0 else "LEFT"
     return None
+
+
+def lattice_node(x: int, y: int) -> tuple[int, int]:
+    """The lattice node nearest ``(x, y)`` (column x % 8 == 0, row y % 8 == 5)."""
+    x, y = int(x), int(y)
+    nx = (x + LATTICE_STEP // 2) // LATTICE_STEP * LATTICE_STEP
+    ny = (y - 5 + LATTICE_STEP // 2) // LATTICE_STEP * LATTICE_STEP + 5
+    return nx, ny
+
+
+def lattice_toward(
+    x: int, y: int, goal: tuple[int, int], *, tol: int = LATTICE_SNAP_PX
+) -> str | None:
+    """Open-floor step toward ``goal``'s lattice node; ``None`` once within ``tol``.
+
+    The replacement for the hand-rolled "bigger axis first" step. That step
+    presses UP off a column, the ROM slides Link sideways onto one, the
+    bigger axis flips, and he twitches a pixel each frame (L1 0x63 patrol:
+    992 reversals). No walls: callers on real geometry use a lattice route.
+    """
+    node = lattice_node(*goal)
+    if abs(int(x) - node[0]) <= tol and abs(int(y) - node[1]) <= tol:
+        return None
+    return lattice_step(int(x), int(y), node)

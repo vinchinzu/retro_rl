@@ -5,6 +5,9 @@ Entrance first-key / unlock-north stay in ``level1.path``.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.walk.physics import lattice_toward
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -137,12 +140,7 @@ class Level1Clear63Controller:
             tx, ty = _ROOM_63_PATROL[self.waypoint_index]
             dx = tx - snap.link_x
             dy = ty - snap.link_y
-        if abs(dx) > 6 and abs(dx) >= abs(dy):
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > 6:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            direction = "UP"
+        direction = lattice_toward(snap.link_x, snap.link_y, (tx, ty), tol=6) or "UP"
         return FrameAction(nes_action(direction), "clear_patrol")
 
     def _engage(self, snap: ZeldaSnapshot, target: ZeldaObject) -> FrameAction:
@@ -317,14 +315,9 @@ class Level1Clear53Controller:
         drop = nearest_heart_or_fairy(snap)
         if drop is None:
             return None
-        dx = int(drop.x) - int(snap.link_x)
-        dy = int(drop.y) - int(snap.link_y)
-        if abs(dx) <= 2 and abs(dy) <= 2:
+        direction = room_step(snap, (int(drop.x), int(drop.y)), tol=2)
+        if direction is None:
             return FrameAction(nes_idle_action(), "scoop_heart")
-        if abs(dx) >= abs(dy) and abs(dx) > 2:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        else:
-            direction = "DOWN" if dy > 0 else "UP"
         return FrameAction(nes_action(direction), "scoop_heart")
 
     @staticmethod
@@ -332,13 +325,8 @@ class Level1Clear53Controller:
         scooped = Level1Clear53Controller._scoop_if_low(snap)
         if scooped is not None:
             return scooped
-        dx = ROOM_53_KEY_X - snap.link_x
-        dy = ROOM_53_KEY_Y - snap.link_y
-        if abs(dy) > 5:
-            direction = "DOWN" if dy > 0 else "UP"
-        elif abs(dx) > 5:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        else:
+        direction = room_step(snap, (ROOM_53_KEY_X, ROOM_53_KEY_Y), tol=5)
+        if direction is None:
             return FrameAction(nes_idle_action(), "room53_key_wait")
         return FrameAction(nes_action(direction), "collect_room53_key")
 

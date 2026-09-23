@@ -376,6 +376,25 @@ def lattice_goto(
     return lattice_step(int(snap.link_x), int(snap.link_y), route[0])
 
 
+def room_step(
+    snap: ZeldaSnapshot, goal: tuple[int, int], *, tol: int = 3, env: Any = None
+) -> str | None:
+    """One press toward ``goal`` that Link can take; ``None`` once within ``tol``.
+
+    ROM collision route when the room's tiles are live, else the open-floor
+    lattice step. This is the one replacement for a hand-rolled "bigger axis
+    first" press, which walks into blocks from any pose it was not tuned on
+    (L1 0x53 key: UP into a block for 4500 frames) and flutters off-grid.
+    """
+    from zelda_i.walk.physics import lattice_toward
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    gx, gy = int(goal[0]), int(goal[1])
+    if abs(x - gx) <= tol and abs(y - gy) <= tol:
+        return None
+    return lattice_goto(env, snap, (gx, gy)) or lattice_toward(x, y, (gx, gy), tol=tol)
+
+
 def lattice_goto_route(
     env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
 ) -> list[tuple[int, int]] | None:
