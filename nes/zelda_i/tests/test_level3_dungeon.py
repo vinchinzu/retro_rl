@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from retro_harness.nes import nes_action
 from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
     MANHANDLA_OBJECT_TYPE,
@@ -26,7 +27,7 @@ from zelda_i.level3.path import (
     Level3NorthChainController,
     Level3WestDoorController,
 )
-from zelda_i.level3.raft_path import Level3RaftPathController
+from zelda_i.level3.raft_path import Level3RaftPathController, raft_passage_step
 from zelda_i.ram import (
     ADDR_KEYS,
     ADDR_LEVEL,
@@ -138,6 +139,20 @@ def test_raft_path_controller_phases_and_raft_success() -> None:
     ctrl4 = Level3RaftPathController()
     assert ctrl4.step(read_snapshot(raft_ram)).reason == "done"
     assert ctrl4.success
+
+
+def test_raft_passage_aligns_before_crossing_pickup_lane() -> None:
+    # Both poses occurred on the last-heart tape. The old ±8 pickup band
+    # sent Link horizontally into a wall from each one.
+    assert raft_passage_step(
+        read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=48, y=133, mode=9))
+    ).action == nes_action("DOWN")
+    assert raft_passage_step(
+        read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=176, y=149, mode=9))
+    ).action == nes_action("UP")
+    assert raft_passage_step(
+        read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=176, y=141, mode=9))
+    ).action == nes_action("LEFT")
 
 
 def test_5c_and_5d_specs_are_dest_rooms() -> None:

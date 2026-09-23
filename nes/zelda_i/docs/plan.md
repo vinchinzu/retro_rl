@@ -39,4 +39,24 @@ A short arrival is not the gate. The walk tries to bank more than 20 on the coas
 
 Level 2's east mouth, the dungeon lanes, and Clean continuous play have notes under `docs/tasks/`. `spine/clean_tip.py` still points at those files. None of them is the next open row. Survival power-on toward credits is not the Clean gate.
 
+## Survival last-heart residual (rr-k3vj, 2026-09-23)
+
+The continuous `lastheart_poweron28` run (`--engage-hearts 1`) cleared the
+previous L3 Raft stall and the L4 Triforce, then died in the L5 0x64 blue
+Darknut fight after 125,417 frames. It used no state loads. The assist made
+12 refills; one death still occurred because blue Darknuts hit for two hearts
+and Link entered the room with four. The L5 0x64 fight currently survives
+under full refill by absorbing 28 hearts of damage, so a combat change is
+needed before a whole last-heart baseline can finish.
+
+Reproduce from `LastHeart28_level5_clear_0x77.state`, resuming
+`level5_clear_0x77` under `--engage-hearts 1`; the next stage is a custom
+suffix and has no save point. The short replays `l5h_diag2`, `l5h_evade1`,
+`l5h_south1`, `l5h_backstep1`, and `l5h_occupancy1` all died in 0x64.
+The saved `LastHeart28_fight64_entry.state` is an isolated combat pin,
+not natural-entry proof. The suffix now records its full fight report,
+including fatal contact and enemy count. Next: develop a room-specific
+0x64 survival policy from that pin, replay the L5 suffix from its predecessor,
+then repeat power-on through credits. Keep the assist threshold at one heart.
+
 Session loop: `.grok/skills/zelda-session/SKILL.md`. Claim one spine bead. Overwrite [PRE_L1.md](PRE_L1.md) with the leftover. Glance leave is room, mode, x/y, sword, bombs, rupees, and hearts. A pin is not leave proof.

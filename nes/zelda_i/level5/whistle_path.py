@@ -539,7 +539,7 @@ def fight_blue_darknuts(env, assist, total: list[int], room: int, expected: int,
         o
         for o in snap.objects
         if 1 <= o.slot <= 12 and o.type_id in (BLUE_DARKNUT_TYPE, DARKNUT_OBJECT_TYPE) and o.hp > 0
-    ] if snap.mode == PLAY_MODE else []
+    ]
     return {
         "ok": bool(ctl.success) and not live,
         "frames": ctl.frames,
@@ -549,6 +549,9 @@ def fight_blue_darknuts(env, assist, total: list[int], room: int, expected: int,
         "spec_id": spec.spec_id,
         "xy": [snap.link_x, snap.link_y],
         "room": snap.screen,
+        "mode": snap.mode,
+        "health": snap.health,
+        "controller": ctl.report() if not ctl.success else None,
     }
 
 

@@ -263,7 +263,7 @@ def run_level5_whistle_suffix(env, *, assist, frame_base: int):
         fight64 = fight_blue_darknuts(
             env, assist, total, ROOM_L5_BLUE_64, expected=n_dn, source=0x65
         )
-        hops.append({"hop": "fight_64", "ok": bool(fight64.get("ok"))})
+        hops.append({"hop": "fight_64", **fight64})
         if not fight64.get("ok"):
             return False, total[0], {"failed": "fight_64", "hops": hops}
     # ROM lattice first: push the pending block from a reachable face, then

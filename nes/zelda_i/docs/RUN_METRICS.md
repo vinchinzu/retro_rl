@@ -24,6 +24,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | full_poweron12 (92e7a315, = poweron11 code) | ok (unlimited_health) | level9-credits | 292742 | 17942 | 67/176 | 32 | 441 / 667 | 82 / 6 / 9 | 9:03 12842f |
 | **full_poweron27 (b0a328e9)** | **ok (unlimited_health)** | level9-credits | **277687** | **8178** | 66/163 | 42 | 371 / 596 | 67 / 6 / 0 | 7:0d 14024f |
 | full_poweron26 (3ce0a056), stopped in L9 | level9_natural_silver_arrows (unlimited_health) | level9-credits | 270230 | 6529 | 68/177 | 47 | 324 / 533 | 55 / 5 / 0 | 9:4f 13993f |
+| lastheart_poweron28 (01e2011f + raft fix) | level5_whistle_fight_64 (last_heart) | level9-credits | 125417 | 3873 | 57/101 | 8 | 100 / 12 | 50 / 3 / 0 | 4:20 4346f |
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
@@ -54,6 +55,18 @@ assist prevented. This is the number potions and better combat must drive to zer
 | run | through | result | frames | refills (deaths prevented) | hits | note |
 |---|---|---|---|---|---|---|
 | lasth_l1 (fed68421) | level1 | ok | 48874 | 2 | 11 | gather chain keeps its own last-heart refill |
+| lastheart_poweron28 (01e2011f + raft fix) | level9-credits | L5 0x64 death | 125417 | 12 | 100 | Power-on, no state loads; L3 Raft and L4 TF clear. Blue Darknuts hit for two hearts, skipping the one-heart refill window. |
+
+The L3 0x0F raft pickup initially timed out at `(176,149)`: the controller
+treated a row eight pixels below the Raft as the pickup lane and pressed LEFT
+into the corridor wall. Narrowing that lane to three pixels cleared the L3
+Triforce from the saved predecessor state (`l3h_fix1`, 17,004 frames, one
+disclosed state load), then cleared L3 on the continuous run above. The L5
+death is the next boundary. At 0x64, the room starts with five blue Darknuts;
+the existing fight policy took 28 hearts of damage there in full-refill run
+27. The last-heart run entered with four hearts and died after two two-heart
+contacts before killing one. The threshold stayed at one heart; no new
+inventory or progression writes were added.
 
 ## Pre-l1 prefix (assist off)
 
