@@ -107,6 +107,8 @@ PATROL_HUNT_FRAMES = 600
 # frozen Darknuts outlasted the 16000f clear while Link lapped the patrol).
 STATIC_ENEMY_FRAMES = 120
 STRIKE_SLASH_MIN = 10
+STILL_NO_PROGRESS_FRAMES = 30
+STILL_BACKOFF_FRAMES = 300
 STRIKE_TURN_MIN = 16
 STRIKE_TURN_MAX = 20
 _OPPOSITE = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
@@ -444,6 +446,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _patrol_lattice: bool = field(default=False, init=False, repr=False)
     _last_engage_frame: int = field(default=0, init=False, repr=False)
     _still: dict[int, tuple[tuple[int, int], int]] = field(default_factory=dict, init=False, repr=False)
+    _still_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _still_idle: int = field(default=0, init=False, repr=False)
+    _still_off_until: int = field(default=0, init=False, repr=False)
     _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _box_frames: int = field(default=0, init=False, repr=False)
     _beam_pressed: bool = field(default=False, init=False, repr=False)
@@ -947,10 +952,20 @@ class GenericDungeonRoomController(EntryRouteWalker):
             # Parked Wallmasters (and other illegal slots) stay in ``live``.
             return self._patrol(snap)
         still = self._all_still(live)
-        if still is not None:
+        if still is not None and self.combat_frames >= self._still_off_until:
             strike = self._strike_from_behind(snap, still)
             if strike is not None:
-                return strike
+                xy = (int(snap.link_x), int(snap.link_y))
+                moving = strike.reason in ("still_slash", "still_face") or xy != self._still_xy
+                self._still_idle = 0 if moving else self._still_idle + 1
+                self._still_xy = xy
+                if self._still_idle < STILL_NO_PROGRESS_FRAMES:
+                    return strike
+                # A body that holds still is not always frozen (a Zol's
+                # pause, a Like Like); an approach going nowhere hands back
+                # to the ordinary fight (L4 0x32 pinned 24378f at (115,101)).
+                self._still_idle = 0
+                self._still_off_until = self.combat_frames + STILL_BACKOFF_FRAMES
         distance = abs(target.x - snap.link_x) + abs(target.y - snap.link_y)
         if self.spec.combat.evade and distance < MIN_DODGE_BODY:
             parry = self._parry(snap, live)
