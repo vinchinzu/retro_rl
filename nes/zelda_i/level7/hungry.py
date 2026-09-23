@@ -23,7 +23,11 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy
-from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
+from zelda_i.dungeon.hop_controller import (
+    HopController,
+    LatticeDoorWalker,
+    dungeon_align_then_push,
+)
 from zelda_i.level7.graph import HUNGRY_GORIYA, LEVEL7_ROOM_BY_ID
 from zelda_i.level7.path import (
     DOOR_Y_TOL,
@@ -329,6 +333,7 @@ class Room38UpController(HopController):
     done_reason: str = "left_0x38_north"
     dest: int | None = field(default_factory=north_of_room38_ram_id)
     saw_goriya: bool = False
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, init=False, repr=False)
 
     @property
     def stage_id(self) -> str:
@@ -359,8 +364,22 @@ class Room38UpController(HopController):
         return FrameAction(nes_action("UP"), "up38_scroll")
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        if live_goriyas(snap):
+        live = live_goriyas(snap)
+        if live:
             self.saw_goriya = True
+        if (
+            self.saw_goriya
+            and not live
+            and snap.screen == ROOM_38
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            # ROM lattice to the centred north key door once the room is
+            # clear; the column/pocket cardinals parked Link at (200,181)
+            # for 14000f on the power-on gathered spine.
+            act = self._door.action(None, snap, "UP", "up38_lattice")
+            if act is not None:
+                return act
         action = room_38_up_step(
             snap, dest=self.dest, saw_goriya=self.saw_goriya, frames=self.frames
         )

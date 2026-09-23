@@ -71,6 +71,12 @@ def dungeon_align_then_push(
 # A dungeon door is always centred on its wall: x=120 for N/S, y=141 for E/W.
 DUNGEON_DOOR_X = 120
 DUNGEON_DOOR_Y = 141
+DUNGEON_TOP_ROW_Y = 93
+# Push depth past a dungeon door node: the goal row (y=93 for UP) is a node
+# inside the room, and the push walks Link through the whole doorway before
+# the scroll (0x38: 93 -> 76 and on). Anywhere on the door line past the
+# node is still the push; routing back from it swapped 76 <-> 77 forever.
+DUNGEON_DOOR_SLACK = 48
 
 
 def door_nodes(nodes, direction: str, *, dungeon: bool = False) -> set[tuple[int, int]]:
@@ -84,6 +90,11 @@ def door_nodes(nodes, direction: str, *, dungeon: bool = False) -> set[tuple[int
         return set()
     if direction in ("UP", "DOWN"):
         ys = [y for _, y in nodes]
+        if dungeon and direction == "UP":
+            # y=85 reads walkable (feet on floor) but Link's head is in the
+            # top wall everywhere except the door gap (L7 0x38 pushed UP at
+            # (112,93) for 11848f). The first interior row is the goal.
+            ys = [y for y in ys if y >= DUNGEON_TOP_ROW_Y] or ys
         edge = min(ys) if direction == "UP" else max(ys)
         out = {n for n in nodes if n[1] == edge}
         axis, centre = 0, DUNGEON_DOOR_X
@@ -266,8 +277,9 @@ def lattice_door_step(env: Any, snap: ZeldaSnapshot, direction: str) -> str | No
         return None
     nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
     x, y = int(snap.link_x), int(snap.link_y)
-    goals = door_nodes(nodes, direction, dungeon=int(snap.level) != 0)
-    if past_door_node(x, y, goals, direction):
+    dungeon = int(snap.level) != 0
+    goals = door_nodes(nodes, direction, dungeon=dungeon)
+    if past_door_node(x, y, goals, direction, slack=DUNGEON_DOOR_SLACK if dungeon else 8):
         return direction
     route = lattice_route(nodes, (x, y), goals)
     if route is None:
@@ -416,6 +428,7 @@ def at_door_node(env: Any, snap: ZeldaSnapshot, direction: str) -> bool:
         int(snap.link_y),
         door_nodes(nodes, direction, dungeon=int(snap.level) != 0),
         direction,
+        slack=DUNGEON_DOOR_SLACK if int(snap.level) != 0 else 8,
     )
 
 
