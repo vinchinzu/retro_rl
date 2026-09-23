@@ -68,17 +68,34 @@ def dungeon_align_then_push(
     return FrameAction(nes_action(push_dir), f"{reason}_push")
 
 
-def door_nodes(nodes, direction: str) -> set[tuple[int, int]]:
-    """Lattice nodes on the room edge ``direction`` faces (the door mouth)."""
+# A dungeon door is always centred on its wall: x=120 for N/S, y=141 for E/W.
+DUNGEON_DOOR_X = 120
+DUNGEON_DOOR_Y = 141
+
+
+def door_nodes(nodes, direction: str, *, dungeon: bool = False) -> set[tuple[int, int]]:
+    """Lattice nodes on the room edge ``direction`` faces (the door mouth).
+
+    ``dungeon`` keeps only the edge nodes nearest the centred door: a room
+    whose east column is open end to end (L2 0x6e, L3 0x5c) otherwise walks
+    to (208,133) and pushes the wall beside the door.
+    """
     if not nodes:
         return set()
     if direction in ("UP", "DOWN"):
         ys = [y for _, y in nodes]
         edge = min(ys) if direction == "UP" else max(ys)
-        return {n for n in nodes if n[1] == edge}
-    xs = [x for x, _ in nodes]
-    edge = min(xs) if direction == "LEFT" else max(xs)
-    return {n for n in nodes if n[0] == edge}
+        out = {n for n in nodes if n[1] == edge}
+        axis, centre = 0, DUNGEON_DOOR_X
+    else:
+        xs = [x for x, _ in nodes]
+        edge = min(xs) if direction == "LEFT" else max(xs)
+        out = {n for n in nodes if n[0] == edge}
+        axis, centre = 1, DUNGEON_DOOR_Y
+    if dungeon and out:
+        best = min(abs(n[axis] - centre) for n in out)
+        out = {n for n in out if abs(n[axis] - centre) == best}
+    return out
 
 
 # Room secrets (``Z_05.asm`` ``CheckUnderworldSecrets``): the low three bits
@@ -249,7 +266,7 @@ def lattice_door_step(env: Any, snap: ZeldaSnapshot, direction: str) -> str | No
         return None
     nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
     x, y = int(snap.link_x), int(snap.link_y)
-    goals = door_nodes(nodes, direction)
+    goals = door_nodes(nodes, direction, dungeon=int(snap.level) != 0)
     if past_door_node(x, y, goals, direction):
         return direction
     route = lattice_route(nodes, (x, y), goals)
@@ -395,7 +412,10 @@ def at_door_node(env: Any, snap: ZeldaSnapshot, direction: str) -> bool:
         return False
     nodes = ow_walkable_nodes(ram, overworld=int(snap.level) == 0)
     return past_door_node(
-        int(snap.link_x), int(snap.link_y), door_nodes(nodes, direction), direction
+        int(snap.link_x),
+        int(snap.link_y),
+        door_nodes(nodes, direction, dungeon=int(snap.level) != 0),
+        direction,
     )
 
 
