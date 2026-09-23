@@ -8,6 +8,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import LatticeDoorWalker
 from zelda_i.level4.dungeon import LEVEL4, ROOM_L4_NORTH_30, ROOM_L4_ZOLS_40
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
@@ -33,6 +34,12 @@ class Level4North30Controller:
     phase_frames: int = 0
     success: bool = False
     notes: list[str] = field(default_factory=list)
+    _env: Any = field(default=None, repr=False)
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        """Tiles for the lattice door walk; align-then-push is the fallback."""
+        self._env = env
 
     def _set_phase(self, phase: North30Phase, note: str = "") -> None:
         if phase is not self.phase:
@@ -86,6 +93,10 @@ class Level4North30Controller:
         if snap.screen != ROOM_L4_ZOLS_40:
             return self._fail(f"wrong_room_0x{snap.screen:02x}")
 
+        door = self._door.action(self._env, snap, "UP", "lattice_door")
+        if door is not None:
+            self._set_phase(North30Phase.PUSH, "lattice_door")
+            return door
         if abs(snap.link_x - 120) > 6:
             self._set_phase(North30Phase.ALIGN, "align_x")
             return FrameAction(

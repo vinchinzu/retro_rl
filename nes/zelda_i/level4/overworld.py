@@ -29,6 +29,7 @@ from zelda_i.overworld.settle import (
     POST_L3_SETTLE_MAX_FRAMES,
     PostL3TriforceSettleController,
 )
+from zelda_i.walk.physics import lattice_route, lattice_step
 from zelda_i.ram import (
     ADDR_LADDER,
     ADDR_RAFT,
@@ -310,6 +311,22 @@ class OverworldToLevel4Controller(OverworldPathController):
     def _leave_dock_raft(self, snap: ZeldaSnapshot, hop: ScreenHop) -> FrameAction:
         """0x55 → 0x45: walk north onto dock with Raft (x≈128)."""
         raft_x = hop.align_x if hop.align_x is not None else LEVEL4_DOCK_RAFT_X
+        nodes = self._geo_walkable(snap)
+        if nodes:
+            # The dock tip is the northmost walkable node on the raft column;
+            # the hand rules below alternated UP/LEFT at (144,181) for 19k
+            # frames on the gathered spine.
+            column = [n for n in nodes if n[0] == raft_x]
+            if column:
+                tip = min(column, key=lambda n: n[1])
+                x, y = int(snap.link_x), int(snap.link_y)
+                if x == tip[0] and y <= tip[1] + 2:
+                    return self._swing("UP", "dock_raft_n")
+                route = lattice_route(nodes, (x, y), {tip})
+                if route:
+                    step = lattice_step(x, y, route[0])
+                    if step is not None:
+                        return self._swing(step, "dock_lattice")
         if self.stuck > self.stuck_threshold:
             seq = ("LEFT", "UP", "RIGHT", "UP", "DOWN", "UP")
             btn = seq[self.stuck % len(seq)]

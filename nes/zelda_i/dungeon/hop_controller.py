@@ -188,10 +188,22 @@ def lattice_goto(
     ``None`` without tiles, when unreachable, or when Link is already on one
     of those nodes (the caller's own fine alignment takes over there).
     """
+    route = lattice_goto_route(env, snap, goal, slack=slack)
+    if not route:
+        return None
+    from zelda_i.walk.physics import lattice_step
+
+    return lattice_step(int(snap.link_x), int(snap.link_y), route[0])
+
+
+def lattice_goto_route(
+    env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
+) -> list[tuple[int, int]] | None:
+    """Lattice corners to the nodes nearest ``goal``: ``[]`` on one, ``None`` if none."""
     if env is None:
         return None
     from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
-    from zelda_i.walk.physics import lattice_route, lattice_step
+    from zelda_i.walk.physics import lattice_route
 
     ram = env.get_ram()
     if not has_room_tile_map(ram):
@@ -203,11 +215,7 @@ def lattice_goto(
     near = sorted(nodes, key=lambda n: abs(n[0] - gx) + abs(n[1] - gy))[:8]
     best = abs(near[0][0] - gx) + abs(near[0][1] - gy)
     goals = {n for n in near if abs(n[0] - gx) + abs(n[1] - gy) <= best + slack}
-    x, y = int(snap.link_x), int(snap.link_y)
-    route = lattice_route(nodes, (x, y), goals)
-    if not route:
-        return None
-    return lattice_step(x, y, route[0])
+    return lattice_route(nodes, (int(snap.link_x), int(snap.link_y)), goals)
 
 
 def past_door_node(x: int, y: int, goals, direction: str, slack: int = 8) -> bool:
