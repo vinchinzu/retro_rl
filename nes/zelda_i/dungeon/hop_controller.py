@@ -403,6 +403,27 @@ def room_step(
     return lattice_toward(x, y, (gx, gy), tol=tol)
 
 
+def mouth_step(
+    snap: ZeldaSnapshot,
+    door_x: int,
+    approach_y: int,
+    *,
+    direction: str = "UP",
+    env: Any = None,
+) -> str:
+    """Overworld cave/dungeon mouth: lattice to ``(door_x, approach_y)``, then push.
+
+    On the door column and past the approach row it is ``direction`` — the
+    push walks Link off the approach row, and re-aiming at it there is the
+    DOWN/UP flip the hand hunts had (L3 0x74: 1340 reversals at y 129/130).
+    """
+    x, y = int(snap.link_x), int(snap.link_y)
+    past = y <= approach_y + 2 if direction == "UP" else y >= approach_y - 2
+    if abs(x - int(door_x)) <= 1 and past:
+        return direction
+    return room_step(snap, (int(door_x), int(approach_y)), tol=1, env=env) or direction
+
+
 def lattice_goto_route(
     env: Any, snap: ZeldaSnapshot, goal: tuple[int, int], *, slack: int = 8
 ) -> list[tuple[int, int]] | None:

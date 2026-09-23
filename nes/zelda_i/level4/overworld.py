@@ -15,6 +15,8 @@ See ``docs/LEVEL4_ROUTE.md``.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import mouth_step
+
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
@@ -47,6 +49,8 @@ SOURCE_HYPOTHESIS = False
 LEVEL4 = 4
 LEVEL4_ENTRY_ROOM = 0x71
 LEVEL4_DOOR_X = 128
+# Lattice row south of the island mouth the push starts from.
+LEVEL4_DOOR_APPROACH_ROW = 101
 LEVEL4_DOCK_RAFT_X = 128
 LEVEL4_DOCK_SCREEN = SCREEN_LEVEL4_RAFT_DOCK  # 0x55 live
 LEVEL4_ISLAND_SCREEN = SCREEN_LEVEL4_ENTRANCE  # 0x45 live
@@ -350,13 +354,8 @@ class OverworldToLevel4Controller(OverworldPathController):
                 if snap.screen == LEVEL4_DOCK_SCREEN:
                     return self._swing("UP", "door_return_raft")
                 return self._swing("UP", "door_return")
-            # Approach from south of mouth then align x and push UP.
-            if snap.link_y < 100:
-                return self._swing("DOWN", "door_south")
-            if self.door_x is not None and abs(snap.link_x - self.door_x) > 5:
-                btn = "LEFT" if snap.link_x > self.door_x else "RIGHT"
-                return self._swing(btn, "door_ax")
-            return self._swing("UP", "door_hunt")
+            step = mouth_step(snap, self.door_x or LEVEL4_DOOR_X, LEVEL4_DOOR_APPROACH_ROW)
+            return self._swing(step, "door_hunt")
         if on_level4_island(snap):
             return self._finish("island_stop")
         return self._finish("hops_complete")

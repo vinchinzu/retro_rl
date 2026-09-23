@@ -359,6 +359,14 @@ class Level3BossCombatMixin:
 
         self._set_phase("open_up")
         st_base = None if self.continuous_mode else env.em.get_state()
+        # ROM lattice to the north door and through it. The side paths below
+        # are hand waypoints around the centre plus; from the wrong pose they
+        # pressed UP into it for 1000+ frames.
+        door = exit_door(env, assist, total, "UP", push=PUSH_FRAMES + 80)
+        after = room_fields(read_snapshot(env.get_ram()), env.get_ram())
+        report["attempts"].append({"kind": "lattice_up", "result": door.get("result")})
+        if after["screen"] == ROOM_L3_BOSS:
+            return self._arrive_4d(env, total, report, "lattice_up", after)
 
         side_paths: tuple[tuple[tuple[int, int], ...], ...] = (
             ((160, 141), (160, 109), (120, 109), (120, 93)),
