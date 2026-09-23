@@ -815,6 +815,12 @@ def align_and_push(
     # own far wall — y=205 is rock, not EDGE_SOUTH_Y=212.
     y = snap.link_y
     can_align_x = 80 < y < 205
+    if direction == "UP" and y == 205:
+        # 205 is the arrival side of an UP hop and a lattice row Link can
+        # strafe on. Excluding it swapped the UP push (205 -> 203) with the
+        # align's turn-grid slide (203 -> 205) for 4000f on 0x49 (gathered
+        # power-on, walk_pond_l1).
+        can_align_x = True
     if align_x_at_wall:
         if direction == "DOWN" and y >= 205:
             can_align_x = True
