@@ -7,6 +7,8 @@ closed east shutter.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import stairs_step
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -137,6 +139,13 @@ class Level6Stairs18Controller:
         ):
             self.notes.append(f"miss_f{self.frames}_{prev_dir}_{xy[0]}_{xy[1]}")
 
+        # ROM first: push a pending block secret, then the visible stair
+        # tile. Idling on a hand "hole band" waited 3971 frames for a stair
+        # the room had not revealed (R19 resume).
+        step = stairs_step(None, snap)
+        if step is not None:
+            self.walker.last_dir = None
+            return self._emit(snap, FrameAction(nes_action(step), "stairs_lattice"))
         gx, gy = self.goal
         # v2 leftover (120,93): hold-UP walked through the hole to the north
         # wall and never entered mode 9. Idle on the hole band instead.
