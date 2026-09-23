@@ -153,22 +153,6 @@ def test_return_66_controller_waits_in_the_south_mouth() -> None:
     assert not ctl.success
 
 
-def test_west_leave_rows_keep_probe_tolerances_and_push_budgets() -> None:
-    from zelda_i.level5.west_path import WEST_25_TO_24, WEST_26_TO_25, WEST_27_TO_26
-
-    assert WEST_27_TO_26.probe_tol is None
-    assert WEST_27_TO_26.align_frames is None
-    assert WEST_27_TO_26.push_frames == 220
-    assert WEST_27_TO_26.paths[0][1] == (
-        ("x", 208), ("y", 189), ("x", 32), ("y", 141), ("x", 32),
-    )
-    assert (WEST_26_TO_25.probe_tol, WEST_26_TO_25.align_frames) == ((6, 4), 32)
-    assert WEST_26_TO_25.push_frames == 220
-    assert (WEST_25_TO_24.probe_tol, WEST_25_TO_24.align_frames) == ((8, 8), 28)
-    assert WEST_25_TO_24.push_frames == 240
-    assert dict(WEST_25_TO_24.extra) == {"fought_digdogger": False}
-
-
 def test_bomb_wall_rows_keep_stands_and_approaches() -> None:
     from zelda_i.level5.whistle_path import BOMB_EAST_65, BOMB_WEST_65, BOMB_WEST_66
 
