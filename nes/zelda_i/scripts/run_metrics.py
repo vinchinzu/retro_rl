@@ -39,12 +39,20 @@ def row(path: Path) -> str:
     )
     a = assist_totals(report)
     slow = ledger["slowest_visits"][0]
+    # Books added 2026-09-23; older reports leave these cells blank.
+    damage = ledger.get("damage", "")
+    items = ledger.get("room_items")
+    missed = (
+        " ".join(f"{r['room']}={r['item']}" for r in items["missed"]) or "none"
+        if items is not None
+        else ""
+    )
     return (
         f"| {path.stem} | {'ok' if report['ok'] else report.get('failed_stage')} ({a['kind']}) "
         f"| {report.get('through')} | {ledger['frames']} | {ledger['flutters']} "
         f"| {picked}/{drops['total']} | {missed_hearts} "
         f"| {a['hits']} / {a['refill']} | {a['bombs']} / {a['keys']} / {a['rupees']} "
-        f"| {slow['room']} {slow['frames']}f |"
+        f"| {slow['room']} {slow['frames']}f | {damage} | {missed} |"
     )
 
 

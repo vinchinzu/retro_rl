@@ -74,6 +74,21 @@ def test_route_is_none_when_the_goal_is_sealed_off() -> None:
     assert lattice_route(nodes, (40, 101), {(232, 101)}) is None
 
 
+def test_route_joins_the_lattice_beside_a_start_the_tiles_call_solid() -> None:
+    # OW 0x15, Blue Ring power-on 4: a LEFT walk parked Link on (96,181),
+    # which the two-foot tile test calls rock. The route used to be None
+    # there, and the L6 approach's hand walk pressed LEFT into the rock.
+    from zelda_i.dungeon.hop_controller import ow_edge_band_step
+    from zelda_i.tests.ram_helpers import room_tile_env, room_tile_ram
+
+    nodes = ow_walkable_nodes(room_tile_ram("0x15", level=0))
+    assert (96, 181) not in nodes and (96, 173) in nodes
+    route = lattice_route(nodes, (96, 181), {(0, 173)})
+    assert route is not None and route[-1] == (0, 173)
+    snap = _snap(link_x=96, link_y=181, screen=0x15, next_screen=0x15)
+    assert ow_edge_band_step(room_tile_env("0x15", level=0), snap, "LEFT", 165, 189) == "UP"
+
+
 def test_lattice_step_slides_on_the_free_axis_first() -> None:
     # Four px off the column on a row: slide along the row to it first.
     assert lattice_step(124, 141, (120, 61)) == "LEFT"

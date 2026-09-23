@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
+from zelda_i.level7.dungeon import POST_L7_ARROW_RUPEES
 from zelda_i.level8.dungeon import (
     GLEEOK_FOUR_HEAD_OBJECT_TYPE,
     GLEEOK_ROUTE,
@@ -166,7 +167,7 @@ def test_measured_l7_handoff_copies_power_on_leave() -> None:
     assert MEASURED_POST_L7_HANDOFF.link_x == 96
     assert MEASURED_POST_L7_HANDOFF.link_y == 93
     assert MEASURED_POST_L7_HANDOFF.bombs == 1
-    assert MEASURED_POST_L7_HANDOFF.rupees == 66
+    assert MEASURED_POST_L7_HANDOFF.rupees == POST_L7_ARROW_RUPEES
     assert MEASURED_POST_L7_HANDOFF.heart_containers == 12
     assert MEASURED_POST_L7_HANDOFF.selected_item == 1
     assert MEASURED_POST_L7_HANDOFF.arrows == 1
@@ -206,7 +207,8 @@ def test_isolated_factory_empty_hops_fail_closed() -> None:
 
 
 def test_post_l7_consumables_are_lower_bounds() -> None:
-    """The gathered spine left L7 with 132R; the fixture measured 66R."""
+    """The gathered spine left L7 with 132R, Blue Ring power-on 4 with 65R;
+    the floor is the arrow budget (20R), not the fixture's 66R."""
     leave = dict(
         level=0, screen=0x42, x=96, y=93, triforce=0x7F, health=0xBB,
         keys=1, bombs=1, rupees=132, selected=1, whistle=1, food=0,
@@ -215,6 +217,8 @@ def test_post_l7_consumables_are_lower_bounds() -> None:
     ram = _ram(**leave)
     assert MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram) is None
     ram = _ram(**{**leave, "rupees": 65})
+    assert MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram) is None
+    ram = _ram(**{**leave, "rupees": 19})
     assert (
         MEASURED_POST_L7_HANDOFF.mismatch(read_snapshot(ram), ram)
         == "post_l7_rupees_mismatch"

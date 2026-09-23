@@ -17,12 +17,17 @@ One row per measured continuous run, newest last. The row comes from
   refills; safety writes protect against a larger hit observed earlier.
 - **poked b/k/R**: bombs, keys and rupees granted by Survival top-ups.
 - **slowest**: the longest single room visit, which is the first stall to look at.
+- **damage**: hearts lost over the whole run (the ledger's per-room book; the
+  worst rooms print with every run).
+- **room items missed**: dungeon rooms whose item (`$00AB`) was never taken:
+  its world-flag item bit (`$06FF`/`$077F` + room) was still clear when Link
+  left. A missed key is one a Survival top-up pays for.
 
 A deterministic emulator gives one outcome per config, so one run is the
 measurement. Compare a row against the row above it only when the code changed.
 
-| run | result (assist) | through | frames | flutter | drops picked | hearts missed | hits / refills | poked b/k/R | slowest |
-|---|---|---|---|---|---|---|---|---|---|
+| run | result (assist) | through | frames | flutter | drops picked | hearts missed | hits / refills | poked b/k/R | slowest | damage | room items missed |
+|---|---|---|---|---|---|---|---|---|---|---|---|
 | full_poweron12 (92e7a315, = poweron11 code) | ok (unlimited_health) | level9-credits | 292742 | 17942 | 67/176 | 32 | 441 / 667 | 82 / 6 / 9 | 9:03 12842f |
 | **full_poweron27 (b0a328e9)** | **ok (unlimited_health)** | level9-credits | **277687** | **8178** | 66/163 | 42 | 371 / 596 | 67 / 6 / 0 | 7:0d 14024f |
 | full_poweron26 (3ce0a056), stopped in L9 | level9_natural_silver_arrows (unlimited_health) | level9-credits | 270230 | 6529 | 68/177 | 47 | 324 / 533 | 55 / 5 / 0 | 9:4f 13993f |

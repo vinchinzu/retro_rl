@@ -64,7 +64,7 @@ from zelda_i.ram import (
     ZeldaObject,
     ZeldaSnapshot,
 )
-from zelda_i.walk.physics import OccupancyWalker
+from zelda_i.walk.physics import OPPOSITE, OccupancyWalker
 
 LEVEL7 = 7
 ENTRY_SCREEN = SCREEN_LEVEL7_ENTRY_ROOM  # 0x79
@@ -127,7 +127,6 @@ ROOM6B_NORTH_MAX_FRAMES = 3000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
-_OPP = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 # Same inland box as dungeon.engine avoid_walls. West door column is x=32.
 _INLAND_X = (56, 200)
 _INLAND_Y = (109, 173)
@@ -406,7 +405,7 @@ def _goriya_fight(
     if leave is not None:
         return leave
     if hint.retreat:
-        return FrameAction(nes_action(_OPP[hint.face]), "goriya_retreat")
+        return FrameAction(nes_action(OPPOSITE[hint.face]), "goriya_retreat")
     # Chase into a block: lattice to the goriya instead (0x38, power-on
     # gathered spine: 13891f of goriya_chase at (96,141)).
     tx, ty = int(target.x), int(target.y)

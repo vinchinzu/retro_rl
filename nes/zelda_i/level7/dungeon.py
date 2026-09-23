@@ -82,6 +82,7 @@ LEVEL7_COMPLETE_STOP = Level7StopSpec(
 # Do not copy the TF-0 fixture leftover (bombs 6 / 44R / 4 HC / B=recorder).
 # Packet is route-eligible: L8 walked 0x42 -> 0x6D from this leftover
 # (power-on ``--through level8-entry`` 2/2).
+POST_L7_ARROW_RUPEES = 20
 MEASURED_POST_L7_EXIT = OverworldHandoff(
     screen=0x42,
     link_x=96,
@@ -92,7 +93,10 @@ MEASURED_POST_L7_EXIT = OverworldHandoff(
     # key the fixture tape carried out.
     keys=0,
     bombs=1,
-    rupees=66,
+    # An arrow budget, not the tape's 66R: L8's rupees buy arrow shots
+    # (blue Gohma measured 9, 255->246) and Ganon needs one silver arrow.
+    # Blue Ring power-on 4 left L7 with 65R and failed on the old 66.
+    rupees=POST_L7_ARROW_RUPEES,
     # 12 = the gathered spine's continuous power-on arrival (2026-09-23,
     # full_poweron3, set_state=0, 132R); the fixture tape measured 9.
     heart_containers=12,

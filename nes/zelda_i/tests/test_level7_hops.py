@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from zelda_i.level7.dungeon import POST_L7_ARROW_RUPEES
 from zelda_i.anchors import SCREEN_LEVEL6_ENTRANCE
 from zelda_i.level7.entry import (
     BAIT_COST,
@@ -622,7 +623,7 @@ def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
     assert MEASURED_POST_L7_EXIT.verified is True
     assert MEASURED_POST_L7_EXIT.screen == 0x42
     assert MEASURED_POST_L7_EXIT.bombs == 1
-    assert MEASURED_POST_L7_EXIT.rupees == 66
+    assert MEASURED_POST_L7_EXIT.rupees == POST_L7_ARROW_RUPEES
     assert MEASURED_POST_L7_EXIT.heart_containers == 12
     assert MEASURED_POST_L7_EXIT.complete() is True
     assert MEASURED_POST_L7_EXIT.route_eligible is True

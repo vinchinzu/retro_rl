@@ -55,13 +55,12 @@ from zelda_i.walk.physics import OccupancyWalker
 from zelda_i.dungeon.hop_controller import lattice_goto
 from zelda_i.ram import (
     ADDR_ROOM_ITEM_ID,
-    ADDR_ROOM_ITEM_X,
-    ADDR_ROOM_ITEM_Y,
     ADDR_TRIFORCE,
     PLAY_MODE,
     ZeldaSnapshot,
     read_snapshot,
     read_u8,
+    room_item_xy,
 )
 
 ROOM_L4_TRIFORCE = 0x03  # north of boss 0x13 after clear
@@ -127,7 +126,7 @@ def _room_item_heart_xy(ram: Any) -> tuple[int, int] | None:
     """The uncollected heart container's (x, y) from item slot 0x13, else None."""
     if int(read_u8(ram, ADDR_ROOM_ITEM_ID)) != ROOM_ITEM_HEART_CONTAINER:
         return None
-    return int(read_u8(ram, ADDR_ROOM_ITEM_X)), int(read_u8(ram, ADDR_ROOM_ITEM_Y))
+    return room_item_xy(ram)
 
 
 def _room13_walker() -> OccupancyWalker:

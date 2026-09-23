@@ -755,7 +755,8 @@ def test_stairs_05_steps_off_the_bombed_door_row_first() -> None:
     must drop off the row before doing anything else.
     """
     ctl = make_stairs_05_controller()
-    ram = _ram(screen=STAIRS_05_ORIGIN, x=208, y=141)
+    # Wizzrobes cleared (the hop gates the push on the ROM all-dead flag).
+    ram = _ram(screen=STAIRS_05_ORIGIN, x=208, y=141, room_all_dead=1)
     ram[0x034F + 11] = 0x68
     ram[0x0485 + 11] = 176
     ram[0x0070 + 11] = 96
@@ -776,7 +777,7 @@ def test_stairs_05_push_and_dest() -> None:
     ctl = make_stairs_05_controller()
     # Leftover in 0x05 at (208, 173) with block unpushed (slot 11 at (96, 144))
     # Link at (208, 173) -> moves LEFT to align with push column x=96
-    ram = _ram(screen=STAIRS_05_ORIGIN, x=208, y=173)
+    ram = _ram(screen=STAIRS_05_ORIGIN, x=208, y=173, room_all_dead=1)
     ram[0x034F + 11] = 0x68
     ram[0x0485 + 11] = 176
     ram[0x0070 + 11] = 96

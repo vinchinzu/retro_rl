@@ -56,6 +56,7 @@ from zelda_i.dungeon.engine import (
     RewardKind,
     RewardSpec,
 )
+from zelda_i.dungeon.hop_controller import lattice_door_step
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, PauseSelectController
 from zelda_i.level8.cellar import CELLAR_ROOM
@@ -168,6 +169,12 @@ def east_3e_step(snap: ZeldaSnapshot) -> FrameAction:
     gx, gy = door_band_goal("RIGHT", (x, y), EAST_DOOR)
     if not (int(snap.cur_opened_doors) & EAST_RIGHT_BIT):
         return FrameAction(nes_idle_action(), "east_wait_right_bit")
+    # ROM lattice to the east door first. The Darknut clear can leave Link
+    # anywhere; from (88,149) the UP below walked into the statue for 3053f
+    # (Blue Ring power-on 7). No stairs tiles in 0x3E for it to walk onto.
+    step = lattice_door_step(None, snap, "RIGHT")
+    if step is not None:
+        return FrameAction(nes_action(step), "east_lattice")
     if x < EAST_STATUE_CLEAR_X:
         if y > EAST_NORTH_BAND_Y:
             return FrameAction(nes_action("UP"), "east_north_band")

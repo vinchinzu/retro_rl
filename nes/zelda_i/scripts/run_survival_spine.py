@@ -269,9 +269,9 @@ def main(argv: list[str] | None = None) -> int:
                 "final": spine_final_fields(snap, final_ram),
                 "screenshot": str(screenshot),
                 "assist": None if assist is None else assist.report(),
-                "ledger": ledger.report(),
+                "ledger": ledger.report(final_ram),
             }
-            for line in ledger.summary_lines():
+            for line in ledger.summary_lines(final_ram):
                 print(line)
         finally:
             try:

@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
+from zelda_i.walk.physics import OPPOSITE
 from zelda_i.overworld.common import recover_off_edge
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.hunt import (
@@ -56,7 +57,6 @@ from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 # Back hop travel → the way into the neighbour. An out-and-back lands on
 # the reverse hop's arrival edge, which is the scroll line home.
-_INWARD = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 
 __all__ = [
     "SCREEN_6E_WEST_BAND",
@@ -153,7 +153,7 @@ def coast_fallback_hops(
     out: list[ScreenHop] = []
     for i in range(shop_i, target_i, -1):
         fwd = SHOP_P7_HOPS[i - 1]
-        out.append(_mirror_lane(fwd, screens[i - 1], _INWARD[fwd.direction]))
+        out.append(_mirror_lane(fwd, screens[i - 1], OPPOSITE[fwd.direction]))
     out.extend(SHOP_P7_HOPS[target_i:shop_i])
     return target, tuple(out)
 
@@ -292,7 +292,7 @@ class RupeeTopUpController(OverworldPathController):
                 return hunted
         if screen in self.hunter.done:
             return None
-        inward = _INWARD.get(hop.direction)
+        inward = OPPOSITE.get(hop.direction)
         if inward is not None:
             rec = recover_off_edge(
                 snap,

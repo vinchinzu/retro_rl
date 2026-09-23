@@ -34,7 +34,7 @@ from zelda_i.overworld.common import (
 )
 from zelda_i.overworld.locations import farm_at
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+from zelda_i.walk.physics import OPPOSITE, OccupancyGrid, OccupancyWalker
 
 # Default patrol on 0x4A — mid horizontal corridor (y≈140) is open; south
 # wall blocks y≳160 and north pockets need the channel at x≈16–64.
@@ -90,8 +90,7 @@ BOMB_CHASE_MAX_FRAMES = 120
 FARM_SWING_HOLD = 3
 WAYPOINT_TOL = 6
 
-_OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
-_CARDINALS = frozenset(_OPPOSITE)
+_CARDINALS = frozenset(OPPOSITE)
 # Dungeon OccupancyGrid xmax=216 traps OW x≈240. True no-move is a miss;
 # 1px OccupancyWalker.observe would block a 2px OW slide.
 _OW_OCC_BOUNDS = (0, 255, 0, 239)
@@ -466,7 +465,7 @@ class HeartFarmController:
             or snap.next_screen == self.farm_screen
         )
         if returning_to_farm:
-            return _OPPOSITE[direction]
+            return OPPOSITE[direction]
         return direction
 
     def _hearts_met(self, snap: ZeldaSnapshot) -> bool:
@@ -640,7 +639,7 @@ class HeartFarmController:
                 self.restocks += 1
                 self.notes.append(f"farm_restock_{self.restocks}")
             return FrameAction(
-                nes_action(_OPPOSITE[self.restock_direction or "LEFT"]),
+                nes_action(OPPOSITE[self.restock_direction or "LEFT"]),
                 "farm_respawn",
             )
         if snap.screen != self.farm_screen:

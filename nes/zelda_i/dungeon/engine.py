@@ -21,9 +21,9 @@ from zelda_i.walk import live_env
 from zelda_i.combat import CONTACT_CHEBYSHEV, chebyshev, manhattan, should_swing_at
 from zelda_i.dungeon import ids as _ids
 from zelda_i.dungeon.hop_controller import (
+    LadderEscape,
     inland_lattice_step,
     ladder_release,
-    release_action,
     lattice_goto,
     lattice_goto_route,
 )
@@ -53,9 +53,12 @@ from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import ADDR_LADDER, PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 from zelda_i.walk.physics import (
     DEFAULT_BOUNDS,
+    OPPOSITE,
     OccupancyGrid,
     OccupancyWalker,
+    lattice_component,
     lattice_route,
+    lattice_starts,
     lattice_step,
     lattice_toward,
 )
@@ -122,7 +125,6 @@ STILL_NO_PROGRESS_FRAMES = 30
 STILL_BACKOFF_FRAMES = 300
 STRIKE_TURN_MIN = 16
 STRIKE_TURN_MAX = 20
-_OPPOSITE = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 _BEHIND = {0x08: (0, 16, "UP"), 0x04: (0, -16, "DOWN"), 0x01: (-16, 0, "RIGHT"), 0x02: (16, 0, "LEFT")}
 # ``_boxed``: frames within this many px of one spot before a replan.
 BOXED_PX = 8
@@ -257,6 +259,11 @@ class DungeonRoomSpec:
     type_only_enemy_types: tuple[int, ...] = ()
     # Inclusive object-slot range (Zelda uses 1–12 for room combatants).
     object_slot_max: int = 12
+    # Clear only the bodies Link can walk to on the ROM lattice. A room split
+    # by water leaves the far bank's bodies off the route: L6 0x19's east
+    # Like Like drew the fight onto a ladder for 15000f (Blue Ring power-on 3)
+    # while the exit is the north key door, on the west bank.
+    reachable_only: bool = False
 
     def live_enemies(self, snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         slot_max = max(1, int(self.object_slot_max))
@@ -472,8 +479,14 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _scoop_unreachable_until: int = field(default=0, init=False, repr=False)
     _ladder_still: int = field(default=0, init=False, repr=False)
     _ladder_cross: str | None = field(default=None, init=False, repr=False)
-    _ladder_stuck: int = field(default=0, init=False, repr=False)
-    _ladder_stuck_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _ladder_escape: LadderEscape = field(default_factory=LadderEscape, init=False, repr=False)
+    # Where this frame's policy is walking (patrol vertex, chase, leftover);
+    # the ladder filter turns a sideways press toward it.
+    _frame_goal: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _room_nodes_key: tuple[int, int] | None = field(default=None, init=False, repr=False)
+    _room_nodes_cache: frozenset[tuple[int, int]] | None = field(default=None, init=False, repr=False)
+    # Most bodies ``_reachable`` set aside at once (``spec.reachable_only``).
+    max_unreachable: int = field(default=0, init=False)
     _ladder_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     # Post-clear floor sweep: frames spent and drops given up as unreachable.
     sweep_frames: int = field(default=0, init=False)
@@ -613,16 +626,47 @@ class GenericDungeonRoomController(EntryRouteWalker):
             return FrameAction(nes_action(direction, "A"), f"{reason}_slash")
         return FrameAction(nes_action(direction), reason)
 
+    def _patrol_vertex(self, snap: ZeldaSnapshot, index: int) -> tuple[int, int]:
+        """Patrol waypoint ``index``, moved onto land when the tiles say water.
+
+        Waypoints were written from screenshots; L6 0x29's north row
+        (80|120|160, 109) has Link's feet in the moat, so the patrol walked
+        onto the ladder toward it and the release turned him back, 2 px a
+        frame for 14500f (Blue Ring power-on 4). A waypoint none of whose
+        lattice points is walkable goes to the nearest walkable node, one
+        Link can walk to when there is one. Walkable waypoints are unchanged.
+        """
+        tx, ty = self.spec.combat.patrol[index]
+        nodes = self._room_nodes(snap)
+        if not nodes or any(n in nodes for n in lattice_starts(tx, ty)):
+            return (tx, ty)
+        home = lattice_component(nodes, (int(snap.link_x), int(snap.link_y)))
+        pool = home or nodes
+        return min(pool, key=lambda n: (abs(n[0] - tx) + abs(n[1] - ty), n))
+
+    def _room_nodes(self, snap: ZeldaSnapshot) -> frozenset[tuple[int, int]] | None:
+        """The whole room's walkable lattice (not clipped to the fight box)."""
+        env = self._env if self._env is not None else live_env.current()
+        if env is None or not has_room_tile_map(env.get_ram()):
+            return None
+        room = (int(snap.level), int(snap.screen))
+        if self._room_nodes_key != room:
+            from zelda_i.dungeon.tilemap import ow_walkable_nodes
+
+            self._room_nodes_cache = ow_walkable_nodes(env.get_ram(), overworld=False)
+            self._room_nodes_key = room
+        return self._room_nodes_cache
+
     def _patrol(self, snap: ZeldaSnapshot) -> FrameAction:
         """Walk patrol waypoints without pulsing A (sword only on engage hit)."""
         self.patrol_frames += 1
         tuning = self.spec.combat
-        tx, ty = tuning.patrol[self.patrol_index]
+        tx, ty = self._frame_goal = self._patrol_vertex(snap, self.patrol_index)
         dx = tx - snap.link_x
         dy = ty - snap.link_y
         if abs(dx) <= tuning.tolerance and abs(dy) <= tuning.tolerance:
             self.patrol_index = (self.patrol_index + 1) % len(tuning.patrol)
-            tx, ty = tuning.patrol[self.patrol_index]
+            tx, ty = self._frame_goal = self._patrol_vertex(snap, self.patrol_index)
             dx = tx - snap.link_x
             dy = ty - snap.link_y
         if tuning.occupancy_patrol:
@@ -633,7 +677,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 if direction is not None:
                     return FrameAction(nes_action(direction), "combat_patrol")
                 self.patrol_index = (self.patrol_index + 1) % n
-                tx, ty = tuning.patrol[self.patrol_index]
+                tx, ty = self._frame_goal = self._patrol_vertex(snap, self.patrol_index)
             # Pocket: occupancy miss-blocked every corridor. Greedy toward
             # the maze loop instead of standing (live 0x23 (99,157) 2 Goriyas).
             direction = lattice_toward(snap.link_x, snap.link_y, (tx, ty), tol=tuning.tolerance)
@@ -754,6 +798,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
     ) -> FrameAction:
         """Chase target; slash only when sword hitbox can hit or contact-close."""
         self.engage_frames += 1
+        self._frame_goal = (int(target.x), int(target.y))
         if direction is None:
             dx = target.x - snap.link_x
             dy = target.y - snap.link_y
@@ -1046,9 +1091,10 @@ class GenericDungeonRoomController(EntryRouteWalker):
             extra = _occupancy_bodies(snap, target)
             extra.discard(xy)
             extra.discard((int(target.x), int(target.y)))
+            self._frame_goal = self._chase_goal(target)
             direction = self.walker.next_dir(
                 xy,
-                self._chase_goal(target),
+                self._frame_goal,
                 extra_blocked=extra,
                 transient_occupants=bodies,
             )
@@ -1142,7 +1188,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
                     hold = (self.frames % 8) < 4
                     return FrameAction(nes_action("A") if hold else nes_idle_action(), "still_slash")
                 if dist < STRIKE_TURN_MIN:
-                    return FrameAction(nes_action(_OPPOSITE[face]), "still_back")
+                    return FrameAction(nes_action(OPPOSITE[face]), "still_back")
                 if dist > STRIKE_TURN_MAX:
                     return FrameAction(nes_action(face), "still_close")
                 return FrameAction(nes_action(face), "still_face")
@@ -1173,6 +1219,32 @@ class GenericDungeonRoomController(EntryRouteWalker):
         )
         self._lattice_room = room
         return self._lattice
+
+    def _reachable(
+        self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]
+    ) -> tuple[ZeldaObject, ...]:
+        """``live`` minus bodies on ground Link cannot walk to.
+
+        Only with ``spec.reachable_only``. A body whose lattice nodes are all
+        outside Link's walkable component is across water or a wall; one
+        with no walkable node near it (or Link off the lattice, mid-ladder)
+        stays live, so an unknown never ends a fight early.
+        """
+        if not self.spec.reachable_only or not live:
+            return live
+        nodes = self._lattice_nodes(snap)
+        if not nodes:
+            return live
+        home = lattice_component(nodes, (int(snap.link_x), int(snap.link_y)))
+        if not home:
+            return live
+        kept = []
+        for body in live:
+            near = [n for n in lattice_starts(int(body.x), int(body.y)) if n in nodes]
+            if not near or any(n in home for n in near):
+                kept.append(body)
+        self.max_unreachable = max(self.max_unreachable, len(live) - len(kept))
+        return tuple(kept)
 
     def _lattice_chase(self, snap: ZeldaSnapshot, target: ZeldaObject) -> str | None:
         """First step of the ROM-collision route to the target's nearest node.
@@ -1383,7 +1455,7 @@ class GenericDungeonRoomController(EntryRouteWalker):
         if target is None:
             return self._collect_reward(snap)
         x, y = int(snap.link_x), int(snap.link_y)
-        tx, ty = target
+        tx, ty = self._frame_goal = target
         if abs(x - tx) <= 2 and abs(y - ty) <= 2:
             self.success = True
             self._set_phase(DungeonPhase.DONE, "leftover")
@@ -1598,37 +1670,19 @@ class GenericDungeonRoomController(EntryRouteWalker):
             action=self.last_reason,
             phase=self.phase.name,
         )
+        self._frame_goal = None
         action = self._ladder_guard(snap, self._step_policy(snap))
         self.last_reason = action.reason
         self._record_reason(snap, action)
         return action
 
     def _ladder_guard(self, snap: ZeldaSnapshot, action: FrameAction) -> FrameAction:
-        """Off a deployed stepladder that goes nowhere.
-
-        A sideways press is turned onto the ladder axis (``release_action``).
-        A ladder at a water gap wider than one tile does not cross, and a
-        chase toward the far bank pressed UP on it for 14000 frames (R25 L6
-        0x29): after 8 still frames, back off the way Link came.
-        """
-        action = release_action(snap, action)
-        xy = (int(snap.link_x), int(snap.link_y))
-        on_ladder = any(
-            int(o.type_id) == _ids.STEPLADDER_OBJECT_TYPE
-            and abs(int(o.x) - xy[0]) <= 8
-            and abs(int(o.y) - 3 - xy[1]) <= 8
-            for o in snap.objects
+        """Off a deployed stepladder: sideways presses turn onto its axis,
+        and a ladder that stopped moving Link gets the latched escape
+        (:class:`~zelda_i.dungeon.hop_controller.LadderEscape`)."""
+        return self._ladder_escape.filter(
+            snap, action, env=self._env, goal=self._frame_goal
         )
-        if not on_ladder:
-            self._ladder_stuck = 0
-            return action
-        self._ladder_stuck = self._ladder_stuck + 1 if xy == self._ladder_stuck_xy else 0
-        self._ladder_stuck_xy = xy
-        pressed = [d for d, i in (("UP", 4), ("DOWN", 5), ("LEFT", 6), ("RIGHT", 7)) if action.action[i]]
-        if self._ladder_stuck >= 8 and len(pressed) == 1:
-            back = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}[pressed[0]]
-            return FrameAction(nes_action(back), "ladder_back_off")
-        return action
 
     def _record_reason(self, snap: ZeldaSnapshot, action: FrameAction) -> None:
         """Records only. No action is ever chosen from these.
@@ -1666,9 +1720,11 @@ class GenericDungeonRoomController(EntryRouteWalker):
         ):
             self.initial_inventory = self._inventory_value(snap)
 
-        live = self.spec.live_enemies(snap)
+        spawned = self.spec.live_enemies(snap)
+        # The wave census counts every body; the fight only the reachable.
+        self.max_live_enemies = max(self.max_live_enemies, len(spawned))
+        live = self._reachable(snap, spawned)
         self.last_live_enemies = len(live)
-        self.max_live_enemies = max(self.max_live_enemies, len(live))
 
         if snap.mode == 17:
             self._set_phase(DungeonPhase.FAILED, "link_death")
@@ -1809,6 +1865,8 @@ class GenericDungeonRoomController(EntryRouteWalker):
             "sweep_frames": self.sweep_frames,
             "max_live_enemies": self.max_live_enemies,
             "last_live_enemies": self.last_live_enemies,
+            "max_unreachable": self.max_unreachable,
+            "ladder_escapes": self._ladder_escape.escapes,
             "clear_signal_seen": self.clear_signal_seen,
             "initial_inventory": self.initial_inventory,
             "notes": list(self.notes),

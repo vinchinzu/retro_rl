@@ -35,17 +35,24 @@ from zelda_i.level2.puzzles import (
     ROOM_L2_TF,
 )
 from zelda_i.paths import RECORDINGS_DIR
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.ram import (
     ADDR_TRIFORCE,
     PLAY_MODE,
     ZeldaSnapshot,
     read_snapshot,
     read_u8,
+    room_item_taken,
+    room_item_xy,
 )
+from zelda_i.walk import live_env
 
 ROOM_TF: int = ROOM_L2_TF  # 0x0D
 LEVEL2_TF_BIT: int = LEVEL2_TRIFORCE_BIT  # 0x02
 TF_COLLECT_MAX_FRAMES: int = 4000
+# Frames the boss room may spend walking onto the heart container.
+HEART_MAX_FRAMES: int = 900
+HEART_CONTAINER_ITEM: int = 0x1A
 L2_TF_REACH_JSON: Path = RECORDINGS_DIR / Path(L2_TF_PROBE_EVIDENCE).name
 
 
@@ -156,6 +163,8 @@ class Level2PostBossTfController:
     success: bool = False
     notes: list[str] = field(default_factory=list)
     heart_touched: bool = False
+    heart_frames: int = 0
+    hc_in: int | None = None
     waypoint_index: int = 0
     push_done: bool = False
     stuck_frames: int = 0
@@ -191,6 +200,37 @@ class Level2PostBossTfController:
         self._set_phase(PostBossTfPhase.FAILED, note)
         return FrameAction(nes_idle_action(), note)
 
+    def _heart_step(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Walk onto the Dodongo heart container; ``None`` once it is taken.
+
+        Touched means the container count rose or the room's item bit is set.
+        "Within 8 px of (120,141)" was not: the container sits at (128,144)
+        and Blue Ring power-on 5 left L2 one container short.
+        """
+        env = live_env.current()
+        ram = env.get_ram() if env is not None else None
+        containers = int(snap.heart_containers)
+        if self.hc_in is None:
+            self.hc_in = containers
+        taken = containers > self.hc_in or (
+            ram is not None and room_item_taken(ram, snap.level, ROOM_0E)
+        )
+        if taken or self.heart_frames >= HEART_MAX_FRAMES:
+            self.heart_touched = True
+            self._set_phase(
+                PostBossTfPhase.EXIT_LEFT, "heart_taken" if taken else "heart_missed"
+            )
+            return None
+        self.heart_frames += 1
+        self._set_phase(PostBossTfPhase.HEART)
+        goal = L2_BOSS_HC_STAND
+        if ram is not None and int(snap.room_item_id) == HEART_CONTAINER_ITEM:
+            goal = room_item_xy(ram)
+        step = room_step(snap, goal, tol=1, env=env)
+        if step is None:
+            return FrameAction(nes_idle_action(), "heart_stand")
+        return FrameAction(nes_action(step), "heart")
+
     def step(self, snap: ZeldaSnapshot, *, tf_value: int | None = None) -> FrameAction:
         self.frames += 1
         self.phase_frames += 1
@@ -221,14 +261,10 @@ class Level2PostBossTfController:
         # Boss room: heart then LEFT.
         if snap.screen == ROOM_0E:
             doors = snap.cur_opened_doors
-            if not self.heart_touched and self.frames < 400:
-                self._set_phase(PostBossTfPhase.HEART)
-                hx, hy = L2_BOSS_HC_STAND
-                act, at = goto_action(snap, hx, hy, tol=8)
-                if at:
-                    self.heart_touched = True
-                    self._set_phase(PostBossTfPhase.EXIT_LEFT, "heart_touched")
-                return FrameAction(act, "heart")
+            if not self.heart_touched:
+                heart = self._heart_step(snap)
+                if heart is not None:
+                    return heart
             self._set_phase(PostBossTfPhase.EXIT_LEFT)
             door_y = L2_BOSS_EXIT_DOOR_Y
             if doors & DOOR_LEFT or not (doors & (DOOR_RIGHT | DOOR_UP)):

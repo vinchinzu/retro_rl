@@ -448,6 +448,9 @@ ROOM_19_SPEC = DungeonRoomSpec(
     ),
     max_frames=15000,
     level=LEVEL6,
+    # A full-height water column (x 160..175) splits the room; the exit is
+    # the north key door on the west bank. East-bank bodies are off route.
+    reachable_only=True,
 )
 
 register_room_spec(ROOM_19_SPEC)
@@ -546,13 +549,21 @@ ROOM_29_SPEC = DungeonRoomSpec(
     ),
     max_frames=15000,
     level=LEVEL6,
+    # A one-cell moat rings the island; the doors are open mouths, not
+    # shutters. A Wizzrobe parked on the far bank (48,93) held the fight on
+    # the moat ladder for 14500f (Blue Ring power-on 4): clear this bank.
+    reachable_only=True,
 )
 
 register_room_spec(ROOM_29_SPEC)
 
 
 def clear29_handoff_ok(snap: ZeldaSnapshot, **_: object) -> bool:
-    """Spine stop: cleared 0x29 at the south door leftover (120,189)."""
+    """Spine stop: cleared 0x29 at the south door leftover (120,189).
+
+    The fight clears the bank Link can walk (``reachable_only``); a body
+    left across the moat is not a failed stop.
+    """
     target = ROOM_29_SPEC.reward.target
     if target is None:
         return False
@@ -560,7 +571,6 @@ def clear29_handoff_ok(snap: ZeldaSnapshot, **_: object) -> bool:
         snap,
         level=LEVEL6,
         screen=LEVEL6_DARK_29_ROOM,
-        spec=ROOM_29_SPEC,
         rod=True,
         tf_eq=0x1F,
     ) and abs(int(snap.link_x) - target[0]) <= 2 and abs(

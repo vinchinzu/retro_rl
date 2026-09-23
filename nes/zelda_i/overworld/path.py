@@ -77,9 +77,10 @@ from zelda_i.rollout import Rollout, RolloutEvader
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import (
     LATTICE_STEP,
+    OPPOSITE,
+    WALK_DELTA,
     OccupancyGrid,
     OccupancyWalker,
-    WALK_DELTA,
     lattice_route,
     lattice_starts,
     lattice_step,
@@ -96,7 +97,6 @@ DEFAULT_SCOOP_RADIUS = 48
 # also the weapon coming back. Rupees keep the short reach — walking 96 px
 # for one rupee is how a hop table turns into a farm loop.
 DEFAULT_SCOOP_HEAL_RADIUS = 96
-_OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
 # Dungeon OccupancyGrid xmax=216 traps OW east-mouth leftover x≈240.
 _OW_OCC_BOUNDS = (0, 255, 0, 239)
 _ALIGN_X_TOL = 5
@@ -239,14 +239,13 @@ def _step_into_body(
     lx: int, ly: int, direction: str, bodies: tuple[Any, ...]
 ) -> bool:
     """True when walking ``direction`` a full pad lands inside a body."""
-    dx, dy = _DUCK_STEP.get(direction, (0, 0))
+    dx, dy = WALK_DELTA.get(direction, (0, 0))
     nx, ny = lx + dx * MIN_DODGE_BODY, ly + dy * MIN_DODGE_BODY
     return any(
         chebyshev(nx, ny, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
     )
 
 
-_DUCK_STEP = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 
 def _reason_key(reason: str) -> str:
@@ -921,7 +920,7 @@ class OverworldPathController:
         if self._in_maze_phase(snap, hop):
             return None
         restock = self._restock_for(snap)
-        if restock is None or restock[1] not in _OPPOSITE:
+        if restock is None or restock[1] not in OPPOSITE:
             return None
         neighbor, direction = restock
         self.rupee_farm_attempts += 1
