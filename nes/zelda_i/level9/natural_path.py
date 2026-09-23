@@ -927,6 +927,12 @@ class NaturalPatraJoinController(_NaturalEndingController):
             if grabbed:
                 act, self.cooldown = chase_sword_step(snap, self.cooldown, types=(0x17,))
                 return self._action(act.action, "room03_fight_like_like")
+            if snap.mode == PLAY_MODE and not snap.transitioning:
+                # ROM block + stairs first (the 0x20 / 0x61 shape); the
+                # align walk spent 5084f here on the power-on gathered spine.
+                step = stairs_step(None, snap)
+                if step is not None:
+                    return self._action(nes_action(step), "rom_stairs_03")
             act = room03_stairs_step(snap)
             return self._action(act.action, act.reason)
 
