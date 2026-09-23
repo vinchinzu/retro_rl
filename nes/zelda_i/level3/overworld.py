@@ -29,7 +29,7 @@ Track: assisted first-pass only — do **not** promote Clean STATUS.
 
 from __future__ import annotations
 
-from zelda_i.dungeon.hop_controller import mouth_step
+from zelda_i.dungeon.hop_controller import mouth_step, ow_edge_band_step
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -408,6 +408,11 @@ class OverworldPostL2ToLevel3Controller(OverworldToLevel3Controller):
         return None
 
     def _leave_5b(self, snap: ZeldaSnapshot) -> FrameAction:
+        # ROM lattice to the west edge band; the hand INLAND/SOUTH/WEST phases
+        # pressed DOWN into rock at (136,109) for 40697 frames (last-heart run).
+        step = ow_edge_band_step(None, snap, "LEFT", 128, 155)
+        if step is not None:
+            return self._swing(step, "5b_lattice_west")
         if self.stuck > self.stuck_threshold:
             seq = ("LEFT", "DOWN", "LEFT", "DOWN", "RIGHT", "DOWN", "LEFT", "UP")
             btn = seq[self.stuck % len(seq)]
@@ -450,6 +455,9 @@ class OverworldPostL2ToLevel3Controller(OverworldToLevel3Controller):
         """
         lo, hi = 125, 150
         target_y = 141
+        step = ow_edge_band_step(None, snap, "LEFT", lo, hi)
+        if step is not None:
+            return self._swing(step, "64_lattice_west")
         if self.stuck > self.stuck_threshold:
             seq = ("RIGHT", "DOWN", "LEFT", "DOWN", "RIGHT", "UP", "LEFT")
             btn = seq[self.stuck % len(seq)]
