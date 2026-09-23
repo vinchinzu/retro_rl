@@ -49,8 +49,9 @@ SOURCE_HYPOTHESIS = False
 LEVEL4 = 4
 LEVEL4_ENTRY_ROOM = 0x71
 LEVEL4_DOOR_X = 128
-# Lattice row south of the island mouth the push starts from.
-LEVEL4_DOOR_APPROACH_ROW = 101
+# Lattice row south of the island mouth (it opens on the structure's south
+# face, ~y=117); 101 is north of it and pushed UP into the roof (R20).
+LEVEL4_DOOR_APPROACH_ROW = 141
 LEVEL4_DOCK_RAFT_X = 128
 LEVEL4_DOCK_SCREEN = SCREEN_LEVEL4_RAFT_DOCK  # 0x55 live
 LEVEL4_ISLAND_SCREEN = SCREEN_LEVEL4_ENTRANCE  # 0x45 live
