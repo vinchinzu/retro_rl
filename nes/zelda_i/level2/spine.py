@@ -41,7 +41,12 @@ from zelda_i.level2.dungeon import (
     ROOM_L2_ROPES,
     ROOM_L2_WEST_KEY,
 )
-from zelda_i.dungeon.hop_controller import DEATH_MODE, HopController, dungeon_align_then_push
+from zelda_i.dungeon.hop_controller import (
+    DEATH_MODE,
+    HopController,
+    dungeon_align_then_push,
+    lattice_goto,
+)
 from zelda_i.overworld.common import (
     DIAMOND_BAND_6E,
     DIAMOND_BAND_7D,
@@ -428,6 +433,7 @@ class Level2Enter6fKeyController(L2NavBase):
     walker: OccupancyWalker = field(default_factory=OccupancyWalker)
     _env: Any = field(default=None, init=False, repr=False)
     _walker_room: int | None = field(default=None, init=False, repr=False)
+    _lattice: bool = field(default=False, init=False, repr=False)
 
     def bind_env(self, env: Any) -> None:
         """Let the band walk measure the diamonds instead of bumping them."""
@@ -453,6 +459,26 @@ class Level2Enter6fKeyController(L2NavBase):
         self._walker_room = room
         return self.walker
 
+    def _lattice_door(self, snap: ZeldaSnapshot) -> FrameAction:
+        """ROM-lattice walk to the east door node, then push the key door.
+
+        ``LatticeDoorWalker`` takes every x=208 node for the door; 0x6e's
+        east column runs y=101..189, so it pushed the wall at (208,181).
+        """
+        door = (self.wall_x + 8, self.door_y)
+        if snap.link_x >= door[0] - 2 and abs(snap.link_y - door[1]) <= 2:
+            return FrameAction(nes_action("RIGHT"), "key_door_lattice_push")
+        step = lattice_goto(self._env, snap, door, slack=0)
+        if step is None:
+            return dungeon_align_then_push(
+                snap,
+                push_dir="RIGHT",
+                door_plane=door[0],
+                target_y=door[1],
+                reason="key_door_lattice",
+            )
+        return FrameAction(nes_action(step), "key_door_lattice")
+
     def on_arrive(self, snap: ZeldaSnapshot) -> str:
         del snap
         return "key_door_entered"
@@ -463,6 +489,8 @@ class Level2Enter6fKeyController(L2NavBase):
         if snap.keys < self.require_keys and self.door_phase != "push":
             return self.mark_fail("no_keys")
 
+        if self._lattice:
+            return self._lattice_door(snap)
         x, y = snap.link_x, snap.link_y
         # Live post-clear leftover (64, 93): north corridor RIGHT to
         # x≥208, DOWN to door y, RIGHT through the key door (1/1).
@@ -493,6 +521,13 @@ class Level2Enter6fKeyController(L2NavBase):
             direction = walker.next_dir(xy, dest)
             if direction is None:
                 walker.last_dir = None
+                # Power-on gathered spine left Link at (184,181), where the
+                # one-pixel measured walker has no path and band_wait idled
+                # the whole 4000f. The ROM lattice reaches the east door.
+                if self._env is not None:
+                    self._lattice = True
+                    self._note("band_stall_lattice")
+                    return self._lattice_door(snap)
                 return FrameAction(nes_idle_action(), "band_wait")
             return FrameAction(nes_action(direction), "band_occ")
         action, next_phase = diamond_east_phase(

@@ -110,6 +110,7 @@ class BombWallController:
     clear_controller: GenericDungeonRoomController | None = None
     _env: Any = field(default=None, init=False, repr=False)
     _select: PauseSelectController | None = field(default=None, init=False, repr=False)
+    _lattice_arrived: bool = field(default=False, init=False, repr=False)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -158,12 +159,16 @@ class BombWallController:
         tx, ty = self.stand
         dx = tx - snap.link_x
         dy = ty - snap.link_y
-        if abs(dx) + abs(dy) > 2 * self.stand_tol:
+        if abs(dx) + abs(dy) > 2 * self.stand_tol and not self._lattice_arrived:
             # ROM-collision route first: the axis rules below walked L3
             # 0x59 (gathered spine) into the block rows short of the stand.
             step = lattice_goto(self._env, snap, (tx, ty))
             if step is not None:
                 return FrameAction(nes_action(step), "stand_lattice")
+            # On a goal node: the axis rules finish. Handing back to the
+            # lattice one step later was a 2px tug-of-war on L4 0x61
+            # ((112,109) <-> (114,109) for 2500f, power-on gathered spine).
+            self._lattice_arrived = self._env is not None
         if self.south_band_first:
             if abs(dx) > self.stand_tol:
                 return FrameAction(
