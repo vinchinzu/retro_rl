@@ -14,6 +14,7 @@ from zelda_i.walk import live_env
 from zelda_i.dungeon.postmortem import DamageLog
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
 
 WAIT_SCROLL = (2, 3, 4, 6, 7)
 # Boxed: Link within BOXED_PX (Manhattan) of one spot for BOXED_FRAMES play
@@ -376,6 +377,51 @@ def lattice_goto(
     return lattice_step(int(snap.link_x), int(snap.link_y), route[0])
 
 
+def ladder_release(snap: ZeldaSnapshot, direction: str | None) -> str | None:
+    """Step off a deployed stepladder before a sideways press.
+
+    On the ladder the ROM moves Link along its axis only. A lattice route
+    beside L5 0x26's moat deployed it under him and then pressed LEFT at
+    (48,181) until the budget ran out. A press along the ladder axis is a
+    real crossing (the L4 0x31 water maze) and passes through unchanged.
+    """
+    if direction is None:
+        return None
+    ladder = next(
+        (o for o in getattr(snap, "objects", ()) if int(o.type_id) == STEPLADDER_OBJECT_TYPE),
+        None,
+    )
+    if ladder is None:
+        return direction
+    # The ladder sprite sits 3px below Link's row, like a push block.
+    dx = int(snap.link_x) - int(ladder.x)
+    dy = int(snap.link_y) - (int(ladder.y) - BLOCK_Y_OFFSET)
+    if max(abs(dx), abs(dy)) > 16:
+        return direction
+    if abs(dy) >= abs(dx) and dy and direction in ("LEFT", "RIGHT"):
+        return "DOWN" if dy > 0 else "UP"
+    if abs(dx) > abs(dy) and direction in ("UP", "DOWN"):
+        return "RIGHT" if dx > 0 else "LEFT"
+    return direction
+
+
+_CARDINAL_INDEX = {"UP": 4, "DOWN": 5, "LEFT": 6, "RIGHT": 7}
+
+
+def release_action(snap: ZeldaSnapshot, act: FrameAction) -> FrameAction:
+    """:func:`ladder_release` on a built action; other buttons are kept."""
+    pressed = [d for d, i in _CARDINAL_INDEX.items() if act.action[i]]
+    if len(pressed) != 1:
+        return act
+    turned = ladder_release(snap, pressed[0])
+    if turned == pressed[0]:
+        return act
+    buttons = list(act.action)
+    buttons[_CARDINAL_INDEX[pressed[0]]] = 0
+    buttons[_CARDINAL_INDEX[turned]] = 1
+    return FrameAction(buttons, f"{act.reason}_off_ladder")
+
+
 def room_step(
     snap: ZeldaSnapshot, goal: tuple[int, int], *, tol: int = 3, env: Any = None
 ) -> str | None:
@@ -397,10 +443,12 @@ def room_step(
     # between two nodes (L6 0x3A x 104<->106).
     route = lattice_goto_route(env, snap, (gx, gy), slack=0)
     if route:
-        return lattice_step(x, y, route[0])
-    if route == []:
-        return lattice_step(x, y, (gx, gy))
-    return lattice_toward(x, y, (gx, gy), tol=tol)
+        step = lattice_step(x, y, route[0])
+    elif route == []:
+        step = lattice_step(x, y, (gx, gy))
+    else:
+        step = lattice_toward(x, y, (gx, gy), tol=tol)
+    return ladder_release(snap, step)
 
 
 def mouth_step(
@@ -483,7 +531,7 @@ class LatticeDoorWalker:
     def action(
         self, env: Any, snap: ZeldaSnapshot, direction: str, reason: str
     ) -> FrameAction | None:
-        step = lattice_door_step(env, snap, direction)
+        step = ladder_release(snap, lattice_door_step(env, snap, direction))
         if step is None:
             return None
         self.frames += 1

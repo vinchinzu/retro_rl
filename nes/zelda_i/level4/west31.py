@@ -13,6 +13,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import LatticeDoorWalker
 from zelda_i.level4.dungeon import LEVEL4, ROOM_L4_EAST_31, ROOM_L4_EAST_32
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
@@ -59,6 +60,7 @@ class Level4West31Controller:
     samples: list[dict[str, Any]] = field(default_factory=list)
     _last_xy: tuple[int, int] | None = None
     _stall: int = 0
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker)
 
     def _set_phase(self, phase: West31Phase, note: str = "") -> None:
         if phase is not self.phase:
@@ -156,6 +158,11 @@ class Level4West31Controller:
             return self._fail(f"wrong_room_0x{snap.screen:02x}")
 
         if self.phase is West31Phase.PATH:
+            # ROM lattice to the west door and through it. The waypoints below
+            # flipped UP/LEFT at (40,164)/(40,165) from a new arrival pose (R22).
+            door = self._door.action(None, snap, "LEFT", "join_west")
+            if door is not None:
+                return door
             if self._stall >= WEST_32_CLIP_BUDGET:
                 self._sample(snap, "west_solid")
                 return self._fail(f"west_solid_{xy[0]}_{xy[1]}")
