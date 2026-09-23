@@ -14,6 +14,8 @@ explicit fixture because its full inventory and room-loader setup are composed.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.hop_controller import room_step
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -93,15 +95,11 @@ def patra_action(
 
     target_x = max(48, min(208, int(body.x)))
     target_y = max(93, min(173, int(body.y) + int(stand_dy)))
-    dx = target_x - int(snap.link_x)
-    dy = target_y - int(snap.link_y)
-
-    if abs(dx) > 4 and abs(dx) >= abs(dy):
-        direction = "RIGHT" if dx > 0 else "LEFT"
-        return nes_action(direction), "align_south_x", next_cd if cooldown else 0
-    if abs(dy) > 4:
-        direction = "DOWN" if dy > 0 else "UP"
-        return nes_action(direction), "align_south_y", next_cd if cooldown else 0
+    # ROM lattice to the stand under the body; the greedy axis step pushed
+    # into the 0x61 blocks at (144,165) for 1041 frames.
+    direction = room_step(snap, (target_x, target_y), tol=4)
+    if direction is not None:
+        return nes_action(direction), "align_south", next_cd if cooldown else 0
 
     dodge = hazard_dodge_dir(snap, patra_eyes(snap))
     if cooldown > 0:
