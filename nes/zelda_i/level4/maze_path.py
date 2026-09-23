@@ -13,7 +13,8 @@ from typing import Any, Callable
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
-from zelda_i.dungeon.hop_controller import axis_dir
+from zelda_i.dungeon.hop_controller import LatticeDoorWalker, axis_dir, lattice_goto_route
+from zelda_i.walk.physics import lattice_step
 from zelda_i.level4.dungeon import (
     COMPASS_PICKUP_XY,
     KEY_40_PICKUP_XY,
@@ -131,6 +132,16 @@ class MazeHop:
     _last_xy: tuple[int, int] | None = None
     _stall: int = 0
     samples: list[dict[str, Any]] = field(default_factory=list)
+    # Door this hop leaves ``play_room`` by. With the tile map bound, the
+    # whole hop is the ROM-lattice door walk; ``policy`` is the fallback.
+    exit_dir: str | None = None
+    # Or a spot in ``play_room`` to reach (``arrived`` decides when it is).
+    goal_xy: tuple[int, int] | None = None
+    _env: Any = field(default=None, repr=False)
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
 
     def on_phase(self, phase: Any) -> None:
         pass
@@ -241,6 +252,19 @@ class MazeHop:
             return self._mark_done(self.arrive_note)
         if self.play_room is not None and snap.screen != self.play_room:
             return self._fail(f"wrong_room_0x{snap.screen:02x}")
+        if self.exit_dir is not None and snap.screen == self.play_room:
+            door = self._door.action(self._env, snap, self.exit_dir, "lattice_door")
+            if door is not None:
+                return door
+        if self.goal_xy is not None and snap.screen == self.play_room:
+            route = lattice_goto_route(self._env, snap, self.goal_xy)
+            if route == []:
+                # As near as the floor allows (the goal can sit in water).
+                return self._mark_done(self.arrive_note)
+            if route:
+                step = lattice_step(xy[0], xy[1], route[0])
+                if step is not None:
+                    return _act(step, "lattice_goal")
         return self.policy(snap, xy)
 
     def report_base(self, segment: str, **extra: Any) -> dict[str, Any]:
@@ -342,6 +366,7 @@ class Level4North40Controller(MazeHop):
     dest_screen: int | None = ROOM_L4_ZOLS_40
     play_room: int | None = ROOM_L4_VIRES_50
     arrive_note: str = "entered_0x40"
+    exit_dir: str | None = "UP"
 
     def scroll_dir(self, snap: ZeldaSnapshot) -> str | None:
         if snap.screen in (ROOM_L4_VIRES_50, ROOM_L4_ZOLS_40):
@@ -618,6 +643,7 @@ class Level4Maze31LeaveController(MazeHop):
     phase: Maze31LeavePhase = Maze31LeavePhase.PATH
     play_room: int | None = ROOM_L4_EAST_31
     arrive_note: str = "floor_112_141"
+    goal_xy: tuple[int, int] | None = ROOM_31_SPAWN_XY
     _initialized: bool = False
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
@@ -713,6 +739,7 @@ class Level4Maze31EastController(MazeHop):
     dest_screen: int | None = ROOM_L4_EAST_32
     play_room: int | None = ROOM_L4_EAST_31
     arrive_note: str = "entered_0x32"
+    exit_dir: str | None = "RIGHT"
     walker: OccupancyWalker = field(default_factory=_room31_walker)
 
     def _at_east_band(self, snap: ZeldaSnapshot) -> bool:
