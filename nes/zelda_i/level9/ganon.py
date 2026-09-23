@@ -202,6 +202,25 @@ def _arrow_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str | None:
     return None
 
 
+# Link's standable box in Ganon's room: a stunned Ganon can sit outside it
+# ((162,197), below the y=189 floor row), and aligning to his y there pressed
+# DOWN into the wall for 4997f on the power-on gathered spine.
+LINK_X_RANGE = (32, 208)
+LINK_Y_RANGE = (93, 189)
+
+
+def _arrow_align_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str:
+    """Walk onto Ganon's column or row, whichever Link can stand on and is nearer."""
+    lx, ly, bx, by = int(snap.link_x), int(snap.link_y), int(boss.x), int(boss.y)
+    to_column = LINK_X_RANGE[0] <= bx <= LINK_X_RANGE[1]
+    to_row = LINK_Y_RANGE[0] <= by <= LINK_Y_RANGE[1]
+    if to_column and (not to_row or abs(bx - lx) <= abs(by - ly)):
+        return "RIGHT" if lx < bx else "LEFT"
+    if to_row:
+        return "DOWN" if ly < by else "UP"
+    return "RIGHT" if lx < bx else "LEFT"
+
+
 def _face_or_fire(
     snap: ZeldaSnapshot,
     direction: str,
@@ -250,12 +269,7 @@ def ganon_action(
             )
         if cooldown > 0 and dodge is not None:
             return nes_action(dodge), "attack_dodge", next_cd
-        if abs(int(boss.x) - int(snap.link_x)) <= abs(
-            int(boss.y) - int(snap.link_y)
-        ):
-            direction = "RIGHT" if snap.link_x < boss.x else "LEFT"
-        else:
-            direction = "DOWN" if snap.link_y < boss.y else "UP"
+        direction = _arrow_align_direction(snap, boss)
         return nes_action(direction), "align_arrow", next_cd if cooldown else 0
 
     sword_dir = _sword_direction(snap, boss)
