@@ -20,7 +20,7 @@ from zelda_i.overworld.nav import (
     SEGMENT_MAX_FRAMES as NAV_MAX_FRAMES,
 )
 from zelda_i.overworld.nav import OverworldToLevel1Controller
-from zelda_i.ram import is_level1_ready, read_snapshot
+from zelda_i.ram import hearts_held, is_level1_ready, ram_hearts, read_snapshot
 from zelda_i.screen_glance import leftover_from_controller
 from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX_FRAMES
 from zelda_i.overworld.sword_cave import SwordCaveController
@@ -225,6 +225,25 @@ class ControllerStageResult:
     success: bool = False
     frame_base: int = 0
     end_frame: int = 0
+    # Hearts (whole + partial) in, out, and summed per-frame loss / gain.
+    # The gain includes an assist refill; the assist reports its own writes.
+    hearts_in: float | None = None
+    hearts_out: float | None = None
+    damage: float = 0.0
+    healed: float = 0.0
+    damage_by_room: dict[str, float] = field(default_factory=dict)
+
+    def observe_hearts(self, hearts: float, room: str = "") -> None:
+        if self.hearts_in is None:
+            self.hearts_in = hearts
+        elif self.hearts_out is not None:
+            delta = hearts - self.hearts_out
+            if delta < 0:
+                self.damage += -delta
+                self.damage_by_room[room] = self.damage_by_room.get(room, 0.0) - delta
+            else:
+                self.healed += delta
+        self.hearts_out = hearts
 
     def report(self) -> dict[str, Any]:
         nested = (
@@ -246,6 +265,16 @@ class ControllerStageResult:
         # Failed hops still publish leftover — that pin is the next start.
         if leftover or isinstance(getattr(self.controller, "leftover", None), dict):
             payload["leftover"] = leftover
+        if self.hearts_in is not None:
+            payload["hearts"] = {
+                "in": round(self.hearts_in, 2),
+                "out": round(float(self.hearts_out or 0.0), 2),
+                "damage": round(self.damage, 2),
+                "healed": round(self.healed, 2),
+                "damage_by_room": {
+                    k: round(v, 2) for k, v in self.damage_by_room.items()
+                },
+            }
         if self.frame_base or self.end_frame:
             payload["frame_base"] = self.frame_base
             payload["end_frame"] = self.end_frame
@@ -279,6 +308,24 @@ class NaturalMilestoneRun:
         return payload
 
 
+def bind_controller_env(controller: Any, env: Any) -> None:
+    """``bind_env`` on the controller, else on the ``inner`` it wraps.
+
+    Room wrappers (``Level2Clear6eController`` and kin) hold a
+    ``GenericDungeonRoomController`` as ``inner`` and never forwarded the
+    env, so the inner room had no ``$6530`` geometry: L2 0x6E bounced on a
+    wall for 7511 frames with the lattice one call away.
+    """
+    seen = 0
+    while controller is not None and seen < 4:
+        bind_env = getattr(controller, "bind_env", None)
+        if callable(bind_env):
+            bind_env(env)
+            return
+        controller = getattr(controller, "inner", None)
+        seen += 1
+
+
 def run_controller_stage(
     env,
     obs: Any,
@@ -308,9 +355,7 @@ def run_controller_stage(
     When the controller defines ``bind_env``, it is called once with ``env``
     before the first step (position-assist controllers write through it).
     """
-    bind_env = getattr(controller, "bind_env", None)
-    if callable(bind_env):
-        bind_env(env)
+    bind_controller_env(controller, env)
     result = ControllerStageResult(
         name=name,
         controller=controller,
@@ -319,12 +364,16 @@ def run_controller_stage(
         end_frame=frame_base,
     )
     for frame in range(1, max_frames + 1):
-        fa = controller.step(read_snapshot(env.get_ram()))
+        snap = read_snapshot(env.get_ram())
+        room = f"{int(snap.level)}:{int(snap.screen):02x}"
+        result.observe_hearts(hearts_held(snap), room)
+        fa = controller.step(snap)
         action = fa.action
         obs, *_ = env.step(action)
         result.frames = frame
         result.end_frame = frame_base + frame
         _observe_room_timer(room_timer, env, frame=result.end_frame)
+        result.observe_hearts(ram_hearts(env.get_ram()), room)
         _apply_assist(assist, env, frame=result.end_frame)
         _notify_frame(on_frame, env, obs, action, frame=result.end_frame)
         if controller_stage_done(controller):

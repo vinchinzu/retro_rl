@@ -231,6 +231,20 @@ class ZeldaSnapshot:
         return next((obj for obj in self.objects if obj.slot == slot), None)
 
 
+def hearts_held(snap: "ZeldaSnapshot") -> float:
+    """Life as a float in hearts: the low nibble plus the partial heart.
+
+    ``$066F`` low nibble counts whole hearts minus one and ``$0670`` is the
+    heart being eaten (``$FF`` full), so ``0x22``/``$FF`` is 3.0.
+    """
+    return (int(snap.health) & 0x0F) + int(snap.heart_partial) / 255.0
+
+
+def ram_hearts(ram: np.ndarray) -> float:
+    """:func:`hearts_held` straight from RAM, without a snapshot."""
+    return (int(ram[ADDR_HEALTH]) & 0x0F) + int(ram[ADDR_HEART_PARTIAL]) / 255.0
+
+
 def full_health_byte(health: int) -> int:
     """Full ``HeartValues`` for this container count: low nibble == high nibble.
 

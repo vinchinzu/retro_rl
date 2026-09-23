@@ -222,6 +222,24 @@ L1_MOUTH_HOPS = (
     ScreenHop(0x37, "LEFT", align_y=141),
 )
 
+# 0x47 to the 0x39 pond, then the mouth. The White Sword's beam fires at
+# full hearts only, and the chain reached 0x37 on 3 of 6 (rung 2,
+# 2026-09-22). 0x48 and 0x38 are shut on the east (lattice), and 0x49 on
+# the west, so the pond is the loop through 0x58/0x59.
+L1_POND_HOPS = (
+    ScreenHop(0x48, "RIGHT", align_y=141),
+    ScreenHop(0x58, "DOWN", align_x=120),
+    ScreenHop(0x59, "RIGHT", align_y=133),
+    ScreenHop(0x49, "UP", align_x=120),
+    ScreenHop(0x39, "UP", align_x=120),
+)
+L1_FROM_POND_HOPS = (
+    ScreenHop(0x49, "DOWN", align_x=120),
+    ScreenHop(0x59, "DOWN", align_x=120),
+    ScreenHop(0x58, "LEFT", align_y=133),
+    ScreenHop(0x48, "UP", align_x=120),
+) + L1_MOUTH_HOPS[1:]
+
 # NE ends in the 0x0F cave. Back down the way NE came up, then the letter.
 LETTER_FROM_0F_HOPS = (
     ScreenHop(0x1F, "DOWN", align_x=128),
@@ -1036,7 +1054,9 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("exit_48", CaveExitController(clear=0)),
         ("heart_47", make_burn_47_controller()),
         ("exit_47", CaveExitController(clear=0)),
-        ("walk_37", HopWalkController(hops=L1_MOUTH_HOPS, waypoints={})),
+        ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS, waypoints={})),
+        ("pond_39_l1", PondFairyController()),
+        ("walk_37", HopWalkController(hops=L1_FROM_POND_HOPS, waypoints={})),
     ]
 
 

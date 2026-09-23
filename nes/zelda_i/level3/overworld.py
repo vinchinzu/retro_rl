@@ -401,11 +401,13 @@ class OverworldPostL2ToLevel3Controller(OverworldToLevel3Controller):
             # Bounced back into maze corridor — push west.
             return self._swing("LEFT", "5b_reenter_fix")
         # 0x64 → 0x63: west corridor only y≈125–150 (specialized leave).
+        # The ROM lattice route (``_rung_geo``) goes first; the hand leaves
+        # are the fallback when it has no tile map or declines.
         if hop.target == 0x63 and snap.screen == 0x64:
-            return self._leave_64_west(snap)
+            return self._rung_geo(snap) or self._leave_64_west(snap)
         # 0x63 rock maze: free south then DOWN (pure align_x=112 fails east entry)
         if hop.target == 0x73 and snap.screen == 0x63:
-            return self._leave_63_south(snap)
+            return self._rung_geo(snap) or self._leave_63_south(snap)
         # LEFT hop y-corridor: align height before west push.
         # West wall + wrong y → RIGHT inland first (other west rocks).
         # East edge + wrong y → vertical then LEFT (0x58/0x56).

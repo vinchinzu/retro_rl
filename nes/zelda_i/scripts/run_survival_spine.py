@@ -128,6 +128,19 @@ def main(argv: list[str] | None = None) -> int:
         default=GATHER_ENGAGE_HEARTS,
         help="Gather-chain health refill at N whole hearts (1 last-heart, 0 off).",
     )
+    parser.add_argument(
+        "--save-points",
+        nargs="?",
+        const="Spine",
+        default=None,
+        help="Write <PREFIX>_<stage>.state at every stage start (default prefix Spine).",
+    )
+    parser.add_argument(
+        "--resume",
+        default=None,
+        metavar="STAGE",
+        help="Load the STAGE save point and play on from it (dev tape, not continuous).",
+    )
     add_video_args(parser, default_on=True)
     add_headed_flag(parser)
     parser.add_argument(
@@ -207,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
                 allow_pokes=allow_pokes,
                 gather=bool(args.gather),
                 gather_engage_hearts=gather_engage,
+                save_points=args.save_points,
+                resume_from=args.resume,
             )
             run.apply_state_audit(int(env.audit().mid_run_loads or 0))
             final_ram = env.get_ram()

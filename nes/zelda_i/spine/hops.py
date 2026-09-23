@@ -147,13 +147,17 @@ def attach_hops(
     for hop in hops:
         if hop.dedicated and through != hop.through:
             continue
-        if hop.before is not None:
+        # A resume walks past hops it did not play: no pokes, no checks.
+        skipping = bool(getattr(run, "skipping", False))
+        if hop.before is not None and not skipping:
             hop.before(env, run)
         keys_before = None
         if hop.capture_keys:
             keys_before = int(read_snapshot(env.get_ram()).keys)
         if not run_stages(env, run, _stages(hop), **hop_kw):
             return
+        if getattr(run, "skipping", False):
+            continue
         snap = read_snapshot(env.get_ram())
         if hop.capture_keys:
             run.success = bool(hop.success(snap, keys_before=keys_before))
