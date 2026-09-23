@@ -20,6 +20,7 @@ from retro_harness.predict import grade_claims
 
 __all__ = [
     "DEFAULT_BOUNDS",
+    "OPPOSITE",
     "WALK_DELTA",
     "WALK_SPEED",
     "OccupancyGrid",
@@ -40,6 +41,7 @@ WALK_DELTA: dict[str, tuple[int, int]] = {
     "LEFT": (-WALK_SPEED, 0),
     "RIGHT": (WALK_SPEED, 0),
 }
+OPPOSITE: dict[str, str] = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 # Dungeon playfield (Link collision). North door approach y≈93 sits inside.
 DEFAULT_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 205)
 _DRIFT_REPLAN = 8
@@ -186,13 +188,6 @@ class OccupancyGrid:
             extra.discard((sx, sy))
             extra.discard((gx, gy))
 
-        def ok(x: int, y: int) -> bool:
-            if (x, y) == (sx, sy):
-                return True
-            if extra and (x, y) in extra:
-                return False
-            return self.passable(x, y)
-
         # A goal that is out of bounds *or* inside geometry has no path. The
         # flood seeds ``dist`` at the goal, so an unwalkable goal that slips
         # past this guard is a BFS rooted inside the wall: it hands back a
@@ -201,37 +196,75 @@ class OccupancyGrid:
         # ``collect_skip_unreachable`` dead code for a walled waypoint (48
         # frames of pressing into a statue instead of skipping) and what
         # latched ``_route_replanning`` forever in ``dungeon/route_entry.py``.
-        if not ok(gx, gy) or not self.in_bounds(gx, gy):
+        if not self.in_bounds(gx, gy) or (
+            (gx, gy) != (sx, sy)
+            and ((extra and (gx, gy) in extra) or (gx, gy) in self.blocked)
+        ):
             return None
 
-        # Distance-to-goal for every cell the start can reach.
-        dist: dict[tuple[int, int], int] = {(gx, gy): 0}
-        queue: deque[tuple[int, int]] = deque([(gx, gy)])
-        while queue:
-            x, y = queue.popleft()
-            if (x, y) == (sx, sy):
-                break
-            step = dist[(x, y)] + 1
-            for dx, dy in WALK_DELTA.values():
-                cell = (x + dx, y + dy)
-                if cell in dist or not ok(*cell):
+        # Distance-to-goal for every cell the start can reach. Cells are
+        # flat indices into the bounds box; the start alone may sit outside
+        # it or in a block. Every call runs this flood (0x19: 87% of a fight
+        # frame), so the neighbour tests are inlined; the distances, and so
+        # the path, are the same as the tuple-dict flood this replaced.
+        xmin, xmax, ymin, ymax = self.xmin, self.xmax, self.ymin, self.ymax
+        width = xmax - xmin + 1
+        size = width * (ymax - ymin + 1)
+        blocked = self.blocked
+        dist = [-1] * size
+        start_dist = -1
+        goal_i = (gy - ymin) * width + (gx - xmin)
+        dist[goal_i] = 0
+        queue: deque[int] = deque([goal_i])
+        while queue and start_dist < 0:
+            i = queue.popleft()
+            y, xo = divmod(i, width)
+            y += ymin
+            x = xo + xmin
+            step = dist[i] + 1
+            horizontal = not lattice or (y - 5) % LATTICE_STEP == 0
+            vertical = not lattice or x % LATTICE_STEP == 0
+            for nx, ny, ok_axis in (
+                (x, y - 1, vertical),
+                (x, y + 1, vertical),
+                (x - 1, y, horizontal),
+                (x + 1, y, horizontal),
+            ):
+                if not ok_axis:
                     continue
-                if lattice and not _lattice_move(x, y, dx):
+                if nx == sx and ny == sy:
+                    start_dist = step
+                    break
+                if not (xmin <= nx <= xmax and ymin <= ny <= ymax):
                     continue
-                dist[cell] = step
-                queue.append(cell)
-        if (sx, sy) not in dist:
+                j = (ny - ymin) * width + (nx - xmin)
+                if dist[j] >= 0:
+                    continue
+                cell = (nx, ny)
+                if cell in blocked or (extra and cell in extra):
+                    continue
+                dist[j] = step
+                queue.append(j)
+        if start_dist < 0:
             return None
+
+        def dist_at(x: int, y: int) -> int:
+            if x == sx and y == sy:
+                return start_dist
+            if not (xmin <= x <= xmax and ymin <= y <= ymax):
+                return -1
+            return dist[(y - ymin) * width + (x - xmin)]
 
         path: list[tuple[int, int]] = [(sx, sy)]
         x, y = sx, sy
         heading: tuple[int, int] | None = None
         while (x, y) != (gx, gy):
+            here = dist_at(x, y)
             nearer = [
                 (delta, cell)
                 for delta in WALK_DELTA.values()
                 for cell in ((x + delta[0], y + delta[1]),)
-                if dist.get(cell, -1) == dist[(x, y)] - 1
+                if dist_at(*cell) == here - 1
             ]
             if not nearer:
                 return None
@@ -580,6 +613,23 @@ def lattice_starts(x: int, y: int) -> tuple[tuple[int, int], ...]:
     return tuple((nx, ny) for nx in xs for ny in ys)
 
 
+def lattice_component(
+    nodes: frozenset[tuple[int, int]] | set[tuple[int, int]],
+    start: tuple[int, int],
+) -> set[tuple[int, int]]:
+    """Every node Link can walk to from ``start`` (no ladder crossings)."""
+    seen = {n for n in lattice_starts(*start) if n in nodes}
+    queue = deque(seen)
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in ((0, -LATTICE_STEP), (0, LATTICE_STEP), (-LATTICE_STEP, 0), (LATTICE_STEP, 0)):
+            cell = (x + dx, y + dy)
+            if cell in nodes and cell not in seen:
+                seen.add(cell)
+                queue.append(cell)
+    return seen
+
+
 def lattice_route(
     nodes: frozenset[tuple[int, int]] | set[tuple[int, int]],
     start: tuple[int, int],
@@ -603,9 +653,20 @@ def lattice_route(
     prev: dict[tuple[tuple[int, int], str | None], tuple[tuple[int, int], str | None] | None] = {}
     best: dict[tuple[tuple[int, int], str | None], int] = {}
     tick = 0
-    for node in lattice_starts(sx, sy):
-        if node not in nodes:
-            continue
+    starts = [n for n in lattice_starts(sx, sy) if n in nodes]
+    if not starts:
+        # Link stands where the tile model calls solid: the ROM tests only
+        # the leading foot, so a LEFT walk parks him on a node whose other
+        # foot is rock (OW 0x15 (96,181), Blue Ring power-on 4: no start, no
+        # route, and the hand walk pressed LEFT into the rock). Join at the
+        # walkable nodes one step off instead.
+        starts = [
+            (n[0] + dx, n[1] + dy)
+            for n in lattice_starts(sx, sy)
+            for dx, dy in _LATTICE_DIRS.values()
+            if (n[0] + dx, n[1] + dy) in nodes
+        ]
+    for node in starts:
         d = abs(node[0] - sx) + abs(node[1] - sy)
         key = (node, None)
         cost = (d + LATTICE_STEP - 1) // LATTICE_STEP

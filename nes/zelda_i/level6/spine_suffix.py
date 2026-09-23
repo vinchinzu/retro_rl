@@ -153,7 +153,9 @@ def l6_suffix_hops(
             make_settle_19_controller,
             "level6_settle_0x19",
             ROOM_19_SPEC,
-            **tf1f,
+            # The fight counts only the west bank (``reachable_only``); an
+            # east-bank body alive at the leave is not a failed clear.
+            success=ok6(screen=ROOM_19_SPEC.room_id, **tf1f),
         ),
         one_hop(
             "level6-map19",

@@ -8,6 +8,7 @@ doors, rooms, progression, or capacity.
 
 from __future__ import annotations
 
+from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.hop_controller import room_step
 
 from dataclasses import dataclass, field
@@ -487,8 +488,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
         if self.wp_escape_frames > 0:
             self.wp_escape_frames -= 1
             if self.wp_escape_flip:
-                return {"UP": "DOWN", "DOWN": "UP",
-                        "LEFT": "RIGHT", "RIGHT": "LEFT"}[other]
+                return OPPOSITE[other]
             return other
         dist = abs(dx) + abs(dy)
         if self.wp_best_dist < 0 or dist < self.wp_best_dist:

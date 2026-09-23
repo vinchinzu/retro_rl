@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from zelda_i.walk.physics import OPPOSITE
 from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.tracking import HazardClass, TrackedObject
 from zelda_i.ram import ZeldaSnapshot
@@ -80,7 +81,6 @@ STEPS: dict[str, tuple[int, int]] = {
     "LEFT": (-1, 0),
     "RIGHT": (1, 0),
 }
-_REVERSE = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 
 
 @dataclass(frozen=True)
@@ -421,7 +421,7 @@ class ReactiveEvader:
         ):
             return str(self._commit_dir)
         pool = near_best
-        reverse = _REVERSE.get(self._last_dir or "")
+        reverse = OPPOSITE.get(self._last_dir or "")
         if reverse in pool:
             others = [name for name in pool if name != reverse]
             # Turning around is how a stand line oscillates. Only do it when

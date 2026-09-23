@@ -36,6 +36,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.ids import (
     FIVE_RUPEE_DROP_STATE,
     RUPEE_DROP_OBJECT_TYPE,
@@ -77,7 +78,6 @@ DEFAULT_LEAVE_MAX_FRAMES = 400
 # cycling wait -> leave -> wait until ``max_frames``.
 MAX_LEAVE_STALLS = 2
 
-_OPPOSITE = {"LEFT": "RIGHT", "RIGHT": "LEFT", "UP": "DOWN", "DOWN": "UP"}
 
 
 class RupeeFarmPhase(Enum):
@@ -214,12 +214,12 @@ class RupeeFarmController:
     def _transition_direction(self, snap: ZeldaSnapshot) -> str:
         """Direction to hold through a scroll, inferred from screen topology."""
         if snap.next_screen == self.farm_screen:
-            return _OPPOSITE[self.restock_direction]
+            return OPPOSITE[self.restock_direction]
         if snap.next_screen == self.restock_neighbor_screen:
             return self.restock_direction
         if snap.screen == self.farm_screen:
             return self.restock_direction
-        return _OPPOSITE[self.restock_direction]
+        return OPPOSITE[self.restock_direction]
 
     def _return_direction_from(self, screen: int) -> str | None:
         """Direction from ``screen`` toward ``leftover_screen``, or None."""
@@ -228,7 +228,7 @@ class RupeeFarmController:
         if screen == self.farm_screen and self.leftover_screen == self.restock_neighbor_screen:
             return self.restock_direction
         if screen == self.restock_neighbor_screen and self.leftover_screen == self.farm_screen:
-            return _OPPOSITE[self.restock_direction]
+            return OPPOSITE[self.restock_direction]
         return None
 
     # ------------------------------------------------------------------ #
@@ -377,7 +377,7 @@ class RupeeFarmController:
                             hold=self.swing_hold,
                         )
                 self.restock_inland = True
-            direction = _OPPOSITE[self.restock_direction]
+            direction = OPPOSITE[self.restock_direction]
             return walk_or_swing(
                 self.frames,
                 direction,
@@ -390,7 +390,7 @@ class RupeeFarmController:
             return self._fail(snap, f"farm_left_{snap.screen:02x}")
 
         if not self.restock_inland:
-            respawn_dir = _OPPOSITE[self.restock_direction]
+            respawn_dir = OPPOSITE[self.restock_direction]
             if respawn_dir == "RIGHT" and snap.link_x < 48:
                 return FrameAction(nes_action("RIGHT"), "farm_inland")
             elif respawn_dir == "LEFT" and snap.link_x > 208:

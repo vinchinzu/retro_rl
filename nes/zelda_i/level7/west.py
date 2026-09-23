@@ -18,7 +18,11 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy, should_swing_at
 from zelda_i.dungeon.behaviors import EnemyKind, engagement_hint
-from zelda_i.dungeon.hop_controller import HopController, dungeon_align_then_push
+from zelda_i.dungeon.hop_controller import (
+    HopController,
+    LatticeDoorWalker,
+    dungeon_align_then_push,
+)
 from zelda_i.level7.graph import (
     BOMB_UPGRADE,
     DIGDOGGER_2,
@@ -437,6 +441,7 @@ class Room59UpController(_WestHop):
     door: str = "UP"
     saw_goriya: bool = False
     _phase: str = "clear"
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, init=False, repr=False)
 
     def _timeout_extra(self) -> str:
         return f"phase={self._phase}_saw={int(self.saw_goriya)}"
@@ -459,6 +464,12 @@ class Room59UpController(_WestHop):
             return _goriya_fight(snap, target, frames=self.frames)
         if not self.saw_goriya:
             return FrameAction(nes_idle_action(), "spawn_wait")
+        # ROM lattice to the north door first. The hand phases below press
+        # UP from wherever the clear left Link: from (64,133) that is the
+        # central block (Blue Ring power-on 4 resume, 5000f timeout).
+        door = self._door.action(None, snap, "UP", "up59_lattice")
+        if door is not None:
+            return door
 
         x, y = int(snap.link_x), int(snap.link_y)
         if self._phase == "clear":

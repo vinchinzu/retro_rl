@@ -6,6 +6,7 @@ from dataclasses import replace
 from typing import Callable
 
 from zelda_i.level8.dungeon import (
+    LEVEL8,
     UNOBSERVED_LEVEL8_CLEAR,
     UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ClearEndpoint,
@@ -44,7 +45,15 @@ from zelda_i.level8.suffix import (
 )
 from zelda_i.level8.overworld import L7_POND_TO_LEVEL8_BUSH_HOPS
 from zelda_i.overworld.graph import ScreenHop
-from zelda_i.ram import ADDR_CANDLE, ADDR_MAGIC_KEY, ZeldaSnapshot, read_snapshot, read_u8
+from zelda_i.level8.gleeok import GLEEOK_ROOM
+from zelda_i.ram import (
+    ADDR_CANDLE,
+    ADDR_MAGIC_KEY,
+    ZeldaSnapshot,
+    read_snapshot,
+    read_u8,
+    room_item_taken,
+)
 from zelda_i.spine.hops import SpineHop
 
 Stage = tuple[str, object, int]
@@ -167,11 +176,16 @@ def l8_hops(
 
     def clear_ok(snap: ZeldaSnapshot, **_) -> bool:
         endpoint = clear_endpoint
-        if "in" in containers and endpoint.complete():
+        incoming = containers.get("in")
+        if incoming is None and room_item_taken(env.get_ram(), LEVEL8, GLEEOK_ROOM):
+            # A resume skips ``capture_containers``; the Gleeok room's
+            # item bit is the same evidence that L8's container was taken.
+            incoming = int(snap.heart_containers) - 1
+        if incoming is not None and endpoint.complete():
             endpoint = replace(
                 endpoint,
-                incoming_heart_containers=containers["in"],
-                outgoing_heart_containers=containers["in"] + 1,
+                incoming_heart_containers=incoming,
+                outgoing_heart_containers=incoming + 1,
             )
         return level8_clear_stop(
             snap,

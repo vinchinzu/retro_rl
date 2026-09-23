@@ -118,8 +118,29 @@ def test_body_gone_walks_sw_heart_not_stand() -> None:
     ram[ADDR_OBJ_TYPE + 1] = 0
     act = _step(ctl, ram)
     assert ctl.body_gone and not ctl.success and not ctl.failed
-    assert act.reason == "heart_x"
-    assert list(act.action) == list(nes_action("LEFT"))
+    assert act.reason == "heart_walk"
+    # Off the turn rows (153) Link walks the column first; a LEFT here is
+    # the off-lattice press that flutters.
+    assert list(act.action) == list(nes_action("DOWN"))
+
+
+def test_heart_walk_goes_round_the_0x3c_blocks() -> None:
+    """Blue Ring power-on 4 resume: from (80,165) the x-first walk pressed
+    LEFT into the (56..72,165) blocks for 18000f and the HC was left."""
+    from zelda_i.tests.ram_helpers import room_tile_ram
+
+    tiles = room_tile_ram("0x3c", level=8)
+    ram = _ram(x=80, y=165)
+    ram[ADDR_LINK_X + HEART_SLOT] = 32
+    ram[ADDR_LINK_Y + HEART_SLOT] = 192
+    tiles[: len(ram)] = ram
+    ram = tiles
+    ctl = make_four_head_gleeok_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _body_then_gone(ctl, ram)
+    assert ctl.body_gone and not ctl.success
+    assert list(act.action) != list(nes_action("LEFT"))
+    assert list(act.action) == list(nes_action("DOWN"))
 
 
 def test_f3_stand_walks_south_onto_heart() -> None:
@@ -137,7 +158,7 @@ def test_f3_stand_walks_south_onto_heart() -> None:
     ram[ADDR_OBJ_TYPE + 1] = 0
     act = _step(ctl, ram)
     assert ctl.body_gone and not ctl.success
-    assert act.reason == "heart_y"
+    assert act.reason == "heart_walk"
     assert list(act.action) == list(nes_action("DOWN"))
 
 
@@ -157,7 +178,7 @@ def test_body_gone_without_a_watched_heart_item_does_not_green() -> None:
     ram[ADDR_OBJ_TYPE + 1] = 0
     act = _step(ctl, ram)
     assert ctl.body_gone and not ctl.success and not ctl.failed
-    assert act.reason == "heart_x"
+    assert act.reason == "heart_walk"
     assert ctl.report()["saw_heart_item"] is False
 
 
@@ -205,9 +226,11 @@ def test_heart_dest_is_ram_xy_not_frozen_spawn() -> None:
     ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
     act = _body_then_gone(ctl, ram)
     assert ctl.body_gone and not ctl.success and not ctl.failed
-    assert act.reason == "heart_x"
-    assert list(act.action) == list(nes_action("RIGHT"))
-    assert list(act.action) != list(nes_action("LEFT"))
+    assert act.reason == "heart_walk"
+    # Toward the RAM heart (160,141) is UP onto row 149; the frozen spawn
+    # (32,192) would be DOWN.
+    assert list(act.action) == list(nes_action("UP"))
+    assert list(act.action) != list(nes_action("DOWN"))
     assert heart_xy(ram) == (160, 141)
     assert heart_xy(ram) != HEART_XY
 
@@ -221,7 +244,7 @@ def test_heart_off_column_leftover_does_not_up_into_wall() -> None:
     ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
     act = _body_then_gone(ctl, ram)
     assert ctl.body_gone and not ctl.success
-    assert act.reason == "heart_x"
+    assert act.reason == "heart_walk"
     assert list(act.action) == list(nes_action("LEFT"))
     assert list(act.action) != list(nes_action("UP"))
 

@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from zelda_i.dungeon.passage import passage_step
 
-import os
-
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from types import SimpleNamespace
 from typing import Any
 
@@ -23,11 +21,21 @@ from zelda_i.dungeon.hop_controller import (
     dungeon_align_then_push,
     stairs_step,
 )
-from zelda_i.combat import should_swing_at
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level9.patra import patra_action
 from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP, SILVER_ARROWS
+from zelda_i.dungeon.engine import (
+    AliveRule,
+    CombatTuning,
+    DoorRoute,
+    DungeonPhase,
+    DungeonRoomSpec,
+    GenericDungeonRoomController,
+    RewardKind,
+    RewardSpec,
+)
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk import live_env
 
 NORTH_DOOR = DOOR_TARGETS["UP"]  # (120, 93)
 WEST_DOOR = DOOR_TARGETS["LEFT"]  # (32, 141)
@@ -89,7 +97,6 @@ RED_RING = ROOM_RED_RING_HYP  # 0x07
 _DOOR_TOL = 4
 _SAMPLE_PERIOD = 12
 _MAX_FRAMES = 4000
-_DEBUG_05 = bool(os.environ.get("L9_DEBUG_05"))
 
 def is_north_neighbor(origin: int, dest: int) -> bool:
     """Same column, one dungeon row north (``$EB - 0x10``)."""
@@ -139,6 +146,7 @@ BOMB_WEST_06_APPROACH: tuple[tuple[int, int], ...] = (
     (48, 141),
 )
 STAIRS_05_ORIGIN = 0x05
+ROOM_10_ORIGIN = 0x10
 STAIRS_05_DEST_HYP = 0x70
 STAIRS_05_START_POSE = (208, 173)
 STAIRS_05_DEST_POSE = (192, 93)  # right ladder in cellar 0x70
@@ -146,11 +154,6 @@ STAIRS_05_PUSH_X = 96
 STAIRS_05_PUSH_BLOCK_Y = 128
 STAIRS_05_STAIR_X = 208
 STAIRS_05_STAIR_Y = 96
-# Room 0x05's east wall is the hole bomb_west_06 just blew to get in, so a
-# chase that follows a Wizzrobe east walks straight back out into 0x06 and
-# the hop fails `unexpected_play_0x06` (live power-on, rr-sz8.7). Keep combat
-# west of this line; the stairs at x=208 are only walked to after the clear.
-STAIRS_05_COMBAT_EAST_LIMIT = 200
 # bomb_west_06 drops Link at (208,141) -- standing *in* the hole -- and two
 # Wizzrobes camp inside the east wall at x=224, so they are always the nearest
 # target and the chase drags him straight back out. Retreat west of this line
@@ -158,7 +161,6 @@ STAIRS_05_COMBAT_EAST_LIMIT = 200
 STAIRS_05_DOOR_ROW_Y = 141
 STAIRS_05_DOOR_ROW_TOL = 16
 STAIRS_05_OFF_ROW_Y = 173   # the pose the proven clear was tuned from
-STAIRS_05_CENTER = (120, 173)
 WEST_63_ORIGIN = 0x63
 WEST_63_DEST_HYP = 0x62
 WEST_63_START_POSE = (160, 157)
@@ -888,6 +890,66 @@ class Level9BombWest06Controller(Level9BombWallHopController):
 def make_bomb_west_06_controller(*, dest: int | None = None) -> Level9BombWest06Controller:
     return Level9BombWest06Controller(dest=dest)
 
+@dataclass
+class RoomFight:
+    """The generic room engine as one phase of a bespoke hop controller.
+
+    Built on first use and rebuilt after a failed engine (a timeout or a
+    knock out of the room), so the hop keeps fighting on its own gate.
+    """
+
+    spec: DungeonRoomSpec
+    _ctl: GenericDungeonRoomController | None = field(default=None, repr=False)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self._ctl is None or self._ctl.phase is DungeonPhase.FAILED:
+            self._ctl = GenericDungeonRoomController(spec=self.spec)
+            env = live_env.current()
+            if env is not None:
+                self._ctl.bind_env(env)
+        return self._ctl.step(snap)
+
+
+# 0x10's five Wizzrobes (three 0x2B traps never clear). Patrol the south
+# corridor Link enters on: scored over 12 RNG offsets from a Blue Ring
+# power-on pin, it beat the middle band (1463f / 11.6h) at 703f / 9.2h, and
+# the threat evader lost 5 of 12 to a knock out of the room.
+ROOM_10_WIZZROBES_SPEC = DungeonRoomSpec(
+    spec_id="level9_room10_wizzrobes",
+    source_room=0x20,
+    room_id=ROOM_10_ORIGIN,
+    entry=DoorRoute("UP", ((120, 189),)),
+    enemy_types=(0x23, 0x24),
+    expected_enemy_count=5,
+    alive_rule=AliveRule.TYPE_AND_HP,
+    combat=CombatTuning(
+        patrol=((120, 189), (72, 189), (168, 189)),
+        engage_distance=48,
+        attack_phase=2,
+        patrol_attack_period=8,
+        patrol_attack_hold=3,
+        engage_attack_period=6,
+        engage_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_from_tilemap=True,
+    ),
+    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=1),
+    max_frames=12000,
+    level=LEVEL9,
+)
+
+# 0x05's five Wizzrobes, entered from the east bomb hole (208,141). They are
+# always inside engage range, so the patrol never runs (three patrols tied).
+ROOM_05_WIZZROBES_SPEC = replace(
+    ROOM_10_WIZZROBES_SPEC,
+    spec_id="level9_room05_wizzrobes",
+    source_room=0x06,
+    room_id=0x05,
+    entry=DoorRoute("LEFT", ((208, 141),)),
+    combat=replace(ROOM_10_WIZZROBES_SPEC.combat, patrol=((176, 173), (128, 181))),
+)
+
+
 @dataclass(kw_only=True)
 class Level9Stairs05Controller(Level9StairsHopController):
     """0x05 leftover -> clear/avoid foes -> push block (96, 144) UP -> stairs -> cellar 0x70."""
@@ -900,23 +962,16 @@ class Level9Stairs05Controller(Level9StairsHopController):
     # Wizzrobes (type 0x23/0x24). A blind chase-and-mash-A policy landed 0
     # kills in 12000f (never actually checked the sword hitbox), and ignoring
     # them entirely got Link knocked back to nearly the same spot forever
-    # (UnlimitedHealthAssist prevents death, not knockback). Fix: proper
-    # should_swing_at-gated combat (only swing when the hitbox actually
-    # overlaps) with a backstep-when-stuck-too-close fallback, ported from
-    # level6.wizzrobe.Level6EastKeyController -- verified live (fast-iteration
-    # pin L9Room05EntryReal) to clear all 5 in ~1700f, well inside budget.
+    # (UnlimitedHealthAssist prevents death, not knockback). The clear now
+    # runs on the generic engine (``ROOM_05_WIZZROBES_SPEC``).
     max_frames: int = 12_000
     _cleared: bool = False
     _pushed: bool = False
-    _wizz_prev_count: int = -1
-    _wizz_last_progress_frame: int = 0
-    _wizz_backstep_frames: int = 0
+    _fight: RoomFight = field(
+        default_factory=lambda: RoomFight(ROOM_05_WIZZROBES_SPEC), repr=False
+    )
     _recentered_push_y: bool = False
     _cleared_east_band: bool = False
-    _stuck_xy: tuple[int, int] | None = None
-    _stuck_frames: int = 0
-    _stuck_escape_frames: int = 0
-    _escape_dir: str = "LEFT"
     _recenter_frames: int = 0
     _recenter_stuck_y: int = -1
     _recenter_stuck_frames: int = 0
@@ -946,101 +1001,12 @@ class Level9Stairs05Controller(Level9StairsHopController):
             None,
         )
 
-        live_wizz = [
-            o for o in snap.objects
-            if o.type_id in (0x23, 0x24) and o.hp > 0
-        ]
-        if _DEBUG_05 and self.frames % 25 == 0:
-            print(
-                f"[stairs05 dbg] f{self.frames} xy=({snap.link_x},{snap.link_y}) "
-                f"mode={snap.mode} ium={snap.is_updating_mode} trans={snap.transitioning} "
-                f"health={snap.health:#x} sword={snap.sword} "
-                f"block={(block.x, block.y, block.type_id, block.slot, block.hp) if block else None} "
-                f"wizz={[(w.x, w.y, w.hp, w.state) for w in live_wizz]} "
-                f"objs={[(o.slot, o.type_id, o.x, o.y, o.hp, o.state) for o in snap.objects]}",
-                flush=True,
-            )
-
-        # Full-clear before touching the block: nothing left to knock Link
-        # off the push stand-off once this branch is done -- but bounded, see
-        # STAIRS_05_COMBAT_MAX.
-        if live_wizz:
-            n_live = len(live_wizz)
-            if self._wizz_prev_count < 0:
-                self._wizz_prev_count = n_live
-                self._wizz_last_progress_frame = self.frames
-            elif n_live < self._wizz_prev_count:
-                self._wizz_prev_count = n_live
-                self._wizz_last_progress_frame = self.frames
-                self._wizz_backstep_frames = 0
-
-            nearest = min(
-                live_wizz,
-                key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
-            )
-            dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-            stuck_close = (
-                dist < 16 and (self.frames - self._wizz_last_progress_frame) > 100
-            )
-            if stuck_close or self._wizz_backstep_frames > 0:
-                if self._wizz_backstep_frames <= 0:
-                    self._wizz_backstep_frames = 24
-                self._wizz_backstep_frames -= 1
-                if self._wizz_backstep_frames == 0:
-                    self._wizz_last_progress_frame = self.frames
-                dx = nearest.x - snap.link_x
-                dy = nearest.y - snap.link_y
-                if abs(dx) >= abs(dy):
-                    d = "LEFT" if dx >= 0 else "RIGHT"
-                else:
-                    d = "UP" if dy >= 0 else "DOWN"
-                return FrameAction(nes_action(d), "wizzrobe_backstep")
-
-            on_door_row = abs(snap.link_y - STAIRS_05_DOOR_ROW_Y) <= 12
-            if snap.link_x >= STAIRS_05_COMBAT_EAST_LIMIT and on_door_row:
-                # Never fight the east wall *on the door row*: that is the
-                # bombed hole back into 0x06, and the hop fails the moment Link
-                # crosses it. Off the row, the east side is fair game.
-                return FrameAction(nes_action("DOWN"), "wizzrobe_leave_east_band")
-
-            # No-progress escape, same shape as stairs_61/CLEAR_03: the chase
-            # walks one axis at a time, so the pushable block or a wall between
-            # Link and his target pins him in place.
-            xy = (int(snap.link_x), int(snap.link_y))
-            if xy == self._stuck_xy:
-                self._stuck_frames += 1
-            else:
-                self._stuck_xy = xy
-                self._stuck_frames = 0
-            if self._stuck_escape_frames > 0:
-                self._stuck_escape_frames -= 1
-                return FrameAction(nes_action(self._escape_dir), "wizzrobe_stuck_escape")
-            if self._stuck_frames > 90:
-                cx, cy = STAIRS_05_CENTER
-                ddx, ddy = cx - snap.link_x, cy - snap.link_y
-                if abs(ddx) >= abs(ddy):
-                    self._escape_dir = "RIGHT" if ddx > 0 else "LEFT"
-                else:
-                    self._escape_dir = "DOWN" if ddy > 0 else "UP"
-                self._stuck_escape_frames = 20
-                self._stuck_frames = 0
-                return FrameAction(nes_action(self._escape_dir), "wizzrobe_stuck_escape")
-
-            dx = nearest.x - snap.link_x
-            dy = nearest.y - snap.link_y
-            if abs(dx) > abs(dy):
-                direction = "RIGHT" if dx > 0 else "LEFT"
-            else:
-                direction = "DOWN" if dy > 0 else "UP"
-            if (
-                direction == "RIGHT"
-                and on_door_row
-                and snap.link_x >= STAIRS_05_COMBAT_EAST_LIMIT - 8
-            ):
-                direction = "DOWN"
-            if should_swing_at(snap.link_x, snap.link_y, direction, live_wizz):
-                return FrameAction(nes_action(direction, "A"), "wizzrobe_engage_slash")
-            return FrameAction(nes_action(direction), "wizzrobe_engage")
+        # Full clear before touching the block, on the generic engine and
+        # the ROM's all-dead flag. The chase it replaces (also copied into
+        # 0x10) read a Wizzrobe teleport gap (hp 0) as a clear; scored over
+        # 12 offsets the engine clears in 670f / 6.9h.
+        if not snap.room_all_dead:
+            return self._fight.step(snap)
 
         if block is not None and block.y > STAIRS_05_PUSH_BLOCK_Y:
             self._pushed = False
@@ -1102,7 +1068,6 @@ class Level9Stairs05Controller(Level9StairsHopController):
 def make_stairs_05_controller(*, dest: int | None = None) -> Level9Stairs05Controller:
     return Level9Stairs05Controller(dest=dest)
 
-ROOM_10_ORIGIN = 0x10
 # Room 0x10 holds no floor item at all: its ROM room-attribute item byte reads
 # 0x03 (none) and the live `room_item_id` agrees on every entry. What it does
 # hold is secret code 5, `block_reveals_stairs` -- the same gating the proven
@@ -1167,9 +1132,9 @@ class Level9Room10SilverArrowsController(HopController):
     max_frames: int = 16_000
     require_level: int = LEVEL9
     wait_modes: tuple[int, ...] = WAIT_SCROLL_B
-    _wizz_prev_count: int = -1
-    _wizz_last_progress_frame: int = 0
-    _wizz_backstep_frames: int = 0
+    _fight: RoomFight = field(
+        default_factory=lambda: RoomFight(ROOM_10_WIZZROBES_SPEC), repr=False
+    )
     _pushed: bool = False
     _on_floor: bool = False
 
@@ -1202,52 +1167,11 @@ class Level9Room10SilverArrowsController(HopController):
         return self._walk_to_stairs(snap)
 
     def _wizzrobe_combat(self, snap: ZeldaSnapshot) -> FrameAction:
-        live_wizz = [o for o in snap.objects if o.type_id in (0x23, 0x24) and o.hp > 0]
-        # should_swing_at-gated combat, ported verbatim from the proven
-        # stairs_05 fix (rr-sz8.6, 2026-09-06): blind mash-A landed zero kills
-        # there; check the hitbox before swinging. Wizzrobes read hp 0 while
-        # dematerialized, so the phase is gated on snap.room_all_dead rather
-        # than a single frame's visible count -- a teleport gap must not be
-        # misread as a clear (same class as stairs_61's spawn-race fix).
-        if not live_wizz:
-            return FrameAction(nes_idle_action(), "wait_wizzrobe_reappear")
-        n_live = len(live_wizz)
-        if self._wizz_prev_count < 0:
-            self._wizz_prev_count = n_live
-            self._wizz_last_progress_frame = self.frames
-        elif n_live < self._wizz_prev_count:
-            self._wizz_prev_count = n_live
-            self._wizz_last_progress_frame = self.frames
-            self._wizz_backstep_frames = 0
-
-        nearest = min(
-            live_wizz, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y)
-        )
-        dist = abs(nearest.x - snap.link_x) + abs(nearest.y - snap.link_y)
-        stuck_close = dist < 16 and (self.frames - self._wizz_last_progress_frame) > 100
-        if stuck_close or self._wizz_backstep_frames > 0:
-            if self._wizz_backstep_frames <= 0:
-                self._wizz_backstep_frames = 24
-            self._wizz_backstep_frames -= 1
-            if self._wizz_backstep_frames == 0:
-                self._wizz_last_progress_frame = self.frames
-            dx = nearest.x - snap.link_x
-            dy = nearest.y - snap.link_y
-            if abs(dx) >= abs(dy):
-                d = "LEFT" if dx >= 0 else "RIGHT"
-            else:
-                d = "UP" if dy >= 0 else "DOWN"
-            return FrameAction(nes_action(d), "wizzrobe_backstep")
-
-        dx = nearest.x - snap.link_x
-        dy = nearest.y - snap.link_y
-        if abs(dx) > abs(dy):
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        else:
-            direction = "DOWN" if dy > 0 else "UP"
-        if should_swing_at(snap.link_x, snap.link_y, direction, live_wizz):
-            return FrameAction(nes_action(direction, "A"), "wizzrobe_engage_slash")
-        return FrameAction(nes_action(direction), "wizzrobe_engage")
+        # The generic engine (tile-seeded walker, beams, bottom-corridor
+        # patrol). The greedy chase it replaces spent 13740 of 16000 frames
+        # walking into the statue bands and took 110 hearts (Blue Ring
+        # resume); the engine clears in 703f / 9.2h mean over 12 offsets.
+        return self._fight.step(snap)
 
     def _push_block(self, snap: ZeldaSnapshot) -> FrameAction:
         stand_x, stand_y = ROOM_10_PUSH_STAND
@@ -1298,6 +1222,11 @@ class Level9Room10SilverArrowsController(HopController):
             # first, or standing at the top of the exit shaft reads as "still
             # in the chamber" and holds RIGHT into the wall forever.
             if x <= CELLAR_4F_EXIT_X + _R10_TOL:
+                # West of the ladder column is floor only; UP there climbs
+                # nothing (a Keese knock left Link at (32,189) pressing UP
+                # for 13349f on one RNG offset).
+                if x < CELLAR_4F_EXIT_X - _R10_TOL:
+                    return FrameAction(nes_action("RIGHT"), "cellar4f_exit_align")
                 return FrameAction(nes_action("UP"), "cellar4f_climb_out")
             if y < CELLAR_4F_FLOOR_Y - _R10_TOL:
                 if abs(x - CELLAR_4F_SHAFT_X) > _R10_TOL:

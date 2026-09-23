@@ -11,6 +11,7 @@ is banned. No RAM writes. ``route_eligible`` stays False.
 
 from __future__ import annotations
 
+from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.passage import passage_step
 
 from dataclasses import dataclass, field
@@ -84,7 +85,6 @@ BLOW_WAIT_FRAMES = 240
 BLOW_ATTEMPTS = 4
 EMPTY_SWORD_FRAMES = 30
 DIGDOGGER_MAX_FRAMES = 16000
-_OPPOSITE = {"UP": "DOWN", "DOWN": "UP", "LEFT": "RIGHT", "RIGHT": "LEFT"}
 
 
 class DigdoggerPhase(Enum):
@@ -261,7 +261,7 @@ class Level7ForcedDigdoggerController(HopController):
         ) and (self.sword_frames % 8) < 4:
             return FrameAction(nes_action(hint.face, "A"), "sword_swing")
         if hint.retreat:
-            back = _OPPOSITE.get(hint.face, "DOWN")
+            back = OPPOSITE.get(hint.face, "DOWN")
             return FrameAction(nes_action(back), "sword_retreat")
         return FrameAction(nes_action(hint.face), "sword_chase")
 

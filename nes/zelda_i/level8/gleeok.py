@@ -23,7 +23,8 @@ from zelda_i.dungeon.gleeok import (
 )
 from zelda_i.dungeon.ids import GLEEOK_HEAD_OBJECT_TYPE
 from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE, LEVEL8
-from zelda_i.ram import ADDR_LINK_X, ADDR_LINK_Y, PLAY_MODE, ZeldaSnapshot
+from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, room_item_xy
 
 __all__ = [
     "GLEEOK_4HEAD_MAX_FRAMES",
@@ -60,8 +61,7 @@ RAM_CLAIM = (
 def heart_xy(ram: Any | None) -> tuple[int, int] | None:
     """Live treasure slot 19 coordinate from RAM, or None if unbound/empty."""
     if ram is not None:
-        x = int(ram[ADDR_LINK_X + HEART_SLOT])
-        y = int(ram[ADDR_LINK_Y + HEART_SLOT])
+        x, y = room_item_xy(ram)
         if x or y:
             return (x, y)
     return None
@@ -201,13 +201,12 @@ class Level8FourHeadGleeokController:
             hdest = self._heart_dest()
             if hdest is None:
                 return self._emit(snap, FrameAction(nes_idle_action(), "heart_wait"))
-            tx, ty = hdest
-            if abs(int(snap.link_x) - tx) > HEART_REACH:
-                btn = "RIGHT" if snap.link_x < tx else "LEFT"
-                return self._emit(snap, FrameAction(nes_action(btn), "heart_x"))
-            if abs(int(snap.link_y) - ty) > HEART_REACH:
-                btn = "DOWN" if snap.link_y < ty else "UP"
-                return self._emit(snap, FrameAction(nes_action(btn), "heart_y"))
+            # ROM lattice to the container. The x-then-y presses ran LEFT
+            # into the block at (56..72,165) from (80,165) for 18000f
+            # (Blue Ring power-on 4 resume): the HC was never taken.
+            step = room_step(snap, hdest, tol=HEART_REACH, env=self._env)
+            if step is not None:
+                return self._emit(snap, FrameAction(nes_action(step), "heart_walk"))
             return self._emit(snap, FrameAction(nes_idle_action(), "heart_stand"))
 
         dodge = _fireball_dodge_dir(snap, thr=self.fireball_dodge_dist)

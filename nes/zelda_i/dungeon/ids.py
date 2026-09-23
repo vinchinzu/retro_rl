@@ -72,7 +72,9 @@ OBJECT_NAMES: dict[int, str] = {
     0x57: "lynel_sword_shot",
     0x5B: "moblin_arrow",
     0x5C: "boomerang_projectile",  # L1 0x44 Goriya throw (lab); not type 0x06
+    0x5F: "stepladder",  # deployed on water; ObjDir = the heading Link walked
     0x60: "floor_drop",  # live At4A: rupee/heart/5-rupee/clock; item in ObjState
+    0x61: "raft",  # at a dock; not a body
 }
 
 
@@ -251,6 +253,31 @@ def object_name(type_id: int) -> str:
     """Return a stable symbolic label without pretending unknown IDs are known."""
     value = int(type_id) & 0xFF
     return OBJECT_NAMES.get(value, f"unknown_object_0x{value:02x}")
+
+
+# The ROM's one item code space: room items ($00AB), floor drops (ObjState)
+# and shop stock share it. A dungeon room with no item carries 0x03 (the
+# Magical Sword never sits in a dungeon). Drop states above agree with it.
+NO_ROOM_ITEM = 0x03
+ITEM_CODE_NAMES: dict[int, str] = {
+    0x00: "bombs", 0x01: "wooden_sword", 0x02: "white_sword",
+    0x03: "magical_sword", 0x04: "food", 0x05: "recorder",
+    0x06: "blue_candle", 0x07: "red_candle", 0x08: "wooden_arrows",
+    0x09: "silver_arrows", 0x0A: "bow", 0x0B: "magic_key", 0x0C: "raft",
+    0x0D: "stepladder", 0x0F: "rupee5", 0x10: "magic_rod", 0x11: "book",
+    0x12: "blue_ring", 0x13: "red_ring", 0x14: "power_bracelet",
+    0x15: "letter", 0x16: "compass", 0x17: "map", 0x18: "rupee",
+    0x19: "key", 0x1A: "heart_container", 0x1B: "triforce",
+    0x1C: "magic_shield", 0x1D: "boomerang", 0x1E: "magical_boomerang",
+    0x1F: "blue_potion", 0x20: "red_potion", 0x21: "clock", 0x22: "heart",
+    0x23: "fairy",
+}
+
+
+def item_code_name(item_id: int) -> str:
+    """Short ROM item-code name (``key``, ``map``, ``heart_container`` ...)."""
+    value = int(item_id) & 0xFF
+    return ITEM_CODE_NAMES.get(value, f"item_0x{value:02x}")
 
 
 def room_item_name(item_id: int) -> str:

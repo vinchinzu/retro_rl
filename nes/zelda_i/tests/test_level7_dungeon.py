@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from zelda_i.level7.dungeon import POST_L7_ARROW_RUPEES
 from zelda_i.door_graph.core import DoorDir, GateKind, InventoryCaps
 from zelda_i.anchors import SCREEN_LEVEL7_ENTRY_ROOM
 from zelda_i.level7.dungeon import (
@@ -132,7 +133,7 @@ def test_complete_stop_promoted_and_fails_closed_on_wrong_screen() -> None:
     assert MEASURED_POST_L7_EXIT.triforce == 0x7F
     assert MEASURED_POST_L7_EXIT.keys == 0
     assert MEASURED_POST_L7_EXIT.bombs == 1
-    assert MEASURED_POST_L7_EXIT.rupees == 66
+    assert MEASURED_POST_L7_EXIT.rupees == POST_L7_ARROW_RUPEES
     assert MEASURED_POST_L7_EXIT.heart_containers == 12
     assert MEASURED_POST_L7_EXIT.selected_item == 1
     assert MEASURED_POST_L7_EXIT.arrows == 1

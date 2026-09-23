@@ -10,6 +10,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.walk.physics import OPPOSITE
 from zelda_i.walk import live_env
 from zelda_i.dungeon.postmortem import DamageLog
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
@@ -377,49 +378,215 @@ def lattice_goto(
     return lattice_step(int(snap.link_x), int(snap.link_y), route[0])
 
 
-def ladder_release(snap: ZeldaSnapshot, direction: str | None) -> str | None:
+# A goal this close along the ladder's axis does not pick a bank.
+LADDER_GOAL_SLACK = 8
+# Stepladder ObjDir: the heading Link walked when the ROM put it down.
+LADDER_HEADING = {0x01: "RIGHT", 0x02: "LEFT", 0x04: "DOWN", 0x08: "UP"}
+_VERTICAL = frozenset({"UP", "DOWN"})
+
+
+def deployed_ladder(snap: ZeldaSnapshot, *, reach: int = 16) -> Any | None:
+    """The stepladder object within ``reach`` px of Link, else ``None``.
+
+    The ladder sprite sits 3 px below Link's row, like a push block.
+    """
+    x, y = int(snap.link_x), int(snap.link_y)
+    for o in getattr(snap, "objects", ()):
+        if int(o.type_id) != STEPLADDER_OBJECT_TYPE:
+            continue
+        if max(abs(x - int(o.x)), abs(y - (int(o.y) - BLOCK_Y_OFFSET))) <= reach:
+            return o
+    return None
+
+
+def ladder_release(
+    snap: ZeldaSnapshot,
+    direction: str | None,
+    goal: tuple[int, int] | None = None,
+) -> str | None:
     """Step off a deployed stepladder before a sideways press.
 
     On the ladder the ROM moves Link along its axis only. A lattice route
     beside L5 0x26's moat deployed it under him and then pressed LEFT at
     (48,181) until the budget ran out. A press along the ladder axis is a
     real crossing (the L4 0x31 water maze) and passes through unchanged.
+    Standing square on the ladder, its offset names no axis; the ladder's
+    own heading does (L6 0x19: a vertical ladder under (152,173)).
+
+    With the caller's ``goal``, a sideways press goes along the ladder
+    toward the goal's side. The offset alone steps back to the nearer bank:
+    L6 0x29 (Blue Ring power-on 4) stepped onto the north moat at
+    (160,111), the chase for a Wizzrobe on the north bank pressed its long
+    LEFT leg, and the turn took him back south, 2 px a frame for 14500f.
     """
     if direction is None:
         return None
-    ladder = next(
-        (o for o in getattr(snap, "objects", ()) if int(o.type_id) == STEPLADDER_OBJECT_TYPE),
-        None,
-    )
+    ladder = deployed_ladder(snap)
     if ladder is None:
         return direction
-    # The ladder sprite sits 3px below Link's row, like a push block.
     dx = int(snap.link_x) - int(ladder.x)
     dy = int(snap.link_y) - (int(ladder.y) - BLOCK_Y_OFFSET)
-    if max(abs(dx), abs(dy)) > 16:
-        return direction
+    heading = LADDER_HEADING.get(int(ladder.facing))
+    if goal is not None and heading is not None:
+        vertical = heading in _VERTICAL
+        if vertical != (direction in _VERTICAL):
+            ahead = int(goal[1]) - int(snap.link_y) if vertical else int(goal[0]) - int(snap.link_x)
+            if abs(ahead) > LADDER_GOAL_SLACK:
+                if vertical:
+                    return "DOWN" if ahead > 0 else "UP"
+                return "RIGHT" if ahead > 0 else "LEFT"
     if abs(dy) >= abs(dx) and dy and direction in ("LEFT", "RIGHT"):
         return "DOWN" if dy > 0 else "UP"
     if abs(dx) > abs(dy) and direction in ("UP", "DOWN"):
         return "RIGHT" if dx > 0 else "LEFT"
+    if not dx and not dy and heading is not None:
+        if (heading in _VERTICAL) != (direction in _VERTICAL):
+            return OPPOSITE[heading]
     return direction
 
 
 _CARDINAL_INDEX = {"UP": 4, "DOWN": 5, "LEFT": 6, "RIGHT": 7}
 
 
-def release_action(snap: ZeldaSnapshot, act: FrameAction) -> FrameAction:
+def release_action(
+    snap: ZeldaSnapshot, act: FrameAction, goal: tuple[int, int] | None = None
+) -> FrameAction:
     """:func:`ladder_release` on a built action; other buttons are kept."""
     pressed = [d for d, i in _CARDINAL_INDEX.items() if act.action[i]]
     if len(pressed) != 1:
         return act
-    turned = ladder_release(snap, pressed[0])
+    turned = ladder_release(snap, pressed[0], goal)
     if turned == pressed[0]:
         return act
     buttons = list(act.action)
     buttons[_CARDINAL_INDEX[pressed[0]]] = 0
     buttons[_CARDINAL_INDEX[turned]] = 1
     return FrameAction(buttons, f"{act.reason}_off_ladder")
+
+
+# Still frames on a deployed ladder before the escape takes the pad.
+LADDER_STILL_FRAMES = 8
+# Farthest a land node may sit from Link for the sideways step off the water.
+LADDER_LAND_REACH = 24
+
+
+@dataclass
+class LadderEscape:
+    """One owner for "Link stands on a stepladder that stopped moving him".
+
+    Filter every action through :meth:`filter`. A ladder over a water run
+    wider than one tile goes nowhere, and the ROM moves Link only along its
+    axis, so a policy that keeps pressing ahead stands there for good. The
+    old guard backed off one frame and handed the pad back: on L6 0x19
+    (Blue Ring power-on 3) it swapped 2 px with the patrol's UP at (152,173)
+    for 11778 of 15000 frames.
+
+    Once Link is still for ``LADDER_STILL_FRAMES``, the escape latches: back
+    along the ladder the way Link came (the ladder's ObjDir reversed) until
+    that stops moving him, then sideways onto the nearest ROM-walkable
+    lattice node, then the pad goes back to the policy. A latched press that
+    goes still for as long hands over to the next candidate.
+    """
+
+    _xy: tuple[int, int] | None = None
+    _still: int = 0
+    _press: str | None = None
+    _tried: list[str] = field(default_factory=list)
+    _landing: bool = False
+    escapes: int = 0
+
+    def filter(
+        self,
+        snap: ZeldaSnapshot,
+        act: FrameAction,
+        *,
+        env: Any = None,
+        goal: tuple[int, int] | None = None,
+    ) -> FrameAction:
+        act = release_action(snap, act, goal)
+        xy = (int(snap.link_x), int(snap.link_y))
+        self._still = self._still + 1 if xy == self._xy else 0
+        self._xy = xy
+        ladder = deployed_ladder(snap, reach=8)
+        if self._press is not None and ladder is None:
+            # The back-off carried Link off the ladder, maybe still over the
+            # water's edge (0x19: (152,189)); finish onto a walkable node.
+            self._landing = True
+        if self._landing:
+            step = self._land_step(snap, env)
+            if step is not None and self._still < LADDER_STILL_FRAMES:
+                return FrameAction(nes_action(step), "ladder_land")
+            self._landing = False
+            if ladder is None or step is None:
+                self._reset()
+                return act
+            # Sideways is dead on this ladder: next press along it.
+            self._press = self._next_press(ladder, act)
+            self._still = 0
+        if ladder is None:
+            self._reset()
+            return act
+        if self._press is None:
+            # A policy that chose to stand (a wait, a done) keeps the pad.
+            pressed = any(act.action[i] for i in _CARDINAL_INDEX.values())
+            if self._still < LADDER_STILL_FRAMES or not pressed:
+                return act
+            self.escapes += 1
+            self._press = self._next_press(ladder, act)
+            self._still = 0
+        elif self._still >= LADDER_STILL_FRAMES:
+            # The latched press ran out of ladder: land sideways if a
+            # walkable node is beside Link, else the next press.
+            step = self._land_step(snap, env)
+            if step is not None:
+                self._landing = True
+                self._still = 0
+                return FrameAction(nes_action(step), "ladder_land")
+            self._press = self._next_press(ladder, act)
+            self._still = 0
+        return FrameAction(nes_action(self._press), "ladder_back_off")
+
+    def _next_press(self, ladder: Any, act: FrameAction) -> str:
+        heading = LADDER_HEADING.get(int(ladder.facing))
+        pressed = [d for d, i in _CARDINAL_INDEX.items() if act.action[i]]
+        ahead = heading or (pressed[0] if len(pressed) == 1 else "UP")
+        order = [OPPOSITE[ahead]]
+        order += [d for d in _CARDINAL_INDEX if d not in (ahead, OPPOSITE[ahead])]
+        order.append(ahead)
+        if self._press is not None:
+            self._tried.append(self._press)
+        fresh = [d for d in order if d not in self._tried]
+        if not fresh:
+            self._tried.clear()
+            fresh = order
+        return fresh[0]
+
+    def _land_step(self, snap: ZeldaSnapshot, env: Any) -> str | None:
+        """One press toward the nearest walkable lattice node; None on one."""
+        from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+        from zelda_i.walk.physics import lattice_step
+
+        env = env if env is not None else live_env.current()
+        if env is None or not has_room_tile_map(env.get_ram()):
+            return None
+        x, y = int(snap.link_x), int(snap.link_y)
+        nodes = ow_walkable_nodes(env.get_ram(), overworld=int(snap.level) == 0)
+        if (x, y) in nodes:
+            return None
+        near = [
+            n for n in nodes
+            if (n[0] == x or n[1] == y)
+            and abs(n[0] - x) + abs(n[1] - y) <= LADDER_LAND_REACH
+        ]
+        if not near:
+            return None
+        goal = min(near, key=lambda n: abs(n[0] - x) + abs(n[1] - y))
+        return lattice_step(x, y, goal)
+
+    def _reset(self) -> None:
+        self._press = None
+        self._tried.clear()
+        self._landing = False
 
 
 def room_step(

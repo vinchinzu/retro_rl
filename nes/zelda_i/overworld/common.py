@@ -7,7 +7,7 @@ primitives. Keep route-specific geometry in the owning module.
 
 from __future__ import annotations
 
-from zelda_i.walk.physics import lattice_step
+from zelda_i.walk.physics import WALK_DELTA, lattice_step
 
 from collections.abc import Iterable
 from typing import Callable
@@ -61,7 +61,6 @@ ARRIVAL_SOUTH_Y = 200
 # One pixel inside each scroll line, so an escape step never hands the screen
 # back. Same shape as ``hunt.HUNT_BOX``: ``(xlo, xhi, ylo, yhi)``.
 DODGE_BOX = (EDGE_WEST_X + 1, EDGE_EAST_X - 1, EDGE_NORTH_Y + 1, EDGE_SOUTH_Y - 1)
-_STEP = {"UP": (0, -1), "DOWN": (0, 1), "LEFT": (-1, 0), "RIGHT": (1, 0)}
 
 # Floor drops share ObjType 0x60; item identity is ObjState (live At4A).
 HEART_FAIRY_DROP_TYPES: frozenset[int] = frozenset(
@@ -219,8 +218,8 @@ def perpendicular(
         # and only the room test can tell the two sides apart).
         if _room(lx, ly, direction, box) < MIN_DODGE_BODY:
             continue
-        nx = lx + _STEP[direction][0] * MIN_DODGE_BODY
-        ny = ly + _STEP[direction][1] * MIN_DODGE_BODY
+        nx = lx + WALK_DELTA[direction][0] * MIN_DODGE_BODY
+        ny = ly + WALK_DELTA[direction][1] * MIN_DODGE_BODY
         if any(
             chebyshev(nx, ny, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
         ):
@@ -395,7 +394,7 @@ def keep_y_band(
             continue
         if _room(int(lx), ly, direction, box) < MIN_DODGE_BODY:
             continue
-        nx = int(lx) + _STEP[direction][0] * MIN_DODGE_BODY
+        nx = int(lx) + WALK_DELTA[direction][0] * MIN_DODGE_BODY
         if any(
             chebyshev(nx, ly, int(b.x), int(b.y)) < MIN_DODGE_BODY for b in bodies
         ):

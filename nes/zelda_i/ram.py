@@ -88,6 +88,11 @@ ADDR_MAX_BOMBS = 0x067C
 # room. Save-file copy lives in battery RAM ($6092+). One bit per OW screen
 # records whether that screen's secret is found (ZeldaHacks).
 ADDR_WORLD_FLAGS = 0x067F
+# The two underworld maps keep their own 128-byte arrays, measured on the
+# BlueRingFull3 / Full pins: L4 0x13's heart-container bit lands at
+# $06FF+0x13, and L7/L8 rooms mark $077F+room while $06FF stays as L6 left it.
+ADDR_UW_FLAGS_L1_6 = 0x06FF
+ADDR_UW_FLAGS_L7_9 = 0x077F
 ADDR_RUPEES_TO_ADD = 0x067D  # pending credit; HUD counts up toward $066D
 ADDR_RUPEES_TO_SUBTRACT = 0x067E
 WORLD_FLAG_ITEM = 0x10  # UW item taken; OW secret revealed
@@ -379,6 +384,29 @@ def is_on_start_overworld(ram) -> bool:
 def world_flag(ram: np.ndarray, screen: int) -> int:
     """``WorldFlags[screen]`` at ``$067F+screen``. Screen 0x00..0x7F."""
     return read_u8(ram, ADDR_WORLD_FLAGS + (int(screen) & 0x7F))
+
+
+def room_item_xy(ram: np.ndarray) -> tuple[int, int]:
+    """Room item position: object slot 0x13's ``($0083, $0097)``."""
+    return read_u8(ram, ADDR_ROOM_ITEM_X), read_u8(ram, ADDR_ROOM_ITEM_Y)
+
+
+def room_flags_addr(level: int) -> int:
+    """Base of the 128-byte world-flag array that ``level`` uses."""
+    level = int(level)
+    if level <= 0:
+        return ADDR_WORLD_FLAGS
+    return ADDR_UW_FLAGS_L1_6 if level <= 6 else ADDR_UW_FLAGS_L7_9
+
+
+def room_flag(ram: np.ndarray, level: int, room: int) -> int:
+    """World-flag byte of ``room`` on ``level``'s map (0 = overworld)."""
+    return read_u8(ram, room_flags_addr(level) + (int(room) & 0x7F))
+
+
+def room_item_taken(ram: np.ndarray, level: int, room: int) -> bool:
+    """True once this room's item bit (``$10``) is set: UW item taken."""
+    return bool(room_flag(ram, level, room) & WORLD_FLAG_ITEM)
 
 
 def ow_secret_taken(ram: np.ndarray, screen: int) -> bool:
