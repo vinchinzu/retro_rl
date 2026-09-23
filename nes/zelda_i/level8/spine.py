@@ -19,7 +19,6 @@ from zelda_i.level8.dungeon import (
     LIVE_RECON_LEVEL8_TOPOLOGY,
     MEASURED_LEVEL8_CLEAR,
     MEASURED_LEVEL8_ENTRY_TOPOLOGY,
-    UNOBSERVED_LEVEL8_TOPOLOGY,
     Level8ClearEndpoint,
     Level8Topology,
 )

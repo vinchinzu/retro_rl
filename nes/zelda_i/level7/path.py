@@ -33,10 +33,8 @@ from zelda_i.dungeon.behaviors import (
     GORIYA_BLUE_TYPE,
     GORIYA_TYPE,
     KEESE_TYPE,
-    WALLMASTER_TYPE,
     EnemyKind,
     engagement_hint,
-    is_off_wall,
     is_projectile,
     live_among,
 )
@@ -44,7 +42,6 @@ from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
 from zelda_i.dungeon.engine import AliveRule
 from zelda_i.dungeon.hop_controller import (
     HopController,
-    WAIT_SCROLL_B,
     dungeon_align_then_push,
     inland_lattice_step,
 )

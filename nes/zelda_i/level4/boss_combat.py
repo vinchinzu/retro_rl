@@ -32,7 +32,6 @@ from zelda_i.dungeon.gleeok import (
     FIREBALL_DODGE_DIST,
     GLEEOK_FIREBALL_TYPE,
     GLEEOK_HEAD_OBJECT_TYPE,
-    GLEEOK_OBJECT_TYPE,
     STAND_DY,
     _fireball_dodge_dir,
     _south_stand_action,

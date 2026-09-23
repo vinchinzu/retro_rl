@@ -27,9 +27,7 @@ from zelda_i.level9.dungeon import (
 from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
 from zelda_i.overworld.path import OverworldPathController, PathNavPhase
 from zelda_i.ram import (
-    ADDR_ARROWS,
     ADDR_MAGIC_KEY,
-    ADDR_RING,
     ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
     PLAY_MODE,

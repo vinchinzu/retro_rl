@@ -50,7 +50,6 @@ from zelda_i.dungeon.threat import (
 )
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
 from zelda_i.overworld.common import (
-    _STEP,
     DODGE_BOX as _DODGE_BOX,  # noqa: F401  (re-export for probes)
     box_step as _box_step,
     keep_y_band,

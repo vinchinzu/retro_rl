@@ -15,7 +15,6 @@ from zelda_i.anchors import SCREEN_LEVEL8_BUSH
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
 from zelda_i.level8.overworld import (
-    L7_POND_TO_LEVEL8_BUSH_HOPS,
     LEVEL8_5C_MAZE_WAYPOINTS,
     pond_42_north_strip_action,
     pond_reverse_to_l8_extra_hop_action,

@@ -24,7 +24,7 @@ Traps:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
@@ -43,13 +43,10 @@ from zelda_i.overworld.graph import (
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.settle import (
     POST_L1_SETTLE,
-    SETTLE_MAX_FRAMES,
-    PostTriforceSettleController,
     settle_ready,
 )
 from zelda_i.ram import (
     PLAY_MODE,
-    SCREEN_LEVEL1_ENTRANCE,
     SCREEN_LEVEL2_ENTRANCE,
     SCREEN_LEVEL2_ENTRY_ROOM,
     ZeldaSnapshot,

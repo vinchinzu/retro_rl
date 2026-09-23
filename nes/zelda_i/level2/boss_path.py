@@ -98,7 +98,6 @@ from zelda_i.level2.puzzles import (
     is_at_bomb_stand,
 )
 from zelda_i.ram import (
-    PLAY_MODE,
     read_snapshot,
 )
 

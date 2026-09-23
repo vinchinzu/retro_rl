@@ -45,10 +45,10 @@ from zelda_i.level4.maze_path import (
 from zelda_i.level4.overworld import (
     LEVEL4_ENTRY_ROOM,
     POST_L3_PATH_MAX_FRAMES,
-    POST_L3_SETTLE_MAX_FRAMES,
     OverworldToLevel4Controller,
-    PostL3TriforceSettleController,
 )
+from zelda_i.overworld.settle import PostL3TriforceSettleController
+from zelda_i.overworld.settle import POST_L3_SETTLE_MAX_FRAMES
 from zelda_i.level4.path import (
     make_bomb_61_north_controller,
     make_entry_up_controller,
@@ -60,10 +60,10 @@ from zelda_i.level4.path import (
 )
 from zelda_i.level4.stepladder import (
     make_key_right_31_controller,
-    make_north_30_controller,
     make_room_30_clear_controller,
     make_stepladder_controller,
 )
+from zelda_i.level4.north30 import make_north_30_controller
 from zelda_i.level4.west31 import level4_west31_stages
 from zelda_i.ram import PASSAGE_MODE, ZeldaSnapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, ready

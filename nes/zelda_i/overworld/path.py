@@ -22,7 +22,6 @@ from zelda_i.combat import (
     chebyshev,
     direction_to_facing,
     heal_wanted,
-    in_sword_hitbox,
     overworld_threat_objects,
 )
 from zelda_i.dungeon.behaviors import ZORA_SHOT_SPEED, is_projectile
@@ -30,7 +29,6 @@ from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.dungeon.threat import (
     MIN_DODGE_BODY,
     TRIGGER_TTC,
-    Impact,
     ReactiveEvader,
     assess,
     dodgeable,
@@ -44,7 +42,6 @@ from zelda_i.overworld.common import (
     EDGE_WEST_X,
     HEART_FAIRY_DROP_STATES,
     HEART_FAIRY_DROP_TYPES,
-    RUPEE_DROP_STATES,
     align_and_push,
     box_step,
     keep_y_band,
@@ -60,6 +57,7 @@ from zelda_i.overworld.common import (
     wake_or_wait_mode,
     walk_or_swing,
 )
+from zelda_i.combat import RUPEE_DROP_STATES
 from zelda_i.overworld.heart_farm import (
     BAND_SWEEP_WAYPOINTS,
     HeartFarmController,

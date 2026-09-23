@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Iterable, Mapping, Sequence
+from typing import Mapping, Sequence
 
 # ---------------------------------------------------------------------------
 # Door bits (cur_opened_doors / open_doorway_mask)

@@ -57,10 +57,10 @@ from zelda_i.overworld.shop_p7 import SHOP_P7_PRICE
 from zelda_i.level1.finish import LEVEL1_TRIFORCE_BIT
 from zelda_i.level2.overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
-    SETTLE_MAX_FRAMES,
     OverworldToLevel2Controller,
-    PostTriforceSettleController,
 )
+from zelda_i.overworld.settle import PostTriforceSettleController
+from zelda_i.overworld.settle import SETTLE_MAX_FRAMES
 from zelda_i.dungeon.ops import apply_owned_inventory
 from zelda_i.level2.bombs import spine_bomb_report
 from zelda_i.level2.spine import level2_boom_success, level2_to_boom_stages
@@ -79,7 +79,6 @@ from zelda_i.level5.spine import (
     L5_STOPS,
     L5_THROUGH,
     continue_level5_spine,
-    validate_l5_endpoint,
 )
 from zelda_i.level6.spine import L6_STOPS, L6_THROUGH, continue_level6_spine
 from zelda_i.level7.spine import L7_STOPS, L7_THROUGH, continue_level7_spine

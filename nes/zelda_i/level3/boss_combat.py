@@ -39,7 +39,6 @@ from zelda_i.level3.dungeon import (
     ROOM_L3_RAFT_PASSAGE,
     ROOM_L3_SOUTH_DARKNUTS,
     ZOL_OBJECT_TYPE,
-    level3_manhandla_live,
 )
 from zelda_i.level3.geometry import PASSAGE_EXIT_WAYPOINTS
 from zelda_i.level3.overworld import LEVEL3

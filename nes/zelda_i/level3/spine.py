@@ -29,10 +29,10 @@ from zelda_i.level3.dungeon import (
 )
 from zelda_i.level3.overworld import (
     POST_L2_PATH_MAX_FRAMES,
-    POST_L2_SETTLE_MAX_FRAMES,
     OverworldPostL2ToLevel3Controller,
-    PostL2TriforceSettleController,
 )
+from zelda_i.overworld.settle import PostL2TriforceSettleController
+from zelda_i.overworld.settle import POST_L2_SETTLE_MAX_FRAMES
 from zelda_i.level3.boss_path import level3_boss_suffix_stages
 from zelda_i.level3.path import Level3NorthChainController, Level3WestKeyController
 from zelda_i.level3.raft_path import (

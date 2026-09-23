@@ -47,7 +47,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy
-from zelda_i.dungeon.behaviors import WALLMASTER_TYPE, is_off_wall
+from zelda_i.dungeon.behaviors import WALLMASTER_TYPE
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
 from zelda_i.level7.stairs import NOSE_CELLAR_ROM, TIP_OF_NOSE_ROM
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot

@@ -29,7 +29,7 @@ Track: assisted first-pass only — do **not** promote Clean STATUS.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
@@ -39,7 +39,6 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_idle_action
 from zelda_i.overworld.common import unstick_wiggle
 from zelda_i.overworld.graph import (
-    LEVEL2_5C_MAZE_WAYPOINTS,
     SCREEN_5C_MAZE,
     ScreenHop,
     path_screens_from_hops,
@@ -47,8 +46,6 @@ from zelda_i.overworld.graph import (
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.settle import (
     POST_L2_SETTLE,
-    POST_L2_SETTLE_MAX_FRAMES,
-    PostL2TriforceSettleController,
     settle_ready,
 )
 from zelda_i.ram import PLAY_MODE, SCREEN_START, ZeldaSnapshot, read_snapshot
@@ -58,7 +55,6 @@ from zelda_i.anchors import (
     SCREEN_LEVEL3_ENTRANCE,
     SCREEN_LEVEL3_ENTRY_ROOM,
     TF_BIT_L2 as LEVEL2_TRIFORCE_BIT,
-    TF_BIT_L3 as LEVEL3_TRIFORCE_BIT,
 )
 
 LEVEL3_DOOR_X = 128  # exit-spawn x; UP re-enter after y>130 approach

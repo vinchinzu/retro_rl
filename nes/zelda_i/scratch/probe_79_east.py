@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 from collections import deque
-from pathlib import Path
 
 from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_action, nes_idle_action

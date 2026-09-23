@@ -18,7 +18,6 @@ from zelda_i.combat import (
     CONTACT_CHEBYSHEV,
     CONTACT_MANHATTAN,
     HEART_OR_FAIRY_STATES,
-    RUPEE_DROP_STATES,
     chebyshev,
     facing_to_direction,
     in_sword_hitbox,

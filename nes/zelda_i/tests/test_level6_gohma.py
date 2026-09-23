@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.ids import GOHMA_BLUE_OBJECT_TYPE, GOHMA_OBJECT_TYPE
+from zelda_i.dungeon.ids import GOHMA_OBJECT_TYPE
 from zelda_i.level6.gohma import (
     EYE_ADDR,
     EYE_SHUT,

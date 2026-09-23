@@ -18,7 +18,6 @@ script) must never write inventory/progression.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from retro_harness.env import make_env, reset_obs, save_state, state_path

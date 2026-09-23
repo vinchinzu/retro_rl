@@ -8,7 +8,7 @@ from collections import deque
 from retro_harness.env import make_env, reset_obs
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import configure_headless, save_rgb_png
-from zelda_i.overworld.common import EDGE_EAST_X, EDGE_SOUTH_Y
+from zelda_i.overworld.common import EDGE_SOUTH_Y
 from zelda_i.overworld.shop_p7 import PRE_L1_BOMB_HOPS
 from zelda_i.overworld.path import OverworldPathController, _ow_hop_grid
 from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX

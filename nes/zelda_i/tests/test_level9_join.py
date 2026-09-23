@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-from retro_harness.input_script import FrameAction
 from zelda_i.level9.dungeon import (
     FULL_TRIFORCE,
     LEVEL9,
@@ -17,14 +15,12 @@ from zelda_i.level9.dungeon import (
 from zelda_i.level9.hops import (
     Level9NaturalRouteSelection,
     level9_patra_chapter,
-    l9_hops,
 )
 from zelda_i.level9.natural_path import (
     NaturalPatraJoinController,
     NaturalRouteUnavailableController,
     PatraJoinPhase,
     make_natural_patra_join_controller,
-    make_patra_join_unavailable_controller,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 

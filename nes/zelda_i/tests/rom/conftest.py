@@ -23,7 +23,6 @@ Traps (see ``nes/zelda_i/AGENTS.md``):
 
 from __future__ import annotations
 
-from pathlib import Path
 
 import pytest
 

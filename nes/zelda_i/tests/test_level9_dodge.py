@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import (
-    CONTACT_CHEBYSHEV,
     CONTACT_MANHATTAN,
     FACING_EAST,
     FACING_NORTH,

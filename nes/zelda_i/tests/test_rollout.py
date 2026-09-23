@@ -13,12 +13,8 @@ import numpy as np
 import pytest
 
 from zelda_i.ram import (
-    ADDR_LINK_IFRAMES,
-    ADDR_LINK_X,
     ADDR_OBJ_HP,
     ADDR_OBJ_TYPE,
-    ADDR_RUPEES,
-    ADDR_SCREEN,
     PLAY_MODE,
 )
 from zelda_i.rollout import (

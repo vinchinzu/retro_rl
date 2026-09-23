@@ -13,7 +13,6 @@ its own env), and nothing asserts an exact heart count off a pin.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from retro_harness.env import make_env, reset_obs
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker

@@ -8,7 +8,6 @@ from retro_harness.env import make_env, reset_obs
 from retro_harness.segment_runner import configure_headless, save_rgb_png
 from zelda_i.overworld.shop_p7 import PRE_L1_BOMB_HOPS
 from zelda_i.overworld.path import OverworldPathController
-from zelda_i.overworld.sword_cave import SEGMENT_MAX_FRAMES as SWORD_MAX
 from zelda_i.overworld.sword_cave import SwordCaveController
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot

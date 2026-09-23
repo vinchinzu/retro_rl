@@ -26,7 +26,6 @@ from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
-    axis_dir,
     dungeon_align_then_push,
 )
 from zelda_i.dungeon.ops import (

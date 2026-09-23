@@ -33,7 +33,6 @@ from zelda_i.level2.bomb_path import (
 from zelda_i.level2.dungeon import LEVEL_2
 from zelda_i.level2.puzzles import (
     BOMB_WALL_1E_NORTH,
-    DOOR_UP,
     L2_BOSS_EXIT_DOOR_Y,
     BombWall,
 )

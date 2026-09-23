@@ -47,15 +47,14 @@ from zelda_i.level3.overworld import (
     LEVEL3_POST_L2_SCREENS,
     LEVEL2_TRIFORCE_BIT,
     POST_L2_PATH_MAX_FRAMES,
-    POST_L2_SETTLE_MAX_FRAMES,
     SCREEN_LEVEL3_ENTRANCE,
     SCREEN_LEVEL3_ENTRY_ROOM,
     SCREEN_POST_L2_RETURN,
     OverworldPostL2ToLevel3Controller,
-    PostL2TriforceSettleController,
-    level3_entrance_success,
     post_l2_overworld_ready,
 )
+from zelda_i.overworld.settle import PostL2TriforceSettleController
+from zelda_i.overworld.settle import POST_L2_SETTLE_MAX_FRAMES
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_TRIFORCE, PLAY_MODE, read_snapshot, read_u8
 

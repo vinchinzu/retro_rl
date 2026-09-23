@@ -14,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from retro_harness.input_script import FrameAction
-from retro_harness.nes import nes_idle_action
 from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.graph import SCREEN_START, ScreenHop, path_screens_from_hops
 from zelda_i.overworld.hunt import (

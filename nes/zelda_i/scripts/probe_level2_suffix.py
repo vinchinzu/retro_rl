@@ -27,7 +27,6 @@ from retro_harness.segment_runner import (
 )
 from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.route.chain import run_controller_stage
-from zelda_i.overworld.heart_farm import HeartFarmController
 from zelda_i.level2.clean_door import run_clean_door_from_env
 from zelda_i.level2.overworld import (
     SEGMENT_MAX_FRAMES,
@@ -35,9 +34,9 @@ from zelda_i.level2.overworld import (
     level2_door_hops_from,
     level2_path_prefix_success,
     post_triforce_overworld_ready,
-    PostTriforceSettleController,
-    SETTLE_MAX_FRAMES,
 )
+from zelda_i.overworld.settle import PostTriforceSettleController
+from zelda_i.overworld.settle import SETTLE_MAX_FRAMES
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import PLAY_MODE, read_snapshot
 

@@ -39,10 +39,8 @@ def level1_bombs_success(snap: ZeldaSnapshot) -> bool:
 def level1_bombs_stages():
     """Bow detour + L1 TF + settle + 0x4A mid-pedestal buy. Dedicated only."""
     from zelda_i.level1.bow_pickup import level1_survival_tf_stages
-    from zelda_i.level2.overworld import (
-        SETTLE_MAX_FRAMES,
-        PostTriforceSettleController,
-    )
+    from zelda_i.overworld.settle import PostTriforceSettleController
+    from zelda_i.overworld.settle import SETTLE_MAX_FRAMES
 
     return (
         *level1_survival_tf_stages(),

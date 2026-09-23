@@ -12,7 +12,6 @@ slot 0) and knockback ($00D3) survive the refill.
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 
 from retro_harness.audit import AuditCapabilities, AuditedEnv

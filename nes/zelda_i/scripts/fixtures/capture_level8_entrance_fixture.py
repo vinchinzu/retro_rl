@@ -18,7 +18,6 @@ a full provenance sidecar (recon_fixture schema, house style from
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from retro_harness.env import make_env, reset_obs, resync_custom_state, save_state, state_path

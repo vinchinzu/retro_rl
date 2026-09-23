@@ -27,7 +27,6 @@ from zelda_i.level1.path import (
     ROOM_53_KEY_Y,
     ROOM_KEY_STALFOS,
     ROOM_NORTH_STALFOS,
-    STALFOS_OBJECT_TYPE,
     SWORD_SWING_FRAMES,
     SWORD_SWING_PERIOD,
     Level1FirstKeyController,

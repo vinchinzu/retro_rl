@@ -117,10 +117,9 @@ def test_room_31_combat_does_not_chase_x120_water() -> None:
 
 
 def test_room_31_leave_reshapes_to_floor() -> None:
-    from retro_harness.nes import nes_action, nes_idle_action
+    from retro_harness.nes import nes_idle_action
     from zelda_i.level4.maze_path import (
         Maze31LeavePhase,
-        STALL_LIMIT,
         make_maze_31_leave_controller,
     )
 

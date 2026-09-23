@@ -30,7 +30,6 @@ from zelda_i.level3.geometry import (
 from zelda_i.level3.occupancy import room_6b_grid
 from zelda_i.level3.clear5b import Level3NorthChainController as Level3NorthChainController
 from zelda_i.level3.dungeon import (
-    ROOM_6B_SPEC,
     ROOM_7B_SPEC,
     ROOM_L3_DARKNUTS,
     ROOM_L3_NORTH_ZOLS,

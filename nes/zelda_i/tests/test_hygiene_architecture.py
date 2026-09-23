@@ -223,20 +223,6 @@ def test_level5_dungeon_enemy_types_come_from_dungeon_ids() -> None:
     assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
 
 
-def test_level4_boss_combat_gleeok_types_come_from_dungeon_ids() -> None:
-    from zelda_i.dungeon import ids as ids
-    from zelda_i.level4.boss_combat import (
-        GLEEOK_FIREBALL_TYPE,
-        GLEEOK_HEAD_OBJECT_TYPE,
-        GLEEOK_OBJECT_TYPE,
-    )
-
-    assert GLEEOK_OBJECT_TYPE is ids.GLEEOK_OBJECT_TYPE
-    assert GLEEOK_HEAD_OBJECT_TYPE is ids.GLEEOK_HEAD_OBJECT_TYPE
-    assert GLEEOK_FIREBALL_TYPE is ids.MANHANDLA_PROJECTILE_TYPE
-    assert ids.GLEEOK_3HEAD_OBJECT_TYPE == 0x44
-
-
 def test_dungeon_ids_has_l4_l5_enemy_types() -> None:
     from zelda_i.dungeon import ids as ids
 

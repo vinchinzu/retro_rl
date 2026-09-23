@@ -29,8 +29,8 @@ from zelda_i.spine.survival import (
     topup_owned_inventory,
     topup_owned_keys,
     topup_owned_rupees,
-    validate_l5_endpoint,
 )
+from zelda_i.level5.spine import validate_l5_endpoint
 
 
 def test_spine_final_fields_records_rupees() -> None:

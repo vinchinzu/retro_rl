@@ -14,7 +14,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import in_sword_hitbox, manhattan
+from zelda_i.combat import manhattan
 from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -33,7 +33,7 @@ from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level8.dungeon import LEVEL8
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyWalker, follow_path, predicted_xy
+from zelda_i.walk.physics import OccupancyWalker, predicted_xy
 
 # Live recon rooms.  0x0C is unregistered in dungeon.ids (0x0B is "darknut");
 # colour is a walkthrough correlation, not an observation.

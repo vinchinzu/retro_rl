@@ -84,7 +84,7 @@ def test_bow_pickup_does_not_right_into_pit_at_y141() -> None:
 
 
 def test_bow_pickup_exits_stairs_then_east_after_bow() -> None:
-    from retro_harness.nes import nes_action, nes_idle_action
+    from retro_harness.nes import nes_action
 
     ctl = make_bow_pickup_controller()
     got = _ram(x=136, y=141, bow=1, updating=1)

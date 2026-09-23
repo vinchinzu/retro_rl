@@ -13,11 +13,6 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon.hop_controller import stairs_step
-from zelda_i.level4.north30 import (
-    Level4North30Controller,
-    North30Phase,
-    make_north_30_controller,
-)
 from zelda_i.level4.occupancy import (
     ROOM_60_CLIP_BUDGET,
     ROOM_60_DOCK_MOUTH_X_MIN,
