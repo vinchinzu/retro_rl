@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.dungeon.bomb_wall import (
+    PLACE_RETRIES,
     BOMB_N_STEP_BACK,
     BombWallController,
     BombWallPhase,
@@ -113,12 +114,20 @@ def test_step_back_wait_requires_bomb_consume() -> None:
     for _ in range(10):
         act = ctrl.step(_snap(room=wall.room, x=sx, y=sy + 4, bombs=4))
         reasons.append(act.reason)
-        if ctrl.phase is BombWallPhase.FAILED:
+        if act.reason == "bomb_retry":
             break
     assert reasons.count("step_back") == 2  # phase_frames 1,2 with step_back=3
     assert "wait_blast" in reasons
+    # A press that spent no bomb walks back and places again ...
+    assert ctrl.phase is BombWallPhase.TO_STAND
+    # ... and only an exhausted retry budget fails.
+    ctrl.place_retries = PLACE_RETRIES
+    ctrl.bombs_before_place = 4
+    ctrl.phase = BombWallPhase.WAIT
+    ctrl.phase_frames = 100
+    act = ctrl.step(_snap(room=wall.room, x=sx, y=sy + 4, bombs=4))
     assert ctrl.phase is BombWallPhase.FAILED
-    assert reasons[-1] == "bomb_not_consumed"
+    assert act.reason == "bomb_not_consumed"
 
 
 def test_step_back_wait_advances_when_bomb_consumed() -> None:
