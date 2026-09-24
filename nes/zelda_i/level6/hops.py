@@ -24,6 +24,13 @@ from zelda_i.level6.gleeok18 import (
     make_gleeok_18_controller,
     make_postgleeok_18_controller,
 )
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
+from zelda_i.overworld.gather_segments import (
+    CaveExitController,
+    HopWalkController,
+    make_secret_rupee_controller,
+)
+from zelda_i.overworld.graph import ScreenHop
 from zelda_i.level6.overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
@@ -36,8 +43,10 @@ from zelda_i.level6.overworld import (
     LEVEL6_WIZZROBE_38_ROOM,
     POST_L5_PATH_MAX_FRAMES,
     POST_L5_SETTLE_MAX_FRAMES,
+    POST_L5_TO_LEVEL6_HOPS,
     Level6EntryRightController,
     Level6WestKeyDoorController,
+    OverworldToLevel6Controller,
     PostL5TriforceSettleController,
     make_post_l5_level6_controller,
 )
@@ -252,6 +261,10 @@ def _entry_ok(env):
 
 
 def _entry_stages():
+    hops_to_13 = POST_L5_TO_LEVEL6_HOPS[:8] + (
+        ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),
+    )
+    rem_hops = POST_L5_TO_LEVEL6_HOPS[8:]
     return (
         (
             "settle_l5_tf",
@@ -259,8 +272,43 @@ def _entry_stages():
             POST_L5_SETTLE_MAX_FRAMES,
         ),
         (
+            "walk_to_cave_13",
+            OverworldToLevel6Controller(
+                hops=hops_to_13, max_frames=POST_L5_PATH_MAX_FRAMES
+            ),
+            POST_L5_PATH_MAX_FRAMES,
+        ),
+        (
+            "select_bombs_for_13",
+            PauseSelectController(want=B_SLOT_BOMBS, name="bombs"),
+            600,
+        ),
+        (
+            "rupees_13",
+            make_secret_rupee_controller(0x13),
+            5000,
+        ),
+        (
+            "exit_cave_13",
+            CaveExitController(clear=0),
+            600,
+        ),
+        (
+            "return_14_from_13",
+            HopWalkController(
+                hops=(ScreenHop(0x14, "RIGHT", align_y=165),),
+                max_frames=5000,
+            ),
+            5000,
+        ),
+        (
             "enter_level6",
-            make_post_l5_level6_controller(),
+            OverworldToLevel6Controller(
+                hops=rem_hops,
+                resume_on_screen=True,
+                require_dungeon=True,
+                max_frames=POST_L5_PATH_MAX_FRAMES,
+            ),
             POST_L5_PATH_MAX_FRAMES,
         ),
     )

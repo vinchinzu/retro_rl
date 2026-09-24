@@ -242,14 +242,15 @@ def test_column_peel_right_when_55_west_or_north() -> None:
 
 
 def test_east_edge_shoots_not_idle_on_stand_55() -> None:
-    """Leftover (128,181) + 0x55 on/near stand: UP/UP+B, never idle/LEFT."""
+    """Leftover (128,181) + 0x55 on/near stand + eye open: UP/UP+B, never idle/LEFT."""
     for fx, fy, facing in (
         (128, 181, FACE_NORTH),
         (120, 181, FACE_NORTH),
         (128, 160, 0x02),
     ):
         ram = _ram(x=128, y=STAND_Y, selected=2, facing=facing)
-        _plant_gohma(ram)
+        ram[EYE_ADDR] = 0x70
+        _plant_gohma(ram, x=128, y=112)
         _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, fx, fy)
         ctl = make_blue_gohma_1e_controller()
         ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
@@ -263,6 +264,19 @@ def test_east_edge_shoots_not_idle_on_stand_55() -> None:
             list(nes_action("UP")),
             list(nes_action("UP", "B")),
         )
+
+
+def test_east_edge_peels_left_when_eye_closed_on_stand_55() -> None:
+    """Leftover (128,181) + 0x55 on/near stand + eye closed: peel LEFT, do not waste arrows."""
+    ram = _ram(x=128, y=STAND_Y, selected=2, facing=FACE_NORTH)
+    _plant_gohma(ram)
+    _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, 128, 181)
+    ctl = make_blue_gohma_1e_controller()
+    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert list(act.action) == list(nes_action("LEFT"))
+    assert act.reason == "column_peel"
 
 
 def test_east_edge_shot_is_one_frame_then_not_up() -> None:

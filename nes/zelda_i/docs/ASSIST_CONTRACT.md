@@ -148,38 +148,29 @@ walked onto tile `0x71` at `(208,93)` via the south-band east column
 this position exception is retired — do not re-enable
 `poke_link_position` on the spine.
 
-### Wooden arrows at L6 Gohma (operator exception, 2026-08-28)
+### Wooden arrows at L6 Gohma (retired, superseded 2026-09-24)
 
-Bow is earned on the Survival L1 splice (`ADDR_BOW=1`). Wooden arrows are
-an OW shop item (~80R) not yet on the tape. One disclosed write grants
-**wooden arrows** so the same power-on session can kill Gohma. **Not Clean.**
-Do not write `ADDR_BOW`. Do not grant silver arrows (`ADDR_ARROWS=2`).
+**Retired.** `rr-wabn` and `rr-ps7.7` are closed. Spliced 80R arrow buy at 0x4A into
+the post-L4 walk to Level 5. The spine runs with `poke_wooden_arrows` off,
+and selects arrows naturally via `PauseSelectController` before Gohma. The continuous
+power-on credits run verified `inventory_assist=None` with zero arrow writes. Kept
+below for historical record only.
+
+Bow is earned on the Survival L1 splice (`ADDR_BOW=1`). Wooden arrows were
+formerly granted by a disclosed write.
 
 Allowed fields only:
 
 | Field | Address / data key | Rule |
 |-------|--------------------|------|
-| arrows | `$0659` / `ADDR_ARROWS` | Once, in play `0x1C`, set to `1` (wooden) if still 0. |
-| selected_item | `$0656` / `ADDR_SELECTED_ITEM` | B-slot `2` (arrows) of the just-granted item. |
-
-The implementation is `zelda_i.assist.poke_wooden_arrows`. List the write in
-the Gohma controller `inventory_assist`. `progression_writes` and
-`capacity_writes` stay 0. `bow_writes` stay 0. Natural 80R shop buy replaces
-this (`ADDR_ARROWS` is type, not ammo; do not farm ownership). Bow is already
-on the L1 Survival splice; splice the buy after `level1-bow-pickup`, before
-Gohma. Live `0x5E` has no arrows. The helper already skips when arrows are
-wooden.
-
-This exception does not authorize speculative top-ups on every frame. Apply it
-immediately before a known bomb-consuming stage, preserve all other inventory,
-and record the before/after count and semantic stage name.
+| arrows | `$0659` / `ADDR_ARROWS` | Formerly once, in play `0x1C`, set to `1` (wooden). Now retired. |
+| selected_item | `$0656` / `ADDR_SELECTED_ITEM` | Formerly B-slot `2` (arrows). Now handled by pause-select. |
 
 Do **not** grant an item Link has not found on this session: sword upgrade,
 boomerang / magical boomerang, bow, candle, whistle, raft,
 stepladder, book, ring, bracelet, letter, potion, rod, magic key, map,
-compass, or triforce bits. Wooden arrows at Gohma `0x1C` and the Food byte at
-`level7_bait_purchase` are the disclosed exceptions above; silver arrows stay
-forbidden.
+compass, or triforce bits. All former inventory poke exceptions (wooden arrows,
+Food byte, bomb/key top-ups) are retired. Silver arrows stay strictly forbidden.
 
 ## Forbidden writes
 

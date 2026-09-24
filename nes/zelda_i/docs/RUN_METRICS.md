@@ -48,6 +48,17 @@ measurement. Compare a row against the row above it only when the code changed.
 | lastheart_poweron34 (Patra melee; guarded last heart) | level8_magic_key_stairs | level9-credits | 263596 | 8859 | 79/146 | 26 | 207 / 15 (7 target, 8 safety) | 66 / 3 / **0** | 8:1f 16150f | 272.03 | 19 rooms; see report |
 | **lastheart_poweron37 (0x1F inner bombs, 0x75 ladder)** | **ok (guarded_last_heart)** | level9-credits | **293488** | 9472 | 92/170 | 30 | 315 / **23** (7 target, 16 safety) | 91 / 3 / **0** | 7:0d 5039f | 388.33 | 24 rooms; see report |
 | **natl8_3 (rr-doua: no bomb/key writes)** | **ok (unlimited_health)** | level8 | **238187** | 6175 | 76/179 | 53 | 115 / 389 | 0 / 0 / 0 | 0:5f 3506f | 260.25 | 1:43=map 1:44=boomerang 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 |
+| **natural_credits_poweron39 (rr-ps7: zero pokes, natural buys)** | **ok (unlimited_health)** | level9-credits | **289154** | **7478** | 84/187 | 41 | 151 / 493 | **0 / 0 / 0** | 7:1a 5712f | 341.25 | 1:43=map 1:44=boomerang 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:09=rupee5 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
+
+natural_credits_poweron39 (2026-09-24, rr-ps7): first continuous power-on run
+to credits with zero inventory pokes or writes of any kind: `ok=True`,
+`set_state_count=0`, 289,154 frames, all 8 Triforce pieces naturally collected,
+Ganon defeated and Zelda rescued. Wooden arrows bought naturally for 80R at 0x4A,
+Bait bought naturally for 60R at 0x34, bombs bought naturally at 0x44 and 0x4A,
+and Blue Gohma 0x1E arrow fire gated on vulnerability and alignment saving 19
+rupees (4 connecting shots vs 23 blind shots) to fully fund both post-L8 bomb
+packs. `inventory_assist=None`.
+
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
