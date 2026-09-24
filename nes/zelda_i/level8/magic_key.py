@@ -21,35 +21,19 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.behaviors import projectile_threats
 from zelda_i.dungeon.engine import (
-    AliveRule,
-    CombatTuning,
-    DoorRoute,
-    DungeonPhase,
-    DungeonRoomSpec,
-    GenericDungeonRoomController,
-    RewardKind,
-    RewardSpec,
+    AliveRule, CombatTuning, DoorRoute, DungeonPhase, DungeonRoomSpec,
+    GenericDungeonRoomController, RewardKind, RewardSpec,
 )
 from zelda_i.dungeon.gleeok import FIREBALL_DODGE_DIST, _fireball_dodge_dir
 from zelda_i.dungeon.gohma import (
-    GOHMA_TYPES,
-    advance_eye,
-    arrow_aim_x,
-    eye_fresh_open,
-    read_eye,
+    GOHMA_TYPES, advance_eye, arrow_aim_x, eye_fresh_open, read_eye,
 )
 from zelda_i.dungeon.hop_controller import (
-    BLOCK_Y_OFFSET,
-    HopController,
-    WAIT_SCROLL_B,
-    lattice_goto,
-    room_step,
+    BLOCK_Y_OFFSET, HopController, WAIT_SCROLL_B, lattice_goto, room_step,
     stairs_step,
 )
 from zelda_i.dungeon.ids import (
-    DARKNUT_OBJECT_TYPE,
-    FIREBALL_OBJECT_TYPE,
-    MANHANDLA_PROJECTILE_TYPE,
+    DARKNUT_OBJECT_TYPE, FIREBALL_OBJECT_TYPE, MANHANDLA_PROJECTILE_TYPE,
     POLS_VOICE_OBJECT_TYPE,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
@@ -57,20 +41,12 @@ from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, B_SLOT_BOMBS, PauseSelec
 from zelda_i.level8.cellar import magic_key_cellar_return_step
 from zelda_i.level8.north_column import TYPE_0C, _SWORD_PATROL
 from zelda_i.level6.gohma import (
-    ALIGN_TOL,
-    FACE_NORTH,
-    FIRE_TOL,
-    SHOT_COOLDOWN,
-    STAND_Y_TOL,
+    ALIGN_TOL, ARROW_SPEED, FACE_NORTH, FIRE_TOL, SHOT_COOLDOWN, STAND_Y_TOL,
     STUCK_FRAMES,
 )
 from zelda_i.ram import (
-    ADDR_MAGIC_KEY,
-    ADDR_SELECTED_ITEM,
-    PASSAGE_MODE,
-    PLAY_MODE,
-    ZeldaSnapshot,
-    read_u8,
+    ADDR_MAGIC_KEY, ADDR_SELECTED_ITEM, PASSAGE_MODE, PLAY_MODE,
+    ZeldaSnapshot, read_u8,
 )
 
 LEVEL8 = 8
@@ -185,6 +161,23 @@ class Level8BlueGohma1EController(HopController):
     def _track_eye(self) -> None:
         self.eye_open_since = advance_eye(self.eye_open_since, self._eye_byte())
 
+    def _gohma_vulnerable(self, body: Any, link_y: int) -> bool:
+        """True when Gohma eye is open and vulnerable to an incoming arrow."""
+        if self._env is None:
+            return eye_fresh_open(self.eye_open_since)
+        try:
+            ram = self._env.get_ram()
+            slot = int(body.slot)
+            eye_state = int(ram[0x046B + slot])
+            eye_timer = int(ram[0x0444 + slot])
+            iframes = int(ram[0x04F0 + slot])
+            if eye_state == 0 and eye_timer == 0:
+                return eye_fresh_open(self.eye_open_since)
+            flight_time = max(1.0, (int(link_y) - int(body.y)) / ARROW_SPEED)
+            return eye_state == 3 and eye_timer > (flight_time + 8) and iframes == 0
+        except Exception:
+            return eye_fresh_open(self.eye_open_since)
+
     def _bodies(self, snap: ZeldaSnapshot) -> list:
         return [
             obj
@@ -285,12 +278,12 @@ class Level8BlueGohma1EController(HopController):
                 if lx < COLUMN_X_MIN:
                     return FrameAction(nes_action("RIGHT"), "column_recover")
                 if lx >= COLUMN_X_MAX:
-                    return self._arrow_fire(snap)
+                    return FrameAction(nes_action("LEFT"), "column_peel")
                 if self.cooldown > 0 and self._column_shot(snap):
                     return FrameAction(nes_action("LEFT"), "column_peel")
                 return FrameAction(nes_idle_action(), "column_hold")
             if btn == "RIGHT" and lx >= COLUMN_X_MAX:
-                return self._arrow_fire(snap)
+                return FrameAction(nes_idle_action(), "column_hold")
         if btn == "LEFT" and lx <= INLAND_X_MIN:
             return self._inland_escape(snap, reason)
         if btn == "RIGHT" and lx >= INLAND_X_MAX:
@@ -336,7 +329,13 @@ class Level8BlueGohma1EController(HopController):
                 btn = "LEFT" if self.cooldown > 0 and lx > COLUMN_X_MIN else "RIGHT"
                 return FrameAction(nes_action(btn), "column_peel")
             if lx >= COLUMN_X_MAX:
-                return self._arrow_fire(snap)
+                if (
+                    body is not None
+                    and self._gohma_vulnerable(body, ly)
+                    and abs(lx - (int(body.x) - 4)) <= 4
+                ):
+                    return self._arrow_fire(snap)
+                return FrameAction(nes_action("LEFT"), "column_peel")
         dodge = _fireball_dodge_dir(snap, thr=FIREBALL_DODGE_DIST)
         if dodge is not None:
             return self._maybe_hmove(snap, dodge, "climb_dodge_fb")
@@ -409,6 +408,7 @@ class Level8BlueGohma1EController(HopController):
         if bodies:
             self.saw_body = True
             self.body_gone = 0
+            self._track_eye()
         elif self.saw_body:
             self.body_gone += 1
 
@@ -462,21 +462,20 @@ class Level8BlueGohma1EController(HopController):
         if not bodies:
             return FrameAction(nes_idle_action(), "wait_body")
 
-        self._track_eye()
         body = bodies[0]
-        bounds = (
-            (COLUMN_X_MIN, COLUMN_X_MAX)
-            if self._hold_column(snap)
-            else (INLAND_X_MIN, INLAND_X_MAX)
-        )
-        target_x = arrow_aim_x(self.gx_hist, body, ly, bounds)
+        gx = int(body.x)
+        eye_x = gx - 4
+        target_x = max(COLUMN_X_MIN, min(COLUMN_X_MAX, eye_x))
         dx = target_x - int(snap.link_x)
 
         if int(snap.rupees) <= 0:
             return self.mark_fail("l8_gohma_out_of_ammo")
-        forced = self.frames - self.last_fire >= STUCK_FRAMES
-        fresh = eye_fresh_open(self.eye_open_since)
-        if self.cooldown <= 0 and (fresh or forced) and abs(dx) <= FIRE_TOL:
+
+        vulnerable = self._gohma_vulnerable(body, ly)
+        aim_aligned = abs(int(snap.link_x) - eye_x) <= 4
+        in_column = COLUMN_X_MIN <= int(snap.link_x) <= COLUMN_X_MAX
+
+        if self.cooldown <= 0 and vulnerable and aim_aligned and in_column:
             return self._arrow_fire(snap)
 
         if abs(dx) > ALIGN_TOL:
@@ -986,21 +985,10 @@ def make_magic_key_stairs_live_controller() -> Level8MagicKeyStairsController:
 
 
 __all__ = [
-    "BLUE_GOHMA_ARROWS_REQUIRED",
-    "CELLAR_ROOM_0F",
-    "GOHMA_BODY_CONTACT",
-    "GOHMA_BODY_TYPES_1E",
-    "GOHMA_DEST_1F",
-    "GOHMA_DOOR_LIP_Y",
-    "GOHMA_ROOM_1E",
-    "COLUMN_X_MAX",
-    "COLUMN_X_MIN",
-    "INLAND_X_MAX",
-    "INLAND_X_MIN",
-    "STAND_Y",
-    "STAIRS_ROOM_1F",
-    "Level8BlueGohma1EController",
-    "Level8MagicKeyStairsController",
-    "make_blue_gohma_1e_controller",
+    "BLUE_GOHMA_ARROWS_REQUIRED", "CELLAR_ROOM_0F", "GOHMA_BODY_CONTACT",
+    "GOHMA_BODY_TYPES_1E", "GOHMA_DEST_1F", "GOHMA_DOOR_LIP_Y",
+    "GOHMA_ROOM_1E", "COLUMN_X_MAX", "COLUMN_X_MIN", "INLAND_X_MAX",
+    "INLAND_X_MIN", "STAND_Y", "STAIRS_ROOM_1F", "Level8BlueGohma1EController",
+    "Level8MagicKeyStairsController", "make_blue_gohma_1e_controller",
     "make_magic_key_stairs_live_controller",
 ]

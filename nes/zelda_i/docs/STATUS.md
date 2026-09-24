@@ -16,6 +16,18 @@ The 18909f figure is the clean-tip oracle recorded on 2026-09-14. This doc pass 
 
 Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
 
+## 2026-09-24 (latest): continuous power-on to credits with ZERO inventory writes
+
+`natural_credits_poweron39` (rr-ps7) achieved the first continuous power-on run
+from boot through credits with zero inventory pokes or assist writes of any kind:
+`ok=True`, `set_state_count=0`, 289,154 frames, all 8 Triforce pieces naturally
+collected (`tf=255`), Ganon defeated, Zelda rescued, final credits mode 19.
+- Wooden arrows (80R) bought naturally at 0x4A before L6 (`poke_wooden_arrows=False`).
+- Bait (60R) bought naturally at 0x34 during post-ring gathering before L1 (`ADDR_FOOD` write retired).
+- Bombs restocked naturally at 0x44 and 0x4A (`poke_bombs=False`).
+- Blue Gohma 0x1E arrow fire gated on vulnerability and alignment, saving 19 rupees (4 shots vs 23 blind shots) to fully fund both post-L8 bomb packs for Level 9.
+- `inventory_assist=None`. Survival health refill remains active (M5 Clean gate unchanged).
+
 ## 2026-09-24 (later): credits with no rupee write; final Patra aims
 
 `blue_ring_full_poweron24` (92f1031d) went power-on to the credits in one
