@@ -95,6 +95,18 @@ assist prevented. This is the number potions and better combat must drive to zer
 |---|---|---|---|---|---|---|
 | lasth_l1 (fed68421) | level1 | ok | 48874 | 2 | 11 | gather chain keeps its own last-heart refill |
 | lastheart_poweron28 (01e2011f + raft fix) | level9-credits | L5 0x64 death | 125417 | 12 | 100 | Power-on, no state loads; L3 Raft and L4 TF clear. Blue Darknuts hit for two hearts, skipping the one-heart refill window. |
+| lastheart_poweron29 (67d2973c, `--observed-damage-guard`) | power-on → L2 entry | 0x5C maze stall | 90778 | 0 | 7 | Hidden-rupee chain, red potion bought; L1 Triforce with no refill. |
+| 29r (7602ea58) | L2 entry → L4 0x40 key | align stall | +48999 | 0 | 24 | 2 potion drinks (L2 0x3E, L3 raft 0x0F); the refill held 315 frames for them. |
+| 29r2 (7820e227) | L4 0x40 → stepladder | pickup-pose stall | +7984 | 0 | 2 | |
+| 29r3 (e7d25c8d) | L4 stepladder → L6 heart | full-hearts stop | +73389 | 5 + 6 safety | 110 | No potion left (restock at 0x64 landed after this pin); worst L5 0x05 17h, 0x64 12h. |
+| 29r4 (bb546dd4) | L6 heart → L8 0x1F | Darknut clear timeout | +60630 | 4 | 65 | 0x1F's clear needs the full-heart beam. |
+
+Run 29 is power-on in five pieces: each stop was a stall, fixed from its
+save point and resumed (a resume proves the pose only; the next continuous
+run is the check). Every stall except L8 0x1F was a Survival assumption or
+a hand walk: a pose-only stop, a full-hearts stop predicate, a greedy
+align, or an unstick that idled forever. Totals to L8 0x1F: 15 refills
+(9 at the last heart, 6 safety), 2 drinks.
 
 The L3 0x0F raft pickup initially timed out at `(176,149)`: the controller
 treated a row eight pixels below the Raft as the pickup lane and pressed LEFT

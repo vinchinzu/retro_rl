@@ -2,15 +2,23 @@
 
 ## Now
 
-Gather the Blue Ring before the next Level 1 measure. The clean tip is still `l1_tf`.
-The default main spine buys it at `0x34` after the `0x47` heart, then returns
-via the `0x39` pond to the L1 mouth. Survival tops the wallet to 250R at the
-ring stage and the shop itself changes `$0662` from 0 to 1. Ringless L1 and
-later checkpoints, including the old L5 pins, are obsolete for this main
-spine. Rebuild them from power-on; `--resume` rejects a ringless downstream
-state. A natural 250R farm remains future work.
-The first open ladder row is `pre_l1` in `spine/clean_tip.py`: hypothesis,
-inventory gap. The spec is [PRE_L1.md](PRE_L1.md).
+Toward a Clean continuous run, the assist left is the heart refill plus the
+bomb/key counts and the L7 Food. Rupees are earned (hidden caves, see
+[PRE_L1.md](PRE_L1.md)); potions carry the last heart through L3.
+
+1. Last-heart L8 0x1F: its Darknut clear timed out without the full-heart
+   beam (run 29r4). Port the upward pass's flank/rear policy
+   (`level8/north_column.py` `_combat_3e`) or the engine's static-strike
+   rule, score over offsets from `LastHeart29_level8_magic_key_stairs`
+   without `--assist`.
+2. Refill hot spots under last-heart (run 29r3): L5 0x05 (17h), 0x64 Blue
+   Darknuts (12h), L6 0x38/0x3A (12h). Two-heart Darknut hits skip the
+   last-heart window; the observed-damage guard's 6 safety refills were
+   all there.
+3. More drinks: a second restock stop after L5/L6 (0x64 again, or 0x4B's
+   burn cave), sized by the wallet the dungeons leave.
+4. Bomb/key top-ups (rr-doua) and the L7 Food (rr-8t4.4/.5).
+5. Survival credits on the latest code (run 21) for the frame/heart row.
 
 Zelda Dungeon calls this The Gathering. Order:
 
@@ -19,7 +27,7 @@ Zelda Dungeon calls this The Gathering. Order:
 3. Heart at `0x7B` (taken from a `BFS_7C` pin, `GatherHeartL8Leave`), then the heart at `0x2C` (taken from a `BFS_2C` pin, `GatherHeartM3Leave`).
 4. Northeast cluster: 100 rupees `0x0F`, letter `0x0E`, candle `0x0C`, White Sword `0x0A`. Go around Lost Hills `0x1B`. The older 21609-frame chain ended ringless at L1 and is historical evidence only. Next: heal before `exit_6f` so the chain can run with no refill, then drop the key poke at `backtrack44`.
 5. Burn heart `0x47` and the 90-rupee shield at `0x46`.
-6. Blue Ring at `0x34` is mandatory before L1. Arrows at `0x4A` and potion at `0x64` remain separate route work.
+6. Blue Ring at `0x34` is mandatory before L1, paid by the hidden rupee caves; 0x62's 100R after it buys a red potion at `0x64`. Arrows at `0x4A` remain separate route work.
 7. Then the Level 1 mouth at `0x37`, and only then a new Clean Level 1 measure.
 
 Do not overwrite the 18909f oracle while this prefix is open.

@@ -16,6 +16,27 @@ The 18909f figure is the clean-tip oracle recorded on 2026-09-14. This doc pass 
 
 Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
 
+## 2026-09-24: no rupee writes; potions replace refills through L3
+
+Survival still (the refill is on), but the wallet is never written now.
+The gather chain opens the hidden rupee caves on and beside its walk
+(`overworld/locations.py` `SECRET_RUPEE_CAVES`; payouts from the ROM cave
+table at `$18610`: `$21`=30R, `$22`=100R, `$23`=10R) and pays the 250R Blue
+Ring and the candle from play; the wallet caps at 255, so 0x62's 100R comes
+after the ring and buys a red potion at 0x64. Continuous chain from the
+power-on pre-L1 leave: 40,719 frames, 0 deaths, L1 mouth with Ring 1, a red
+potion and 38R, no inventory write. Every rupee top-up is deleted (ring,
+pre-L1 20R, L7 Bait 60R); only bomb/key counts and the L7 Food remain.
+
+`PotionDrinkGuard` (every spine stage) drinks at the last heart and holds
+the refill meanwhile; the walk from L3 to L4 restocks at 0x64. Last-heart
+power-on (`--engage-hearts 1 --observed-damage-guard`, run 29, resumed from
+save points after each fixed stall): power-on → L4 with **0 refills**, the
+two drinks landing in L2 0x3E and L3's raft room; L4 stepladder → L6 heart
+11 refills (5 at the last heart, 6 safety after a two-heart hit); L6 → L8
+4 more. It stops in L8 0x1F, whose Darknut clear needs the full-heart beam.
+Per-segment rows: [RUN_METRICS.md](RUN_METRICS.md).
+
 ## 2026-09-23: Survival power-on → credits, one continuous run
 
 `run_survival_spine.py --through level9-credits --save-points Full --no-video`
