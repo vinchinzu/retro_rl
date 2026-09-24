@@ -108,3 +108,13 @@ def test_rod_pickup_fails_closed_if_already_owned() -> None:
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed and not ctl.success
     assert act.reason == "already_rod"
+
+
+def test_south_halt_row_steps_inland_not_idle() -> None:
+    # Blue Ring power-on 15: the halt idled at (128,181) for 4000 frames.
+    ram = _ram(x=128, y=181)
+    _plant_left_block(ram)
+    ctl = make_stairs_09_controller()
+    act = ctl.step(read_snapshot(ram))
+    assert act.reason == "south_inland"
+    assert list(act.action) == list(nes_action("UP"))
