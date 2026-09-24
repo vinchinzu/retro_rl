@@ -392,7 +392,11 @@ def run_controller_stage(
         if assist is not None:
             assist.refill_hold = guard.holds_refill
     try:
-        for frame in range(1, max_frames + 1):
+        frame = 0
+        # Frames the guard spends drinking (~525 a red) are not the stage's:
+        # they extend its budget instead of timing a tight stage out.
+        while frame < max_frames + (guard.frames if guard is not None else 0):
+            frame += 1
             snap = read_snapshot(env.get_ram())
             room = f"{int(snap.level)}:{int(snap.screen):02x}"
             result.observe_hearts(hearts_held(snap), room)
