@@ -116,3 +116,38 @@ def test_0x79_east_skirt_comes_down_to_the_exit_rows_from_above() -> None:
     assert press(109) == "DOWN"
     assert press(133) == "RIGHT"
     assert press(157) == "UP"
+
+
+def test_hop_unstick_walks_the_lattice_once_the_wiggle_is_spent(monkeypatch) -> None:
+    """``unstick_wiggle`` idled once its nudge was spent; idling keeps Link
+    still, so ``stuck`` only grew (0x1E ``letter``: 2528 frames). Past the
+    wiggle the rung walks the ROM lattice to the hop's exit band."""
+    import zelda_i.overworld.path as path
+    from retro_harness.nes import nes_idle_action
+
+    calls = []
+
+    def band_step(env, snap, direction, lo, hi):
+        calls.append((direction, lo, hi))
+        return "DOWN"
+
+    monkeypatch.setattr(path, "ow_edge_band_step", band_step)
+    ctrl = OverworldPathController(hops=(ScreenHop(0x5D, "RIGHT", y_band_lo=120, y_band_hi=140),))
+    ctrl.stuck = 10_000
+    ctrl._hop = ctrl.hops[0]  # the ladder sets it each frame
+    act = ctrl._rung_unstick(_snap(96, 85))
+    assert list(act.action) != list(nes_idle_action())
+    assert calls == [("RIGHT", 120, 140)]
+
+
+def test_post_l6_walk_hands_a_stall_to_the_unstick_rung() -> None:
+    """``post_l6_path_stuck_wait`` idled at the top of the hop ladder
+    (priority 10), ahead of every rung that could move Link."""
+    from retro_harness.nes import nes_idle_action
+    from zelda_i.level7.pond import PostLevel6OverworldController
+
+    ctrl = PostLevel6OverworldController()
+    ctrl.stuck = ctrl.stuck_threshold + 1
+    hop = ctrl.hops[0]
+    act = ctrl._extra_hop_action(_snap(96, 85, 0x10), hop)
+    assert act is None or list(act.action) != list(nes_idle_action())
