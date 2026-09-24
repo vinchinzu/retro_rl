@@ -6,19 +6,24 @@ Toward a Clean continuous run, the assist left is the heart refill plus the
 bomb/key counts and the L7 Food. Rupees are earned (hidden caves, see
 [PRE_L1.md](PRE_L1.md)); potions carry the last heart through L3.
 
-1. Last-heart L8 0x1F: its Darknut clear timed out without the full-heart
-   beam (run 29r4). Port the upward pass's flank/rear policy
-   (`level8/north_column.py` `_combat_3e`) or the engine's static-strike
-   rule, score over offsets from `LastHeart29_level8_magic_key_stairs`
-   without `--assist`.
+1. No-beam fights under last-heart. Last-heart 30r2 (resumed from the
+   post-L6 overworld) cleared L7 and L8, 0x1F included, then timed out in
+   L9 0x61 Patra (rr-6o39): Link enters L9 with ~11/14 hearts and no
+   potion, so the shot never fires. 0x1F (rr-secm) and final Patra 0x52
+   are the same class. Options: a melee Patra on the lap `PatraEyeModel`
+   predicts (eye contact is 1 heart with the Blue Ring), arrows (26R for
+   ~30 hits), or a heal before L9. Replay with `stage_replay.py
+   --last-heart` from `LastHeart30_level9_room61_patra`.
 2. Refill hot spots under last-heart (run 29r3): L5 0x05 (17h), 0x64 Blue
-   Darknuts (12h), L6 0x38/0x3A (12h). Two-heart Darknut hits skip the
-   last-heart window; the observed-damage guard's 6 safety refills were
-   all there.
+   Darknuts (12h), L6 0x38/0x3A (12h). Last-heart run 30 reached L6 0x09
+   with 6 + 1 safety refills (run 29: 15 by L8).
 3. More drinks: a second restock stop after L5/L6 (0x64 again, or 0x4B's
-   burn cave), sized by the wallet the dungeons leave.
-4. Bomb/key top-ups (rr-doua) and the L7 Food (rr-8t4.4/.5).
-5. Survival credits on the latest code (run 21) for the frame/heart row.
+   burn cave), sized by the wallet the dungeons leave (rr-thlc).
+4. Bomb/key top-ups (rr-doua: 75 bombs, 4 keys poked in run 31) and the L7
+   Food (rr-8t4.4/.5). Arrows@6:1c is the other write left.
+5. Survival credits: run 31 (b8cc4ab6) went power-on to credits in 275,135
+   frames with no rupee write; final Patra's drifted eye lap is fixed
+   (rr-e59v, 11,407 -> 3,362f).
 
 Zelda Dungeon calls this The Gathering. Order:
 

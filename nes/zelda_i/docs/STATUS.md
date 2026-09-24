@@ -16,6 +16,23 @@ The 18909f figure is the clean-tip oracle recorded on 2026-09-14. This doc pass 
 
 Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
 
+## 2026-09-24 (later): credits with no rupee write; final Patra aims
+
+`blue_ring_full_poweron24` (92f1031d) went power-on to the credits in one
+session, 0 state loads, 283,010 frames: the first credits run with no rupee
+write. Its final Patra took 11,407 frames because the last eye's lap had
+drifted below the room. `PatraAim` (`level9/patra.py`, rr-e59v) fits each
+eye's lap and, once it drifts off the body, fires only on a predicted shot
+hit; the lane stand now keeps its side and stands on walkable nodes. Run 31
+(b8cc4ab6) replays run 24 frame for frame up to 0x52, then clears it in
+3,362 frames: credits at 275,135. Survival, not Clean; bomb/key/arrow/Food
+writes remain.
+
+Last-heart (`--engage-hearts 1 --observed-damage-guard`, three pieces on
+92f1031d): power-on to L6 0x09 with 6 + 1 safety refills, then L7 and L8
+(0x1F included), then a timeout in L9 0x61 Patra: Link has no potion and
+~11/14 hearts, so no shot (rr-6o39).
+
 ## 2026-09-24: no rupee writes; potions replace refills through L3
 
 Survival still (the refill is on), but the wallet is never written now.
