@@ -17,6 +17,9 @@ from typing import Any, Callable, Protocol
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+from zelda_i.walk.physics import lattice_starts
+from zelda_i.walk import live_env
 from zelda_i.dungeon.engine import DungeonPhase, DungeonRoomSpec, GenericDungeonRoomController
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
@@ -292,6 +295,20 @@ class BombWallController:
                     self.approach_index += 1
                     self.notes.append(f"approach_{self.approach_index}")
                     return FrameAction(nes_idle_action(), "approach_next")
+                # ROM lattice to the waypoint first. The hand legs below are
+                # y-first from wherever the previous stage left Link: the
+                # cleared-room sweep leaves L2 0x1E at (200,93), and DOWN
+                # there is a block for 12000f (Blue Ring power-on 11).
+                # Only for a waypoint on land: L4 0x21's stand (120,105) is
+                # over the water, reached on the ladder by the hand legs, and
+                # the lattice's nearest node vs that pixel flipped 93<->95.
+                env = self._env if self._env is not None else live_env.current()
+                if env is not None and has_room_tile_map(env.get_ram()):
+                    nodes = ow_walkable_nodes(env.get_ram(), overworld=False)
+                    if any(n in nodes for n in lattice_starts(wx, wy)):
+                        step = room_step(snap, (wx, wy), tol=atol, env=env)
+                        if step is not None:
+                            return FrameAction(nes_action(step), "approach_lattice")
                 # First waypoint is south-band (y-first); later wps keep x locked.
                 y_first = self.approach_index == 0
                 if y_first and abs(snap.link_y - wy) > atol:

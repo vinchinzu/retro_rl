@@ -195,6 +195,20 @@ def test_1e_south_band_before_stand() -> None:
     assert act.reason == "approach_y"
 
 
+def test_1e_approach_walks_the_lattice_round_the_blocks_with_tiles() -> None:
+    """Blue Ring power-on 11: the cleared-room sweep leaves Link at (200,93);
+    the y-first leg pressed DOWN into the block at (200,101) for 12000f."""
+    from retro_harness.nes import nes_action
+    from zelda_i.level2.bomb_path import BOMB_1E_SPINE_APPROACH
+    from zelda_i.tests.ram_helpers import room_tile_env
+
+    ctrl = make_bomb_north_1e_controller(approach_waypoints=BOMB_1E_SPINE_APPROACH)
+    ctrl.bind_env(room_tile_env("0x1e", level=2))
+    act = ctrl.step(_snap(room=ctrl.wall.room, x=200, y=93, bombs=8, level=2))
+    assert act.reason == "approach_lattice"
+    assert list(act.action) != list(nes_action("DOWN"))
+
+
 def test_1e_south_band_centers_x_before_stand() -> None:
     """0x1e live: south y=189 then east column 176, not mid-y laterals."""
     ctrl = make_bomb_north_1e_controller()

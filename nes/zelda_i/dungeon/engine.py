@@ -50,7 +50,15 @@ from zelda_i.dungeon.tilemap import (
 from zelda_i.beam import beam_aim, beam_ready
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
-from zelda_i.ram import ADDR_LADDER, PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import (
+    ADDR_LADDER,
+    PLAY_MODE,
+    ZeldaObject,
+    ZeldaSnapshot,
+    read_snapshot,
+    room_item_taken,
+    room_item_xy,
+)
 from zelda_i.walk.physics import (
     DEFAULT_BOUNDS,
     OPPOSITE,
@@ -80,6 +88,12 @@ _SCOOP_RADIUS = 48
 _SCOOP_REACH = 4
 # Frames a cleared room may spend walking to its floor drops before leaving.
 SWEEP_MAX_FRAMES = 240
+# Room items the post-clear sweep takes ($00AB): bombs, rupees, 5 rupees, a
+# key, a heart container. Maps and compasses do nothing for the route.
+SWEEP_ROOM_ITEMS = frozenset({0x00, 0x0F, 0x18, 0x19, 0x1A})
+ROOM_ITEM_SWEEP_FRAMES = 360
+# Frames standing on a room item that has not been taken before leaving it.
+ROOM_ITEM_STAND_FRAMES = 30
 _OCC_BODY_R = 8
 # What Link may stand on *inside* a room he is clearing. Deliberately narrower
 # than ``tilemap.LINK_WALKABLE_TILES``: that set also grades a bombed-open
@@ -490,6 +504,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _ladder_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     # Post-clear floor sweep: frames spent and drops given up as unreachable.
     sweep_frames: int = field(default=0, init=False)
+    _room_item_frames: int = field(default=0, init=False, repr=False)
+    _leaving_wall: bool = field(default=False, init=False, repr=False)
+    _room_item_stand: int = field(default=0, init=False, repr=False)
     _sweep_skip: set[tuple[int, int]] = field(default_factory=set, init=False, repr=False)
     # Records-only action histogram + tail; see ``_record_reason``.
     _reason_counts: dict[str, int] = field(
@@ -867,9 +884,16 @@ class GenericDungeonRoomController(EntryRouteWalker):
         # Hysteresis: a patrol waypoint on the band edge (L6 0x39 (160,109))
         # walks Link to 108, and a 1 px leave_wall swapped with the patrol
         # every frame for 12515f.
+        # Once it fires it holds until Link is inside the box itself: ending
+        # in the slack (0x39 (120,106)) left him off the y=109 turn row, and
+        # a chase across the water took the frame back UP, 1 px each way for
+        # 15300f (Blue Ring power-on 13).
         m = OFF_WALL_SLACK
-        if lo_x - m <= x <= hi_x + m and lo_y - m <= y <= hi_y + m:
+        if self._leaving_wall and lo_x <= x <= hi_x and lo_y <= y <= hi_y:
+            self._leaving_wall = False
+        if not self._leaving_wall and lo_x - m <= x <= hi_x + m and lo_y - m <= y <= hi_y + m:
             return None
+        self._leaving_wall = True
         if x < lo_x:
             # Tunnel x<24 only accepts RIGHT. At the mouth (x≈32) the
             # door row y≈141 blocks eastbound movement — step off it first.
@@ -1597,35 +1621,77 @@ class GenericDungeonRoomController(EntryRouteWalker):
 
         Rupees, bombs and clocks always; hearts and fairies only when hurt.
         The run left 51 of 81 rupees and 6 of 9 bomb drops on the floor while
-        Survival poked 82 bombs (full_poweron12 ledger).
+        Survival poked 82 bombs (full_poweron12 ledger). Then the room's own
+        item (``_room_item_goal``).
         """
-        if self.sweep_frames >= SWEEP_MAX_FRAMES:
-            return None
-        hurt = not snap.health_is_full
-        drops = [
-            d
-            for d in _combat.floor_drops(snap)
-            if (int(d.x), int(d.y)) not in self._sweep_skip
-            and (hurt or int(d.state) not in _combat.HEART_OR_FAIRY_STATES)
-        ]
-        if not drops:
-            return None
         lx, ly = int(snap.link_x), int(snap.link_y)
-        drop = min(drops, key=lambda d: manhattan(lx, ly, int(d.x), int(d.y)))
-        goal = (int(drop.x), int(drop.y))
-        self.sweep_frames += 1
+        if self.sweep_frames < SWEEP_MAX_FRAMES:
+            hurt = not snap.health_is_full
+            drops = [
+                d
+                for d in _combat.floor_drops(snap)
+                if (int(d.x), int(d.y)) not in self._sweep_skip
+                and (hurt or int(d.state) not in _combat.HEART_OR_FAIRY_STATES)
+            ]
+            if drops:
+                drop = min(drops, key=lambda d: manhattan(lx, ly, int(d.x), int(d.y)))
+                self.sweep_frames += 1
+                act = self._sweep_walk(snap, (int(drop.x), int(drop.y)), "sweep_drop")
+                if act is not None:
+                    return act
+        goal = self._room_item_goal(snap)
+        if goal is None:
+            return None
+        self._room_item_frames += 1
         if manhattan(lx, ly, *goal) <= _SCOOP_REACH:
-            return FrameAction(nes_idle_action(), "sweep_drop")
+            self._room_item_stand += 1
+            if self._room_item_stand > ROOM_ITEM_STAND_FRAMES:
+                # Standing on it takes nothing: not shown yet (a push or a
+                # boss gates it). Leave it rather than wait out the budget.
+                self._sweep_skip.add(goal)
+                return None
+        return self._sweep_walk(snap, goal, "sweep_room_item")
+
+    def _sweep_walk(
+        self, snap: ZeldaSnapshot, goal: tuple[int, int], reason: str
+    ) -> FrameAction | None:
+        """One lattice press onto ``goal``; ``None`` (and skipped) if unreachable."""
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        if manhattan(lx, ly, *goal) <= _SCOOP_REACH:
+            return FrameAction(nes_idle_action(), reason)
         route = lattice_goto_route(None, snap, goal)
         if route is None:
             self._sweep_skip.add(goal)
             return None
-        # On the drop's nearest node: the last pixels are a direct press.
+        # On the goal's nearest node: the last pixels are a direct press.
         step = lattice_step(lx, ly, route[0] if route else goal)
         if step is None:
             self._sweep_skip.add(goal)
             return None
-        return FrameAction(nes_action(step), "sweep_drop")
+        return FrameAction(nes_action(step), reason)
+
+    def _room_item_goal(self, snap: ZeldaSnapshot) -> tuple[int, int] | None:
+        """The cleared room's own key, bombs, rupees or heart container.
+
+        The run ledger found keys left in L2 0x3E, L5 0x26/0x47, L6 0x2D/0x58,
+        L8 0x4C, L9 0x61 and bombs in eight rooms on Blue Ring power-on 7-9;
+        Survival top-ups paid for them instead (rr-qb6w). Taken is the room's
+        world-flag item bit, not a guess from Link's pose.
+        """
+        if int(snap.room_item_id) not in SWEEP_ROOM_ITEMS:
+            return None
+        if self._room_item_frames >= ROOM_ITEM_SWEEP_FRAMES:
+            return None
+        env = self._env if self._env is not None else live_env.current()
+        if env is None:
+            return None
+        ram = env.get_ram()
+        if room_item_taken(ram, int(snap.level), int(snap.screen)):
+            return None
+        goal = room_item_xy(ram)
+        if not any(goal) or goal in self._sweep_skip:
+            return None
+        return goal
 
     def _scoop_heart(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if snap.health_is_full or snap.filled_hearts >= snap.heart_containers:
