@@ -42,12 +42,16 @@ DEST_POSE = (120, 189)  # live N7 arrival
 BOMB_NORTH_STAND = (120, 93)  # N6 live north-wall pose; 0x3E (120,105) overshoots into the alcove here
 # N3: LEFT at y=117 reaches (64,117) then boxes LEFT into tile 178
 # hunting x=48. First wp is that live tile; then south-east around.
+# Up the x=176 column to the top row, not (120, 109): at y=109 Link's feet
+# are on the block row, so no node exists there and the approach fell back
+# to a LEFT press into it at (176, 109) (run 21: 8000f, 71 hearts; run 17
+# only passed because a Pols Voice hit bumped Link up to y=93).
 BOMB_NORTH_APPROACH_4C: tuple[tuple[int, int], ...] = (
     (64, 117),
     (64, 157),
     (176, 157),
-    (176, 109),
-    (120, 109),
+    (176, 93),
+    BOMB_NORTH_STAND,
 )
 STAIRS_TILES = range(0x70, 0x74)
 UP_BIT = 0x08

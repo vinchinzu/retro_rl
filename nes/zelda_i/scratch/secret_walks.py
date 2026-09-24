@@ -382,3 +382,12 @@ def l8_clear_1f():
     ctl = GenericDungeonRoomController(_clear_1f_spec())
     ctl.phase = DungeonPhase.FIGHT
     return ctl
+
+
+def l7_pond_approach():
+    from zelda_i.level7.hops import POND_APPROACH_MAX_FRAMES
+    from zelda_i.level7.overworld import WARP_JOIN_TO_POND_HOPS, OverworldToLevel7PondController
+
+    return OverworldToLevel7PondController(
+        hops=WARP_JOIN_TO_POND_HOPS, max_frames=POND_APPROACH_MAX_FRAMES, resume_on_screen=True
+    )

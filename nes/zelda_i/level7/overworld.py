@@ -273,6 +273,12 @@ def pond_suffix_extra_hop_action(
     # climb.  probe_64_north_to_54: x≈60 is a clean open column to 0x54;
     # x≤40 stalls at y≈93; x≈120 is under the central tree isle.
     if hop.target == 0x54 and snap.screen == 0x64:
+        # ROM lattice to the x~60 north gap first: from 0x64's potion-shop
+        # mouth (112, 93) the hand micro below went DOWN then LEFT into the
+        # tree isle for 29918 frames (restock before the pond, 2026-09-24).
+        step = ow_edge_band_step(None, snap, "UP", BAIT_64_GAP_X - 8, BAIT_64_GAP_X + 8)
+        if step is not None:
+            return swing(step, "64_lattice_north")
         if snap.link_x > BAIT_64_GAP_X + 6 and snap.link_y < 116:
             return swing("DOWN", "64_east_ledge_down")
         if snap.link_x > BAIT_64_GAP_X + 6:

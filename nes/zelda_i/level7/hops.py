@@ -26,6 +26,7 @@ from zelda_i.level7.dungeon import (
     level7_red_candle_stop,
 )
 from zelda_i.level7.entry import (
+    BAIT_COST,
     UNVERIFIED_BAIT_PLAN,
     BaitPurchasePlan,
     make_bait_purchase_controller,
@@ -83,6 +84,7 @@ from zelda_i.level7.shard import (
     make_level7_shard_leave_controller as make_level7_shard_leave_controller_impl,
 )
 from zelda_i.level7.stairs0d import make_stairs0d_controller
+from zelda_i.overworld.cave_shop import potion_restock_stages
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from zelda_i.ram import (
@@ -428,7 +430,7 @@ def level7_entry_chapter_stages(
         target_screen=warp_target, launch_screen=warp_launch
     )
     approach = OverworldToLevel7PondController(
-        hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES
+        hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES, resume_on_screen=True
     )
     bait = (
         make_survival_bait_purchase_controller(plan=bait_plan)
@@ -439,6 +441,8 @@ def level7_entry_chapter_stages(
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
         ("level7_recorder_warp", warp, warp.max_frames),
+        # The join crosses 0x64's shop: restock, keeping the Bait's 60R.
+        *potion_restock_stages(join_hops, "l6", reserve=BAIT_COST),
         ("level7_pond_approach", approach, approach.max_frames),
         ("level7_bait_purchase", bait, bait.max_frames),
         ("level7_pond_drain_entry", pond, pond.max_frames),
@@ -466,11 +470,12 @@ def level7_bait_shop_chapter_stages(
         target_screen=warp_target, launch_screen=warp_launch
     )
     shop = OverworldToLevel7PondController(
-        hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES
+        hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES, resume_on_screen=True
     )
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
         ("level7_recorder_warp", warp, warp.max_frames),
+        *potion_restock_stages(join_hops, "l6", reserve=BAIT_COST),
         ("level7_shop_approach", shop, shop.max_frames),
     )
 
