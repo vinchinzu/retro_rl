@@ -42,6 +42,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **blue_ring_full_poweron10 (+ Patra outside the orbit)** | **ok (unlimited_health)** | level9-credits | **257943** | 7094 | 76/171 | 39 | 166 / 549 | 72 / 5 / 177 | 7:0d 8448f | 356.33 | 1:43=map 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 6:58=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
 | **blue_ring_full_poweron14 (+ room-item sweep, lattice bomb approach, leave_wall latch)** | **ok (unlimited_health)** | level9-credits | 262777 | 6461 | 71/163 | 30 | 200 / 593 | 72 / 4 / 177 | 7:0d 12100f | 402.83 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:29=key 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
 | **blue_ring_full_poweron16 (d8b8235c: L9 join on the engine, Ganon windows, Gleeok turn-node stand, L6 0x09 south row, L7 0x0D ring lure)** | **ok (unlimited_health)** | level9-credits | **251516** | 5983 | 76/169 | 37 | 221 / 515 | 69 / 3 / 177 | 7:0d 6875f | 380.15 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
+| **blue_ring_full_poweron17 (f549259a: + Patra lane stand)** | **ok (unlimited_health)** | level9-credits | **249503** | 6167 | 74/168 | 37 | 173 / 473 | 74 / 3 / 177 | 7:0d 6875f | 337.66 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
@@ -60,6 +61,9 @@ Run 15 had stopped in L6 0x09 (the stairs' south halt idled); the fix was
 replayed from its save point, resumed to the credits, then run 16 started
 from power-on. Run 16 predates the Patra lane stand (f549259a): 0x61 cost
 it 39 hearts, which that change scores at 1.6h over 36 offsets.
+Run 17 (the Patra lane stand) reached the credits at 249,503 frames and
+337.7 hearts: 0x52 0h, 0x61 1h, Ganon 5h, L8 Gleeok 5.1h (run 14: 12, 22,
+18, 26). The worst room is now L8 0x3E's six Blue Darknuts (23.5h).
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
