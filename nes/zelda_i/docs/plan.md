@@ -6,14 +6,13 @@ Toward a Clean continuous run, the assist left is the heart refill plus the
 bomb/key counts and the L7 Food. Rupees are earned (hidden caves, see
 [PRE_L1.md](PRE_L1.md)); potions carry the last heart through L3.
 
-1. No-beam fights under last-heart. Last-heart 30r2 (resumed from the
-   post-L6 overworld) cleared L7 and L8, 0x1F included, then timed out in
-   L9 0x61 Patra (rr-6o39): Link enters L9 with ~11/14 hearts and no
-   potion, so the shot never fires. 0x1F (rr-secm) and final Patra 0x52
-   are the same class. Options: a melee Patra on the lap `PatraEyeModel`
-   predicts (eye contact is 1 heart with the Blue Ring), arrows (26R for
-   ~30 hits), or a heal before L9. Replay with `stage_replay.py
-   --last-heart` from `LastHeart30_level9_room61_patra`.
+1. No-beam fights under last-heart. Both L9 Patras now use ordinary sword
+   attacks when Link lacks full hearts: 0x61 from a walkable east stand and
+   final 0x52 from a south stand. The L9 predecessor resumed through credits
+   with 6 refills (previously 7), but a fresh power-on run 34 stops at L8
+   0x1F after 16,150 frames (rr-secm). Its new predecessor pin is
+   `LastHeart34_level8_magic_key_stairs`; fix the Darknut fight without a
+   beam, then repeat power-on before claiming a continuous last-heart clear.
 2. Refill hot spots under last-heart (run 29r3): L5 0x05 (17h), 0x64 Blue
    Darknuts (12h), L6 0x38/0x3A (12h). Last-heart run 30 reached L6 0x09
    with 6 + 1 safety refills (run 29: 15 by L8).
@@ -23,7 +22,8 @@ bomb/key counts and the L7 Food. Rupees are earned (hidden caves, see
    Food (rr-8t4.4/.5). Arrows@6:1c is the other write left.
 5. Survival credits: run 31 (b8cc4ab6) went power-on to credits in 275,135
    frames with no rupee write; final Patra's drifted eye lap is fixed
-   (rr-e59v, 11,407 -> 3,362f).
+   (rr-e59v, 11,407 -> 3,362f). Last-heart L9 melee clears from its saved
+   predecessor in 35,288f, but that run has one state load and six refills.
 
 Zelda Dungeon calls this The Gathering. Order:
 

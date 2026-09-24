@@ -71,6 +71,8 @@ from zelda_i.level9.path import (
 from zelda_i.level9.patra import (
     PATRA_STAND_DY,
     PatraAim,
+    PATRA_ROOM,
+    patra_melee_action,
     final_patra_north_door_earned,
 )
 from zelda_i.level9.room51 import room51_to_41_step
@@ -973,6 +975,8 @@ class NaturalFinalPatraController(_NaturalEndingController):
     start_checked: bool = False
     stand_dy: int = PATRA_STAND_DY
     aim: PatraAim = field(default_factory=PatraAim)
+    melee: bool = False
+    melee_cooldown: int = 0
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -986,6 +990,15 @@ class NaturalFinalPatraController(_NaturalEndingController):
         if final_patra_north_door_earned(snap):
             self.success = True
             return self._action(nes_idle_action(), "patra_north_door_earned")
+        # A sword beam requires full hearts.  The south turn node is within
+        # ordinary blade range of the eye lap without standing in its center.
+        self.melee |= not snap.health_is_full
+        if self.melee:
+            action, reason, self.melee_cooldown = patra_melee_action(
+                snap, cooldown=self.melee_cooldown, stand=(120, 173),
+                facing="UP", room=PATRA_ROOM,
+            )
+            return self._action(action, reason)
         self.aim.stand_dy = self.stand_dy
         action, reason = self.aim.step(snap)
         return self._action(action, reason)
