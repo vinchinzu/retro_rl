@@ -709,6 +709,13 @@ class Level4StepladderController:
             return FrameAction(nes_idle_action(), "dock_idle")
 
         if self.phase is StepladderPhase.HUNT:
+            if int(snap.ladder) >= 1:
+                # The item, not the pose: a hunt swing had moved Link to
+                # (132, 141) when the pickup landed, and he stood halted
+                # holding it up while RIGHT waited 96 frames (run 29).
+                self.success = True
+                self._set_phase(StepladderPhase.DONE, "ladder_taken")
+                return FrameAction(nes_idle_action(), "done")
             if snap.mode in (4, 6, 7) or snap.transitioning:
                 return FrameAction(nes_idle_action(), "hunt_settle")
             if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:
