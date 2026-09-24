@@ -85,6 +85,24 @@ LEVEL4_POST_L3_SCREENS: tuple[int, ...] = path_screens_from_hops(
 assert LEVEL4_POST_L3_SCREENS[0] == SCREEN_POST_L3_RETURN
 assert LEVEL4_POST_L3_SCREENS[-1] == LEVEL4_ISLAND_SCREEN
 
+# L3 leaves 2 bombs and L4 bombs four walls (0x61 N, 0x21 N, 0x11 N, 0x11
+# E), so the walk buys a 20R pack at the 0x44 shop. From 0x64 it is two
+# screens north through the gather ring walk's gaps and back down the ring
+# return's. ``LEVEL4_HOPS_VIA_SHOP_E5`` resumes on any screen of it: 0x44
+# after the buy, 0x64 after a potion restock (the last 0x64 row), 0x74 else.
+LEVEL4_BOMB_WALLS = 4
+LEVEL4_HOPS_VIA_SHOP_E5: tuple[ScreenHop, ...] = (
+    LEVEL4_HOPS_FROM_POST_L3[:3]
+    + (
+        ScreenHop(0x54, "UP"),
+        ScreenHop(0x44, "UP", align_x=116),
+        ScreenHop(0x54, "DOWN", align_x=116),
+        ScreenHop(0x64, "DOWN", align_x=60),
+    )
+    + LEVEL4_HOPS_FROM_POST_L3[3:]
+)
+assert LEVEL4_HOPS_FROM_POST_L3[2].target == 0x64
+
 # Legacy name kept for planning_report / docs (was start→dock placeholder).
 LEVEL4_DOCK_HOPS: tuple[ScreenHop, ...] = LEVEL4_HOPS_FROM_POST_L3
 

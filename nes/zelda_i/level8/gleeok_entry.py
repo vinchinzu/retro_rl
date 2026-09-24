@@ -184,8 +184,10 @@ class Level8BombNorth4CController(HopController):
         if self._doors0 is None:
             self._doors0 = int(snap.cur_opened_doors)
             self._bombs0 = int(snap.bombs)
-        if snap.bombs <= 0:
-            return self.mark_fail("no_bombs")
+            # On arrival only: the last bomb, once placed, reads 0 for the
+            # whole blast (power-on 2026-09-24 failed here with it lit).
+            if snap.bombs <= 0:
+                return self.mark_fail("no_bombs")
         if self._wall is None:
             opens = int(self.dest) if self.dest is not None else GLEEOK_HYP
             self._wall = BombWallController(

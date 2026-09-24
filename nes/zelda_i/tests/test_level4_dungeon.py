@@ -305,8 +305,9 @@ def test_level4_gleeok13_attaches_after_clear12() -> None:
     assert not level4_gleeok13_success(read_snapshot(ram))
 
 
-def test_level4_gleeok13_west_of_block_routes_around() -> None:
-    """West-of-block leftover (72, 150) routes UP to y<=117, RIGHT to 112, DOWN to 144."""
+def test_level4_gleeok13_west_of_block_routes_around(monkeypatch) -> None:
+    """West of the 0x68 block, the ROM lattice walks round it to the east push
+    stand: never RIGHT into its west face (that pushes it the wrong way)."""
     from retro_harness.nes import nes_action
     from zelda_i.level4.dungeon import PUSH_12_STAND
     from zelda_i.level4.gleeok13 import make_gleeok13_controller
@@ -319,40 +320,24 @@ def test_level4_gleeok13_west_of_block_routes_around() -> None:
         PLAY_MODE,
         read_snapshot,
     )
-    import numpy as np
+    from zelda_i.tests.ram_helpers import room_tile_env
+    from zelda_i.walk import live_env
 
-    ctl = make_gleeok13_controller()
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_MODE] = PLAY_MODE
-    ram[ADDR_LEVEL] = 4
-    ram[ADDR_SCREEN] = 0x12
+    env = room_tile_env("0x12", level=4)
+    monkeypatch.setattr(live_env, "_ENV", env)
+    ram = env.get_ram()
+    ram[ADDR_MODE], ram[ADDR_LEVEL], ram[ADDR_SCREEN] = PLAY_MODE, 4, 0x12
 
-    # Leftover west of block at (72, 150): routes UP
-    ram[ADDR_LINK_X] = 72
-    ram[ADDR_LINK_Y] = 150
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "stand_avoid_block_up"
-    assert list(act.action) == list(nes_action("UP"))
-
-    # At y=117: routes RIGHT toward x=112
-    ram[ADDR_LINK_Y] = 117
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "stand_avoid_block_right"
-    assert list(act.action) == list(nes_action("RIGHT"))
-
-    # At x=112, y=117: routes DOWN toward y=144
-    ram[ADDR_LINK_X] = 112
-    ram[ADDR_LINK_Y] = 117
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason == "stand_y"
-    assert list(act.action) == list(nes_action("DOWN"))
+    ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = 80, 144  # against the block's west face
+    act = make_gleeok13_controller().step(read_snapshot(ram))
+    assert act.reason == "stand_lattice"
+    assert list(act.action) != list(nes_action("RIGHT"))
 
     # At PUSH_12_STAND (112, 144): pushes LEFT
     ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = PUSH_12_STAND
-    act = ctl.step(read_snapshot(ram))
+    act = make_gleeok13_controller().step(read_snapshot(ram))
     assert act.reason == "push_block"
     assert list(act.action) == list(nes_action("LEFT"))
-
 
 
 def test_l4_bomb_walls_pause_select_leftover_slot() -> None:

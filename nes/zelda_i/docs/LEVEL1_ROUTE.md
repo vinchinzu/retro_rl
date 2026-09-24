@@ -46,7 +46,12 @@ level1-bow-cellar` is **1/1** mode 9 `0x7F` `(128,141)`. `--through
 level1-bow-pickup` is **1/1** play `0x23` `(16,141)` `ADDR_BOW=1`
 (`l1_bow_pickup`, hop 1343f). Two-ladder cellar: floor y=189, east clip,
 LEFT+DOWN drop, left-ladder UP, 0x22 south-peel then east column.
-West-mouth leftover rejoins `(176,117)` before `backtrack44`. Survival
+West-mouth leftover rejoins `(176,117)` before `backtrack44`. The detour
+spends 0x23's key, so the Survival prefix takes 0x72's (3 Keese, key at
+`(160,192)` once they die) straight after 0x74's: `enter72` walks 0x74 and
+0x73 by the ROM lattice (row 141 of 0x73 is blocked), and `north` climbs
+from the west door via row 149. `backtrack44` then holds 0x43 E's key
+without a write (rr-doua). Survival
 `--through level2-entry` is **1/1** (`l1_bow_splice_l2_entry_v14`) play
 `0x7d` `(120,205)` TF=`0x01` bow=1. Arrows still 0. Map and wooden
 Boomerang pickups stay skipped (L2 magical boomerang replaces the wooden).

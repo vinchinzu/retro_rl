@@ -126,7 +126,7 @@ def test_complete_stop_promoted_and_fails_closed_on_wrong_screen() -> None:
     assert MEASURED_POST_L7_EXIT.link_y == 93
     assert MEASURED_POST_L7_EXIT.triforce == 0x7F
     assert MEASURED_POST_L7_EXIT.keys == 0
-    assert MEASURED_POST_L7_EXIT.bombs == 1
+    assert MEASURED_POST_L7_EXIT.bombs == 0
     assert MEASURED_POST_L7_EXIT.rupees == POST_L7_ARROW_RUPEES
     assert MEASURED_POST_L7_EXIT.heart_containers == 12
     assert MEASURED_POST_L7_EXIT.selected_item == 1

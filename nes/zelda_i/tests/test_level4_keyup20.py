@@ -82,3 +82,22 @@ def test_west_aisle_leftover_reasons(path_index: int, x: int, y: int, reason: st
     act = ctrl.step(read_snapshot(_pose(x, y)))
     assert ctrl.phase is Maze31WestPhase.INLAND
     assert act.reason == reason
+
+
+def test_knocked_off_strip_on_east_column_climbs_again() -> None:
+    """A Keese hit at (160,110) knocked Link to (160,142); LEFT from there
+    crossed the water on the ladder and wedged at x~104 for 6000f."""
+    ctrl = _inland(0)
+    act = ctrl.step(read_snapshot(_pose(160, 142)))
+    assert act.reason == "knocked_off_strip"
+    assert ctrl.phase is Maze31WestPhase.EAST_U
+    act = ctrl.step(read_snapshot(_pose(160, 142)))
+    assert act.reason == "join_maze_west"
+    assert ctrl.path_index == 3  # (160,125): the column top, then the clip
+
+
+def test_inland_walk_past_the_column_is_not_a_knockback() -> None:
+    ctrl = _inland(2)
+    act = ctrl.step(read_snapshot(_pose(48, 125)))
+    assert ctrl.phase is Maze31WestPhase.INLAND
+    assert act.reason != "knocked_off_strip"

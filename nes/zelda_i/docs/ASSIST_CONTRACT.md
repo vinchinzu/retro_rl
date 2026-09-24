@@ -57,8 +57,12 @@ entry is bombs=0) and attach Boom → Dodongo → TF without a farm pass. Expand
 by operator direction on 2026-08-23: bomb-count top-ups may be used at verified
 bomb gates through the assisted full-game clear while route experience and
 reusable skills are still being built and refactored.
-The spine applies this at L2 entry, again before `SPINE_BOMB_RETOPUP`
-stages, and at the natural L3 Raft boundary before the bomb-heavy boss suffix.
+Bomb and key top-ups from power-on through L8 were **retired on 2026-09-24**
+(rr-doua). Between dungeons the spine buys 20R bomb packs when the carried
+count is short of the next dungeon's walls (`BombRestockController`: 0x4A
+before L2, 0x44 on the L3 → L4 and L7 → L8 walks), room drops cover the
+rest, and L1 takes 0x72's key so `backtrack44` needs no key write. Only
+the L9 chapter gates (`SPINE_L9_RETOPUP`) still write the bomb count.
 Rupee-count top-ups (L7 Bait 60R, pre-l1 coast pack 20R, gathering Blue
 Ring 250R) were **retired on 2026-09-24**. The gather chain now opens the
 hidden rupee caves on and beside its walk (`SECRET_RUPEE_CAVES` in

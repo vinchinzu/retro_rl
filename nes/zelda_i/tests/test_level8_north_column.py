@@ -700,6 +700,18 @@ def test_0x3e_combat_reasons(
     assert list(act.action) == list(nes_action(*action))
 
 
+def test_0x3e_keeps_two_bombs_for_its_wall_and_0x4c() -> None:
+    """No top-up: a tactical throw at 0x3E must leave its wall and 0x4C's."""
+    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=2)
+    _put_obj(ram, 1, TYPE_0C, 128, 64, 135, facing=0x04)
+    ctl = make_darknut_key_controller()
+    ctl._3e_peeled = True
+    act = _step(ctl, ram)
+    assert not ctl.failed
+    assert act.reason != "threat_bomb_up"
+    assert list(act.action) != list(nes_action("UP", "B"))
+
+
 def test_0x3e_advance_north_when_clear() -> None:
     """Link advances UP the west corridor toward the north wall when corridor is clear."""
     ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=7)

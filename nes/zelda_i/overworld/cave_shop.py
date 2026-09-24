@@ -188,6 +188,10 @@ class CaveShopBuyController(OverworldPathController):
     # newly exposed stairs. Turn back onto those stairs from above.
     door_reverse_y: int | None = None
     _door_returning: bool = False
+    # Lattice row under the mouth. Set, ``mouth_step`` routes there from any
+    # side and pushes ``door_dir`` (a bomb or potion mouth above a walled
+    # south gap); unset keeps the blind align-then-push hunt.
+    mouth_approach_y: int | None = None
 
     # Rupee farm — call into it (never poke) when short of ``price``. None
     # means "no farm available": short-of-price fails closed instead.
@@ -314,6 +318,19 @@ class CaveShopBuyController(OverworldPathController):
             )
         if snap.screen != self.shop_screen:
             return super()._simple_door_hunt(snap)
+        if (
+            self.mouth_approach_y is not None
+            and snap.level == 0
+            and snap.mode == PLAY_MODE
+        ):
+            direction = mouth_step(
+                snap,
+                int(self.door_x),
+                int(self.mouth_approach_y),
+                direction=self.door_dir,
+                env=self._env,
+            )
+            return self._swing(direction, "cave_mouth")
         if self.door_reverse_y is not None:
             if snap.link_y < self.door_reverse_y:
                 self._door_returning = True
@@ -526,19 +543,6 @@ class PotionShopBuyController(CaveShopBuyController):
                 self._configure("red" if snap.rupees >= RED_POTION_PRICE else "blue")
         return super()._after_hops(snap)
 
-    def _simple_door_hunt(self, snap: ZeldaSnapshot) -> FrameAction:
-        if (
-            snap.level != 0
-            or snap.mode != PLAY_MODE
-            or snap.screen != self.shop_screen
-            or self.phase_frames > self.door_hunt_timeout
-        ):
-            return super()._simple_door_hunt(snap)
-        direction = mouth_step(
-            snap, int(self.door_x or POTION_MOUTH_X), POTION_APPROACH_Y, env=self._env
-        )
-        return self._swing(direction, "potion_mouth")
-
     def _selector(self, want: int) -> PauseSelectController:
         ctl = PauseSelectController(want=want)
         ctl.bind_env(self._env)
@@ -664,6 +668,7 @@ def make_potion_buy_controller(
         shop_screen=POTION_SHOP_SCREEN,
         cave_x=POTION_MOUTH_X,
         cave_y=POTION_MOUTH_Y,
+        mouth_approach_y=POTION_APPROACH_Y,
         buy_y=POTION_BUY_Y,
         buy_budget=POTION_BUY_BUDGET,
         success_getter=_potion,

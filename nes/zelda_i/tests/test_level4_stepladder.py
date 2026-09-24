@@ -29,3 +29,14 @@ def test_hunt_ends_when_the_ladder_byte_is_set_wherever_link_stands() -> None:
     ctrl.phase = StepladderPhase.HUNT
     ctrl.step(_snap(132, 141, ladder=0))
     assert not ctrl.success
+
+
+def test_path_ends_when_a_knockback_carries_link_over_the_pedestal() -> None:
+    """Power-on 2026-09-24: a Keese knocked Link west across (136, 141) to
+    (129, 141) mid-PATH; he took the ladder and stood frozen with it up while
+    PATH pressed RIGHT for 96 frames and failed ``dock_solid_129_141``."""
+    ctrl = make_stepladder_controller(clear_first=False)
+    ctrl.phase = StepladderPhase.PATH
+    ctrl.step(_snap(129, 141, ladder=1))
+    assert ctrl.success
+    assert ctrl.phase is StepladderPhase.DONE

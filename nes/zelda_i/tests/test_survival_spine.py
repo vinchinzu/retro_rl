@@ -17,15 +17,11 @@ from zelda_i.ram import (
 )
 from zelda_i.spine.survival import (
     BOOT_POLICY,
-    SPINE_BOMB_RETOPUP,
-    SPINE_L1_KEY_RETOPUP,
     SPINE_THROUGH,
     SpineRun,
     merge_inventory_assist,
     spine_final_fields,
-    topup_owned_bombs,
     topup_owned_inventory,
-    topup_owned_keys,
 )
 from zelda_i.level5.spine import validate_l5_endpoint
 
@@ -96,7 +92,6 @@ def test_level1_arrows_is_dedicated_not_on_default_tf() -> None:
     arrow_names = [name for name, _, _ in level1_arrows_stages()]
     assert "level1_bow_pickup" in arrow_names
     assert "backtrack44" in arrow_names
-    assert "backtrack44" in SPINE_L1_KEY_RETOPUP
     assert arrow_names[-1] == "level1_arrows"
     run = SpineRun(through="level1-arrows", success=True, boot_frames=1)
     assert run.report()["stop"] == "level1_arrows"
@@ -138,7 +133,7 @@ def test_pre_l1_is_dedicated_gathering_not_l1_tf() -> None:
     assert 'through == "pre-l1"' in prefix_src
     assert "_boot_only_prefix" in prefix_src
     assert prefix_src.index('through == "pre-l1"') < prefix_src.index(
-        'milestone="clear53"'
+        'milestone="first_key"'
     )
     boot_src = inspect.getsource(_boot_only_prefix)
     assert "boot_to_ready" in boot_src
@@ -175,7 +170,16 @@ def test_gather_is_the_default_prefix_and_stops_on_the_l1_mouth() -> None:
     assert names.index("ring") < names.index("walk_37")
     assert all(limit > 0 for _, _, limit in gather_stages())
     l1 = [name for name, _, _ in gathered_level1_stages()]
-    assert l1 == ["enter_level1", "first_key", "north", "clear63", "clear53"]
+    assert l1 == [
+        "enter_level1",
+        "first_key",
+        "enter72",
+        "clear72_key",
+        "return73",
+        "north",
+        "clear63",
+        "clear53",
+    ]
     assert gather_assist(0) is None
     assert isinstance(gather_assist(1), LastHeartAssist)
     assert gather_assist(2).engage_at_whole_hearts == 2
@@ -198,18 +202,30 @@ def test_pre_l1_forces_assist_off() -> None:
     assert "allow_pokes = False" in cli_src
 
 
-def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
+def test_l1_west_key_pays_for_the_bow_key_before_backtrack44() -> None:
+    """0x72's key, taken straight after 0x74's, replaces the backtrack44 poke."""
+    import inspect
+
     from zelda_i.level1.bow_pickup import level1_survival_tf_stages
+    from zelda_i.spine import survival
+    from zelda_i.spine.survival import gathered_level1_stages
 
     names = [name for name, _, _ in level1_survival_tf_stages()]
     assert names.index("level1_bow_rejoin") < names.index("backtrack44")
-    assert "clear72_key" not in names  # 0x63 skirt red; poke stays
-    assert "backtrack44" in SPINE_L1_KEY_RETOPUP
+    prefix = [name for name, _, _ in gathered_level1_stages()]
+    assert prefix.index("first_key") < prefix.index("clear72_key") < prefix.index("north")
+    assert not hasattr(survival, "topup_owned_keys")
+    assert "key_retopup" not in inspect.signature(survival._run_stages).parameters
 
 
-def test_spine_retopup_l2_bomb_walls_retired() -> None:
+def test_spine_level2_has_no_bomb_topup() -> None:
     """Natural 0x4A bomb buy and room drops retire L2 bomb top-ups (rr-doua)."""
-    assert len(SPINE_BOMB_RETOPUP) == 0
+    import inspect
+
+    from zelda_i.spine import survival
+
+    assert not hasattr(survival, "SPINE_BOMB_RETOPUP")
+    assert "retopup" not in inspect.getsource(survival._continue_level2_spine)
 
 
 def test_spine_level3_has_no_bomb_topup() -> None:
@@ -220,6 +236,23 @@ def test_spine_level3_has_no_bomb_topup() -> None:
     src = inspect.getsource(_continue_level3_spine)
     assert "topup_owned_bombs" not in src
     assert "topup_owned_inventory" not in src
+
+
+def test_spine_level4_buys_bombs_instead_of_topup() -> None:
+    """The 0x44 pack retires the two L4 bomb top-ups (rr-doua)."""
+    import inspect
+
+    from zelda_i.level4.spine import continue_level4_spine, l4_hops
+    from zelda_i.spine import survival
+
+    assert not hasattr(survival, "topup_owned_bombs")
+    assert "topup" not in inspect.signature(l4_hops).parameters
+    assert "topup_bombs" not in inspect.signature(continue_level4_spine).parameters
+    entry = l4_hops(spine_fields=lambda snap: {})[0]
+    names = [name for name, _, _ in entry.stages]
+    assert names.index("potion_restock_l3") < names.index("bomb_restock_l3")
+    assert names.index("exit_bomb_restock_l3") < names.index("enter_level4")
+    assert all(hop.before is None for hop in l4_hops(spine_fields=lambda snap: {}))
 
 
 def test_merge_inventory_assist_appends_writes() -> None:
@@ -269,30 +302,6 @@ def test_topup_owned_inventory_records_poke_on_run() -> None:
     report = run.report()
     assert report["poke_bombs"] == 16
     assert report["poke_keys"] == 2
-
-
-def test_topup_owned_bombs_preserves_carried_keys() -> None:
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_BOMBS] = 8
-    ram[ADDR_KEYS] = 4
-    values: dict[str, int] = {}
-
-    class _Data:
-        memory = None
-
-        def set_value(self, key: str, value: int) -> None:
-            values[key] = int(value)
-
-    env = SimpleNamespace(
-        get_ram=lambda: ram,
-        unwrapped=SimpleNamespace(data=_Data(), em=None),
-    )
-    run = SpineRun(through="level4", success=True, boot_frames=199)
-    topup_owned_bombs(env, run)
-    assert values["bombs"] == 16
-    assert "keys" not in values
-    assert run.inventory_assist["poke_bombs"] == 16
-    assert run.inventory_assist["poke_keys"] is None
 
 
 def test_survival_aquamentus_tanks_fireballs() -> None:
@@ -401,7 +410,7 @@ def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
     src = inspect.getsource(_run_stages)
     assert "allow_pokes" in src
     assert "allow_pokes" in inspect.getsource(continue_level7_spine)
-    assert "allow_pokes" in inspect.getsource(continue_level8_spine)
+    assert "retopup" not in inspect.getsource(continue_level8_spine)
 
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_BOMBS] = 0
@@ -442,15 +451,12 @@ def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
             (("gohma", ctl, 10),),
             assist=None,
             retopup=frozenset({"gohma"}),
-            key_retopup=frozenset({"gohma"}),
         )
     finally:
         surv.run_controller_stage = orig
     assert ctl.poke_arrows is False
 
     topup_owned_inventory(env, run)
-    topup_owned_bombs(env, run)
-    topup_owned_keys(env, run)
     assert values == {}
     assert run.inventory_assist is None
 
@@ -496,7 +502,7 @@ def test_spine_stages_never_write_the_wallet() -> None:
             run = SpineRun(through="level7", success=True, boot_frames=1, allow_pokes=allow)
             gates = frozenset({"bomb_topup", "ring", "level7_bait_purchase"})
             stages = tuple((name, SimpleNamespace(), 10) for name in sorted(gates))
-            assert _run_stages(env, run, stages, assist=None, retopup=gates, key_retopup=gates)
+            assert _run_stages(env, run, stages, assist=None, retopup=gates)
     finally:
         surv.run_controller_stage = orig
     assert "rupees" not in values

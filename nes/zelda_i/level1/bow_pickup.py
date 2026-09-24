@@ -115,9 +115,8 @@ def level1_bow_pickup_stages():
 def level1_survival_tf_stages():
     """Survival L1 TF with the bow detour after clear23_key. Not Clean M5.
 
-    0x72 west-key stages exist on ``level1_survival_west_key_stages`` but are
-    not spliced here: ``to_entrance`` from the clear53 leftover red in 0x63
-    (diamond skirt). Keep the poke at backtrack44 until that hop is green.
+    The detour spends 0x23's key on 0x22; 0x43 E is paid by 0x72's key, which
+    the spine's L1 prefix takes straight after 0x74's (``gathered_level1_stages``).
     """
     stages: list[Any] = []
     for item in level1_triforce_stages(natural_entry=True, survival=True):

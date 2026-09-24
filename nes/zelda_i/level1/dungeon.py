@@ -124,17 +124,13 @@ ROOM_72_SPEC = DungeonRoomSpec(
         patrol_attack_period=10,
         patrol_attack_hold=3,
     ),
+    # The key shows at (160, 192) once the Keese are dead ($6530/room item
+    # read 2026-09-24); the room is open floor, so one lattice node reaches it.
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
         inventory_field="keys",
-        target=(128, 141),
-        waypoints=(
-            (128, 141),
-            (96, 141),
-            (160, 141),
-            (128, 109),
-            (128, 173),
-        ),
+        target=(160, 189),
+        waypoints=((160, 189),),
     ),
     room_item_id=0x19,
     exit_routes=(

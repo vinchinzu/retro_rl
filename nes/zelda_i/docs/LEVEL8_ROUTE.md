@@ -13,9 +13,11 @@ Status: **SPINE-GREEN FROM POWER-ON (2026-09-05).** `--through level8` 1/1,
 `set_state=0`, first quest: entry (`rr-6o7.1`), Magical Key (`rr-6o7.2`,
 power-on 2/2) and the four-head Gleeok suffix (`rr-6o7.3`) all pass.  Link
 settles OW `0x6D` `(96,93)` mode 5, TF `0xFF`, Magical Key 1, heart
-containers 10, deaths 0, progression/capacity writes 0.  Inventory assist is
-`SPINE_L8_RETOPUP` (bomb/key count top-up, ASSIST_CONTRACT) only; `--clean`
-/`allow_pokes=False` passes an empty retopup set (rr-npv.4). Interior
+containers 10, deaths 0, progression/capacity writes 0.  No inventory
+assist since 2026-09-24 (rr-doua): the post-L7 walk splits at 0x54 to buy a
+20R bomb pack at 0x44 (L7 leaves 4, L8 bombs 0x6E, 0x3E and 0x4C and throws
+at 0x3E's Darknuts), and the carried key plus 0x5E's open the two key
+doors. Interior
 `RoomHopSpec` cardinals and the 0x3C heart walk are leftover-relative
 (`door_band_goal`; heart dest is RAM slot 19 + hc bit).  See
 [`docs/tasks/rr-npv.4-residual.md`](tasks/rr-npv.4-residual.md).  The measured

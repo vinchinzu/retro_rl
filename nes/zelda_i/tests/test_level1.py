@@ -276,3 +276,28 @@ def test_exit42_skips_old_man_hint() -> None:
     ctl.step(read_snapshot(ram))
     assert ctl.phase is Room42ExitPhase.ROUTE_EAST
     assert "center_block_pushed" in ctl.notes
+
+
+def test_north_doorway_steps_down_before_the_lattice() -> None:
+    """(120,82) is 0x63/0x73's north doorway, above the first room row: the
+    lattice's first press there was LEFT into the frame for 3800 frames."""
+    from zelda_i.level1.path import north_doorway_step
+
+    for ctl in (Level1ToEntranceController(), Level1WestDoorController()):
+        room = ROOM_NORTH_STALFOS if isinstance(ctl, Level1ToEntranceController) else ROOM_ENTRANCE
+        act = ctl.policy(read_snapshot(_ram(room=room, x=120, y=82)))
+        assert list(act.action) == list(nes_action("DOWN"))
+    assert north_doorway_step(read_snapshot(_ram(x=120, y=93))) is None
+
+
+def test_legacy_prefix_takes_the_west_key_after_the_first() -> None:
+    """``gather=False`` stops on 0x74's key; the spine runs the gathered
+    prefix's rooms after it, so 0x43 E has 0x72's key with no write."""
+    import inspect
+
+    from zelda_i.spine import survival
+
+    names = [name for name, _, _ in survival.level1_after_first_key_stages()]
+    assert names == ["enter72", "clear72_key", "return73", "north", "clear63", "clear53"]
+    src = inspect.getsource(survival.run_survival_spine)
+    assert 'milestone="first_key"' in src

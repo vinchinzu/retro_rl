@@ -46,7 +46,7 @@ def test_lab_gleeok_restore_counts_set_state() -> None:
 def test_entrance_tf_runner_skips_ow_and_bomb_topup() -> None:
     src = inspect.getsource(run_level4_entrance_tf)
     assert "level4-entry" in src
-    assert "topup_bombs=_noop" in src
+    assert "topup" not in src
     from zelda_i.level4.spine import _clear_31_stages
 
     names = [name for name, _, _ in _clear_31_stages()]
@@ -102,3 +102,30 @@ def test_hc_hunt_reads_the_room_item_slot() -> None:
     assert _room_item_heart_xy(ram) == (208, 192)
     ram[ADDR_ROOM_ITEM_ID] = 0x1B  # triforce: not the container any more
     assert _room_item_heart_xy(ram) is None
+
+
+def test_0x12_push_stand_walks_the_lattice_around_the_block_pair(monkeypatch) -> None:
+    """Power-on leftover (160,134) beside the (136..152, 133..141) blocks:
+    the x-first hand walk pressed LEFT into them for 8000 frames."""
+    from retro_harness.nes import nes_action
+    from zelda_i.level4.gleeok13 import make_gleeok13_controller
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        PLAY_MODE,
+        read_snapshot,
+    )
+    from zelda_i.tests.ram_helpers import room_tile_env
+    from zelda_i.walk import live_env
+
+    env = room_tile_env("0x12", level=4)
+    ram = env.get_ram()
+    ram[ADDR_LEVEL], ram[ADDR_SCREEN], ram[ADDR_MODE] = 4, 0x12, PLAY_MODE
+    ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = 160, 134
+    monkeypatch.setattr(live_env, "_ENV", env)
+    act = make_gleeok13_controller().step(read_snapshot(ram))
+    assert act.reason == "stand_lattice"
+    assert list(act.action) != list(nes_action("LEFT"))

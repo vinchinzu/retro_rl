@@ -31,7 +31,6 @@ from zelda_i.level8.spine import (
     L8_STOPS,
     L8_THROUGH,
     LIVE_RECON_L8_OVERRIDES,
-    SPINE_L8_RETOPUP,
     continue_level8_spine,
 )
 from zelda_i.ram import ADDR_MAGIC_KEY, PLAY_MODE, read_snapshot
@@ -129,14 +128,14 @@ def test_default_entry_chapter_refuses_on_unmeasured_handoff() -> None:
     continue_level8_spine(
         _env(ram), run, through="level8-entry", run_stages=stages
     )
-    assert stages.names() == ["level8_post_l7_to_bush"]
+    assert stages.names() == ["level8_post_l7_to_shop"]
     approach = stages.rows[0][1]
     assert MEASURED_POST_L7_HANDOFF.complete()
     assert not UNMEASURED_POST_L7_HANDOFF.complete()
     assert approach.handoff is MEASURED_POST_L7_HANDOFF
     assert "post_l7_screen_mismatch" in approach.notes
     assert run.success is False
-    assert run.failed_stage == "level8_post_l7_to_bush"
+    assert run.failed_stage == "level8_post_l7_to_shop"
 
 
 def test_measured_leave_accepts_and_walks_west_ring() -> None:
@@ -165,13 +164,24 @@ def test_measured_leave_accepts_and_walks_west_ring() -> None:
     continue_level8_spine(
         _env(ram), run, through="level8-entry", run_stages=stages
     )
-    approach = stages.rows[0][1]
-    assert approach.handoff is MEASURED_POST_L7_HANDOFF
-    assert "post_l7_handoff_accepted" in approach.notes
-    assert "post_l7_path_unmeasured" not in approach.notes
+    assert stages.names()[:4] == [
+        "level8_post_l7_to_shop",
+        "bomb_restock_l7",
+        "exit_bomb_restock_l7",
+        "level8_post_l7_to_bush",
+    ]
+    pond = stages.rows[0][1]
+    assert pond.handoff is MEASURED_POST_L7_HANDOFF
+    assert "post_l7_handoff_accepted" in pond.notes
+    assert "post_l7_path_unmeasured" not in pond.notes
+    assert pond.hops[-1].target == pond.stop_screen == 0x54
+    assert pond.phase.name != "FAILED"
+    approach = stages.rows[3][1]
     assert approach.hops[-1].target == 0x6D
+    assert not approach.check_handoff and approach.resume_on_screen
+    assert "post_l7_resumed" in approach.notes
     assert approach.phase.name != "FAILED"
-    assert run.failed_stage != "level8_post_l7_to_bush"
+    assert run.failed_stage not in ("level8_post_l7_to_shop", "level8_post_l7_to_bush")
 
 
 def test_entry_stop_refuses_even_with_recon_topology() -> None:
@@ -300,27 +310,19 @@ def test_magic_key_hop_captures_the_key_before_its_stages() -> None:
     assert hop.before is not None
 
 
-def test_clean_clears_l8_bomb_key_retopup(monkeypatch) -> None:
-    """``allow_pokes=False`` (``--clean``) must not top up bombs/keys."""
-    captured: dict[str, Any] = {}
+def test_l8_tops_up_no_bombs_or_keys(monkeypatch) -> None:
+    """The 0x44 pack retired the L8 bomb/key top-ups, pokes allowed or not."""
+    for allow_pokes in (False, True):
+        captured: dict[str, Any] = {}
 
-    def fake_attach(_env, _run, _hops, **kw) -> None:
-        captured.update(kw)
+        def fake_attach(_env, _run, _hops, **kw) -> None:
+            captured.update(kw)
 
-    monkeypatch.setattr("zelda_i.level8.spine.attach_hops", fake_attach)
-    continue_level8_spine(
-        _env(_ram()),
-        SimpleNamespace(allow_pokes=False, success=True),
-        through="level8-entry",
-        run_stages=lambda *_a, **_k: True,
-    )
-    assert captured["retopup"] == frozenset()
-    continue_level8_spine(
-        _env(_ram()),
-        SimpleNamespace(allow_pokes=True, success=True),
-        through="level8-entry",
-        run_stages=lambda *_a, **_k: True,
-    )
-    assert captured["retopup"] == SPINE_L8_RETOPUP
-    assert "level8_north_manhandla_bomb" in SPINE_L8_RETOPUP
-    assert "level8_darknut_key_up" in SPINE_L8_RETOPUP
+        monkeypatch.setattr("zelda_i.level8.spine.attach_hops", fake_attach)
+        continue_level8_spine(
+            _env(_ram()),
+            SimpleNamespace(allow_pokes=allow_pokes, success=True),
+            through="level8-entry",
+            run_stages=lambda *_a, **_k: True,
+        )
+        assert "retopup" not in captured

@@ -259,6 +259,6 @@ def test_hop_rows_default_split_bare_fixture_spine_natural() -> None:
     )
 
 
-# test_clean_clears_l8_bomb_key_retopup lives in test_level8_spine_wiring.py
+# test_l8_tops_up_no_bombs_or_keys lives in test_level8_spine_wiring.py
 # (byte-identical duplicate removed 2026-09-16; that file owns spine-wiring
 # behavior of continue_level8_spine/attach_hops).

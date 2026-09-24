@@ -43,7 +43,8 @@ from zelda_i.level8.suffix import (
     make_cellar_2f_settle_controller,
     suffix_stages,
 )
-from zelda_i.level8.overworld import L7_POND_TO_LEVEL8_BUSH_HOPS
+from zelda_i.level8.overworld import LEVEL8_BOMBS_WANTED, L7_POND_VIA_SHOP_E5_HOPS
+from zelda_i.overworld.bomb_shop import SHOP_E5_SCREEN, bomb_restock_stages
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.level8.gleeok import GLEEOK_ROOM
 from zelda_i.ram import (
@@ -80,14 +81,31 @@ def _entry_stages(
     post_l7_hops: tuple[ScreenHop, ...],
     burn_target: BushBurnTarget,
 ):
-    approach = make_post_l7_to_bush_controller(
-        handoff=handoff,
-        hops=post_l7_hops,
-    )
+    targets = [hop.target for hop in post_l7_hops]
+    if SHOP_E5_SCREEN in targets:
+        # Leave-checked walk to the screen under the shop, the buy, then
+        # the rest of the walk from wherever the buy left Link.
+        below = targets.index(SHOP_E5_SCREEN) - 1
+        pond = make_post_l7_to_bush_controller(
+            handoff=handoff,
+            hops=post_l7_hops[: below + 1],
+            stop_screen=targets[below],
+        )
+        approach = make_post_l7_to_bush_controller(
+            handoff=handoff, hops=post_l7_hops, resumed=True
+        )
+        walk = (
+            ("level8_post_l7_to_shop", pond, pond.max_frames),
+            *bomb_restock_stages(post_l7_hops, "l7", want=LEVEL8_BOMBS_WANTED),
+            ("level8_post_l7_to_bush", approach, approach.max_frames),
+        )
+    else:
+        approach = make_post_l7_to_bush_controller(handoff=handoff, hops=post_l7_hops)
+        walk = (("level8_post_l7_to_bush", approach, approach.max_frames),)
     select = make_select_red_candle_controller()
     burn = make_burn_level8_bush_controller(target=burn_target)
     return (
-        ("level8_post_l7_to_bush", approach, approach.max_frames),
+        *walk,
         ("level8_select_red_candle", select, SELECT_MAX_FRAMES),
         ("level8_burn_bush_enter", burn, BURN_MAX_FRAMES),
     )
@@ -135,7 +153,7 @@ def l8_hops(
     env,
     *,
     handoff: PostLevel7Handoff = UNMEASURED_POST_L7_HANDOFF,
-    post_l7_hops: tuple[ScreenHop, ...] = L7_POND_TO_LEVEL8_BUSH_HOPS,
+    post_l7_hops: tuple[ScreenHop, ...] = L7_POND_VIA_SHOP_E5_HOPS,
     burn_target: BushBurnTarget = UNVERIFIED_BUSH_BURN_TARGET,
     topology: Level8Topology = UNOBSERVED_LEVEL8_TOPOLOGY,
     clear_endpoint: Level8ClearEndpoint = UNOBSERVED_LEVEL8_CLEAR,

@@ -13,6 +13,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.level4.dungeon import (
     LEVEL4,
     PUSH_12_DIR,
@@ -102,23 +103,16 @@ class Level4Gleeok13Controller:
 
         if self.phase is Gleeok13Phase.STAND:
             tx, ty = PUSH_12_STAND
-            dx, dy = tx - snap.link_x, ty - snap.link_y
-            if abs(dx) <= 2 and abs(dy) <= 1:
+            if abs(tx - snap.link_x) <= 2 and abs(ty - snap.link_y) <= 1:
                 self._set_phase(Gleeok13Phase.PUSH, "at_push_stand")
                 return FrameAction(nes_action(PUSH_12_DIR), "push_block")
-            # When west of the block (96, 144), route around it to the north (y <= 117).
-            if snap.link_x < tx:
-                if snap.link_y > 117:
-                    return FrameAction(nes_action("UP"), "stand_avoid_block_up")
-                return FrameAction(nes_action("RIGHT"), "stand_avoid_block_right")
-            # v1 leftover (128,141): y-first DOWN on the door row is solid.
-            if abs(dx) > 2:
-                return FrameAction(
-                    nes_action("RIGHT" if dx > 0 else "LEFT"), "stand_x"
-                )
-            return FrameAction(
-                nes_action("DOWN" if dy > 0 else "UP"), "stand_y"
-            )
+            # ROM lattice around the room's blocks. The x-first hand walk
+            # pressed LEFT into the (136..152, 133..141) pair for 8000f
+            # from a (160,134) leftover (power-on 2026-09-24).
+            step = room_step(snap, PUSH_12_STAND, tol=1)
+            if step is None:
+                return FrameAction(nes_idle_action(), "stand_wait")
+            return FrameAction(nes_action(step), "stand_lattice")
 
         if self.phase is Gleeok13Phase.PUSH:
             if not (snap.cur_opened_doors & 0x01):

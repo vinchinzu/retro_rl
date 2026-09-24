@@ -301,6 +301,21 @@ def test_candle_cellar_does_not_oscillate_at_y180() -> None:
     assert list(act.action) != DOWN
 
 
+def test_candle_cellar_climbs_again_after_a_keese_knocks_link_down() -> None:
+    """Power-on 2026-09-24: a cellar Keese knocked Link off the ledge to
+    (32,189) after the climb; the walk idled there for 37,878 frames."""
+    ctl = Room1ACandleController()
+    ctl._cellar_dropped = ctl._cellar_climbed = True
+    ram = _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=32, y=189, candle=1)
+    act = _step(ctl, ram)
+    assert act.reason == "cellar_east"
+    assert list(act.action) == list(nes_action("RIGHT"))
+    ram[ADDR_LINK_X] = 172
+    act = _step(ctl, ram)
+    assert act.reason == "cellar_climb"
+    assert list(act.action) == UP
+
+
 def test_candle_rising_edge_greens() -> None:
     ctl = Room1ACandleController()
     ram = _ram(screen=ROOM_4A, mode=PASSAGE_MODE, x=124, y=141, candle=0)

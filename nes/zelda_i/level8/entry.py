@@ -116,8 +116,10 @@ class PostLevel7Handoff:
         ):
             if int(actual) < int(floor):
                 return f"post_l7_{label}_mismatch"
+        # Nor is the B item: L8 selects its own (the candle before the burn,
+        # bombs at each wall), and with no bombs left the ROM has moved B off
+        # the bomb slot the fixture tape measured.
         for label, actual, expected in (
-            ("selected_item", read_u8(ram, ADDR_SELECTED_ITEM), self.selected_item),
             ("whistle", read_u8(ram, ADDR_WHISTLE), self.whistle),
             ("food", read_u8(ram, ADDR_FOOD), self.food),
             ("rod", read_u8(ram, ADDR_ROD), self.rod),
@@ -278,6 +280,12 @@ class PostLevel7ToBushController(OverworldPathController):
 
     handoff: PostLevel7Handoff = UNMEASURED_POST_L7_HANDOFF
     hops: tuple[ScreenHop, ...] = ()
+    # The walk can stop short of the bush for a stage in between (the 0x44
+    # bomb buy off 0x54). The leg after it resumes on screen and skips the
+    # handoff check: Link is no longer on the leave, and the first leg
+    # already checked it there.
+    stop_screen: int = SCREEN_LEVEL8_BUSH
+    check_handoff: bool = True
     phase: ApproachPhase = ApproachPhase.HOP
     max_frames: int = APPROACH_MAX_FRAMES
     require_sword: bool = True
@@ -301,19 +309,26 @@ class PostLevel7ToBushController(OverworldPathController):
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         if not self._handoff_checked or self._env is None:
             return False
+        if (
+            snap.level != 0
+            or snap.mode != PLAY_MODE
+            or snap.transitioning
+            or snap.screen != self.stop_screen
+        ):
+            return False
+        if self.stop_screen != SCREEN_LEVEL8_BUSH:
+            return True
         return (
-            snap.level == 0
-            and snap.mode == PLAY_MODE
-            and not snap.transitioning
-            and snap.screen == SCREEN_LEVEL8_BUSH
-            and snap.triforce == POST_L7_TRIFORCE
+            snap.triforce == POST_L7_TRIFORCE
             and read_u8(self._env.get_ram(), ADDR_CANDLE) == CANDLE_RED
         )
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         if self._at_stop(snap):
+            if self.stop_screen != SCREEN_LEVEL8_BUSH:
+                return self._finish(f"post_l7_leg_reached_0x{self.stop_screen:02x}")
             return self._finish("level8_bush_reached_from_post_l7")
-        return self._fail_now("post_l7_path_exhausted_off_0x6d")
+        return self._fail_now(f"post_l7_path_exhausted_off_0x{self.stop_screen:02x}")
 
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
@@ -351,15 +366,20 @@ class PostLevel7ToBushController(OverworldPathController):
         if not self._handoff_checked:
             if self._env is None:
                 return self._fail_now("entry_controller_env_not_bound")
-            mismatch = self.handoff.mismatch(snap, self._env.get_ram())
-            if mismatch is not None:
-                return self._fail_now(mismatch)
-            if not self.hops and snap.screen != SCREEN_LEVEL8_BUSH:
+            if self.check_handoff:
+                mismatch = self.handoff.mismatch(snap, self._env.get_ram())
+                if mismatch is not None:
+                    return self._fail_now(mismatch)
+            if not self.hops and snap.screen != self.stop_screen:
                 return self._fail_now("post_l7_path_unmeasured")
-            if self.hops and self.hops[-1].target != SCREEN_LEVEL8_BUSH:
-                return self._fail_now("post_l7_path_does_not_end_0x6d")
+            if self.hops and self.hops[-1].target != self.stop_screen:
+                return self._fail_now(
+                    f"post_l7_path_does_not_end_0x{self.stop_screen:02x}"
+                )
             self._handoff_checked = True
-            self.notes.append("post_l7_handoff_accepted")
+            self.notes.append(
+                "post_l7_handoff_accepted" if self.check_handoff else "post_l7_resumed"
+            )
         return super().step(snap)
 
     def report(self) -> dict[str, Any]:
@@ -635,8 +655,17 @@ def make_post_l7_to_bush_controller(
     *,
     handoff: PostLevel7Handoff = UNMEASURED_POST_L7_HANDOFF,
     hops: tuple[ScreenHop, ...] = (),
+    stop_screen: int = SCREEN_LEVEL8_BUSH,
+    resumed: bool = False,
 ) -> PostLevel7ToBushController:
-    return PostLevel7ToBushController(handoff=handoff, hops=hops)
+    """The leave-checked walk, or with ``resumed`` the leg after a mid-walk stage."""
+    return PostLevel7ToBushController(
+        handoff=handoff,
+        hops=hops,
+        stop_screen=stop_screen,
+        check_handoff=not resumed,
+        resume_on_screen=resumed,
+    )
 
 
 def make_select_red_candle_controller() -> SelectRedCandleController:

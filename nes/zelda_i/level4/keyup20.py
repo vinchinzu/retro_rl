@@ -59,6 +59,12 @@ MAZE_31_WEST_WAYPOINTS: tuple[tuple[int, int], ...] = (
     MAZE_31_WEST_EAST_U + MAZE_31_WEST_INLAND
 )
 MAZE_31_NORTH_STRIP_Y = 113
+# 0x31 respawns (5 Vires + red Keese) when the ladder walk comes back. A
+# Keese hit on the strip's east end knocks Link 32 px back down the east
+# column; LEFT from there crosses the water on the ladder and wedges at
+# x~104 (2026-09-24, 6000f). Knocked this far below the strip before
+# leaving the column, he climbs it again.
+MAZE_31_KNOCKED_OFF_DY = 8
 MAZE_31_WEST_AISLE_X = 48
 MAZE_31_WEST_DOOR_Y = 141
 # (40,165) is south of the door frame (UP solid). (32,149) is the alcove:
@@ -204,6 +210,14 @@ class Level4Maze31WestController:
             return release_action(snap, FrameAction(nes_action(direction, "A"), "join_maze_west"))
         return release_action(snap, FrameAction(nes_action(direction), "join_maze_west"))
 
+    def _knocked_off_strip(self, xy: tuple[int, int]) -> bool:
+        column_x = MAZE_31_WEST_EAST_U[-1][0]
+        return (
+            self.path_index == 0
+            and abs(xy[0] - column_x) <= 4
+            and xy[1] > MAZE_31_NORTH_STRIP_Y + MAZE_31_KNOCKED_OFF_DY
+        )
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
         self.phase_frames += 1
@@ -252,6 +266,11 @@ class Level4Maze31WestController:
                 return self._fail(f"clip_solid_{xy[0]}_{xy[1]}")
             else:
                 return FrameAction(nes_action("LEFT", "UP"), "maze31_west_clip")
+        if self.phase is Maze31WestPhase.INLAND and self._knocked_off_strip(xy):
+            self._sample(snap, "knocked_off_strip")
+            self._set_phase(Maze31WestPhase.EAST_U, "knocked_off_strip")
+            self.path_index = len(MAZE_31_WEST_EAST_U) - 1
+            return FrameAction(nes_idle_action(), "knocked_off_strip")
         if self.phase is Maze31WestPhase.INLAND:
             return self._thread(
                 xy,

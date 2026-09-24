@@ -30,7 +30,7 @@ Every screen id and room id is **source-hypothesized** unless marked
 |-----|-----|-------------|
 | **Raft** | `ADDR_RAFT` (`0x0660`) ≠ 0 | Hard gate: dock → island only with Raft from L3 |
 | Sword | `ADDR_SWORD` ≥ 1 | Combat |
-| Bombs (helpful) | `ADDR_BOMBS` | Optional wall skips / Manhandla |
+| **Bombs** | `ADDR_BOMBS` | Four walls on the route (0x61 N, 0x21 N, 0x11 N, 0x11 E). L3 leaves ~2, so the walk from 0x64 detours to 0x44's shop (mouth `(64,77)`, 20R pack) when short (rr-doua). |
 | Blue Candle (helpful) | `ADDR_CANDLE` | Dark rooms |
 | **Stepladder** (dungeon item) | `ADDR_LADDER` (`0x0663`) | Cross water tiles inside L4 (and later OW) |
 | Triforce shard 4 | `ADDR_TRIFORCE & 0x08` | Clear stop |
