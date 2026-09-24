@@ -14,6 +14,7 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.dungeon.hop_controller import (
+    room_step,
     LatticeDoorWalker,
     axis_dir,
     lattice_goto_route,
@@ -494,7 +495,10 @@ class Level4Key40Controller(MazeHop):
                 return self._clear.step(snap)
 
         if self.phase is Key40Phase.ALIGN:
-            d = axis_dir(xy, KEY_40_PATH_ANCHOR, y_first=True, tol=0)
+            # A lattice route to the anchor (a turn node), not y-first: from
+            # (158, 117) DOWN ran into the block at (160, 125) (last-heart
+            # run 29); the open-loop maze below still starts exactly on it.
+            d = room_step(snap, KEY_40_PATH_ANCHOR, tol=0)
             if d is None:
                 self.path_start = xy
                 self._set_phase(Key40Phase.PATH, "aligned_exact_path_anchor")
