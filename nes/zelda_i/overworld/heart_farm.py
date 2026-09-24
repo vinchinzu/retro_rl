@@ -162,8 +162,8 @@ def owns_bombs(snap: ZeldaSnapshot) -> bool:
     (0x77 -> 0x4A) where every ``0x60``/state-``0x00`` slot is a phantom.
     """
     cap = getattr(snap, "max_bombs", None)
-    if cap is not None:
-        return int(cap) > 0
+    if cap is not None and int(cap) > 0:
+        return True
     return int(snap.bombs) > 0
 
 

@@ -55,7 +55,7 @@ SWORD_SWING_PERIOD = 8
 SWORD_SWING_HOLD = 3
 STUCK_THRESHOLD = 50
 # North gap @x=112 y<90 UP-exits to 0x3A. Cave is NE (176,77).
-BOMB_SHOP_NORTH_GAP_Y_HI = 120
+BOMB_SHOP_NORTH_GAP_Y_HI = 105
 
 
 def _bombs_value(snap: ZeldaSnapshot) -> int:
@@ -129,6 +129,8 @@ def make_bomb_shop_controller(
         buy_y=BOMB_BUY_Y,
         price=BOMB_SHOP_PRICE,
         success_getter=_bombs_value,
+        min_item_gain=1,
+        min_headroom=4,
         success_addr=ADDR_BOMBS,
         success_note="bombs_bought",
         north_gap_x=BOMB_SHOP_CAVE_X,

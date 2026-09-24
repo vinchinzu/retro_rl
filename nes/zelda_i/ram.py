@@ -181,6 +181,7 @@ class ZeldaSnapshot:
     help_drop_count: int = 0  # ADDR_HELP_DROP_COUNT; 10 → 5-rupee (or bomb)
     help_drop_value: int = 0  # ADDR_HELP_DROP_VALUE; nonzero → bomb at 10
     link_iframes: int = 0  # ADDR_LINK_IFRAMES; 0→24 is the collision that zeros them
+    max_bombs: int = 0  # ADDR_MAX_BOMBS; capacity, never an assist write
     # ADDR_RUPEES_TO_ADD: a secret cave's payout lands here at once and the
     # HUD counts it into ``rupees`` over ~2 frames per rupee.
     rupees_to_add: int = 0
@@ -330,6 +331,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         facing=read_u8(ram, ADDR_LINK_FACING),
         sword=read_u8(ram, ADDR_SWORD),
         bombs=read_u8(ram, ADDR_BOMBS),
+        max_bombs=read_u8(ram, ADDR_MAX_BOMBS),
         rupees=read_u8(ram, ADDR_RUPEES),
         rupees_to_add=read_u8(ram, ADDR_RUPEES_TO_ADD),
         keys=read_u8(ram, ADDR_KEYS),

@@ -111,17 +111,9 @@ BOOT_POLICY = {
 _L4_THROUGH = tuple(k for k in L4_STOPS if k != "level4") + ("level4",)
 
 # Bomb-consuming stages. Survival tops up owned bomb/key counts before these
-# (ASSIST_CONTRACT shortcut until a farm pass). Includes the 0x6f north wall
-# that power-on L2 entry (bombs=0) otherwise fails in 1f.
-SPINE_BOMB_RETOPUP: frozenset[str] = frozenset(
-    {
-        "bomb_north_6f",
-        "bomb_north_5f",
-        "bomb_north_4f",
-        "bomb_north_1e",
-        "fight_dodongo",
-    }
-)
+# (ASSIST_CONTRACT shortcut until a farm pass). Level 2 bomb top-ups retired
+# via OW 0x4A shop buy + natural room drops (rr-doua).
+SPINE_BOMB_RETOPUP: frozenset[str] = frozenset()
 
 # Bow KEY-LEFT spends the 0x23 key. 0x43 E still needs one. Restore the
 # spent count (ASSIST_CONTRACT). Natural extra is L1 0x72 west of entrance.
@@ -200,12 +192,26 @@ _L3_THROUGH: tuple[str, ...] = tuple(_L3_STOPS)
 
 
 def level2_entry_stages():
-    """After L1 TF: idle the fanfare, then walk the Moon door and enter L2."""
+    """After L1 TF: idle the fanfare, buy bombs at 0x4A, and enter L2."""
+    from zelda_i.level2.overworld import level2_door_hops_from
+    from zelda_i.overworld.bomb_shop import BOMB_SHOP_MAX_FRAMES, make_bomb_shop_controller
+    from zelda_i.overworld.gather_segments import CaveExitController
+
     return (
         ("settle_l1_tf", PostTriforceSettleController(), SETTLE_MAX_FRAMES),
         (
+            "bomb_shop_4a",
+            make_bomb_shop_controller(restock_farm=False),
+            BOMB_SHOP_MAX_FRAMES,
+        ),
+        ("exit_4a_cave", CaveExitController(clear=0), 600),
+        (
             "enter_level2",
-            OverworldToLevel2Controller(door_path=True, require_dungeon=True),
+            OverworldToLevel2Controller(
+                hops=level2_door_hops_from(0x4A),
+                door_path=False,
+                require_dungeon=True,
+            ),
             L2_NAV_MAX_FRAMES,
         ),
     )
@@ -620,9 +626,6 @@ def _continue_level2_spine(
     if through == "level2-entry":
         return
     run.bombs = spine_bomb_report(snap.bombs, through="tf")
-    # Survival shortcut until a farm pass: power-on L2 entry is bombs=0.
-    # Documented in ASSIST_CONTRACT. Not Clean. No undiscovered items.
-    topup_owned_inventory(env, run)
 
     if not run_stages(
         env,

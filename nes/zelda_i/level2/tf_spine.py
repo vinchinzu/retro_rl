@@ -49,8 +49,9 @@ from zelda_i.level2.dungeon import (
 )
 from zelda_i.level2.enter_1e import ENTER_1E_MAX_FRAMES, Level2Enter1eController
 from zelda_i.level2.puzzles import DOOR_UP, LEVEL2_TRIFORCE_BIT
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level2.spine import Level2RoomWalkController
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
 
 # Isolated complete used --poke-bombs 16. Same budget, documented.
 SPINE_TF_BOMB_POKE = 16
@@ -352,6 +353,14 @@ class Level2DodongoController:
     hits_est: int = 0
     face_hist: dict[int, int] = field(default_factory=dict)
     stable_n: dict[int, int] = field(default_factory=dict)
+    select_item: int | None = B_SLOT_BOMBS
+    _env: Any = field(default=None, init=False, repr=False)
+    _select: PauseSelectController | None = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+        if self._select is not None:
+            self._select.bind_env(env)
 
     def _fail(self, note: str) -> FrameAction:
         self.phase = DodongoPhase.FAILED
@@ -392,6 +401,21 @@ class Level2DodongoController:
             if self.frames < self.settle_frames:
                 return self._stand("settle_0e")
             self.phase = DodongoPhase.FIGHT
+
+        if (
+            self.select_item is not None
+            and self._env is not None
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            curr = int(read_u8(self._env.get_ram(), ADDR_SELECTED_ITEM))
+            if curr != int(self.select_item):
+                if self._select is None:
+                    self._select = PauseSelectController(want=int(self.select_item), name="bombs")
+                    self._select.bind_env(self._env)
+                act = self._select.drive(snap)
+                if act is not None:
+                    return act
 
         living = self._living(snap)
         dodos = [

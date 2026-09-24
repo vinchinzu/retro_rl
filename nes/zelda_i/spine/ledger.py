@@ -21,6 +21,10 @@ Five books:
 - **inventory**: every inventory rise, with the room and whether it came
   from ``play`` (inside a frame) or a ``write`` between frames (assist,
   Survival top-up, shop poke). A load that moves Link is not a write.
+- **spends**: every bomb and key decrease in play, so assist grants can be
+  compared with actual wall, fight and door costs.
+- **forced drop windows**: the first frame with nine uninterrupted kills;
+  a bomb finishing the next eligible enemy can force a four-bomb drop.
 """
 
 from __future__ import annotations
@@ -141,11 +145,13 @@ class Drop:
     x: int
     y: int
     hurt: bool  # Link below full health when it appeared
+    bombs_at_spawn: int | None = None
+    bomb_capacity: int | None = None
     outcome: str = "open"
     end_frame: int = 0
 
     def row(self) -> dict[str, Any]:
-        return {
+        row = {
             "room": self.room,
             "kind": self.kind,
             "frame": self.frame,
@@ -154,6 +160,15 @@ class Drop:
             "hurt": self.hurt,
             "xy": [self.x, self.y],
         }
+        if self.kind == "bomb":
+            row["bombs_at_spawn"] = self.bombs_at_spawn
+            row["bomb_capacity"] = self.bomb_capacity
+            row["bankable"] = (
+                self.bomb_capacity is not None
+                and self.bombs_at_spawn is not None
+                and self.bombs_at_spawn < self.bomb_capacity
+            )
+        return row
 
 
 @dataclass
@@ -217,6 +232,9 @@ class RunLedger:
     _axes: tuple[_Axis, _Axis] = field(default_factory=lambda: (_Axis(), _Axis()))
     room_items: dict[str, RoomItem] = field(default_factory=dict)
     gains: list[Gain] = field(default_factory=list)
+    spends: list[dict[str, Any]] = field(default_factory=list)
+    forced_drop_windows: list[dict[str, Any]] = field(default_factory=list)
+    _last_help_count: int | None = None
     _held: dict[str, int] | None = None
     _in_game: bool = False
     _link: tuple[int, int] | None = None
@@ -280,6 +298,7 @@ class RunLedger:
             visit.damage += self._hearts - hearts
         if play:
             visit.play_frames += 1
+            self._observe_drop_streak(snap, room)
             self._observe_flutter(snap, visit)
             self._observe_drops(snap, room, hearts, to_add)
             if visit.play_frames == 1:
@@ -290,6 +309,18 @@ class RunLedger:
         self._hearts = hearts
         self._to_add = to_add
         self._prev = snap if play else None
+
+    def _observe_drop_streak(self, snap: ZeldaSnapshot, room: str) -> None:
+        count = int(snap.help_drop_count)
+        if count == 9 and self._last_help_count != 9:
+            world = int(snap.world_kill_count)
+            self.forced_drop_windows.append({
+                "frame": self.frame,
+                "room": room,
+                "world_kills": world,
+                "fairy_preempts_next_kill": world == 15,
+            })
+        self._last_help_count = count
 
     def _observe_flutter(self, snap: ZeldaSnapshot, visit: Visit) -> None:
         prev = self._prev
@@ -340,6 +371,8 @@ class RunLedger:
                     x=int(obj.x),
                     y=int(obj.y),
                     hurt=not full,
+                    bombs_at_spawn=int(snap.bombs) if DROP_KINDS[int(obj.state)] == "bomb" else None,
+                    bomb_capacity=int(snap.max_bombs) if DROP_KINDS[int(obj.state)] == "bomb" else None,
                 )
                 self._open[slot] = drop
                 self.drops.append(drop)
@@ -366,6 +399,11 @@ class RunLedger:
             return
         for name, value in held.items():
             old = before.get(name, value)
+            if value < old and name in ("bombs", "keys"):
+                self.spends.append({
+                    "field": name, "room": room, "frame": self.frame,
+                    "from": old, "to": value, "source": source,
+                })
             if value <= old:
                 continue
             last = next((g for g in reversed(self.gains) if g.field == name), None)
@@ -433,6 +471,8 @@ class RunLedger:
                 "missed": [r.row() for r in items if not r.taken],
             },
             "gains": [g.row() for g in self.gains],
+            "spends": self.spends,
+            "forced_drop_windows": self.forced_drop_windows,
             "slowest_visits": [v.row() for v in slow[:TOP_VISITS]],
             "rooms": rooms,
             "drops": {
