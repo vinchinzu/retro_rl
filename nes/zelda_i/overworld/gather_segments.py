@@ -333,13 +333,15 @@ def waypoint_action(controller: Any, snap: ZeldaSnapshot) -> FrameAction | None:
         controller._way_screen = int(snap.screen)
         controller._way_leg = 0
     while controller._way_leg < len(corners):
-        x, y = corners[controller._way_leg]
-        dx = int(x) - int(snap.link_x)
-        dy = int(y) - int(snap.link_y)
-        if abs(dx) > WAYPOINT_TOL:
-            return controller._swing("RIGHT" if dx > 0 else "LEFT", "waypoint")
-        if abs(dy) > WAYPOINT_TOL:
-            return controller._swing("DOWN" if dy > 0 else "UP", "waypoint")
+        # The lattice route to each corner, not x-then-y: knocked to
+        # (144, 77) on 0x7B the axis press made no progress for 5600
+        # frames (run 20, walk_pond).
+        step = room_step(
+            snap, corners[controller._way_leg], tol=WAYPOINT_TOL,
+            env=getattr(controller, "_env", None),
+        )
+        if step is not None:
+            return controller._swing(step, "waypoint")
         controller._way_leg += 1
     return None
 

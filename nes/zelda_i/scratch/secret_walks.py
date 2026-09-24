@@ -367,3 +367,9 @@ def l4_stepladder():
     from zelda_i.level4.stepladder import make_stepladder_controller
 
     return make_stepladder_controller(clear_first=False)
+
+
+def walk_pond():
+    from zelda_i.overworld.gather_segments import POND_WALK_HOPS
+
+    return HopWalkController(hops=POND_WALK_HOPS)
