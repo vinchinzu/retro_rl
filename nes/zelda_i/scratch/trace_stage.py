@@ -1,21 +1,25 @@
-"""Trace the L9 Ganon fight from a pin: hits with the frames before them. Scratch.
+"""Trace one stage controller from a pin: each hit with the frames before it,
+and the reason census. A hit is a hearts drop or $04F0 rising. Scratch.
 
-    QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/trace_ganon.py \
-        BlueRingFull14_level9_ganon --idle 7 --before 12
+    QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/trace_stage.py \
+        BlueRingFull14_level9_ganon zelda_i.level9.natural_path:NaturalGanonController \
+        --idle 7 --before 12
 """
 import argparse
+import collections
+import importlib
 
 from retro_harness.env import make_env, read_state_bytes, state_path
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless
 from zelda_i.assist import UnlimitedHealthAssist
-from zelda_i.level9.natural_path import NaturalGanonController
 from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.ram import read_snapshot
 from zelda_i.route.chain import bind_controller_env
 
 ap = argparse.ArgumentParser()
 ap.add_argument("state")
+ap.add_argument("target", help="module:factory")
 ap.add_argument("--idle", type=int, default=7)
 ap.add_argument("--before", type=int, default=10)
 ap.add_argument("--all", action="store_true")
@@ -27,17 +31,19 @@ env.reset()
 env.em.set_state(read_state_bytes(state_path(GAME_DIR, GAME, a.state)))
 for _ in range(a.idle):
     env.step(nes_idle_action())
-ctl = NaturalGanonController()
+mod, _, name = a.target.partition(":")
+ctl = getattr(importlib.import_module(mod), name)()
+reasons = collections.Counter()
 bind_controller_env(ctl, env)
 assist = UnlimitedHealthAssist()
 tail = []
-for f in range(1, ctl.max_frames + 1):
+for f in range(1, int(getattr(ctl, "max_frames", 8000)) + 1):
     snap = read_snapshot(env.get_ram())
     act = ctl.step(snap)
+    reasons[act.reason] += 1
     objs = [(hex(o.type_id), o.x, o.y, o.state, o.hp) for o in snap.objects if 1 <= o.slot <= 12]
-    ram = env.get_ram()
-    line = (f"f{f} L({snap.link_x},{snap.link_y}) face={snap.facing:#x} {act.reason} "
-            f"rupees={snap.rupees} w=[{','.join(f'{int(ram[0x70+k])},{int(ram[0x84+k])},{int(ram[0xAC+k])}' for k in (13, 14, 15, 16, 18))}] objs={objs}")
+    objs = [o for o in objs if o[0] != "0x0"]
+    line = f"f{f} L({snap.link_x},{snap.link_y}) face={snap.facing:#x} {act.reason} objs={objs}"
     tail.append(line)
     del tail[:-a.before]
     before = assist.telemetry.total_damage
@@ -51,6 +57,7 @@ for f in range(1, ctl.max_frames + 1):
     if hit:
         print(f"--- HIT at f{f} (+{assist.telemetry.total_damage - before}h)")
         print("\n".join(tail))
-    if ctl.success or ctl.failed:
+    if ctl.success or getattr(ctl, "failed", False):
         break
-print("success", ctl.success, "frames", f, "damage", assist.telemetry.total_damage, ctl.report().get("reason"))
+print("success", ctl.success, "frames", f, "whole-heart damage", assist.telemetry.total_damage)
+print("reasons:", " ".join(f"{r}={n}" for r, n in reasons.most_common(14)))
