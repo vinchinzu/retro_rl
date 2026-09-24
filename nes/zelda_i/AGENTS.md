@@ -69,7 +69,9 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Do not edit runtime modules while a spine run is in flight: level modules import lazily, so a run picks up half-edited code (power-on 6 died on an `ImportError` after `ram.py` changed mid-run).
 - Water rooms: a dungeon clear whose exit is on Link's bank sets `reachable_only`; the ladder is owned by `LadderEscape` / goal-aware `ladder_release`; a patrol waypoint the tiles call water is moved to land (`_patrol_vertex`).
 - Stop predicates and handoff checks must not require full hearts: only the Survival refill fills them, and a `--engage-hearts 1` run stalls on them (L6 0x1C heart, L7/L8 leaves). Check the item or container byte, not a pose held N frames.
-- Replay a last-heart failure without `--assist`: the refill keeps the full-heart beam firing and hides it.
+- Replay a last-heart failure with `stage_replay.py --last-heart`, never `--assist`: the full refill keeps the beam firing and hides it.
+- A second worktree is not isolated: the venv's `retro_rl_paths.pth` imports the main tree's `zelda_i`. Launch with `PYTHONPATH=$W:$W/snes:$W/nes` from the worktree `$W`, or main-tree edits land in the run.
+- The sword shot appears 13 frames after the A press (blade states 1 then 2). A 9-frame A cadence makes it look like 4.
 - An approach waypoint must be a lattice node, or the lattice approach is skipped for a hand press (L8 0x4C (120,109): 8000f). Never hand an unstick rung an idle that waits for `stuck` to fall: idling keeps it rising.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
