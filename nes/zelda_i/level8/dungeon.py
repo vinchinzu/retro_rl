@@ -386,7 +386,6 @@ def level8_clear_stop(
         and snap.triforce == TF_AFTER_LEVEL8
         and bool(snap.triforce & TF_BIT_L8)
         and int(magic_key) >= 1
-        and snap.health_is_full
         and snap.heart_containers == endpoint.outgoing_heart_containers
         and endpoint.outgoing_heart_containers
         == int(endpoint.incoming_heart_containers) + 1

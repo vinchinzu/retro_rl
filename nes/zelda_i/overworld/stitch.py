@@ -144,11 +144,9 @@ class OverworldHandoff:
             return "handoff_y_mismatch"
         if snap.triforce != self.triforce:
             return "handoff_triforce_mismatch"
-        # Full health only. The container count is route history, not a
-        # route requirement: continuous power-on runs skip different
-        # optional hearts (run 9 reached L7 with 10, run 3 with 11).
-        if not snap.health_is_full:
-            return "handoff_health_mismatch"
+        # Health is not a handoff field: full hearts are the Survival
+        # refill's (a last-heart run arrives chipped), and the container
+        # count is route history (run 9 reached L7 with 10, run 3 with 11).
         consumables = (
             ("keys", snap.keys, self.keys),
             ("bombs", snap.bombs, self.bombs),
