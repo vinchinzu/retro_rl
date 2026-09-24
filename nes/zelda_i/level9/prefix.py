@@ -1282,6 +1282,21 @@ class Level9Room10SilverArrowsController(HopController):
 def make_room10_silver_arrows_controller() -> Level9Room10SilverArrowsController:
     return Level9Room10SilverArrowsController()
 
+# 0x61 after Patra: the engine as a sweep (no census to wait on) takes the
+# room's key at (208,96) and any floor drops before the block and stairs.
+# The ledger listed that key untaken on every Blue Ring power-on (rr-qb6w).
+ROOM_61_SWEEP_SPEC = replace(
+    ROOM_10_WIZZROBES_SPEC,
+    spec_id="level9_room61_sweep",
+    source_room=0x62,
+    room_id=0x61,
+    entry=DoorRoute("LEFT", ((224, 141),)),
+    enemy_types=(0x47, 0x25),
+    expected_enemy_count=0,
+    max_frames=900,
+)
+
+
 @dataclass(kw_only=True)
 class Level9Stairs61Controller(Level9StairsHopController):
     """0x61 leftover -> clear Patra -> push block (96, 144) UP -> stairs (128, 141) -> cellar 0x75."""
@@ -1307,6 +1322,9 @@ class Level9Stairs61Controller(Level9StairsHopController):
     _stuck_escape_frames: int = 0
     _escape_dir: str = "UP"
     _patra_seen: bool = False
+    _sweep: RoomFight = field(
+        default_factory=lambda: RoomFight(ROOM_61_SWEEP_SPEC), repr=False
+    )
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -1342,19 +1360,19 @@ class Level9Stairs61Controller(Level9StairsHopController):
                 # (L9Room61EntryReal) -- never checked the sword hitbox, same
                 # bug class fixed for stairs_05's Wizzrobes.
                 #
-                # Room 0x61's block/wall geometry (absent in 0x52) can pin
-                # Link against an obstacle while patra_action keeps re-issuing
-                # the same axis-align command every frame (RNG-dependent --
-                # a different eye/body trajectory than the one used to tune
-                # this can wedge Link somewhere the south-stand target can't
-                # reach directly). Detect a long no-progress stall and step
-                # toward the room's open center to break free before
-                # resuming the proven policy, rather than let it loop forever.
+                # Room 0x61's blocks can pin a walk to the stand. Count only
+                # frames the policy walks and Link does not move: standing on
+                # the lane is the policy, and an escape on any still frame
+                # broke the stand ~340 frames a fight.
                 if self._stuck_escape_frames > 0:
                     self._stuck_escape_frames -= 1
                     return FrameAction(nes_action(self._escape_dir), "patra_stuck_escape")
+                action, reason, cooldown = patra_action(
+                    snap, cooldown=self._patra_cooldown, stand_dy=self.patra_stand_dy,
+                    room=PATRA_ROOM_FULL,
+                )
                 xy = (int(snap.link_x), int(snap.link_y))
-                if xy == self._stuck_xy:
+                if reason.startswith("align") and xy == self._stuck_xy:
                     self._stuck_frames += 1
                 else:
                     self._stuck_xy = xy
@@ -1368,11 +1386,13 @@ class Level9Stairs61Controller(Level9StairsHopController):
                     self._stuck_escape_frames = 20
                     self._stuck_frames = 0
                     return FrameAction(nes_action(self._escape_dir), "patra_stuck_escape")
-                action, reason, self._patra_cooldown = patra_action(
-                    snap, cooldown=self._patra_cooldown, stand_dy=self.patra_stand_dy,
-                    room=PATRA_ROOM_FULL,
-                )
+                self._patra_cooldown = cooldown
                 return FrameAction(action, reason)
+
+        if self._stage == 1 and not self._sweep.done and (
+            self._sweep._ctl is None or self._sweep._ctl.phase is not DungeonPhase.FAILED
+        ):
+            return self._sweep.step(snap)
 
         if self._stage >= 1:
             # ROM block secret + stair tile first. The west-aisle cardinals

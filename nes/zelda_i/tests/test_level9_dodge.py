@@ -234,3 +234,16 @@ def test_north_41_uses_leftover_column_not_frozen_spawn() -> None:
     align = ctl2.step(off)
     assert ctl2.phase_leftover == (208, 141)
     assert list(align.action) == list(nes_action("LEFT"))
+
+
+def test_stairs61_standing_on_the_lane_is_not_stuck() -> None:
+    # The escape fired on any 90 still frames and broke the lane stand
+    # ~340 frames a fight; only a walk that does not move counts now.
+    from zelda_i.level9.prefix import make_stairs_61_controller
+
+    ctl = make_stairs_61_controller()
+    body = _obj(OBJ_PATRA, 120, 93, slot=1, hp=0xB0)
+    snap = _snap(screen=0x61, link_x=120, link_y=157, facing=FACING_NORTH, objects=(body,))
+    reasons = {ctl.policy(snap).reason for _ in range(200)}
+    assert "patra_stuck_escape" not in reasons
+    assert "sword_pulse_up" in reasons
