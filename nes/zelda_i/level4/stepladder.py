@@ -649,6 +649,13 @@ class Level4StepladderController:
             )
 
         if self.phase is StepladderPhase.PATH:
+            if int(snap.ladder) >= 1:
+                # The item, not the pose, here too: a Keese knocked Link
+                # west over the pedestal to (129,141), where he stood frozen
+                # holding the ladder up while the walk waited 96 frames.
+                self.success = True
+                self._set_phase(StepladderPhase.DONE, "ladder_taken")
+                return FrameAction(nes_idle_action(), "done")
             if snap.mode in (4, 6, 7) or snap.transitioning:
                 return FrameAction(nes_idle_action(), "path_settle")
             if snap.screen == ROOM_L4_EAST_32 and snap.mode == PLAY_MODE:

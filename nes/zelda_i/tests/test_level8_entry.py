@@ -154,7 +154,7 @@ def test_measured_l7_handoff_copies_power_on_leave() -> None:
     assert MEASURED_POST_L7_HANDOFF.screen == 0x42
     assert MEASURED_POST_L7_HANDOFF.link_x == 96
     assert MEASURED_POST_L7_HANDOFF.link_y == 93
-    assert MEASURED_POST_L7_HANDOFF.bombs == 1
+    assert MEASURED_POST_L7_HANDOFF.bombs == 0
     assert MEASURED_POST_L7_HANDOFF.rupees == POST_L7_ARROW_RUPEES
     assert MEASURED_POST_L7_HANDOFF.heart_containers == 12
     assert MEASURED_POST_L7_HANDOFF.selected_item == 1

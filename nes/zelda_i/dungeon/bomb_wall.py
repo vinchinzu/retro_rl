@@ -25,6 +25,8 @@ from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 BOMB_N_STAND_TOL = 4
+# How far the face presses may walk Link along the face axis before PLACE.
+FACE_DRIFT = 12
 BOMB_N_WAIT_BLAST = 100
 BOMB_N_STEP_BACK = 6
 BOMB_N_MAX_FRAMES = 16000
@@ -154,6 +156,14 @@ class BombWallController:
         return abs(snap.link_x - tx) <= self.stand_tol and abs(
             snap.link_y - ty
         ) <= self.stand_tol
+
+    def _knocked_off_stand(self, snap: ZeldaSnapshot) -> bool:
+        """Off the stand across the face axis, or further along it than the
+        face presses walk Link (6 frames: L4 0x61 drifts ~9 px north)."""
+        tx, ty = self.stand
+        dx, dy = abs(snap.link_x - tx), abs(snap.link_y - ty)
+        across, along = (dx, dy) if self.face in ("UP", "DOWN") else (dy, dx)
+        return across > self.stand_tol or along > self.stand_tol + FACE_DRIFT
 
     def _goto_stand(self, snap: ZeldaSnapshot) -> FrameAction:
         """Walk to the bomb stand on the ROM lattice (``room_step``).
@@ -392,6 +402,13 @@ class BombWallController:
         if self.phase is BombWallPhase.PLACE:
             if snap.bombs <= 0:
                 return self._fail("no_bombs_at_place")
+            if self._knocked_off_stand(snap):
+                # A hit while facing: the knockback froze under the pause
+                # select and finished after it (L8 0x6E, 2026-09-24: bomb
+                # placed at (96,109) for the (120,105) stand, then 700f of
+                # UP into the unopened wall). Back to the stand, face again.
+                self._set_phase(BombWallPhase.TO_STAND, "knocked_off_stand")
+                return self._goto_stand(snap)
             self.bombs_before_place = int(snap.bombs)
             self._set_phase(BombWallPhase.WAIT, "placed_bomb")
             return FrameAction(nes_action(self.face, "B"), "place_bomb")

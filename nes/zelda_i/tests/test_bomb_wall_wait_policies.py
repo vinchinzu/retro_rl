@@ -220,3 +220,35 @@ def test_1e_south_band_centers_x_before_stand() -> None:
     ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))  # waypoint hand-off
     act = ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))
     assert list(act.action) == list(nes_action("RIGHT"))  # then east along it
+
+
+def test_place_refuses_a_pose_knocked_off_the_stand() -> None:
+    """L8 0x6E power-on 2026-09-24: a hit while facing slid Link 24 px west
+    through the pause select; the bomb went down at (96,109), not the stand."""
+    from retro_harness.nes import nes_action
+
+    ctrl = make_bomb_north_controller()
+    sx, sy = ctrl.stand
+    ctrl.phase = BombWallPhase.PLACE
+    act = ctrl.step(_snap(x=sx - 24, y=sy, bombs=4))
+    assert ctrl.phase is BombWallPhase.TO_STAND
+    assert ctrl.bombs_before_place is None
+    assert list(act.action) != list(nes_action("UP", "B"))
+
+    ctrl.phase = BombWallPhase.PLACE
+    act = ctrl.step(_snap(x=sx, y=sy, bombs=4))
+    assert ctrl.phase is BombWallPhase.WAIT
+    assert act.reason == "place_bomb"
+
+
+def test_place_allows_the_face_presses_walking_link_toward_the_wall() -> None:
+    """L4 0x61 faces UP for 6 frames, ~9 px north of its stand: that is the
+    face, not a hit, and must not bounce back to the stand forever."""
+    from retro_harness.nes import nes_action
+
+    ctrl = make_bomb_north_controller()
+    sx, sy = ctrl.stand
+    ctrl.phase = BombWallPhase.PLACE
+    act = ctrl.step(_snap(x=sx, y=sy - 9, bombs=4))
+    assert ctrl.phase is BombWallPhase.WAIT
+    assert list(act.action) == list(nes_action("UP", "B"))

@@ -47,6 +47,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **blue_ring_full_poweron31 (b8cc4ab6: Patra eye aim)** | **ok (unlimited_health)** | level9-credits | **275135** | 8219 | 82/183 | 35 | 149 / 479 | 75 / 4 / **0** | 7:49 4302f | 329.41 | same 25 as run 24 |
 | lastheart_poweron34 (Patra melee; guarded last heart) | level8_magic_key_stairs | level9-credits | 263596 | 8859 | 79/146 | 26 | 207 / 15 (7 target, 8 safety) | 66 / 3 / **0** | 8:1f 16150f | 272.03 | 19 rooms; see report |
 | **lastheart_poweron37 (0x1F inner bombs, 0x75 ladder)** | **ok (guarded_last_heart)** | level9-credits | **293488** | 9472 | 92/170 | 30 | 315 / **23** (7 target, 16 safety) | 91 / 3 / **0** | 7:0d 5039f | 388.33 | 24 rooms; see report |
+| **natl8_3 (rr-doua: no bomb/key writes)** | **ok (unlimited_health)** | level8 | **238187** | 6175 | 76/179 | 53 | 115 / 389 | 0 / 0 / 0 | 0:5f 3506f | 260.25 | 1:43=map 1:44=boomerang 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 |
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
@@ -77,6 +78,15 @@ orbited below the room (rr-e59v). Bomb/key/arrow/Food writes remain
 Run 31 (b8cc4ab6) is run 24 with the Patra eye aim (rr-e59v): every room
 before 0x52 replays frame for frame, and 0x52 fell 11,407 -> 3,362 frames
 (flutter there 2,077 -> 0), so the run is 275,135 frames.
+
+natl8_3 (2026-09-24, rr-doua) is power-on to the L8 leave with no bomb or
+key write: one session, zero state loads, 238,187 frames. Bombs come from
+20R restocks bought only when short (0x4A 5->8 before L2, 0x44 1->5 on the
+L4 walk and 0->4 on the L8 walk) and room drops; L1 takes 0x72's key for
+0x43 E. The arrows@6:1c and food@0:42 writes remain. Getting there took
+five resumed fixes the 16 poked bombs had hidden (L4 0x60 knockback over the
+ladder, 0x12 lattice stand, L7 cellar re-climb, an off-stand wall placement,
+0x4C failing while its last bomb burned).
 
 Last-heart power-on 34 had no state loads and reached L8 0x1F, where the
 Darknut clear timed out without a full-heart beam (`rr-secm`). Its last-heart

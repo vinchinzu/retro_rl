@@ -33,7 +33,7 @@ from zelda_i.level8.suffix import (
     NATURAL_LINEAGE_LEVEL8_SUFFIX,
     Level8SuffixLineage,
 )
-from zelda_i.level8.overworld import L7_POND_TO_LEVEL8_BUSH_HOPS
+from zelda_i.level8.overworld import L7_POND_VIA_SHOP_E5_HOPS
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.spine.hops import attach_hops
 
@@ -41,7 +41,6 @@ __all__ = [
     "L8_STOPS",
     "L8_THROUGH",
     "LIVE_RECON_L8_OVERRIDES",
-    "SPINE_L8_RETOPUP",
     "continue_level8_spine",
 ]
 
@@ -56,20 +55,11 @@ L8_STOPS: dict[str, str] = {
     "level8": "level8_triforce_0x80",
 }
 
-# Power-on the spine arrives at the L8 entry (0x7E) with bombs=0 / keys=1:
-# the L7 leave carries none and the burn spends the trip.  The magic-key
-# ascent has two verified bomb walls (0x6E, 0x3E north) and two verified key
-# doors (0x4E->0x3E, 0x2E->0x1E).  Top the owned bomb/key counts back up
-# before each mega-stage (ASSIST_CONTRACT: count top-up at a verified route
-# gate, through the assisted clear).  ``topup_owned_inventory`` writes
-# bombs->16 / keys->2 + B-slot bombs; keys->2 is enough because 0x5E's
-# natural key pickup (+1) lands before the two key doors.  Not Clean.
-SPINE_L8_RETOPUP: frozenset[str] = frozenset(
-    {
-        "level8_north_manhandla_bomb",
-        "level8_darknut_key_up",
-    }
-)
+# No inventory top-up (rr-doua). Power-on, L7 leaves bombs=4 / keys=1. The
+# magic-key ascent bombs 0x6E and 0x3E north (throwing more at 0x3E's
+# Darknuts) and opens two key doors (0x4E->0x3E, 0x2E->0x1E) with the
+# carried key plus 0x5E's. The return passage bombs 0x4C north, so the walk
+# in buys a 20R pack at 0x44 (``L7_POND_VIA_SHOP_E5_HOPS``).
 
 # Disclosed fixture-live recon (rr-6o7.1), for an explicit opt-in caller only:
 # ``continue_level8_spine(..., **LIVE_RECON_L8_OVERRIDES)`` or
@@ -94,7 +84,7 @@ def continue_level8_spine(
     assist=None,
     on_frame=None,
     handoff: PostLevel7Handoff = MEASURED_POST_L7_HANDOFF,
-    post_l7_hops: tuple[ScreenHop, ...] = L7_POND_TO_LEVEL8_BUSH_HOPS,
+    post_l7_hops: tuple[ScreenHop, ...] = L7_POND_VIA_SHOP_E5_HOPS,
     burn_target: BushBurnTarget = LIVE_RECON_BUSH_BURN_TARGET,
     topology: Level8Topology = MEASURED_LEVEL8_ENTRY_TOPOLOGY,
     clear_endpoint: Level8ClearEndpoint = MEASURED_LEVEL8_CLEAR,
@@ -110,9 +100,6 @@ def continue_level8_spine(
     """
     if through not in L8_THROUGH:
         raise ValueError(f"unknown Level 8 through target: {through!r}")
-    retopup = (
-        SPINE_L8_RETOPUP if getattr(run, "allow_pokes", True) else frozenset()
-    )
     attach_hops(
         env,
         run,
@@ -130,5 +117,4 @@ def continue_level8_spine(
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
-        retopup=retopup,
     )

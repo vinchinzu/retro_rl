@@ -92,7 +92,9 @@ MEASURED_POST_L7_EXIT = OverworldHandoff(
     # Lower bound (the L8 check is >=): the lattice 0x38 key door spends the
     # key the fixture tape carried out.
     keys=0,
-    bombs=1,
+    # L8 buys its bombs at 0x44 on the walk in (rr-doua); power-on 2026-09-24
+    # left L7 with none after the reshuffled L1-L7 chain.
+    bombs=0,
     # An arrow budget, not the tape's 66R: L8's rupees buy arrow shots
     # (blue Gohma measured 9, 255->246) and Ganon needs one silver arrow.
     # Blue Ring power-on 4 left L7 with 65R and failed on the old 66.

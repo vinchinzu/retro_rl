@@ -115,6 +115,20 @@ L7_POND_TO_LEVEL8_BUSH_HOPS: tuple[ScreenHop, ...] = (
 L7_POND_TO_LEVEL8_BUSH_SCREENS: tuple[int, ...] = path_screens_from_hops(
     SCREEN_LEVEL7_POND_HYP, L7_POND_TO_LEVEL8_BUSH_HOPS
 )
+# L7 leaves 4 bombs; L8 bombs 0x6E, 0x3E and the return passage's 0x4C and
+# throws a couple at 0x3E's Darknuts. The walk crosses 0x54, one screen
+# under the 0x44 shop, so it buys a 20R pack there when short (rr-doua).
+# Up through the ring walk's gap, down the ring return's.
+LEVEL8_BOMBS_WANTED = 5
+L7_POND_VIA_SHOP_E5_HOPS: tuple[ScreenHop, ...] = (
+    L7_POND_TO_LEVEL8_BUSH_HOPS[:3]
+    + (
+        ScreenHop(0x44, "UP", align_x=116),
+        ScreenHop(0x54, "DOWN", align_x=116),
+    )
+    + L7_POND_TO_LEVEL8_BUSH_HOPS[3:]
+)
+assert L7_POND_TO_LEVEL8_BUSH_HOPS[2].target == 0x54
 
 # Reverse-geometry knobs. Each is read off the live per-screen point list of
 # OverworldToLevel7PondController (scratch/probe fwd65 trace); not new map
@@ -125,6 +139,9 @@ POND_52_BOTTOM_Y = 189  # 0x52 bottom corridor to the 0x53 east edge
 POND_53_EAST_Y = 141  # shared row: 0x53/0x54/0x64/0x65 all cross at y~141
 POND_53_PILLAR_X = 190  # 0x53: climb the x~192 pillar from y~189 to y~141
 POND_54_SOUTH_GAP_X = 64  # 0x54<->0x64 gap and the 0x64 north column (x~64)
+# 0x54's north gap to the 0x44 shop is x 112-143; trees wall y<96 west of
+# it, so a walk down from the shop leaves the gap before turning west.
+POND_54_TOP_ROW_Y = 93
 POND_65_GAP_X = 112  # 0x65 north gap to 0x55 / 0x55 south spit (fwd straight x~112)
 POND_55_EAST_Y = 133  # shared row: 0x55/0x56 cross at y~133
 POND_56_STEP_X = 218  # 0x56: step down from the y~133 row to y~157 at x~224
@@ -259,6 +276,8 @@ def pond_reverse_to_l8_extra_hop_action(
             return swing("DOWN", "53r_drop")
         return swing("RIGHT", "53r_east_exit")
     if scr == 0x54 and hop.target == 0x64:
+        if y < POND_54_TOP_ROW_Y - 4 and abs(x - POND_54_SOUTH_GAP_X) > 5:
+            return swing("DOWN", "54r_off_top")
         if abs(x - POND_54_SOUTH_GAP_X) > 5:
             btn = "LEFT" if x > POND_54_SOUTH_GAP_X else "RIGHT"
             return swing(btn, "54r_south_ax")
@@ -893,6 +912,8 @@ __all__ = [
     "LEVEL8_5C_MAZE_WAYPOINTS",
     "L7_POND_TO_LEVEL8_BUSH_HOPS",
     "L7_POND_TO_LEVEL8_BUSH_SCREENS",
+    "L7_POND_VIA_SHOP_E5_HOPS",
+    "LEVEL8_BOMBS_WANTED",
     "POND_42_REFILLED_DEAD_POSE",
     "POND_42_SOUTH_SAND_Y",
     "POND_42_WEST_COL_X",

@@ -51,6 +51,8 @@ RESUME_53_MAX_FRAMES = 4000
 WEST_DOOR_APPROACH_Y = 149
 WEST_DOOR_WALL_X = 48
 WEST_DOOR_Y = 141
+# First lattice row inside a room; above it Link is still in the north doorway.
+ROOM_TOP_ROW_Y = 85
 EAST_DOOR_WALL_X = 208
 
 # The statues block a direct center-to-east line. Approach below them, then
@@ -101,6 +103,18 @@ def return_west_waypoints(x: int, y: int) -> tuple[tuple[int, int], ...]:
     if y <= _RETURN_WEST_NORTH_Y:
         return ((x, 101), *_RETURN_WEST_FROM_NORTH)
     return _RETURN_WEST_WAYPOINTS
+
+
+def north_doorway_step(snap: ZeldaSnapshot) -> FrameAction | None:
+    """DOWN out of a north doorway, else ``None``.
+
+    Above the first room row the lattice's first press can be sideways into
+    the door frame: LEFT at (120,82) for 3800f in 0x63 and 0x73 on the
+    legacy prefix's walk back for 0x72's key (2026-09-24).
+    """
+    if snap.link_y < ROOM_TOP_ROW_Y:
+        return FrameAction(nes_action("DOWN"), "clear_north_doorway")
+    return None
 
 
 def west_door_step(snap: ZeldaSnapshot) -> FrameAction:
@@ -156,6 +170,13 @@ def east_door_step(snap: ZeldaSnapshot) -> FrameAction:
 _ENTRY_NORTH_WAYPOINTS: tuple[tuple[int, int], ...] = (
     (208, 141),
     (208, 149),
+    (120, 149),
+    (120, 93),
+)
+# Back from the 0x72 west key instead: blocks fill row 141 at x 40-56,
+# 88-104, 136-152 and 184-200, so drop to the open row 149 at the door.
+_ENTRY_NORTH_FROM_WEST_WAYPOINTS: tuple[tuple[int, int], ...] = (
+    (32, 149),
     (120, 149),
     (120, 93),
 )
@@ -442,6 +463,7 @@ class Level1UnlockNorthController:
     last_health: int = 0
     north_ready_frames: int = 0
     west_waypoints: tuple[tuple[int, int], ...] | None = None
+    north_waypoints: tuple[tuple[int, int], ...] = _ENTRY_NORTH_WAYPOINTS
     west_door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker)
 
     def reset(self) -> None:
@@ -455,6 +477,7 @@ class Level1UnlockNorthController:
         self.last_health = 0
         self.north_ready_frames = 0
         self.west_waypoints = None
+        self.north_waypoints = _ENTRY_NORTH_WAYPOINTS
 
     def _set_phase(self, phase: Level1NorthPhase, note: str = "") -> None:
         if phase is not self.phase:
@@ -521,6 +544,9 @@ class Level1UnlockNorthController:
             Level1NorthPhase.ENTER_WEST,
         ):
             self._set_phase(Level1NorthPhase.ROUTE_NORTH, "back_in_entrance")
+            if self.frames == 1 and snap.link_x < 120:
+                # Started here, back through the west door from 0x72.
+                self.north_waypoints = _ENTRY_NORTH_FROM_WEST_WAYPOINTS
 
         if snap.transitioning:
             hold = (
@@ -561,7 +587,7 @@ class Level1UnlockNorthController:
         if self.phase is Level1NorthPhase.ROUTE_NORTH:
             action = self._follow_waypoints(
                 snap,
-                _ENTRY_NORTH_WAYPOINTS,
+                self.north_waypoints,
                 "route_north",
             )
             if action.reason == "route_north_done":
@@ -666,12 +692,13 @@ def _follow_points(
 
 @dataclass
 class Level1WestDoorController(HopController):
-    """Route 0x73 leftover → play 0x72. No combat."""
+    """Route 0x73 leftover (or 0x74, straight after its key) → play 0x72."""
 
     max_frames: int = WEST_DOOR_MAX_FRAMES
     wait_modes: tuple[int, ...] = ()
     done_reason: str = "west_arrived"
     require_level: int = LEVEL_1
+    west_doors: LatticeDoorWalker = field(default_factory=LatticeDoorWalker)
 
     def timeout_note(self, snap: ZeldaSnapshot) -> str:
         return f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
@@ -689,6 +716,18 @@ class Level1WestDoorController(HopController):
         return "entered_0x72"
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if (
+            snap.screen in (ROOM_FIRST_KEY, ROOM_ENTRANCE)
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            # From 0x74's key: its west door, then across 0x73 from the east
+            # door, where the hand step's DOWN to row 149 hits the frame.
+            door = north_doorway_step(snap) or self.west_doors.action(
+                None, snap, "LEFT", "west_door_lattice"
+            )
+            if door is not None:
+                return door
         return west_door_step(snap)
 
 
@@ -730,6 +769,7 @@ class Level1ToEntranceController(HopController):
     require_level: int = LEVEL_1
     waypoint_index: int = 0
     last_room: int | None = None
+    south_doors: LatticeDoorWalker = field(default_factory=LatticeDoorWalker)
 
     def timeout_note(self, snap: ZeldaSnapshot) -> str:
         return f"timeout_{snap.screen:02x}_{snap.link_x}_{snap.link_y}"
@@ -751,6 +791,19 @@ class Level1ToEntranceController(HopController):
         return FrameAction(nes_action("DOWN"), "south_scroll")
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if (
+            snap.screen in (ROOM_KEY_STALFOS, ROOM_NORTH_STALFOS)
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            # ROM lattice to each south door. The hand points skirted 0x63's
+            # block diamond into a 4000f timeout (rr-doua, 2026-09-08 and
+            # again on the legacy prefix 2026-09-24).
+            door = north_doorway_step(snap) or self.south_doors.action(
+                None, snap, "DOWN", "south_door_lattice"
+            )
+            if door is not None:
+                return door
         if self.last_room != snap.screen:
             self.last_room = snap.screen
             self.waypoint_index = 0

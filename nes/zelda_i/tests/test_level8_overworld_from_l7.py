@@ -196,3 +196,39 @@ def test_reverse_0x64_crosses_east_on_the_y141_band() -> None:
     assert act is not None
     assert act.reason == "64r_east_cross"
     assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_54_from_the_shop_leaves_the_tree_band_before_turning_west() -> None:
+    """Down from 0x44 Link enters 0x54 at x~116 in a gap walled west by trees."""
+
+    def swing(direction: str, reason: str) -> FrameAction:
+        return FrameAction(nes_action(direction), reason)
+
+    hop = ScreenHop(0x64, "DOWN", align_x=60)
+    top = read_snapshot(_ram(screen=0x54, x=116, y=69))
+    act = pond_reverse_to_l8_extra_hop_action(top, hop, swing=swing)
+    assert act.reason == "54r_off_top"
+    assert list(act.action) == list(nes_action("DOWN"))
+    row = read_snapshot(_ram(screen=0x54, x=116, y=93))
+    act = pond_reverse_to_l8_extra_hop_action(row, hop, swing=swing)
+    assert act.reason == "54r_south_ax"
+    assert list(act.action) == list(nes_action("LEFT"))
+
+
+def test_post_l7_walk_via_shop_resumes_after_the_buy_or_a_skip() -> None:
+    from types import SimpleNamespace
+
+    from zelda_i.level8.entry import make_post_l7_to_bush_controller
+    from zelda_i.level8.overworld import L7_POND_VIA_SHOP_E5_HOPS
+
+    def next_target(screen: int) -> int:
+        ram = make_ram(_DEFAULTS, screen=screen, x=116, y=141, triforce=0x7F, bombs=8)
+        ctl = make_post_l7_to_bush_controller(hops=L7_POND_VIA_SHOP_E5_HOPS, resumed=True)
+        ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
+        ctl.step(read_snapshot(ram))
+        assert "post_l7_resumed" in ctl.notes
+        return ctl.hops[ctl.hop_index].target
+
+    assert next_target(0x44) == 0x54  # after the buy
+    assert next_target(0x54) == 0x64  # the buy skipped on 0x54
+    assert L7_POND_VIA_SHOP_E5_HOPS[5:] == L7_POND_TO_LEVEL8_BUSH_HOPS[3:]

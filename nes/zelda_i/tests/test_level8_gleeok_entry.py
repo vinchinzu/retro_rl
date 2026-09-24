@@ -157,3 +157,27 @@ def test_bomb_north_approach_waypoints_are_standable_on_0x4c() -> None:
     nodes = ow_walkable_nodes(room_tile_ram("0x4c", level=8), overworld=False)
     for wp in BOMB_NORTH_APPROACH_4C:
         assert any(n in nodes for n in lattice_starts(*wp)), wp
+
+
+def test_last_bomb_burning_is_not_no_bombs() -> None:
+    """Power-on 2026-09-24 reached 0x4C with one bomb: placed, the count read
+    0 while it burned and the every-frame guard failed the stage."""
+    from zelda_i.dungeon.bomb_wall import BombWallPhase
+
+    ctl = make_bomb_north_4c_controller()
+    ram = _ram(bombs=1)
+    _step(ctl, ram)
+    assert not ctl.failed
+    ctl._wall.phase = BombWallPhase.WAIT
+    ctl._wall.bombs_before_place = 1
+    ram = _ram(bombs=0)
+    _step(ctl, ram)
+    assert not ctl.failed
+    assert ctl._wall.phase is BombWallPhase.WAIT
+
+
+def test_arriving_without_bombs_fails_at_once() -> None:
+    ctl = make_bomb_north_4c_controller()
+    _step(ctl, _ram(bombs=0))
+    assert ctl.failed
+    assert ctl._wall is None

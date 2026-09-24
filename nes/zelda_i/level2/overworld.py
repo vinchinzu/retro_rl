@@ -163,12 +163,20 @@ class OverworldToLevel2Controller(OverworldPathController):
     # overworld evade timed out ``exit42``.
     evade: bool = True
     occupied_lane: bool = True  # 0x49 hop walks into a pad TTC never sees
+    # The door path from the screen Link starts on (``level2_door_hops_from``):
+    # 0x4A after the post-L1 bomb buy, 0x37 when the buy was skipped.
+    door_path_from_start: bool = False
 
     def __post_init__(self) -> None:
         if self.door_path:
             self.hops = LEVEL2_DOOR_HOPS
         if self.maze_hop_pred is None:
             self.maze_hop_pred = is_5c_maze_hop
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.door_path_from_start and self.frames == 0 and snap.level == 0:
+            self.hops = level2_door_hops_from(int(snap.screen))
+        return super().step(snap)
 
     def reset(self) -> None:
         super().reset()

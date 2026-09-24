@@ -54,6 +54,7 @@ from zelda_i.overworld.gathering import (
     pre_l1_stages,
 )
 from zelda_i.level1.finish import LEVEL1_TRIFORCE_BIT
+from zelda_i.level1.path import level1_west_key_stages
 from zelda_i.level2.overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
     OverworldToLevel2Controller,
@@ -109,16 +110,6 @@ BOOT_POLICY = {
 # is the last hop, not the first. ``SPINE_THROUGH`` is assembled from the
 # ``SPINE_LEVELS`` rows at the bottom of this module.
 _L4_THROUGH = tuple(k for k in L4_STOPS if k != "level4") + ("level4",)
-
-# Bomb-consuming stages. Survival tops up owned bomb/key counts before these
-# (ASSIST_CONTRACT shortcut until a farm pass). Level 2 bomb top-ups retired
-# via OW 0x4A shop buy + natural room drops (rr-doua).
-SPINE_BOMB_RETOPUP: frozenset[str] = frozenset()
-
-# Bow KEY-LEFT spends the 0x23 key. 0x43 E still needs one. Restore the
-# spent count (ASSIST_CONTRACT). Natural extra is L1 0x72 west of entrance.
-SPINE_L1_KEY_POKE = 1
-SPINE_L1_KEY_RETOPUP: frozenset[str] = frozenset({"backtrack44"})
 
 _BOW_HOPS = (
     SpineHop(
@@ -192,8 +183,9 @@ _L3_THROUGH: tuple[str, ...] = tuple(_L3_STOPS)
 
 
 def level2_entry_stages():
-    """After L1 TF: idle the fanfare, buy bombs at 0x4A, and enter L2."""
-    from zelda_i.level2.overworld import level2_door_hops_from
+    """After L1 TF: idle the fanfare, buy bombs at 0x4A when short of L2's
+    walls and Dodongo, and enter L2 from wherever that left Link."""
+    from zelda_i.level2.bombs import L2_BOMB_BUDGET
     from zelda_i.overworld.bomb_shop import BOMB_SHOP_MAX_FRAMES, make_bomb_shop_controller
     from zelda_i.overworld.gather_segments import CaveExitController
 
@@ -201,17 +193,13 @@ def level2_entry_stages():
         ("settle_l1_tf", PostTriforceSettleController(), SETTLE_MAX_FRAMES),
         (
             "bomb_shop_4a",
-            make_bomb_shop_controller(restock_farm=False),
+            make_bomb_shop_controller(restock_farm=False, want=L2_BOMB_BUDGET),
             BOMB_SHOP_MAX_FRAMES,
         ),
         ("exit_4a_cave", CaveExitController(clear=0), 600),
         (
             "enter_level2",
-            OverworldToLevel2Controller(
-                hops=level2_door_hops_from(0x4A),
-                door_path=False,
-                require_dungeon=True,
-            ),
+            OverworldToLevel2Controller(door_path_from_start=True, require_dungeon=True),
             L2_NAV_MAX_FRAMES,
         ),
     )
@@ -402,28 +390,6 @@ def topup_owned_inventory(env, run: SpineRun) -> None:
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
 
-def topup_owned_bombs(env, run: SpineRun) -> None:
-    """Documented Survival count refill before L4; preserves keys."""
-    if run.skipping:
-        return
-    if not _pokes_allowed(run):
-        return
-    extra = apply_owned_inventory(
-        env, bombs=SPINE_TF_BOMB_POKE, select_bomb=True
-    )
-    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
-
-
-def topup_owned_keys(env, run: SpineRun, *, keys: int = SPINE_L1_KEY_POKE) -> None:
-    """Restore the key spent on 0x23 W. Survival only. No bomb write."""
-    if run.skipping:
-        return
-    if not _pokes_allowed(run):
-        return
-    extra = apply_owned_inventory(env, keys=keys, select_bomb=False)
-    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
-
-
 def _record_bombs_out(env, run: SpineRun) -> None:
     end = read_snapshot(env.get_ram())
     run.bombs = spine_bomb_report(
@@ -442,7 +408,6 @@ def _run_stages(
     on_frame=None,
     room_timer=None,
     retopup: frozenset[str] = frozenset(),
-    key_retopup: frozenset[str] = frozenset(),
     update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
@@ -458,8 +423,6 @@ def _run_stages(
         if pokes:
             if name in retopup:
                 topup_owned_inventory(env, run)
-            if name in key_retopup:
-                topup_owned_keys(env, run)
         elif getattr(controller, "poke_arrows", None) is True:
             controller.poke_arrows = False
         for write in ((run.inventory_assist or {}).get("writes") or [])[poked:]:
@@ -570,8 +533,6 @@ def _continue_level1_spine(
     """L1: dedicated gathering / Bow hops, else the natural Triforce run."""
     hop_kw = dict(room_timer=room_timer, assist=assist, on_frame=on_frame)
     if through in _L1_DEDICATED_THROUGH:
-        if through in ("level1-arrows", "level1-bombs"):
-            hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
         attach_hops(
             env,
             run,
@@ -581,13 +542,12 @@ def _continue_level1_spine(
             **hop_kw,
         )
         return
-    if not run_stages(
-        env,
-        run,
-        level1_survival_tf_stages(),
-        key_retopup=SPINE_L1_KEY_RETOPUP,
-        **hop_kw,
-    ):
+    stages = level1_survival_tf_stages()
+    if run.gather is None:
+        # The legacy wooden-sword prefix stops on 0x74's key: the gathered
+        # prefix's rooms after it (0x72's key, north, 0x63, 0x53) come here.
+        stages = (*level1_after_first_key_stages(), *stages)
+    if not run_stages(env, run, stages, **hop_kw):
         return
     snap = read_snapshot(env.get_ram())
     if run.skipping:
@@ -631,7 +591,6 @@ def _continue_level2_spine(
         env,
         run,
         level2_to_boom_stages(),
-        retopup=SPINE_BOMB_RETOPUP,
         update_bombs=True,
         **hop_kw,
     ):
@@ -648,7 +607,6 @@ def _continue_level2_spine(
         env,
         run,
         level2_tf_stages(),
-        retopup=SPINE_BOMB_RETOPUP,
         update_bombs=True,
         **hop_kw,
     ):
@@ -737,7 +695,7 @@ class SpineLevel:
         return through if through in self.through else self.handoff
 
 
-_L4_EXTRA = {"topup_bombs": topup_owned_bombs, "spine_fields": spine_final_fields}
+_L4_EXTRA = {"spine_fields": spine_final_fields}
 
 # The one dispatch table: level, own stop ids, stop names, continue-fn, handoff.
 # A new level, stop or handoff is a row here; nothing in ``run_survival_spine``
@@ -841,7 +799,11 @@ def gather_stages() -> list[tuple[str, Any, int]]:
 
 
 def gathered_level1_stages() -> tuple[tuple[str, Any, int], ...]:
-    """0x37 mouth → L1 → 0x53 clear: the natural prefix, from the door."""
+    """0x37 mouth → L1 → 0x53 clear: the natural prefix, from the door.
+
+    The Bow detour spends 0x23's key on 0x22, so 0x43 E needs one more:
+    0x72's, taken west of the entrance straight after 0x74's (rr-doua).
+    """
     return (
         (
             "enter_level1",
@@ -849,10 +811,18 @@ def gathered_level1_stages() -> tuple[tuple[str, Any, int], ...]:
             NAV_MAX_FRAMES,
         ),
         ("first_key", Level1FirstKeyController(), FIRST_KEY_MAX_FRAMES),
+        *level1_west_key_stages(),
         ("north", Level1UnlockNorthController(), UNLOCK_NORTH_MAX_FRAMES),
         ("clear63", Level1Clear63Controller(), CLEAR_63_MAX_FRAMES),
         ("clear53", Level1Clear53Controller(), CLEAR_53_MAX_FRAMES),
     )
+
+
+def level1_after_first_key_stages() -> tuple[tuple[str, Any, int], ...]:
+    """The L1 prefix after 0x74's key: 0x72's key, north, 0x63, 0x53."""
+    stages = gathered_level1_stages()
+    names = [name for name, _, _ in stages]
+    return stages[names.index("first_key") + 1 :]
 
 
 def gather_success(snap: ZeldaSnapshot) -> bool:
@@ -988,15 +958,16 @@ def run_survival_spine(
         )
         fail_name = "prefix_boot"
     else:
+        # Stop on 0x74's key, where the gathered prefix turns west for 0x72's.
         prefix = run_natural_to_milestone(
             env,
-            milestone="clear53",
+            milestone="first_key",
             room_timer=room_timer,
             assist=assist,
             on_frame=on_frame,
             first_playthrough=True,
         )
-        fail_name = "prefix_clear53"
+        fail_name = "prefix_first_key"
     run = SpineRun(
         through=through,
         success=bool(prefix.success),

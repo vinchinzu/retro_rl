@@ -54,6 +54,11 @@ ROOM_3E_STATUE_BLOCKS: frozenset[tuple[int, int]] = frozenset(
     (x, y) for xr in (range(84, 111), range(132, 159)) for x in xr for y in range(126, 151)
 )
 SOUTH_HOLD_Y = 181
+# Bombs still owed after a tactical throw (no top-up since rr-doua): at
+# 0x3E its own north wall and the return passage's 0x4C wall; at 0x2E, past
+# 0x3E, only 0x4C.
+BOMBS_OWED_AT_3E = 2
+BOMBS_OWED_AT_2E = 1
 ENTRY_COLUMN_X = 120
 # ROM l8_npv4_5e_inland died at x=116 (4px off). Peel past the shield column
 # before inland UP. 16px matches FLANK_STANDOFF.
@@ -378,9 +383,10 @@ class _NorthColumnBase(HopController):
         *,
         approach: tuple[tuple[int, int], ...] = (),
     ) -> FrameAction:
-        if snap.bombs <= 0:
-            return self.mark_fail(f"no_bombs_0x{snap.screen:02x}")
         if self._wall is None:
+            # Before the wall only: a placed last bomb reads 0 while it burns.
+            if snap.bombs <= 0:
+                return self.mark_fail(f"no_bombs_0x{snap.screen:02x}")
             self._wall = BombWallController(
                 wall=wall,
                 level=LEVEL8,
@@ -711,7 +717,7 @@ class _NorthColumnBase(HopController):
         for d in live:
             ox, oy, ofc = int(d.x), int(d.y), int(d.facing)
             if ofc == 0x04 and oy < xy[1] and abs(ox - xy[0]) <= 12 and (xy[1] - oy) <= 36:
-                if 16 <= (xy[1] - oy) <= 40 and snap.bombs >= 2 and self._bomb_cd <= 0:
+                if 16 <= (xy[1] - oy) <= 40 and snap.bombs > BOMBS_OWED_AT_3E and self._bomb_cd <= 0:
                     self._bomb_cd = 75
                     self._bomb_retreat = 45
                     self._retreat_dir = "DOWN"
@@ -726,7 +732,7 @@ class _NorthColumnBase(HopController):
                 return FrameAction(nes_action(btn), "threat_retreat_down")
 
             if ofc == 0x08 and oy > xy[1] and abs(ox - xy[0]) <= 12 and (oy - xy[1]) <= 36:
-                if 16 <= (oy - xy[1]) <= 40 and snap.bombs >= 2 and self._bomb_cd <= 0:
+                if 16 <= (oy - xy[1]) <= 40 and snap.bombs > BOMBS_OWED_AT_3E and self._bomb_cd <= 0:
                     self._bomb_cd = 75
                     self._bomb_retreat = 45
                     self._retreat_dir = "UP"
@@ -823,7 +829,7 @@ class _NorthColumnBase(HopController):
             if abs(mx - xy[0]) <= 8 and 10 <= abs(my - xy[1]) <= 22:
                 return self._slash("DOWN" if xy[1] < my else "UP")
             if abs(mx - 120) <= 16 and 16 <= (xy[1] - my) <= 36:
-                if snap.bombs >= 2:
+                if snap.bombs > BOMBS_OWED_AT_2E:
                     return FrameAction(nes_action("UP", "B"), "combat_bomb_up")
                 if xy[1] >= 165:
                     btn = "LEFT" if xy[0] >= 120 else "RIGHT"

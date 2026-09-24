@@ -549,7 +549,7 @@ def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
     )
     assert MEASURED_POST_L7_EXIT.verified is True
     assert MEASURED_POST_L7_EXIT.screen == 0x42
-    assert MEASURED_POST_L7_EXIT.bombs == 1
+    assert MEASURED_POST_L7_EXIT.bombs == 0
     assert MEASURED_POST_L7_EXIT.rupees == POST_L7_ARROW_RUPEES
     assert MEASURED_POST_L7_EXIT.heart_containers == 12
     assert MEASURED_POST_L7_EXIT.complete() is True

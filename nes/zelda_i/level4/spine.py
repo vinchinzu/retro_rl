@@ -43,11 +43,14 @@ from zelda_i.level4.maze_path import (
     make_room_40_key_controller,
 )
 from zelda_i.level4.overworld import (
+    LEVEL4_BOMB_WALLS,
     LEVEL4_HOPS_FROM_POST_L3,
+    LEVEL4_HOPS_VIA_SHOP_E5,
     LEVEL4_ENTRY_ROOM,
     POST_L3_PATH_MAX_FRAMES,
     OverworldToLevel4Controller,
 )
+from zelda_i.overworld.bomb_shop import BOMB_SHOP_PRICE, bomb_restock_stages
 from zelda_i.overworld.cave_shop import potion_restock_stages
 from zelda_i.overworld.settle import PostL3TriforceSettleController
 from zelda_i.overworld.settle import POST_L3_SETTLE_MAX_FRAMES
@@ -185,13 +188,10 @@ def _ok(**kw):
     return ready(level=LEVEL4, **kw)
 
 
-def l4_hops(*, topup_bombs, spine_fields) -> tuple[SpineHop, ...]:
+def l4_hops(*, spine_fields) -> tuple[SpineHop, ...]:
     def set_entry(env, run, snap):
         if run.success:
             run.l4_entry = spine_fields(snap)
-
-    def bombs(env, run):
-        topup_bombs(env, run)
 
     return (
         SpineHop(
@@ -204,11 +204,22 @@ def l4_hops(*, topup_bombs, spine_fields) -> tuple[SpineHop, ...]:
                     POST_L3_SETTLE_MAX_FRAMES,
                 ),
                 # The L4 walk crosses 0x64's potion shop: restock there
-                # when a drink can be added (a no-op frame otherwise).
-                *potion_restock_stages(LEVEL4_HOPS_FROM_POST_L3, "l3"),
+                # when a drink can be added (a no-op frame otherwise),
+                # keeping the bomb pack's 20R.
+                *potion_restock_stages(
+                    LEVEL4_HOPS_FROM_POST_L3, "l3", reserve=BOMB_SHOP_PRICE
+                ),
+                # Then 0x44's bombs when short of L4's four walls (rr-doua).
+                *bomb_restock_stages(
+                    LEVEL4_HOPS_VIA_SHOP_E5, "l3", want=LEVEL4_BOMB_WALLS
+                ),
                 (
                     "enter_level4",
-                    OverworldToLevel4Controller(require_dungeon=True, resume_on_screen=True),
+                    OverworldToLevel4Controller(
+                        hops=LEVEL4_HOPS_VIA_SHOP_E5,
+                        require_dungeon=True,
+                        resume_on_screen=True,
+                    ),
                     POST_L3_PATH_MAX_FRAMES,
                 ),
             ),
@@ -221,7 +232,6 @@ def l4_hops(*, topup_bombs, spine_fields) -> tuple[SpineHop, ...]:
             _first_key_stages,
             _ok(screen=ROOM_L4_KEESE_KEY_51, spec=ROOM_51_SPEC, keys_cmp="gt"),
             capture_keys=True,
-            before=bombs,
         ),
         SpineHop(
             "level4-clear50",
@@ -308,7 +318,6 @@ def l4_hops(*, topup_bombs, spine_fields) -> tuple[SpineHop, ...]:
             "level4_enter_0x11",
             level4_bomb11_stages,
             _ok(screen=ROOM_L4_MID_11),
-            before=bombs,
         ),
         SpineHop(
             "level4-key01",
@@ -338,7 +347,6 @@ def continue_level4_spine(
     *,
     through: str,
     run_stages,
-    topup_bombs,
     spine_fields,
     room_timer=None,
     assist=None,
@@ -348,7 +356,7 @@ def continue_level4_spine(
     attach_hops(
         env,
         run,
-        l4_hops(topup_bombs=topup_bombs, spine_fields=spine_fields),
+        l4_hops(spine_fields=spine_fields),
         through=through,
         run_stages=run_stages,
         room_timer=room_timer,
@@ -414,13 +422,10 @@ def run_level4_entrance_tf(
                 return False
         return True
 
-    def _noop(*_a, **_k):
-        return None
-
     run = _Run()
     interior = tuple(
         hop
-        for hop in l4_hops(topup_bombs=_noop, spine_fields=lambda snap: {})
+        for hop in l4_hops(spine_fields=lambda snap: {})
         if hop.through != "level4-entry"
     )
     attach_hops(

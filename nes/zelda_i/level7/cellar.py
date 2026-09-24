@@ -579,6 +579,11 @@ class Room1ACandleController(HopController):
             if y < ROOM4A_FLOOR_Y:
                 return FrameAction(nes_action("DOWN"), "cellar_drop")
             self._cellar_dropped = True
+        if self._cellar_climbed and y >= ROOM4A_FLOOR_Y - 4:
+            # The cellar's Keese knocked Link off the ledge back to the
+            # floor, at (32,189) on power-on 2026-09-24; idling there took
+            # 37,878 frames. Climb again.
+            self._cellar_climbed = False
         if not self._cellar_climbed:
             if x < 172:
                 return FrameAction(nes_action("RIGHT"), "cellar_east")
