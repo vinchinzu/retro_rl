@@ -389,6 +389,9 @@ class OverworldPathController:
     # Measured overworld route (``_rung_geo``). Needs ``bind_env``; with no
     # env bound the rung declines and the hop is the blind align it was.
     geo: bool = True
+    # Opt-in: on the first frame, skip the hops up to the one whose target
+    # is the screen Link is already on (see ``_decide``).
+    resume_on_screen: bool = False
     # The spit duck scored on the lattice (``_spit_escape``); needs ``geo``.
     shot_model: bool = True
     # Rocks too. The small shield blocks an octorok rock only while Link faces
@@ -1914,6 +1917,13 @@ class OverworldPathController:
 
     def _decide(self, snap: ZeldaSnapshot) -> FrameAction:
         self._nav_snap = snap
+        if self.resume_on_screen and self.frames == 0 and snap.level == 0:
+            # Start after the hop that lands on this screen: one hop list
+            # serves a walk that begins earlier or later on it (L4 from
+            # 0x74, or from 0x64 after a potion restock there).
+            landed = [i for i, hop in enumerate(self.hops) if hop.target == snap.screen]
+            if landed:
+                self.hop_index = landed[-1] + 1
         if self.evade or self.occupied_lane:
             self._observe_threats(snap)
         if self.hunter is not None:

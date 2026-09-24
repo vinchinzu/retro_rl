@@ -159,3 +159,32 @@ def test_held_refill_writes_nothing_and_an_unheld_one_still_refills() -> None:
     assist.apply_snapshot(data, last, frame=2)
     assert data.values.get("health") == 0x55
     assert assist.telemetry.health.writes == 1
+
+
+def test_restock_buys_only_when_short_and_affordable() -> None:
+    """Between dungeons the 0x64 stop is free when there is nothing to buy:
+    the stage ends on its first frame; otherwise it walks to the shop."""
+    from zelda_i.overworld.cave_shop import make_potion_restock_controller
+    from zelda_i.overworld.graph import ScreenHop
+
+    hops = (ScreenHop(0x64, "RIGHT"),)
+
+    def first(potion: int, rupees: int):
+        ctrl = make_potion_restock_controller(hops=hops)
+        snap = ZeldaSnapshot(
+            mode=PLAY_MODE, level=0, screen=0x74, next_screen=0x74, link_x=120, link_y=141,
+            facing=8, sword=2, bombs=4, rupees=rupees, keys=0, health=0x77, triforce=7,
+            compass=0, dialog_timer=0, colliding_tile=0, room_item_id=0, room_all_dead=0,
+            room_obj_count=0, cur_opened_doors=0, open_doorway_mask=0, objects=(),
+            letter=2, potion=potion,
+        )
+        ctrl.step(snap)
+        return ctrl
+
+    # Full red, too poor for blue, or a blue with no red money (a second
+    # blue is not a second drink): nothing to buy.
+    for potion, rupees in ((2, 200), (0, 39), (1, 67)):
+        assert first(potion=potion, rupees=rupees).success, (potion, rupees)
+    for potion, rupees in ((0, 40), (1, 68), (0, 255)):
+        ctrl = first(potion=potion, rupees=rupees)
+        assert not ctrl.success and not getattr(ctrl, "failed", False), (potion, rupees)

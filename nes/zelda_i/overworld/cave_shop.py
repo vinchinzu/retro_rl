@@ -77,6 +77,8 @@ __all__ = [
     "PotionShopBuyController",
     "RED_POTION_PRICE",
     "make_potion_buy_controller",
+    "make_potion_restock_controller",
+    "restock_wanted",
 ]
 
 BUY_BUDGET = 900
@@ -407,6 +409,17 @@ def _potion(snap: ZeldaSnapshot) -> int:
     return int(snap.potion)
 
 
+def restock_wanted(snap: ZeldaSnapshot) -> bool:
+    """A buy adds a drink: none held and 40R, or a blue held and 68R for red.
+
+    A red is full, and a blue bought over a blue is still one drink.
+    """
+    potion, rupees = int(snap.potion), int(snap.rupees)
+    if potion == 0:
+        return rupees >= BLUE_POTION_PRICE
+    return potion == 1 and rupees >= RED_POTION_PRICE
+
+
 @dataclass
 class PotionShopBuyController(CaveShopBuyController):
     """Buy a potion: show the letter once, wait for the wares, buy, restore B.
@@ -420,6 +433,8 @@ class PotionShopBuyController(CaveShopBuyController):
     """
 
     item: str = "auto"
+    # Between dungeons: end at once unless ``restock_wanted`` (see there).
+    restock: bool = False
     keeper: int = POTION_KEEPER
     letter_shows: int = 0
     chosen: str = ""
@@ -455,6 +470,12 @@ class PotionShopBuyController(CaveShopBuyController):
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         return self._purchase_done(snap) and self._restore_done
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.restock and self.frames == 0 and not restock_wanted(snap):
+            self.frames += 1
+            return self._finish("potion_restock_nothing_to_buy")
+        return super().step(snap)
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.phase is CaveShopBuyPhase.HOP:
@@ -578,7 +599,7 @@ class PotionShopBuyController(CaveShopBuyController):
 
 
 def make_potion_buy_controller(
-    *, hops: tuple[ScreenHop, ...] | None = None, item: str = "auto"
+    *, hops: tuple[ScreenHop, ...] | None = None, item: str = "auto", restock: bool = False
 ) -> PotionShopBuyController:
     """Potion buy at 0x64. Zero-arg: ``stage_replay.py`` target.
 
@@ -598,6 +619,7 @@ def make_potion_buy_controller(
     return PotionShopBuyController(
         hops=tuple(hops),
         item=item,
+        restock=restock,
         shop_screen=POTION_SHOP_SCREEN,
         cave_x=POTION_MOUTH_X,
         cave_y=POTION_MOUTH_Y,
@@ -610,3 +632,10 @@ def make_potion_buy_controller(
         max_frames=12000,
         require_sword=True,
     )
+
+
+def make_potion_restock_controller(
+    *, hops: tuple[ScreenHop, ...]
+) -> PotionShopBuyController:
+    """0x64 buy between dungeons, skipped on its first frame when not wanted."""
+    return make_potion_buy_controller(hops=hops, restock=True)
