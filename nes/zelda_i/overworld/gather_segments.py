@@ -298,7 +298,9 @@ RUPEES_56_HOPS = (
     ScreenHop(0x5B, "UP", align_x=48),
     ScreenHop(0x5A, "LEFT"),
     ScreenHop(0x59, "LEFT"),
-    ScreenHop(0x58, "LEFT", align_y=133),
+    # The ring road's band: on row 133 the 0x57 hop's band_down and the
+    # east-edge recovery swapped for ~1000 frames (run 18, 787 flutters).
+    ScreenHop(0x58, "LEFT", y_band_lo=148, y_band_hi=162),
 ) + RING_HOPS[2:4]
 RING_FROM_56_HOPS = RING_HOPS[4:]
 # After the ring (5R left) 0x62's tree pays 100R for a potion: down to
