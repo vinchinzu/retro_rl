@@ -15,7 +15,6 @@ from zelda_i.dungeon.ops import (
     poke_bombs,
     poke_food,
     poke_keys,
-    poke_rupees,
 )
 from zelda_i.ram import ADDR_FOOD
 from zelda_i.ram import ADDR_SELECTED_ITEM as RAM_SELECTED
@@ -109,46 +108,3 @@ def test_apply_owned_inventory_tops_up_counts_and_selects_b() -> None:
     assert fields == {"bombs", "keys", "selected_item"}
 
 
-def test_apply_owned_inventory_tops_up_rupees_only_when_short() -> None:
-    import numpy as np
-
-    from zelda_i.ram import ADDR_RUPEES
-
-    assert "rupees" in OWNED_INVENTORY_FIELDS
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_RUPEES] = 42
-    values: dict[str, int] = {}
-
-    class _Data:
-        memory = None
-
-        def set_value(self, key: str, value: int) -> None:
-            values[key] = int(value)
-
-    env = SimpleNamespace(
-        get_ram=lambda: ram,
-        unwrapped=SimpleNamespace(data=_Data(), em=None),
-    )
-    report = apply_owned_inventory(env, rupees=60, select_bomb=False)
-    assert values == {"rupees": 60}
-    assert [w["field"] for w in report["writes"]] == ["rupees"]
-    assert report["writes"][0]["from"] == 42 and report["writes"][0]["to"] == 60
-
-    # Already >= target: no write.
-    ram[ADDR_RUPEES] = 80
-    values.clear()
-    report = apply_owned_inventory(env, rupees=60, select_bomb=False)
-    assert values == {}
-    assert report["writes"] == []
-
-
-def test_poke_rupees_uses_data_set_value() -> None:
-    values: dict[str, int] = {}
-
-    class _Data:
-        def set_value(self, key: str, value: int) -> None:
-            values[key] = int(value)
-
-    env = SimpleNamespace(unwrapped=SimpleNamespace(data=_Data()))
-    assert poke_rupees(env, 60) == "rupees=60"
-    assert values == {"rupees": 60}

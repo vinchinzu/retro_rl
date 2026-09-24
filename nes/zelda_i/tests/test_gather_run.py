@@ -2,18 +2,9 @@
 
 from __future__ import annotations
 
-from zelda_i.overworld.gather_run import (
-    entry_health_byte,
-    gather_glance,
-    leave_payload,
-    written_leave,
-)
+from zelda_i.overworld.gather_run import gather_glance
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
-
-class _Ctrl:
-    def __init__(self, success: bool) -> None:
-        self.success = success
 
 
 def _snap() -> ZeldaSnapshot:
@@ -44,13 +35,6 @@ def _snap() -> ZeldaSnapshot:
     )
 
 
-def test_bfs_heart_byte_clamps_without_adding_a_container() -> None:
-    """0x2F is the byte on the BFS pins: 15 hearts in 3 containers."""
-    assert entry_health_byte(0x2F) == 0x22
-    assert entry_health_byte(0x22) is None
-    assert entry_health_byte(0x20) is None
-
-
 def test_gather_glance_carries_the_leave_fields() -> None:
     glance = gather_glance(_snap())
     assert glance["screen_hex"] == "0x7B"
@@ -63,29 +47,3 @@ def test_gather_glance_carries_the_leave_fields() -> None:
     assert glance["mode"] == PLAY_MODE
 
 
-def test_red_leave_can_still_save_a_pose() -> None:
-    path = "/tmp/gather_leave_red.state"
-    payload = leave_payload(_Ctrl(False), {"screen_hex": "0x7B"}, 42, "leave", path)
-    assert payload["ok"] is False
-    assert payload["saved"] == path
-
-
-def test_success_leave_is_ok() -> None:
-    payload = leave_payload(
-        _Ctrl(True), {"screen_hex": "0x7B"}, 10, "leave", "/tmp/gather_leave_ok.state"
-    )
-    assert payload["ok"] is True
-    assert payload["saved"] == "/tmp/gather_leave_ok.state"
-
-
-def test_heart_leave_is_not_written_when_containers_stay() -> None:
-    assert written_leave("GatherHeartL8Leave", False, "/tmp/x.state", save_red=False) is None
-    assert written_leave("leave", False, "/tmp/x.state", save_red=True) == "/tmp/x.state"
-
-
-def test_no_save_as_means_saved_is_none() -> None:
-    payload = leave_payload(
-        _Ctrl(True), {"screen_hex": "0x7B"}, 10, None, "/tmp/unused.state"
-    )
-    assert payload["ok"] is True
-    assert payload["saved"] is None

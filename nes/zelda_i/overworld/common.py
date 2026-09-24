@@ -835,7 +835,7 @@ def align_and_push(
 
     if (
         align_y is not None
-        and abs(snap.link_y - align_y) > y_tol
+        and _y_unaligned(int(snap.link_y), int(align_y), direction, y_tol)
         and 25 < snap.link_x < 230
     ):
         # Force the travel direction near the entry edge so corridor alignment
@@ -850,6 +850,25 @@ def align_and_push(
         return _swing(btn, f"{reason}_ay")
 
     return _swing(direction, reason)
+
+
+def lattice_row(y: int) -> int:
+    """The turn-lattice row (y % 8 == 5) nearest ``y``; ties go down-screen."""
+    return (int(y) - 1) // 8 * 8 + 5
+
+
+def _y_unaligned(y: int, align_y: int, direction: str, y_tol: int) -> bool:
+    """Whether a push still needs its row fixed first.
+
+    A LEFT/RIGHT press off the lattice slides Link onto the NEAREST row, so
+    "within 5 px" of an off-row target is not aligned: 0x37's align_y=140
+    stopped the DOWN at 135, RIGHT slid back to 133, and the two swapped
+    for 12500 frames (last-heart run 29). Horizontal pushes align until
+    Link's own nearest row is the target's.
+    """
+    if direction in ("LEFT", "RIGHT"):
+        return lattice_row(y) != lattice_row(align_y)
+    return abs(y - align_y) > y_tol
 
 
 def wake_or_wait_mode(phase_frames: int, mode: int) -> FrameAction:
