@@ -1,5 +1,29 @@
 # Pre-L1 loadout
 
+## Hidden rupees pay the ring (2026-09-24, rr-t49c)
+
+The 73→250 ring write is gone: the chain opens the hidden rupee caves on
+and beside its walk (`SECRET_RUPEE_CAVES`, `overworld/locations.py`) with
+`make_secret_rupee_controller(screen, hops)`. ROM payouts (cave table at
+file `$18610`): `$21`=30R, `$22`=100R, `$23`=10R.
+
+| stage | screen | opens | pays | note |
+|---|---|---|---|---|
+| `rupees_2d` | `0x2D` | bomb rock (80,80) from (80,85) UP | 30 | a bomb after `0x2C`'s heart; NE walk starts here |
+| `ne_100` | `0x0F` | centre arch | 100 | unchanged |
+| `rupees_28` | `0x28` | tree (208,160) from (208,133) DOWN | 30 | on the white walk; candle selected at `0x0C` |
+| `rupees_48` | `0x48` | tree (208,96) from (188,93) RIGHT | 30 | unchanged |
+| `rupees_5b` | `0x5B` | tree (32,160) from (32,133) DOWN | 10 | row 5 east of `0x58` |
+| `rupees_6b` | `0x6B` | tree (128,160) from (128,133) DOWN | 100 | down the x=48 gap |
+| `rupees_56` | `0x56` | tree (160,160) from (160,133) DOWN | 10 | on the ring road; wallet hits the 255 cap |
+| `rupees_62` | `0x62` | tree (128,96) from (148,93) LEFT | 100 | after the ring; exit is west of the bush column, back north via `0x52/0x53/0x54` |
+
+The wallet caps at 255: 0x62 taken before the ring counted 0. Segmented
+from pins (2026-09-24) the chain bought the ring with 255R (5 left) and
+reached the `0x37` mouth with 107R, 6/6 hearts, and no rupee write.
+`--through pre-l1` no longer writes `$066D`; `bomb_topup` hunts the coast
+when short.
+
 ## Blue Ring main-spine revision (2026-09-23, rr-scum)
 
 The default gathering chain now visits the Armos shop on `0x34` after the
@@ -38,9 +62,9 @@ remain, so this is a second Survival verification, not a natural farm.
 
 Zelda Dungeon, The Gathering, first quest only. Grid is `screen = (row << 4) | col`. Start is `0x77`.
 
-This prefix is how Level 1 gets more than three heart containers and a wooden sword. The Clean gate stays the 18909f wooden clear. Do not STATUS from a pin. Heart assist stays off. Do not poke bombs, Food, keys, the candle, or `$066F`. When the wallet is under 20, the spine writes `$066D` to 20 before `bomb_topup`. That write is not rr-ttyu.3.
+This prefix is how Level 1 gets more than three heart containers and a wooden sword. The Clean gate stays the 18909f wooden clear. Do not STATUS from a pin. Heart assist stays off. Do not poke bombs, Food, keys, rupees, the candle, or `$066F`.
 
-Composer row is `overworld/gathering.py`: sword, coast walk, top-up, then the buy. `--through pre-l1` runs that row and forces the health assist off. The rupee write sits in front of the top-up, so a short arrival does not leave `0x6F`.
+Composer row is `overworld/gathering.py`: sword, coast walk, top-up, then the buy. `--through pre-l1` runs that row and forces the health assist off. A short arrival hunts the coast in `bomb_topup` before the buy.
 
 ## Leftover (2026-09-22, second sitting)
 

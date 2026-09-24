@@ -10,9 +10,10 @@ from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import direction_to_facing
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.ops import B_ITEM_CANDLE
 from zelda_i.dungeon.pause_select import PauseSelectController
-from zelda_i.overworld.cave_shop import CaveShopBuyController
+from zelda_i.overworld.cave_shop import CaveShopBuyController, make_potion_buy_controller
 from zelda_i.overworld.gather_run import (
     PRE_L1_LEAVE,
     pin_pre_l1,
@@ -22,6 +23,7 @@ from zelda_i.overworld.gather_run import (
 )
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import PondFairyController
+from zelda_i.overworld.locations import SECRET_RUPEE_CAVES
 from zelda_i.overworld.hunt import link_busy
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.white_sword import (
@@ -33,11 +35,18 @@ from zelda_i.overworld.white_sword import (
     WhiteSwordPhase,
 )
 from zelda_i.ram import ADDR_CANDLE, ADDR_RING, CAVE_MODE, PLAY_MODE, ZeldaSnapshot
-from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
+from zelda_i.walk.physics import OPPOSITE, OccupancyGrid, OccupancyWalker
 
 BLAST_FRAMES = 80
 # Frames after B by which a placed bomb has left ``$0658``.
 BOMB_CONFIRM_FRAMES = 12
+# Frames of stepping back off the cell to re-enter it facing the target
+# (6 px, past the approach's 2 px tolerance), and how often before a turn
+# in place.
+BACK_OFF_FRAMES = 4
+BACK_OFF_TRIES = 2
+# Half a tile past the opened tile object (or off its lane) is knocked off it.
+OPENING_SLACK = 8
 # Inside this many px of the bomb cell the approach pushes instead of swinging.
 BOMB_CELL_PUSH_PX = 8
 # Link's ObjState while a cave's text (or a pond fairy) holds him.
@@ -59,9 +68,6 @@ HEART_M3_SCREEN = 0x2C
 # bottom face of the centre rock. Facing UP from y=165 opens it for
 # x 136..152. The right face (x 176..184, facing LEFT) opened nothing.
 HEART_M3_BOMB_XY = (144, 165)
-# BFS_2C spawns at (0, 85). The rock spans x 80..176, so walk the open
-# west column down to the bomb row before going east.
-HEART_M3_APPROACH = ((16, 165),)
 # The 0x2C cave is the same take-any layout as 0x7B: old man 0x6B at
 # (120, 128), potion left, heart right. Both walk to HEART_L8_ITEM_XY.
 TAKE_ANY_SCREENS = (HEART_L8_SCREEN, HEART_M3_SCREEN, 0x47)
@@ -70,13 +76,9 @@ TAKE_ANY_SCREENS = (HEART_L8_SCREEN, HEART_M3_SCREEN, 0x47)
 # (type 0x64) at a ROM-fixed spot: 0x48 (208, 96), 0x47 (176, 176),
 # 0x46 (144, 176). The flame has to walk its 16 px before it stands, so
 # Link cannot be flush with the tree: (192, 93) RIGHT stays shut, (188, 93)
-# opens. The reveal sets room flag $80.
+# opens. The reveal sets room flag $80. Rupee caves: ``SECRET_RUPEE_CAVES``.
 FLAME_WAIT = 100
-BURN_48_STAND = (188, 93)
 BURN_47_STAND = (176, 157)
-SECRET_48_RUPEES = 30
-# The 0x48 cave keeper is 0x7B, not 0x0F's 0x7C (measured in the chain).
-SECRET_48_KEEPER = 0x7B
 
 NE_HOPS = (
     ScreenHop(0x2D, "RIGHT", align_y=180),
@@ -273,6 +275,51 @@ RING_RETURN_HOPS = (
 )
 RING_PRICE = 250
 
+# Hidden rupees fund the ring (ROM payouts, ``SECRET_RUPEE_CAVES``). The
+# chain reached 0x34 with ~73R and a 177R Survival write before these.
+# 0x2D's rock (30R) is where the NE walk starts, a bomb after 0x2C's heart.
+RUPEES_2D_HOPS = NE_HOPS[:1]
+# The white walk comes into 0x28 from 0x29 right beside its tree (30R).
+WHITE_TO_28_HOPS = WHITE_HOPS[:6]
+WHITE_FROM_28_HOPS = WHITE_HOPS[6:]
+# Out of that cave Link stands at (224, 157), beside the stairs the tree
+# left at (208, 160). A lattice walk west crossed that tile and went back
+# down (12000 frames, 2026-09-23): up the x=224 column first, then the
+# east-entry corners, which pass above and left of it.
+WHITE_FROM_28_WAYPOINTS = {0x28: ((224, 133),) + WAYPOINTS[0x28][2:]}
+# After 0x47's heart: east along row 5 to 0x5B's tree (10R) and down the
+# x=48 gap to 0x6B's (100R), back to 0x58, then the ring road with 0x56's
+# tree (10R). That is exactly the 250 (the wallet caps at 255: 0x62's
+# 100R taken before the ring counted 0, 2026-09-23).
+RUPEES_5B_HOPS = RING_HOPS[:2] + (
+    ScreenHop(0x59, "RIGHT", align_y=133),
+    ScreenHop(0x5A, "RIGHT"),
+    ScreenHop(0x5B, "RIGHT"),
+)
+RUPEES_6B_HOPS = (ScreenHop(0x6B, "DOWN", align_x=48),)
+RUPEES_56_HOPS = (
+    ScreenHop(0x5B, "UP", align_x=48),
+    ScreenHop(0x5A, "LEFT"),
+    ScreenHop(0x59, "LEFT"),
+    ScreenHop(0x58, "LEFT", align_y=133),
+) + RING_HOPS[2:4]
+RING_FROM_56_HOPS = RING_HOPS[4:]
+# After the ring (5R left) 0x62's tree pays 100R for a potion: down to
+# 0x64, west through 0x63 (a door-repair cave that charges 20R to open:
+# walk through only), burn it from the east half. The cave lets Link out
+# at (96, 125) on the WEST side of 0x62's full-height bush column, so the
+# way back is north round it, 0x52 -> 0x53 -> 0x54 (691f, measured).
+RUPEES_62_HOPS = RING_RETURN_HOPS[:3] + (ScreenHop(0x63, "LEFT"), ScreenHop(0x62, "LEFT"))
+# That 100R buys a red potion (68R, ``cave_shop.make_potion_buy_controller``)
+# in 0x64's open cave on the way down; the drink is ``PotionDrinkGuard``.
+POTION_FROM_62_HOPS = (
+    ScreenHop(0x52, "UP", align_x=96),
+    ScreenHop(0x53, "RIGHT"),
+    ScreenHop(0x54, "RIGHT"),
+    RING_RETURN_HOPS[2],
+)
+RING_RETURN_FROM_64_HOPS = RING_RETURN_HOPS[3:]
+
 
 def step_toward(
     controller: Any,
@@ -353,6 +400,11 @@ def push(direction: str, reason: str) -> FrameAction:
     return FrameAction(nes_action(direction), reason)
 
 
+def _credited(snap: ZeldaSnapshot) -> int:
+    """Wallet plus the payout still counting up on the HUD."""
+    return int(snap.rupees) + int(snap.rupees_to_add)
+
+
 def centre_item_walk(snap: ZeldaSnapshot, keeper: int, tag: str) -> FrameAction:
     """One-item cave: wait for ``keeper``, line up on x=120, walk UP.
 
@@ -378,8 +430,10 @@ class BombWallController(OverworldPathController):
     bomb_x: int = 144
     bomb_y: int = 88
     bomb_face: str = "UP"
-    approach: tuple[tuple[int, int], ...] = ()
-    bomb_y_first: bool = False
+    # The hidden tile object (tree/rock) this stand opens; None skips the
+    # knocked-past-it recovery (heart caves keep their measured walk-in).
+    door_x: int | None = None
+    door_y: int | None = None
     # None stays put: a candle flame walks away from Link on its own.
     retreat: str | None = "DOWN"
     # Frames from B to walking in. A bomb blasts at ~80. A flame walks 16
@@ -398,7 +452,10 @@ class BombWallController(OverworldPathController):
     consumes_bomb: bool = True
     _bombs_at_press: int = -1
     _bombed: int = 0
-    _leg: int = 0
+    _on_cell: bool = False
+    _back_frames: int = 0
+    _backs: int = 0
+    _regain: bool = False
     _entry_containers: int = -1
     _cave_rupees: int = -1
     _interior: int = 0
@@ -416,10 +473,12 @@ class BombWallController(OverworldPathController):
         self._remember(snap)
         in_cave = snap.level == 0 and snap.mode == CAVE_MODE and snap.screen == self.screen
         if self.reward == "rupees":
+            # The payout lands in $067D at once and the HUD counts it in
+            # at ~2 frames a rupee; the count finishes on the walk out.
             return (
                 in_cave
                 and self._cave_rupees >= 0
-                and int(snap.rupees) >= self._cave_rupees + self.reward_rupees
+                and _credited(snap) >= self._cave_rupees + self.reward_rupees
             )
         return (
             in_cave
@@ -434,7 +493,7 @@ class BombWallController(OverworldPathController):
         if snap.mode == CAVE_MODE:
             if self.reward == "rupees":
                 if self._cave_rupees < 0:
-                    self._cave_rupees = int(snap.rupees)
+                    self._cave_rupees = _credited(snap)
                 self._interior += 1
                 if self._interior > self.interior_budget:
                     return self._fail("secret_rupees_not_taken")
@@ -442,33 +501,46 @@ class BombWallController(OverworldPathController):
             if self.interior_x is None or self.interior_y is None:
                 return push("UP", "take_heart")
             return self._take_heart(snap)
-        while self._bombed == 0 and self._leg < len(self.approach):
-            wx, wy = self.approach[self._leg]
-            walk = step_toward(self, snap, wx, wy, "approach", tol=2)
-            if walk is not None:
-                return walk
-            self._leg += 1
+        if self._bombed == 0 and self._back_frames > 0:
+            self._back_frames -= 1
+            return push(OPPOSITE[self.bomb_face], "back_off")
         if self._bombed == 0:
-            # 2 px, not 6: the 0x2C sweep proved y 165..173, and a chain
-            # bomb from inside the 6 px box left the rock shut.
-            walk = step_toward(
-                self, snap, self.bomb_x, self.bomb_y, "bomb_cell",
-                tol=2, y_first=self.bomb_y_first,
+            # The ROM lattice route, not a bigger-axis press: 0x2C's rock
+            # and 0x28's staggered bushes need corners a greedy walk never
+            # takes. 2 px, not 6: the 0x2C sweep proved y 165..173, and a
+            # chain bomb from inside the 6 px box left the rock shut.
+            # Once on the cell only the facing press is left: the turn moves
+            # Link a pixel, and re-walking it swapped UP/DOWN for 2000
+            # frames on 0x2D. A knockback past the nudge box re-walks.
+            off = max(
+                abs(int(snap.link_x) - self.bomb_x), abs(int(snap.link_y) - self.bomb_y)
             )
-            if walk is not None:
+            if off > BOMB_CELL_PUSH_PX:
+                self._on_cell = False
+            step = None
+            if not self._on_cell:
+                step = room_step(snap, (self.bomb_x, self.bomb_y), tol=2, env=self._env)
+                self._on_cell = step is None
+            if step is not None:
                 # The last few pixels are a push, not a swing. 0x7B knocked
                 # Link to (144, 85), 3 px past the cell, with a red leever in
                 # the lane below: every DOWN step became a slash that pinned
                 # him, and B was never pressed in 3827 frames.
-                near = max(
-                    abs(int(snap.link_x) - self.bomb_x), abs(int(snap.link_y) - self.bomb_y)
-                ) <= BOMB_CELL_PUSH_PX
-                if near and not link_busy(snap):
-                    return push(_action_dir(walk), "bomb_cell_nudge")
-                return walk
+                if off <= BOMB_CELL_PUSH_PX and not link_busy(snap):
+                    return push(step, "bomb_cell_nudge")
+                return self._swing(step, "bomb_cell")
             # The bomb lands ahead of Link. A walk that ended on the other
             # axis faces the wrong way (0x2C's first try bombed open sand).
+            # A turn in place walks him on toward the target: 0x48's RIGHT
+            # ended flush with the tree at (192, 93), which never reveals.
+            # Step back and come in facing it; turn in place only after
+            # that twice fails (a wall behind him).
             if int(snap.facing) != direction_to_facing(self.bomb_face):
+                if self._backs < BACK_OFF_TRIES:
+                    self._backs += 1
+                    self._on_cell = False
+                    self._back_frames = BACK_OFF_FRAMES - 1
+                    return push(OPPOSITE[self.bomb_face], "back_off")
                 return push(self.bomb_face, "face_wall")
             # A B press inside a swing is dropped: the default spine's 0x7B
             # pressed once at the end of a ``bomb_cell_slash``, kept all four
@@ -495,7 +567,28 @@ class BombWallController(OverworldPathController):
             return push(self.retreat, "off_blast")
         if self._bombed > self.use_wait + 400:
             return self._fail(self.bomb_fail)
+        if self._regain or self._off_the_opening(snap):
+            # 0x28, 2026-09-24: a hit as the tree burned threw Link past the
+            # stairs to (208, 189), and DOWN held there 400 frames. Walk all
+            # the way back to the stand (a half-way turn swapped with DOWN
+            # at y 168/170), then go in facing it as before.
+            step = room_step(snap, (self.bomb_x, self.bomb_y), tol=2, env=self._env)
+            self._regain = step is not None
+            if self._regain:
+                return push(step, "regain_cell")
         return push(self.bomb_face, "into_wall")
+
+    def _off_the_opening(self, snap: ZeldaSnapshot) -> bool:
+        """Past the opening along the face, or off its axis, by a tile's half."""
+        if self.door_x is None or self.door_y is None:
+            return False
+        x, y = int(snap.link_x), int(snap.link_y)
+        along, across = (y, x) if self.bomb_face in ("UP", "DOWN") else (x, y)
+        door, lane = (
+            (self.door_y, self.bomb_x) if self.bomb_face in ("UP", "DOWN") else (self.door_x, self.bomb_y)
+        )
+        sign = 1 if self.bomb_face in ("DOWN", "RIGHT") else -1
+        return (along - door) * sign > OPENING_SLACK or abs(across - lane) > OPENING_SLACK
 
     def _cave_walker_for(self, snap: ZeldaSnapshot) -> OccupancyWalker:
         """Occupancy for the open cave. The measured UP miss stays blocked."""
@@ -598,6 +691,8 @@ class GatherWhiteController(OverworldPathController):
     farm_below_hearts: int = 0
     evade: bool = False
     max_frames: int = 12000
+    # None walks ``WAYPOINTS``; ``{}`` leaves every screen to the lattice.
+    waypoints: dict[int, tuple[tuple[int, int], ...]] | None = None
     _detour: WhiteSwordDetourController | None = None
     _way_screen: int = -1
     _way_leg: int = 0
@@ -865,8 +960,6 @@ def make_heart_m3_controller() -> BombWallController:
         bomb_x=HEART_M3_BOMB_XY[0],
         bomb_y=HEART_M3_BOMB_XY[1],
         bomb_face="UP",
-        approach=HEART_M3_APPROACH,
-        bomb_y_first=True,
         retreat="DOWN",
         interior_x=HEART_L8_ITEM_XY[0],
         interior_y=HEART_L8_ITEM_XY[1],
@@ -875,26 +968,41 @@ def make_heart_m3_controller() -> BombWallController:
     )
 
 
-def make_burn_48_controller() -> BombWallController:
+def make_secret_rupee_controller(
+    screen: int, hops: tuple[ScreenHop, ...] = (), max_frames: int = 3000
+) -> BombWallController:
+    """Open ``screen``'s hidden rupee cave (bomb or candle) and take the pay.
+
+    Stand, facing, payout and keeper come from the measured
+    ``SECRET_RUPEE_CAVES`` row. The B item must already be the bomb or the
+    candle. Stops inside the cave once the payout is credited.
+    """
+    spot = SECRET_RUPEE_CAVES[int(screen)]
+    kind = "rock" if spot.uses_bomb else "tree"
     return BombWallController(
-        hops=(),
-        max_frames=3000,
-        screen=0x48,
-        bomb_x=BURN_48_STAND[0],
-        bomb_y=BURN_48_STAND[1],
-        bomb_face="RIGHT",
-        # Arrives at (120, 61) from 0x38. Trees fill x>=144 above y=93.
-        bomb_y_first=True,
-        retreat=None,
-        use_wait=FLAME_WAIT,
+        hops=hops,
+        max_frames=max_frames,
+        screen=spot.screen,
+        bomb_x=spot.stand[0],
+        bomb_y=spot.stand[1],
+        bomb_face=spot.face,
+        door_x=spot.x,
+        door_y=spot.y,
+        retreat="DOWN" if spot.uses_bomb else None,
+        use_wait=BLAST_FRAMES if spot.uses_bomb else FLAME_WAIT,
         reward="rupees",
-        reward_rupees=SECRET_48_RUPEES,
-        keeper=SECRET_48_KEEPER,
+        reward_rupees=spot.rupees,
+        keeper=spot.keeper,
         interior_budget=700,
-        bomb_fail="tree_0x48_did_not_open",
-        leave_fail="left_0x48",
-        consumes_bomb=False,
+        bomb_fail=f"{kind}_0x{spot.screen:02x}_did_not_open",
+        leave_fail=f"left_0x{spot.screen:02x}",
+        consumes_bomb=spot.uses_bomb,
     )
+
+
+def make_burn_48_controller() -> BombWallController:
+    # Arrives at (120, 61) from 0x38. Trees fill x>=144 above y=93.
+    return make_secret_rupee_controller(0x48)
 
 
 def make_burn_47_controller() -> BombWallController:
@@ -943,9 +1051,9 @@ def make_potion_controller() -> ArrivalController:
     )
 
 
-def make_ring_controller() -> CaveShopBuyController:
+def make_ring_controller(hops: tuple[ScreenHop, ...] = RING_HOPS) -> CaveShopBuyController:
     return CaveShopBuyController(
-        hops=RING_HOPS,
+        hops=hops,
         max_frames=18000,
         shop_screen=0x34,
         cave_x=64,
@@ -1072,25 +1180,43 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("walk_2c", HopWalkController(hops=POND_RETURN_HOPS, waypoints=POND_RETURN_WAYPOINTS)),
         ("heart_2c", make_heart_m3_controller()),
         ("exit_2c", CaveExitController()),
+        ("rupees_2d", make_secret_rupee_controller(0x2D, RUPEES_2D_HOPS)),
+        ("exit_2d", CaveExitController()),
         ("ne_100", NortheastController()),
         ("exit_0f", CaveExitController()),
         ("letter", letter),
         ("exit_0e", CaveExitController()),
         ("candle", make_candle_controller()),
         ("exit_0c", CaveExitController()),
-        ("white", make_white_controller()),
+        ("select_candle", PauseSelectController(want=B_ITEM_CANDLE)),
+        ("walk_28", HopWalkController(hops=WHITE_TO_28_HOPS, max_frames=8000)),
+        ("rupees_28", make_secret_rupee_controller(0x28)),
+        ("exit_28", CaveExitController(clear=0)),
+        (
+            "white",
+            GatherWhiteController(hops=WHITE_FROM_28_HOPS, waypoints=WHITE_FROM_28_WAYPOINTS),
+        ),
         ("back_1a", WhiteReturnController()),
         ("walk_48", HopWalkController(hops=BURN_WALK_HOPS, waypoints={})),
-        ("select_candle", PauseSelectController(want=B_ITEM_CANDLE)),
         ("rupees_48", make_burn_48_controller()),
         ("exit_48", CaveExitController(clear=0)),
         ("heart_47", make_burn_47_controller()),
         ("exit_47", CaveExitController(clear=0)),
-        ("ring", make_ring_controller()),
+        ("rupees_5b", make_secret_rupee_controller(0x5B, RUPEES_5B_HOPS, 8000)),
+        ("exit_5b", CaveExitController(clear=0)),
+        ("rupees_6b", make_secret_rupee_controller(0x6B, RUPEES_6B_HOPS, 4000)),
+        ("exit_6b", CaveExitController(clear=0)),
+        ("rupees_56", make_secret_rupee_controller(0x56, RUPEES_56_HOPS, 10000)),
+        ("exit_56", CaveExitController(clear=0)),
+        ("ring", make_ring_controller(RING_FROM_56_HOPS)),
         ("exit_ring", CaveExitController(clear=0)),
+        ("rupees_62", make_secret_rupee_controller(0x62, RUPEES_62_HOPS, 8000)),
+        ("exit_62", CaveExitController(clear=0)),
+        ("potion", make_potion_buy_controller(hops=POTION_FROM_62_HOPS)),
+        ("exit_64", CaveExitController()),
         (
             "ring_return",
-            HopWalkController(hops=RING_RETURN_HOPS, max_frames=14000, waypoints={}),
+            HopWalkController(hops=RING_RETURN_FROM_64_HOPS, max_frames=14000, waypoints={}),
         ),
         ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS[2:], waypoints={})),
         ("pond_39_l1", PondFairyController()),
@@ -1136,7 +1262,6 @@ def main(argv: list[str] | None = None) -> int:
             from_state=CHAIN_FROM,
             chain=CHAIN_NAME,
             engage_hearts=2,
-            rupee_topups={"ring": RING_PRICE},
         )
         return 0 if result["ok"] else 1
     if token.startswith("chain:"):
@@ -1151,7 +1276,6 @@ def main(argv: list[str] | None = None) -> int:
             from_state=f"{CHAIN_NAME}_{after}",
             chain=CHAIN_NAME,
             engage_hearts=2,
-            rupee_topups={"ring": RING_PRICE},
         )
         return 0 if result["ok"] else 1
     if token == "all":

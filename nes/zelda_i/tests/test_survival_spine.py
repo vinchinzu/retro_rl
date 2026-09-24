@@ -19,8 +19,6 @@ from zelda_i.spine.survival import (
     BOOT_POLICY,
     SPINE_BOMB_RETOPUP,
     SPINE_L1_KEY_RETOPUP,
-    SPINE_PRE_L1_RUPEE_RETOPUP,
-    SPINE_PRE_L1_SHOP_RUPEES,
     SPINE_THROUGH,
     SpineRun,
     merge_inventory_assist,
@@ -28,7 +26,6 @@ from zelda_i.spine.survival import (
     topup_owned_bombs,
     topup_owned_inventory,
     topup_owned_keys,
-    topup_owned_rupees,
 )
 from zelda_i.level5.spine import validate_l5_endpoint
 
@@ -444,7 +441,6 @@ def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
             assist=None,
             retopup=frozenset({"gohma"}),
             key_retopup=frozenset({"gohma"}),
-            rupee_retopup=frozenset({"gohma"}),
         )
     finally:
         surv.run_controller_stage = orig
@@ -453,7 +449,6 @@ def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
     topup_owned_inventory(env, run)
     topup_owned_bombs(env, run)
     topup_owned_keys(env, run)
-    topup_owned_rupees(env, run)
     assert values == {}
     assert run.inventory_assist is None
 
@@ -464,14 +459,13 @@ def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
     assert run_on.inventory_assist is not None
 
 
-def test_forced_rupee_retopup_writes_pack_price_when_short() -> None:
-    """pre-l1 coast pack: rupee count only, even with allow_pokes off."""
+def test_spine_stages_never_write_the_wallet() -> None:
+    """Rupees are earned (hidden caves, drops), never written: a short
+    wallet goes into every top-up gate short, pokes allowed or not."""
     from zelda_i.spine.survival import _run_stages
 
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_RUPEES] = 10
-    ram[ADDR_BOMBS] = 0
-    ram[ADDR_KEYS] = 0
     values: dict[str, int] = {}
 
     class _Data:
@@ -484,8 +478,6 @@ def test_forced_rupee_retopup_writes_pack_price_when_short() -> None:
         get_ram=lambda: ram,
         unwrapped=SimpleNamespace(data=_Data(), em=None),
     )
-    run = SpineRun(through="pre-l1", success=True, boot_frames=1, allow_pokes=False)
-
     import zelda_i.spine.survival as surv
 
     orig = surv.run_controller_stage
@@ -498,114 +490,14 @@ def test_forced_rupee_retopup_writes_pack_price_when_short() -> None:
 
     try:
         surv.run_controller_stage = fake_stage
-        assert _run_stages(
-            env,
-            run,
-            (("bomb_topup", SimpleNamespace(), 10),),
-            assist=None,
-            forced_rupee_retopup=frozenset({"bomb_topup"}),
-        )
+        for allow in (True, False):
+            run = SpineRun(through="level7", success=True, boot_frames=1, allow_pokes=allow)
+            gates = frozenset({"bomb_topup", "ring", "level7_bait_purchase"})
+            stages = tuple((name, SimpleNamespace(), 10) for name in sorted(gates))
+            assert _run_stages(env, run, stages, assist=None, retopup=gates, key_retopup=gates)
     finally:
         surv.run_controller_stage = orig
-
-    assert values == {"rupees": 20}
-    assert SPINE_PRE_L1_SHOP_RUPEES == 20
-    assert run.inventory_assist is not None
-    writes = run.inventory_assist["writes"]
-    assert [w["field"] for w in writes] == ["rupees"]
-    assert writes[0]["from"] == 10 and writes[0]["to"] == 20
-    assert run.inventory_assist["select_bomb"] is False
-    assert "bombs" not in values
-    assert "keys" not in values
-    assert "selected_item" not in values
-
-
-def test_forced_rupee_retopup_noop_when_already_funded() -> None:
-    """A funded walk (rupees already >= 20) must write nothing."""
-    from zelda_i.spine.survival import _run_stages
-
-    ram = np.zeros(0x800, dtype=np.uint8)
-    ram[ADDR_RUPEES] = 20
-    values: dict[str, int] = {}
-
-    class _Data:
-        memory = None
-
-        def set_value(self, key: str, value: int) -> None:
-            values[key] = int(value)
-
-    env = SimpleNamespace(
-        get_ram=lambda: ram,
-        unwrapped=SimpleNamespace(data=_Data(), em=None),
-    )
-    run = SpineRun(through="pre-l1", success=True, boot_frames=1, allow_pokes=False)
-
-    import zelda_i.spine.survival as surv
-
-    orig = surv.run_controller_stage
-
-    def fake_stage(env, obs, **kw):
-        del env, obs
-        return None, SimpleNamespace(
-            success=True, end_frame=1, name=kw["name"], report=lambda: {}
-        )
-
-    try:
-        surv.run_controller_stage = fake_stage
-        assert _run_stages(
-            env,
-            run,
-            (("bomb_topup", SimpleNamespace(), 10),),
-            assist=None,
-            forced_rupee_retopup=frozenset({"bomb_topup"}),
-        )
-    finally:
-        surv.run_controller_stage = orig
-
-    assert values == {}
-    assert run.inventory_assist is None
-
-
-def test_pre_l1_wires_forced_rupee_retopup_only_on_pre_l1() -> None:
-    """forced_rupee_retopup is assigned inside the pre-l1 path only."""
-    import inspect
-
-    from zelda_i.spine.survival import _continue_level1_spine
-
-    continue_src = inspect.getsource(_continue_level1_spine)
-    assert "forced_rupee_retopup" in continue_src
-    assert "SPINE_PRE_L1_RUPEE_RETOPUP" in continue_src
-    assert SPINE_PRE_L1_RUPEE_RETOPUP == frozenset({"bomb_topup"})
-    pre_l1 = continue_src.split('if through == "pre-l1":', 1)[1]
-    assert "forced_rupee_retopup" in pre_l1.split("attach_hops", 1)[0]
-    assert "SPINE_PRE_L1_RUPEE_RETOPUP" in pre_l1.split("attach_hops", 1)[0]
-    after_hops = continue_src.split("attach_hops", 1)[1]
-    assert "forced_rupee_retopup" not in after_hops
-    assert "SPINE_PRE_L1_RUPEE_RETOPUP" not in after_hops
-
-
-def test_survival_spine_cli_wraps_audited_env() -> None:
-    import inspect
-
-    from zelda_i.scripts import run_survival_spine as cli
-
-    src = inspect.getsource(cli.main)
-    assert "AuditedEnv" in src
-    assert "apply_state_audit" in src
-    assert "zelda_i.survival_spine" in src
-    assert "tap.close()" in src
-    assert "tap.abort()" in src
-    assert "BooleanOptionalAction" in src
-    assert "infinite_life" in src
-    assert "--no-pokes" in src
-    assert "--clean" in src
-    assert "add_headed_flag" in src
-    assert "attach_headed" in src
-    assert "idle_headed" in src
-    assert "if not headed:" in src
-    assert "configure_headless" in src
-    assert "--rollout" in src
-    assert "attach_rollout" in src
+    assert "rupees" not in values
 
 
 def test_video_tap_close_and_abort_without_writer() -> None:

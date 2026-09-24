@@ -35,6 +35,11 @@ ADDR_LINK_FACING = 0x0098  # $08 N, $04 S, $01 E, $02 W
 ADDR_SCREEN = 0x00EB  # overworld: y_nibble<<4 | x_nibble (16x8)
 ADDR_NEXT_SCREEN = 0x00EC
 ADDR_COLLIDING_TILE = 0x049E
+# Measured 2026-09-23 on 0x64: $E0 is 2 from the potion's B frame until the
+# hearts are full (the world is frozen; mode stays 5), 0 otherwise. $E1 is
+# nonzero while the START inventory is open or scrolling.
+ADDR_WORLD_PAUSED = 0x00E0
+ADDR_MENU_STATE = 0x00E1
 
 # --- Dungeon room / object state ---
 ADDR_ROOM_ITEM_ID = 0x00AB
@@ -168,6 +173,7 @@ class ZeldaSnapshot:
     ring: int = 0  # ADDR_RING; blue=1 red=2
     food: int = 0  # ADDR_FOOD (meat)
     letter: int = 0  # ADDR_LETTER; 1 once the 0x0E old man's letter is taken
+    potion: int = 0  # ADDR_POTION; blue=1 red=2, one step down per drink
     magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
     # Forced-drop kill counters. Link_BeHarmed (collision) zeros all three.
     # Defaults keep older ZeldaSnapshot(...) test constructors working.
@@ -175,6 +181,9 @@ class ZeldaSnapshot:
     help_drop_count: int = 0  # ADDR_HELP_DROP_COUNT; 10 → 5-rupee (or bomb)
     help_drop_value: int = 0  # ADDR_HELP_DROP_VALUE; nonzero → bomb at 10
     link_iframes: int = 0  # ADDR_LINK_IFRAMES; 0→24 is the collision that zeros them
+    # ADDR_RUPEES_TO_ADD: a secret cave's payout lands here at once and the
+    # HUD counts it into ``rupees`` over ~2 frames per rupee.
+    rupees_to_add: int = 0
     # Slot $0E, read apart from ``objects``: the 13-slot census is enemies, and
     # a weapon slot inside it would read as prey (its type byte is not an enemy).
     sword_shot: ZeldaObject = field(
@@ -322,6 +331,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         sword=read_u8(ram, ADDR_SWORD),
         bombs=read_u8(ram, ADDR_BOMBS),
         rupees=read_u8(ram, ADDR_RUPEES),
+        rupees_to_add=read_u8(ram, ADDR_RUPEES_TO_ADD),
         keys=read_u8(ram, ADDR_KEYS),
         health=read_u8(ram, ADDR_HEALTH),
         heart_partial=read_u8(ram, ADDR_HEART_PARTIAL),
@@ -350,6 +360,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         ring=read_u8(ram, ADDR_RING),
         food=read_u8(ram, ADDR_FOOD),
         letter=read_u8(ram, ADDR_LETTER),
+        potion=read_u8(ram, ADDR_POTION),
         world_kill_count=read_u8(ram, ADDR_WORLD_KILL_COUNT),
         help_drop_count=read_u8(ram, ADDR_HELP_DROP_COUNT),
         help_drop_value=read_u8(ram, ADDR_HELP_DROP_VALUE),

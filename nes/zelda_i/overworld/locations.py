@@ -57,15 +57,16 @@ CAVE_DOOR_REPAIR = 0x17
 CAVE_LETTER = 0x18
 CAVE_UNIQUE_19 = 0x19
 CAVE_POTION = 0x1A
-CAVE_PAID_HINT = 0x1B
-CAVE_SHOP = 0x1C
-CAVE_SHOP_ARROWS = 0x1D  # family includes live 0x4A arrows
-CAVE_SHOP_CANDLE = 0x1E  # family includes live 0x5E candle
-CAVE_SHOP_ALT = 0x1F
-CAVE_SHOP_SPECIAL = 0x20  # 0x34 only (bait / blue-ring)
-CAVE_RUPEES = 0x21
+CAVE_PAID_HINT = 0x1B  # three rupee slots, 5/10/20
+CAVE_PAID_HINT_B = 0x1C  # three rupee slots, 10/30/50 (not a shop)
+CAVE_SHOP_ARROWS = 0x1D  # shield 130 / bombs 20 / arrows 80 (0x4A, 0x6F)
+CAVE_SHOP_CANDLE = 0x1E  # shield 160 / key 100 / blue candle 60 (0x0C, 0x5E)
+CAVE_SHOP_ALT = 0x1F  # shield 90 / bait 100 / heart 10
+CAVE_SHOP_SPECIAL = 0x20  # 0x34 only: key 80 / blue ring 250 / bait 60
+# "It's a secret to everybody": one rupee pedestal whose price is the payout.
+CAVE_RUPEES_30 = 0x21
 CAVE_RUPEES_100 = 0x22
-CAVE_GAMBLE_B = 0x23
+CAVE_RUPEES_10 = 0x23
 
 CAVE_KIND: dict[int, str] = {
     CAVE_NONE: "none",
@@ -90,14 +91,14 @@ CAVE_KIND: dict[int, str] = {
     CAVE_UNIQUE_19: "hint",
     CAVE_POTION: "potion",
     CAVE_PAID_HINT: "hint",
-    CAVE_SHOP: "shop",
+    CAVE_PAID_HINT_B: "hint",
     CAVE_SHOP_ARROWS: "shop",
     CAVE_SHOP_CANDLE: "shop",
     CAVE_SHOP_ALT: "shop",
     CAVE_SHOP_SPECIAL: "shop",
-    CAVE_RUPEES: "rupees",
+    CAVE_RUPEES_30: "rupees",
     CAVE_RUPEES_100: "rupees",
-    CAVE_GAMBLE_B: "gamble",
+    CAVE_RUPEES_10: "rupees",
 }
 
 OPEN_OPEN = "open"
@@ -108,7 +109,8 @@ OPEN_PUSH_GRAVE = "push_grave"
 OPEN_RECORDER = "recorder"
 OPEN_RAFT = "raft"
 OPEN_LADDER = "ladder"
-OPEN_SECRET = "secret"
+OPEN_PUSH_ROCK = "push_rock"  # needs the Power Bracelet
+OPEN_SECRET = "secret"  # hidden, method not yet measured
 
 EVIDENCE_VERIFIED = "verified"
 EVIDENCE_SOURCE = "source"
@@ -178,81 +180,211 @@ def decode_ow_attrs(rom: bytes) -> tuple[OwScreenAttrs, ...]:
     )
 
 
+# Cave wares, ROM file offset $18610 (iNES header included): three item
+# bytes per cave type $10..$23, then the three prices at $1864C. Item low six
+# bits are the item id ($3F = empty slot, $18 = rupee); a secret cave is one
+# rupee in the middle slot whose "price" is the payout. Decoded 2026-09-23
+# and matched by the live 0x0F (100R) and 0x48 (30R) takes.
+ROM_CAVE_ITEMS = 0x18610
+ROM_CAVE_PRICES = ROM_CAVE_ITEMS + 60
+CAVE_FIRST = 0x10
+CAVE_COUNT = 20
+ITEM_NONE = 0x3F
+ITEM_RUPEE = 0x18
+ITEM_BLUE_POTION = 0x1F
+ITEM_RED_POTION = 0x20
+
+
+@dataclass(frozen=True)
+class CaveWare:
+    """One cave pedestal: item id (low six bits) and its price in rupees."""
+
+    item: int
+    price: int
+
+    @property
+    def empty(self) -> bool:
+        return self.item == ITEM_NONE
+
+
+def decode_cave_wares(rom: bytes) -> dict[int, tuple[CaveWare, CaveWare, CaveWare]]:
+    """Cave type -> its three pedestals (left, middle, right), from the ROM file."""
+    items = rom[ROM_CAVE_ITEMS : ROM_CAVE_ITEMS + 3 * CAVE_COUNT]
+    prices = rom[ROM_CAVE_PRICES : ROM_CAVE_PRICES + 3 * CAVE_COUNT]
+    if len(items) != 3 * CAVE_COUNT or len(prices) != 3 * CAVE_COUNT:
+        raise ValueError("ROM too short for the cave wares tables")
+    return {
+        CAVE_FIRST + i: tuple(
+            CaveWare(item=items[3 * i + k] & 0x3F, price=prices[3 * i + k]) for k in range(3)
+        )
+        for i in range(CAVE_COUNT)
+    }
+
+
+def secret_payout(wares: tuple[CaveWare, CaveWare, CaveWare]) -> int | None:
+    """Rupees a one-rupee secret cave pays, else ``None``."""
+    left, middle, right = wares
+    if left.empty and middle.item == ITEM_RUPEE and right.empty:
+        return int(middle.price)
+    return None
+
+
+# Rupees each secret cave type pays (the ROM table above).
+SECRET_PAYOUT: dict[int, int] = {CAVE_RUPEES_30: 30, CAVE_RUPEES_100: 100, CAVE_RUPEES_10: 10}
+
+
+def cave_keeper(cave_id: int) -> int:
+    """Object type of the cave's keeper: cave type + $5A.
+
+    Measured: take-any $11 -> $6B, letter $18 -> $72, 30R $21 -> $7B,
+    100R $22 -> $7C. The keeper's arrival is when the cave has loaded.
+    """
+    return int(cave_id) + 0x5A
+
+
+# Hidden-secret tile objects: RAM object slot 11 the frame the screen loads
+# (``Z_04`` ``UpdateTree`` / ``UpdateRockWall``). The reveal sets $80 in the
+# screen's world flag. Stands: a bomb 5-8 px below the rock facing UP (0x7B
+# rock (144, 80) opens from (144, 88), 0x2C's (144, 160) from (144, 165)),
+# preferably the lattice node. A candle flame spawns 16 px ahead of Link
+# and walks 16 more: facing DOWN from tree y - 27 it stands at tree y + 5
+# (swept 2026-09-23 on 0x28/0x56/0x5B/0x6B; from y - 19 0x28 revealed too
+# late and Link slid off the stairs), or 20 px beside the tree on row
+# tree y - 3 facing it (0x48 tree (208, 96) opens from (188, 93) RIGHT).
+SECRET_ROCK = 0x63
+SECRET_TREE = 0x64
+
+
+@dataclass(frozen=True)
+class OwSecret:
+    """A hidden cave mouth: tile object, where Link opens it from, and the pay."""
+
+    screen: int
+    cave_id: int
+    obj: int  # SECRET_ROCK (bomb) or SECRET_TREE (candle)
+    x: int
+    y: int
+    stand: tuple[int, int]
+    face: str
+
+    @property
+    def rupees(self) -> int:
+        return SECRET_PAYOUT.get(self.cave_id, 0)
+
+    @property
+    def keeper(self) -> int:
+        return cave_keeper(self.cave_id)
+
+    @property
+    def uses_bomb(self) -> bool:
+        return self.obj == SECRET_ROCK
+
+
+# Measured 2026-09-23 from BFS_<screen> pins and a walk to 0x62: the slot-11
+# object xy. Stands follow the rules above and sit on the ROM turn lattice.
+# 0x3D (30R) and 0x4E (10R) open by touching the right-hand Armos, not a
+# tile object, so they are not rows here.
+SECRET_RUPEE_CAVES: dict[int, OwSecret] = {
+    s.screen: s
+    for s in (
+        # Rock + 5 on a lattice node, as 0x2C's measured (144, 165) under
+        # its rock at y=160. (80, 88) is off-node: UP and the approach's
+        # DOWN swapped 1 px for 2000 frames (2026-09-23).
+        OwSecret(0x2D, CAVE_RUPEES_30, SECRET_ROCK, 80, 80, (80, 85), "UP"),
+        # Live +30/+10 from what-if items (docs/research/SECRET_CAVES.md).
+        # 0x13 is west of the 0x17 river (stepladder); 0x67 is one hop
+        # north of the start screen.
+        OwSecret(0x13, CAVE_RUPEES_30, SECRET_ROCK, 32, 80, (32, 85), "UP"),
+        OwSecret(0x67, CAVE_RUPEES_30, SECRET_ROCK, 112, 80, (112, 85), "UP"),
+        OwSecret(0x71, CAVE_RUPEES_30, SECRET_ROCK, 80, 80, (80, 85), "UP"),
+        OwSecret(0x51, CAVE_RUPEES_10, SECRET_TREE, 144, 160, (144, 141), "DOWN"),
+        OwSecret(0x28, CAVE_RUPEES_30, SECRET_TREE, 208, 160, (208, 133), "DOWN"),
+        OwSecret(0x48, CAVE_RUPEES_30, SECRET_TREE, 208, 96, (188, 93), "RIGHT"),
+        OwSecret(0x56, CAVE_RUPEES_10, SECRET_TREE, 160, 160, (160, 133), "DOWN"),
+        OwSecret(0x5B, CAVE_RUPEES_10, SECRET_TREE, 32, 160, (32, 133), "DOWN"),
+        # The tree is one bush of a full-height column (x 128..143) that
+        # splits 0x62; the east half (entered from 0x63) burns it facing LEFT.
+        OwSecret(0x62, CAVE_RUPEES_100, SECRET_TREE, 128, 96, (148, 93), "LEFT"),
+        OwSecret(0x6B, CAVE_RUPEES_100, SECRET_TREE, 128, 160, (128, 133), "DOWN"),
+    )
+}
+
+
 # (screen, cave_id, name, vanilla, open, evidence, shop_slots)
 # cave_id is the vanilla Q1 AttrsB>>2; kind comes from CAVE_KIND.
 # Open method is screen geometry (stays put in a standard cave shuffle).
 _Q1_CAVES: tuple[tuple[int, int, str, str, str, str, int], ...] = (
-    (0x01, CAVE_DOOR_REPAIR, "door_repair_b1", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x03, CAVE_DOOR_REPAIR, "door_repair_d1", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x04, CAVE_POTION, "potion_e1", "potion", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x01, CAVE_DOOR_REPAIR, "door_repair_b1", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
+    (0x03, CAVE_DOOR_REPAIR, "door_repair_d1", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
+    (0x04, CAVE_POTION, "potion_e1", "potion", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
     (0x05, CAVE_DUNGEON_9, "dungeon_9", "dungeon_9", OPEN_BOMB, EVIDENCE_SOURCE, 0),
-    (0x07, CAVE_DOOR_REPAIR, "door_repair_h1", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x07, CAVE_DOOR_REPAIR, "door_repair_h1", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x0A, CAVE_WHITE_SWORD, "white_sword", "white_sword", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
     (0x0B, CAVE_DUNGEON_5, "dungeon_5", "dungeon_5", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
     (0x0C, CAVE_SHOP_CANDLE, "shop_m1", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
-    (0x0D, CAVE_POTION, "potion_n1", "potion", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x0D, CAVE_POTION, "potion_n1", "potion", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
     (0x0E, CAVE_LETTER, "letter", "letter", OPEN_OPEN, EVIDENCE_SOURCE, 0),
-    (0x0F, CAVE_RUPEES_100, "rupees_100_p1", "rupees_100", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x10, CAVE_GAMBLE, "gamble_a2", "gamble", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x0F, CAVE_RUPEES_100, "rupees_100_p1", "rupees_100", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
+    (0x10, CAVE_GAMBLE, "gamble_a2", "gamble", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x12, CAVE_SHOP_ALT, "shop_c2", "shop", OPEN_BOMB, EVIDENCE_SOURCE, 3),
-    (0x13, CAVE_RUPEES, "rupees_d2", "rupees", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x14, CAVE_DOOR_REPAIR, "door_repair_e2", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x16, CAVE_GAMBLE, "gamble_g2", "gamble", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x13, CAVE_RUPEES_30, "rupees_d2", "rupees_30", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
+    (0x14, CAVE_DOOR_REPAIR, "door_repair_e2", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
+    (0x16, CAVE_GAMBLE, "gamble_g2", "gamble", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x1A, CAVE_PAID_HINT, "paid_hint_k2", "hint", OPEN_OPEN, EVIDENCE_SOURCE, 0),
-    (0x1C, CAVE_HINT, "hint_m2", "hint", OPEN_OPEN, EVIDENCE_SOURCE, 0),
-    (0x1D, CAVE_WARP, "warp_n2", "warp", OPEN_OPEN, EVIDENCE_SOURCE, 0),
-    (0x1E, CAVE_DOOR_REPAIR, "door_repair_o2", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x1C, CAVE_HINT, "hint_m2", "hint", OPEN_ARMOS, EVIDENCE_SOURCE, 0),
+    (0x1D, CAVE_WARP, "warp_n2", "warp", OPEN_PUSH_ROCK, EVIDENCE_SOURCE, 0),
+    (0x1E, CAVE_DOOR_REPAIR, "door_repair_o2", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x1F, CAVE_GAMBLE, "gamble_p2", "gamble", OPEN_OPEN, EVIDENCE_SOURCE, 0),
     (0x21, CAVE_MAGICAL_SWORD, "magical_sword", "magical_sword", OPEN_PUSH_GRAVE, EVIDENCE_SOURCE, 0),
     (0x22, CAVE_DUNGEON_6, "dungeon_6", "dungeon_6", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
-    (0x23, CAVE_WARP, "warp_d3", "warp", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x23, CAVE_WARP, "warp_d3", "warp", OPEN_PUSH_ROCK, EVIDENCE_SOURCE, 0),
     (0x25, CAVE_SHOP_ARROWS, "shop_f3", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
-    (0x26, CAVE_SHOP_ALT, "shop_g3", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
-    (0x27, CAVE_POTION, "potion_h3", "potion", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x28, CAVE_RUPEES, "rupees_i3", "rupees", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x26, CAVE_SHOP_ALT, "shop_g3", "shop", OPEN_BOMB, EVIDENCE_SOURCE, 3),
+    (0x27, CAVE_POTION, "potion_h3", "potion", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
+    (0x28, CAVE_RUPEES_30, "rupees_i3", "rupees_30", OPEN_BURN, EVIDENCE_VERIFIED, 0),
     (0x2C, CAVE_TAKE_ANY, "heart_m3", "heart_container", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
-    (0x2D, CAVE_RUPEES, "rupees_n3", "rupees", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x2D, CAVE_RUPEES_30, "rupees_n3", "rupees_30", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
     (0x2F, CAVE_TAKE_ANY, "raft_heart", "heart_container", OPEN_RAFT, EVIDENCE_SOURCE, 0),
-    (0x33, CAVE_POTION, "potion_d4", "potion", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x33, CAVE_POTION, "potion_d4", "potion", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
     (0x34, CAVE_SHOP_SPECIAL, "special_shop_e4", "bait_or_blue_ring", OPEN_ARMOS, EVIDENCE_SOURCE, 3),
     (0x37, CAVE_DUNGEON_1, "dungeon_1", "dungeon_1", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
     (0x3C, CAVE_DUNGEON_2, "dungeon_2", "dungeon_2", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
-    (0x3D, CAVE_RUPEES, "rupees_n4", "rupees", OPEN_BURN, EVIDENCE_SOURCE, 0),
+    (0x3D, CAVE_RUPEES_30, "rupees_n4", "rupees_30", OPEN_ARMOS, EVIDENCE_VERIFIED, 0),
     (0x42, CAVE_DUNGEON_7, "dungeon_7", "dungeon_7", OPEN_RECORDER, EVIDENCE_VERIFIED, 0),
     (0x44, CAVE_SHOP_ARROWS, "shop_e5", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
     (0x45, CAVE_DUNGEON_4, "dungeon_4", "dungeon_4", OPEN_RAFT, EVIDENCE_VERIFIED, 0),
     (0x46, CAVE_SHOP_ALT, "shop_g5", "shop", OPEN_BURN, EVIDENCE_SOURCE, 3),
     (0x47, CAVE_TAKE_ANY, "heart_h5", "heart_container", OPEN_BURN, EVIDENCE_VERIFIED, 0),
-    (0x48, CAVE_RUPEES, "rupees_i5", "rupees", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x49, CAVE_WARP, "warp_j5", "warp", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x48, CAVE_RUPEES_30, "rupees_i5", "rupees_30", OPEN_BURN, EVIDENCE_VERIFIED, 0),
+    (0x49, CAVE_WARP, "warp_j5", "warp", OPEN_PUSH_ROCK, EVIDENCE_SOURCE, 0),
     (0x4A, CAVE_SHOP_ARROWS, "arrow_shop", "arrows_80", OPEN_OPEN, EVIDENCE_VERIFIED, 3),
     (0x4B, CAVE_POTION, "potion_l5", "potion", OPEN_BURN, EVIDENCE_SOURCE, 0),
     (0x4D, CAVE_SHOP_ALT, "shop_n5", "shop", OPEN_BURN, EVIDENCE_SOURCE, 3),
-    (0x4E, CAVE_GAMBLE_B, "gamble_o5", "gamble", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x51, CAVE_GAMBLE_B, "gamble_b6", "gamble", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x56, CAVE_GAMBLE_B, "gamble_g6", "gamble", OPEN_BOMB, EVIDENCE_SOURCE, 0),
-    (0x5B, CAVE_GAMBLE_B, "gamble_l6", "gamble", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x4E, CAVE_RUPEES_10, "rupees_10_o5", "rupees_10", OPEN_ARMOS, EVIDENCE_VERIFIED, 0),
+    (0x51, CAVE_RUPEES_10, "rupees_10_b6", "rupees_10", OPEN_BURN, EVIDENCE_VERIFIED, 0),
+    (0x56, CAVE_RUPEES_10, "rupees_10_g6", "rupees_10", OPEN_BURN, EVIDENCE_VERIFIED, 0),
+    (0x5B, CAVE_RUPEES_10, "rupees_10_l6", "rupees_10", OPEN_BURN, EVIDENCE_VERIFIED, 0),
     (0x5E, CAVE_SHOP_CANDLE, "candle_shop", "candle_60", OPEN_OPEN, EVIDENCE_VERIFIED, 3),
-    (0x62, CAVE_RUPEES_100, "rupees_100_c7", "rupees_100", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x63, CAVE_DOOR_REPAIR, "door_repair_d7", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x64, CAVE_POTION, "potion_e7", "potion", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x66, CAVE_SHOP_CANDLE, "shop_g7", "shop", OPEN_BOMB, EVIDENCE_SOURCE, 3),
-    (0x67, CAVE_RUPEES, "rupees_h7", "rupees", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x68, CAVE_DOOR_REPAIR, "door_repair_i7", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x6A, CAVE_DOOR_REPAIR, "door_repair_k7", "pay_20", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x6B, CAVE_RUPEES_100, "rupees_100_l7", "rupees_100", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x62, CAVE_RUPEES_100, "rupees_100_c7", "rupees_100", OPEN_BURN, EVIDENCE_VERIFIED, 0),
+    (0x63, CAVE_DOOR_REPAIR, "door_repair_d7", "pay_20", OPEN_BURN, EVIDENCE_SOURCE, 0),
+    (0x64, CAVE_POTION, "potion_e7", "potion", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
+    (0x66, CAVE_SHOP_CANDLE, "shop_g7", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
+    (0x67, CAVE_RUPEES_30, "rupees_h7", "rupees_30", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
+    (0x68, CAVE_DOOR_REPAIR, "door_repair_i7", "pay_20", OPEN_BURN, EVIDENCE_SOURCE, 0),
+    (0x6A, CAVE_DOOR_REPAIR, "door_repair_k7", "pay_20", OPEN_BURN, EVIDENCE_SOURCE, 0),
+    (0x6B, CAVE_RUPEES_100, "rupees_100_l7", "rupees_100", OPEN_BURN, EVIDENCE_VERIFIED, 0),
     (0x6D, CAVE_DUNGEON_8, "dungeon_8", "dungeon_8", OPEN_BURN, EVIDENCE_VERIFIED, 0),
     (0x6F, CAVE_SHOP_ARROWS, "shop_p7", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
-    (0x70, CAVE_SHOP, "shop_a8", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
-    (0x71, CAVE_RUPEES, "rupees_b8", "rupees", OPEN_SECRET, EVIDENCE_SOURCE, 0),
+    (0x70, CAVE_PAID_HINT_B, "paid_hint_a8", "hint", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x71, CAVE_RUPEES_30, "rupees_b8", "rupees_30", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
     (0x74, CAVE_DUNGEON_3, "dungeon_3", "dungeon_3", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
     (0x75, CAVE_UNIQUE_19, "hint_f8", "hint", OPEN_OPEN, EVIDENCE_SOURCE, 0),
-    (0x76, CAVE_GAMBLE, "gamble_g8", "gamble", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x76, CAVE_GAMBLE, "gamble_g8", "gamble", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x77, CAVE_WOOD_SWORD, "wooden_sword", "wooden_sword", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
-    (0x78, CAVE_POTION, "potion_i8", "potion", OPEN_SECRET, EVIDENCE_SOURCE, 0),
-    (0x79, CAVE_WARP, "warp_j8", "warp", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x78, CAVE_POTION, "potion_i8", "potion", OPEN_BURN, EVIDENCE_VERIFIED, 0),
+    (0x79, CAVE_WARP, "warp_j8", "warp", OPEN_PUSH_ROCK, EVIDENCE_SOURCE, 0),
     (0x7B, CAVE_TAKE_ANY, "heart_l8", "heart_container", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
-    (0x7C, CAVE_GAMBLE, "gamble_m8", "gamble", OPEN_OPEN, EVIDENCE_SOURCE, 0),
+    (0x7C, CAVE_GAMBLE, "gamble_m8", "gamble", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x7D, CAVE_DOOR_REPAIR, "door_repair_n8", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
 )
 
@@ -263,16 +395,6 @@ _Q1_EXTRAS: tuple[OwLocation, ...] = (
     OwLocation("fairy_j4", 0x39, CAVE_NONE, "fairy", "fairy", OPEN_OPEN, EVIDENCE_SOURCE),
     OwLocation("fairy_d5", 0x43, CAVE_NONE, "fairy", "fairy", OPEN_OPEN, EVIDENCE_SOURCE),
 )
-
-# heart_h5 (0x47) pocket, live-measured 2026-09-14 (rr-ps7.4.3). Burn is
-# unverified: no spine hop owns candle yet. 0x48 LEFT at y=141 is open.
-HEART_H5_SCREEN = 0x47
-HEART_H5_NEAREST_SPINE_SCREEN = 0x48
-HEART_H5_NEAREST_SPINE_HOP_DIR = "LEFT"
-HEART_H5_POCKET_X = (149, 184)
-HEART_H5_POCKET_Y = (133, 157)
-HEART_H5_BURN_HYPOTHESIS_XY = (152, 157)
-
 
 def _from_row(row: tuple[int, int, str, str, str, str, int]) -> OwLocation:
     screen, cave_id, name, vanilla, open_how, evidence, slots = row
@@ -662,6 +784,13 @@ def locations_from_rom(rom: bytes) -> tuple[OwLocation, ...]:
 
 __all__ = [
     "CAVE_KIND",
+    "CaveWare",
+    "OwSecret",
+    "SECRET_PAYOUT",
+    "SECRET_RUPEE_CAVES",
+    "cave_keeper",
+    "decode_cave_wares",
+    "secret_payout",
     "DROPS_BY_GROUP",
     "FarmSpot",
     "INES_HEADER",
@@ -683,12 +812,6 @@ __all__ = [
     "easy_farms",
     "farm_at",
     "five_rupee_farms",
-    "HEART_H5_BURN_HYPOTHESIS_XY",
-    "HEART_H5_NEAREST_SPINE_HOP_DIR",
-    "HEART_H5_NEAREST_SPINE_SCREEN",
-    "HEART_H5_POCKET_X",
-    "HEART_H5_POCKET_Y",
-    "HEART_H5_SCREEN",
     "grid_name",
     "location",
     "location_at",

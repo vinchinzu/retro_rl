@@ -35,6 +35,8 @@ from zelda_i.overworld.gather_segments import (
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.ram import CAVE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
+WALLET_MAX = 255  # $066D saturates; the HUD stops counting there
+
 
 def _snap(**kwargs) -> ZeldaSnapshot:
     base = dict(
@@ -359,25 +361,15 @@ def test_heart_l8_red_pose_is_not_a_leave() -> None:
     )
 
 
-def test_heart_m3_goes_down_the_west_column_before_east() -> None:
-    """BFS_2C spawns at (0, 85). DOWN at x=144 would walk into the rock."""
+def test_heart_m3_bombs_only_facing_the_rock() -> None:
+    """The measured doorway is the rock's bottom face at x 136..152; a bomb
+    dropped facing east lands on open sand (0x2C's first try)."""
     ctrl = make_heart_m3_controller()
-    action = ctrl._after_hops(_snap(screen=0x2C, link_x=16, link_y=85, facing=4))
-    assert action.reason.startswith("approach")
-    assert ctrl._leg == 0
-    ctrl._after_hops(_snap(screen=0x2C, link_x=16, link_y=165, facing=4))
-    assert ctrl._leg == 1
-
-
-def test_heart_m3_turns_up_before_the_bomb() -> None:
-    """The measured doorway is the rock's bottom face at x 136..152."""
-    ctrl = make_heart_m3_controller()
-    ctrl._leg = len(ctrl.approach)
     facing_east = _snap(screen=0x2C, link_x=144, link_y=165, facing=1)
     action = ctrl._after_hops(facing_east)
-    assert action.reason == "face_wall"
-    assert action.action == nes_action("UP")
+    assert action.action != nes_action("B")
     assert ctrl._bombed == 0
+    ctrl._back_frames = 0
     facing_up = _snap(screen=0x2C, link_x=144, link_y=165, facing=8)
     action = ctrl._after_hops(facing_up)
     assert action.reason == "place_bomb"
@@ -462,11 +454,14 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
     names = [name for name, _ in chain_stages()]
     assert names == [
         "exit_6f", "walk_7c", "heart_7b", "exit_7b", "walk_pond", "pond_39",
-        "walk_2c", "heart_2c",
-        "exit_2c", "ne_100", "exit_0f", "letter", "exit_0e", "candle",
-        "exit_0c", "white", "back_1a", "walk_48", "select_candle",
+        "walk_2c", "heart_2c", "exit_2c", "rupees_2d", "exit_2d",
+        "ne_100", "exit_0f", "letter", "exit_0e", "candle",
+        "exit_0c", "select_candle", "walk_28", "rupees_28", "exit_28",
+        "white", "back_1a", "walk_48",
         "rupees_48", "exit_48", "heart_47", "exit_47",
-        "ring", "exit_ring", "ring_return", "walk_pond_l1", "pond_39_l1", "walk_37",
+        "rupees_5b", "exit_5b", "rupees_6b", "exit_6b", "rupees_56", "exit_56",
+        "ring", "exit_ring", "rupees_62", "exit_62", "potion", "exit_64",
+        "ring_return", "walk_pond_l1", "pond_39_l1", "walk_37",
     ]
     stages = dict(chain_stages())
     assert _targets(stages["letter"].hops) == (0x1F, 0x1E, 0x0E)
@@ -475,23 +470,65 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
     assert stages["ring"].price == 250
     assert _targets(stages["walk_pond_l1"].hops)[0] == 0x59
     # Burn caves exit by stairs: nothing to clear, DOWN would re-enter.
-    assert stages["exit_47"].clear == 0 and stages["exit_48"].clear == 0
-    assert stages["exit_0c"].clear > 0
+    for name, ctl in stages.items():
+        if name.startswith("rupees_") and not ctl.consumes_bomb:
+            assert stages["exit_" + name[len("rupees_"):]].clear == 0, name
+    assert stages["exit_47"].clear == 0
+    assert stages["exit_0c"].clear > 0 and stages["exit_2d"].clear > 0
 
 
-def test_burn_stances_leave_the_flame_room_to_walk() -> None:
-    """Flush with the tree ((192, 93) RIGHT) never reveals it; (188, 93) does."""
+def test_secret_payouts_fund_the_ring_before_the_shop() -> None:
+    """The ring is paid from hidden rupees, not a wallet write.
+
+    Payouts are the ROM's (``SECRET_RUPEE_CAVES``, 0x0F's 100 on the NE
+    walk); the candle is the only buy between them and 0x34. Enemy drops
+    are margin, not budget: the old chain reached 0x34 with 73R and a
+    177R Survival write. The wallet caps at 255, so a payout past that is
+    lost, not banked (0x62's 100R before the ring counted 0).
+    """
     from zelda_i.overworld.gather_segments import (
-        make_burn_47_controller,
-        make_burn_48_controller,
+        SECRET_REWARD,
+        chain_stages,
     )
 
-    b48 = make_burn_48_controller()
-    assert (b48.bomb_x, b48.bomb_y, b48.bomb_face) == (188, 93, "RIGHT")
-    assert b48.retreat is None and b48.reward == "rupees" and b48.keeper == 0x7B
-    b47 = make_burn_47_controller()
-    assert (b47.bomb_x, b47.bomb_y, b47.bomb_face) == (176, 157, "DOWN")
-    assert (b47.interior_x, b47.interior_y) == (152, 149)
+    budget = 0
+    for name, ctl in chain_stages():
+        if name == "ring":
+            break
+        if name == "ne_100":
+            budget += SECRET_REWARD
+        if name == "candle":
+            budget -= CANDLE_PRICE
+        if isinstance(ctl, BombWallController) and ctl.reward == "rupees":
+            assert budget < WALLET_MAX, f"{name} pays into a full wallet"
+            budget = min(WALLET_MAX, budget + ctl.reward_rupees)
+    assert budget >= RING_PRICE
+
+
+def test_bomb_cell_turn_steps_back_and_comes_in_facing() -> None:
+    """On the cell facing the wrong way, a turn in place walks Link on
+    toward the target (0x48: flush with the tree at (192, 93), which never
+    reveals) and re-walking the cell swapped UP/DOWN for 2000 frames on
+    0x2D. So: step back off the cell, re-approach along the face axis
+    (which faces it), then bomb. No press ever heads back past the cell."""
+    from zelda_i.overworld.gather_segments import make_secret_rupee_controller
+
+    ctrl = make_secret_rupee_controller(0x2D)
+    x, y = ctrl.bomb_x, ctrl.bomb_y
+    presses = []
+    pose, facing = (x, y), 1  # on the cell, facing RIGHT
+    for _ in range(30):
+        act = ctrl._after_hops(_snap(screen=0x2D, link_x=pose[0], link_y=pose[1], facing=facing))
+        if act.action == nes_action("B"):
+            break
+        press = next(d for d in ("UP", "DOWN", "LEFT", "RIGHT") if act.action == nes_action(d))
+        presses.append(press)
+        dx, dy = {"UP": (0, -2), "DOWN": (0, 2), "LEFT": (-2, 0), "RIGHT": (2, 0)}[press]
+        pose, facing = (pose[0] + dx, max(y - 2, pose[1] + dy)), {"UP": 8, "DOWN": 4, "LEFT": 2, "RIGHT": 1}[press]
+    else:
+        raise AssertionError(f"never bombed: {presses}")
+    assert set(presses) == {"DOWN", "UP"} and presses[0] == "DOWN"
+    assert presses.index("UP") > presses.count("DOWN") - 1  # back, then in
 
 
 def test_burn_waits_in_place_for_the_flame() -> None:
@@ -531,10 +568,3 @@ def test_cave_exit_idles_through_the_exit_mode() -> None:
     assert ctrl.success is True
 
 
-def test_heart_m3_fixes_the_row_before_walking_east() -> None:
-    """Knocked to (72, 157) under the rock corner, RIGHT jammed 4916 frames."""
-    ctrl = make_heart_m3_controller()
-    ctrl._leg = len(ctrl.approach)
-    act = ctrl._after_hops(_snap(screen=0x2C, link_x=72, link_y=157, facing=1))
-    assert act.action[:] == ctrl._swing("DOWN", "bomb_cell").action[:]
-    assert ctrl._bombed == 0

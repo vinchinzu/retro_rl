@@ -16,6 +16,7 @@ imports keep working. Do not write ``ADDR_BOW``; bow must already be earned.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol
 
@@ -77,6 +78,8 @@ class DamageEvent:
 class AssistTelemetry:
     health: ResourceCounter = field(default_factory=ResourceCounter)
     safety_refills: int = 0
+    # Frames a due refill was held for a real potion (``refill_hold``).
+    refill_holds: int = 0
     suspended_phase_frames: Counter[str] = field(default_factory=Counter)
     maximum_single_frame_damage: int = 0
     # Cumulative filled-heart units lost (observed before refill). Primary
@@ -103,6 +106,7 @@ class AssistTelemetry:
         return {
             "health": asdict(self.health),
             "safety_refills": self.safety_refills,
+            "refill_holds": self.refill_holds,
             "suspended_phase_frames": dict(self.suspended_phase_frames),
             "maximum_single_frame_damage": self.maximum_single_frame_damage,
             "total_damage": self.total_damage,
@@ -162,6 +166,11 @@ class UnlimitedHealthAssist:
         # same emulator step is already mode 17 and is counted, not rewound.
         self.engage_at_whole_hearts = engage_at_whole_hearts
         self.observed_damage_guard = observed_damage_guard
+        # Set by ``route.chain.run_controller_stage`` for the length of one
+        # stage when a ``PotionDrinkGuard`` runs it: True while the guard is
+        # about to drink or drinking, so a due refill waits for the potion
+        # instead of spending it. None (every other loop) never holds.
+        self.refill_hold: Callable[[ZeldaSnapshot], bool] | None = None
         self.telemetry = AssistTelemetry()
         self._prev_filled: int | None = None
         self._prev_phase: str | None = None
@@ -284,6 +293,10 @@ class UnlimitedHealthAssist:
             return None
         if snap.health == target and partial == 0xFF:
             self._prev_filled = target & 0x0F
+            return None
+        if self.refill_hold is not None and self.refill_hold(snap):
+            self.telemetry.refill_holds += 1
+            self._prev_filled = filled
             return None
 
         counter = self.telemetry.health

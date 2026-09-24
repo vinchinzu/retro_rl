@@ -12,8 +12,8 @@ Survival health refill is not Clean. `--through pre-l1` forces that assist off.
 Gathering is the spine's default prefix (`spine/survival.py` `_run_gathered_prefix`):
 pre-l1 assist-off, gather chain under its own refill (`--gather-engage-hearts`,
 default 1 = last-heart; 0 is the next rung), Blue Ring purchase at 0x34,
-then L1 from the 0x37 door. Survival tops rupees to 250 before the shop and
-records that count write. Ringless L1 and later saves are obsolete on the
+then L1 from the 0x37 door. The ring is paid from hidden rupee caves
+(`SECRET_RUPEE_CAVES`); nothing writes the wallet, and it caps at 255. Ringless L1 and later saves are obsolete on the
 main spine; `--resume` rejects them. Regenerate from power-on.
 Planner owns `docs/STATUS.md`. The 18909f wooden M5 oracle is retired (2026-09-22); do not protect it.
 Clean re-measure is `run_level1_complete` without `--infinite-life`.
@@ -57,7 +57,8 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - This prefix buys bombs at coast `0x6F` in `overworld/shop_p7.py`. The later arrow cave is inland `0x4A`. Do not join the shop through `0x68`, the `0x5C` maze, or candle `0x5E`.
 - `0x79` east is y=165 only. The hop that leaves `0x7D` carries `SCREEN_7E_EAST_BAND`, 137 to 145. `0x7B` and `0x7C` stay any-row. Do not put any-row back on the `0x7D` hop. y=133 on `0x7E` does not scroll.
 - Stop is `ADDR_BOMBS >= 1`. While the wallet is under 20 the coast hunt stays open so the walk can arrive over the price. A short arrival on `0x6F` still ends the walk. `overworld/topup.py` hunts north `0x5F`, then west `0x6E`. Still short, it hunts the nearest coast screen `RoomHistory` has dropped — not a transit screen, not inland — and comes back. It does not finish while short. The buy runs only once the wallet can pay. Do not lap west as the walk. `laps` stays 0.
-- Do not poke Food, bombs, keys, the candle, or `$066F`. `--through pre-l1` still forces heart assist off. It does write `$066D` up to 20 before `bomb_topup` when the wallet is short. That write is not the rr-ttyu.3 buy. Quote a tape only against the code that produced it. Read `reason_by_screen` before changing a hop.
+- Do not poke Food, bombs, keys, rupees, the candle, or `$066F`. `--through pre-l1` still forces heart assist off; a short wallet at `bomb_topup` hunts the coast (`overworld/topup.py`). Quote a tape only against the code that produced it. Read `reason_by_screen` before changing a hop.
+- Secret caves: scan slot 11 on a `BFS_<screen>` pin (0x63 rock, 0x64 tree), sweep stands with a what-if candle write, then add a `SECRET_RUPEE_CAVES` row. A candle flame DOWN from tree_y-27 opens; a cave's exit pose is per screen (0x62 lets Link out west of its bush column). Payouts past 255R are lost.
 - A `@dataclass` copies field defaults into `__init__`. Setting the default on the class later does not change instances.
 - Walls come from `dungeon.tilemap.ow_walkable_nodes`, the ROM collision on the 8 px turn grid, not from a screenshot. The old `measured_walker` samples one pixel and misses Link's width. 0x79 y=165 dead-ends at x=192.
 - Walls, doors, stairs and block pushes go through the ROM lattice helpers in `dungeon/hop_controller.py` (`LatticeDoorWalker`, `lattice_goto`, `block_push_step`, `stairs_step`); hand waypoint policies are fallbacks only.
