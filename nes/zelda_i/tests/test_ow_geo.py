@@ -98,3 +98,21 @@ def test_hop_list_resumes_after_the_screen_link_starts_on() -> None:
         ctrl = OverworldPathController(hops=LEVEL4_HOPS_FROM_POST_L3, resume_on_screen=True)
         ctrl.step(_snap(112, 93, screen))
         assert ctrl.hop_index == expect, hex(screen)
+
+
+def test_0x79_east_skirt_comes_down_to_the_exit_rows_from_above() -> None:
+    """Run 19 pre-l1: a rupee scoop left Link at (192, 109) and the skirt
+    pressed RIGHT into rock for 28184 frames. From x=192 only rows 133/141
+    reach 0x79's east edge (live $6530 lattice)."""
+    from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
+    from zelda_i.overworld.shop_p7 import make_shop_p7_walk_controller
+
+    ctrl = make_shop_p7_walk_controller()
+
+    def press(y: int) -> str:
+        act = ctrl._leave_79_east(_snap(192, y, 0x79))
+        return next(d for d in ("UP", "DOWN", "LEFT", "RIGHT") if act.action[NES_BUTTON_NAME_TO_INDEX[d]])
+
+    assert press(109) == "DOWN"
+    assert press(133) == "RIGHT"
+    assert press(157) == "UP"

@@ -35,6 +35,8 @@ SHOP_P7_BUY_X = 152
 SHOP_P7_BUY_Y = 149
 # South of the 0x79 rock column. Overlay paints ~130 (the bowl).
 SCREEN_79_BEACH_Y = 165
+# The row east of x=192 that reaches 0x7A (133 and 141 are open there).
+SCREEN_79_EXIT_Y = 133
 COAST_TEKTITE_SCREEN = 0x7A
 # Measured east lanes (``scratch/probe_coast_lane.py``, tag ``l1``, one boot,
 # emulator state restored per row, 17 rows a screen). A row is a lane only if
@@ -188,8 +190,14 @@ class ShopP7WalkController(OverworldPathController):
             if y < SCREEN_79_BEACH_Y and x < 120:
                 return self._swing("DOWN", "79_skirt_south")
             return self._swing("RIGHT", "79_skirt_beach")
-        if y > 133:
+        # Past x=192 only rows 133/141 reach the east edge: come to 133
+        # from either side (from (192, 109) RIGHT was rock for 28184 frames
+        # after a rupee scoop, run 19). A RIGHT press within 4 px slides
+        # onto the row.
+        if y > SCREEN_79_EXIT_Y:
             return self._swing("UP", "79_skirt_exit_up")
+        if y < SCREEN_79_EXIT_Y - 4:
+            return self._swing("DOWN", "79_skirt_exit_down")
         return self._swing("RIGHT", "79_skirt_exit_east")
 
     def _leave_79_west(self, snap: ZeldaSnapshot) -> FrameAction:
