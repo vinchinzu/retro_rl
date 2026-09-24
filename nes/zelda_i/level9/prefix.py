@@ -23,7 +23,7 @@ from zelda_i.dungeon.hop_controller import (
     stairs_step,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
-from zelda_i.level9.patra import PATRA_STAND_DY, patra_action
+from zelda_i.level9.patra import PATRA_ROOM_FULL, PATRA_STAND_DY, patra_action
 from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP, SILVER_ARROWS
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -1370,6 +1370,7 @@ class Level9Stairs61Controller(Level9StairsHopController):
                     return FrameAction(nes_action(self._escape_dir), "patra_stuck_escape")
                 action, reason, self._patra_cooldown = patra_action(
                     snap, cooldown=self._patra_cooldown, stand_dy=self.patra_stand_dy,
+                    room=PATRA_ROOM_FULL,
                 )
                 return FrameAction(action, reason)
 
