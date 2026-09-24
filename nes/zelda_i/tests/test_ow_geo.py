@@ -86,3 +86,15 @@ def test_horizontal_push_aligns_until_the_slide_lands_on_the_target_row() -> Non
     assert press(138) == "RIGHT"
     assert press(141) == "RIGHT"
     assert press(150) == "UP"
+
+
+def test_hop_list_resumes_after_the_screen_link_starts_on() -> None:
+    """The L4 walk starts on 0x74, or on 0x64 after a potion restock there;
+    with ``resume_on_screen`` the same hop list picks up at 0x65."""
+    from zelda_i.level4.overworld import LEVEL4_HOPS_FROM_POST_L3
+
+    targets = [h.target for h in LEVEL4_HOPS_FROM_POST_L3]
+    for screen, expect in ((0x74, 0), (0x64, targets.index(0x64) + 1)):
+        ctrl = OverworldPathController(hops=LEVEL4_HOPS_FROM_POST_L3, resume_on_screen=True)
+        ctrl.step(_snap(112, 93, screen))
+        assert ctrl.hop_index == expect, hex(screen)
