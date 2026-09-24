@@ -373,3 +373,12 @@ def walk_pond():
     from zelda_i.overworld.gather_segments import POND_WALK_HOPS
 
     return HopWalkController(hops=POND_WALK_HOPS)
+
+
+def l8_clear_1f():
+    from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
+    from zelda_i.level8.magic_key import _clear_1f_spec
+
+    ctl = GenericDungeonRoomController(_clear_1f_spec())
+    ctl.phase = DungeonPhase.FIGHT
+    return ctl
