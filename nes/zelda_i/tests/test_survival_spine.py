@@ -55,9 +55,11 @@ def test_spine_final_fields_records_rupees() -> None:
 def test_main_spine_requires_blue_ring_at_l1_mouth() -> None:
     from zelda_i.spine.survival import gather_success
 
-    snap = SimpleNamespace(level=0, screen=0x37, sword=2, ring=0)
+    snap = SimpleNamespace(level=0, screen=0x37, sword=2, ring=0, food=0)
     assert not gather_success(snap)
     snap.ring = 1
+    assert not gather_success(snap)
+    snap.food = 1
     assert gather_success(snap)
 
 

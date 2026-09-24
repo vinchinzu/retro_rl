@@ -253,5 +253,5 @@ def bomb_restock_stages(
         buy = make_bomb_restock_controller(hops=to_shop, want=want)
     return (
         (f"bomb_restock_{tag}", buy, buy.max_frames),
-        (f"exit_bomb_restock_{tag}", CaveExitController(clear=0), 600),
+        (f"exit_bomb_restock_{tag}", CaveExitController(clear=16), 600),
     )

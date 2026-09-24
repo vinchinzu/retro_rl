@@ -826,12 +826,13 @@ def level1_after_first_key_stages() -> tuple[tuple[str, Any, int], ...]:
 
 
 def gather_success(snap: ZeldaSnapshot) -> bool:
-    """On the L1 mouth screen in play with White Sword and Blue Ring."""
+    """On the L1 mouth with White Sword, Blue Ring, and paid-for Food."""
     return (
         snap.level == 0
         and snap.screen == SCREEN_LEVEL1_ENTRANCE
         and int(snap.sword) >= 2
         and int(snap.ring) >= 1
+        and int(snap.food) >= 1
     )
 
 

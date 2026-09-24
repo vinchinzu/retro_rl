@@ -42,11 +42,13 @@ from zelda_i.level5.whistle_path import (
 )
 from zelda_i.level5.overworld import (
     LEVEL5_LEVEL_ID,
+    POST_L4_TO_LEVEL5_HOPS,
     POST_L4_PATH_MAX_FRAMES,
     POST_L4_SETTLE_MAX_FRAMES,
     PostL4TriforceSettleController,
     make_post_l4_level5_controller,
 )
+from zelda_i.overworld.arrow_shop import ARROW_SHOP_SCREEN, arrow_restock_stages
 from zelda_i.ram import ZeldaSnapshot, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, fight_stage, play_ready
 
@@ -182,6 +184,9 @@ def l5_hops() -> tuple[SpineHop, ...]:
                     "settle_l4_tf",
                     PostL4TriforceSettleController(),
                     POST_L4_SETTLE_MAX_FRAMES,
+                ),
+                *arrow_restock_stages(
+                    POST_L4_TO_LEVEL5_HOPS, "l4", screen=ARROW_SHOP_SCREEN
                 ),
                 (
                     "enter_level5",

@@ -413,13 +413,12 @@ def test_post_l8_overworld_screens_5a_59_58_navigation() -> None:
     assert ctl.step(_snap(level=0, screen=0x5A, link_x=240, link_y=93)).action == nes_action("DOWN")
     assert ctl.step(_snap(level=0, screen=0x5A, link_x=240, link_y=140)).action == nes_action("LEFT")
 
-    # Screen 0x59 -> 0x58: plain east-west pass-through at y=141, no
-    # vertical obstacle (rr-mzxn follow-on: the y<155 check that used to
-    # fire here was misattributed from the *next* hop and held DOWN
-    # forever against a real wall a few px south of the arrival edge,
-    # never crossing into 0x58 at all).
+    # Screen 0x59 -> 0x58: direct east arrival crosses at y=141. A
+    # bomb-shop return enters from the north at (112,61) and must descend
+    # through the central passage before moving west.
     ctl.hop_index = 5
     assert ctl.hops[ctl.hop_index].target == 0x58
+    assert ctl.step(_snap(level=0, screen=0x59, link_x=112, link_y=61)).action == nes_action("DOWN")
     assert ctl.step(_snap(level=0, screen=0x59, link_x=240, link_y=141)).action == nes_action("LEFT")
     assert ctl.step(_snap(level=0, screen=0x59, link_x=155, link_y=141)).action == nes_action("LEFT")
 
@@ -617,6 +616,12 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
     assert act_blast_end.action == nes_action("UP")
     assert act_blast_end.reason == "enter_left_spectacle_rock"
 
+    # Knockback during blast wait can place Link north of the entrance (e.g. y=149)
+    snap_knocked = _snap(level=0, screen=0x05, link_x=80, link_y=149, triforce=FULL_TRIFORCE, bombs=13)
+    act_knocked = ctl.step(snap_knocked)
+    assert act_knocked.action == nes_action("DOWN")
+    assert act_knocked.reason == "enter_left_spectacle_rock_from_north"
+
     # Transition into Level 9
     snap_trans = _snap(level=9, screen=0x76, link_x=120, link_y=205, mode=6, bombs=13)
     act_trans = ctl.step(snap_trans)
@@ -645,22 +650,25 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
 
 def test_level9_entry_chapter_chaining() -> None:
     stages = level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF)
-    assert len(stages) == 6
+    assert len(stages) == 8
     assert stages[0][0] == "level9_post_l8_overworld"
     assert stages[1][0] == "bomb_restock_l8"
     assert stages[2][0] == "exit_bomb_restock_l8"
-    assert stages[3][0] == "level9_post_l8_to_rock"
-    assert stages[4][0] == "level9_white_sword"
-    assert stages[5][0] == "level9_spectacle_rock_bomb"
+    assert stages[3][0] == "bomb_restock_l8_second"
+    assert stages[4][0] == "exit_bomb_restock_l8_second"
+    assert stages[5][0] == "level9_post_l8_to_rock"
+    assert stages[6][0] == "level9_white_sword"
+    assert stages[7][0] == "level9_spectacle_rock_bomb"
     assert stages[0][2] == 12_000
     assert stages[2][2] == 600
-    assert stages[3][2] == 12_000
-    assert stages[4][2] == 20_000
-    assert stages[5][2] == 4000
+    assert stages[4][2] == 600
+    assert stages[5][2] == 12_000
+    assert stages[6][2] == 20_000
+    assert stages[7][2] == 4000
 
     # Both controllers accept measured handoff and have route_eligible when complete
     ow_ctl = stages[0][1]
-    bomb_ctl = stages[5][1]
+    bomb_ctl = stages[7][1]
     assert isinstance(ow_ctl, Level9PostL8OverworldController)
     assert isinstance(bomb_ctl, Level9SpectacleRockBombController)
 

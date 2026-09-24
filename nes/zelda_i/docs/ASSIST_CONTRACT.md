@@ -85,18 +85,21 @@ Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
 
 ### Bait / Food byte at the L7 shop (retired, superseded 2026-09-24)
 
-**Retired.** `rr-8t4.5` (natural 60R bait buy at 0x34) is closed. The natural buy
+**Retired.** `rr-8t4.5` (natural 60R bait buy at 0x34) is closed. Gathering
+opens 0x62's 100R cave after the Blue Ring, returns to 0x34, and buys Bait for
+60R before Level 1. The Level 7 bait stage verifies the carried Food. The buy
 via `NaturalBaitPurchaseController` (`level7/entry.py`) superseded this poke;
 it is no longer used or authorized. `SurvivalBaitPurchaseController` is off
-the spine, `poke_food` is never called on the spine, and `inventory_assist`
-is empty. Kept below for historical record only.
+the spine and `poke_food` is never called on the spine. The new pre-L1 buy
+replaces the former 68R red potion; the wallet and later potion plan must be
+measured again. Kept below for historical record only.
 
 The natural L6 → bait-shop overworld route is a **mountain-locked desert
 pocket** (`0x22/0x32/0x33/0x23/0x24/0x25`) with no southward outlet to the
 row-4/5 band that holds pond `0x42` and shop `0x34`; the shop and pond are
 only reached walking north out of the western forest band from *start*. Mapping
-that route was its own campaign (bead `rr-8t4.4`). The natural buy at 0x34
-replaces the Food write.
+that route was its own campaign (bead `rr-8t4.4`). The earlier buy at 0x34
+avoids that detour.
 
 Formerly allowed fields (now retired):
 

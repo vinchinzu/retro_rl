@@ -86,7 +86,7 @@ def _measured_leave_ram() -> np.ndarray:
         arrows=1,
         health=0xAA,
         whistle=1,
-        food=0,
+        food=1,
         rod=1,
         bow=1,
         candle=1,

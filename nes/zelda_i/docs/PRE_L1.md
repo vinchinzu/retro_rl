@@ -2,20 +2,19 @@
 
 ## Current sitting leftover (2026-09-24)
 
-`lastheart_poweron37` reached the credits from power-on in 293,488 frames,
-with zero state loads, zero deaths, TF `0xFF`, and 14 containers. L8 0x1F
-cleared in 3,805f by bombing the inner Darknuts after the outer wave (three
-bombs on this tape); room 0x61 and final Patra 0x52 cleared by melee below
-full hearts. The L9 join recovered from cellar 0x75 knockback past its
-east ladder. This is Survival: 7 target and 16 safety heart refills, 91
-bombs and 3 keys granted, plus wooden-arrow and Food writes. It does not
-promote Clean STATUS.
+`bait_compose_poweron3` bought Food from play on the second 0x34 visit:
+0x62's payout raised the wallet to 105R, the Bait pedestal debited 60R,
+and the gathered L1 mouth carried Food 1 and 45R. The power-on run used
+`--no-pokes`, had zero state loads and zero inventory writes, and cleared the
+L4 0x12 push-path regression. It stopped after L4 at `arrow_restock_l4` on
+0x4A with 15R against the 80R arrow price. It is a Survival development
+tape, not a Clean or credits result.
 
-Next action: reduce one measured refill cluster and repeat power-on. L5
-0x05 (16h), L5 0x64 (15h), L9 0x10 (14.5h), L6 0x3A (12.5h), and L9 0x20
-(12.5h) lead run 37. Final Patra still took a refill after entering with
-6.49 hearts and losing 7. The L9 wallet held only 5R at the credits, so a
-late potion purchase needs earlier rupee routing or a carried drink.
+Next action: add the L2 Armos income the arrow budget assumes, then repeat
+power-on through the L7 bait stage with no pokes. The pre-L1 Bait buy
+displaces the old 68R red potion, so measure the new potion and health
+inventory after that run. The earlier `lastheart_poweron37` credits result
+remains historical and still needed 7 target plus 16 safety health refills.
 
 ## Hidden rupees pay the ring (2026-09-24, rr-t49c)
 

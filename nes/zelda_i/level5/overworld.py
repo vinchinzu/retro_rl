@@ -321,9 +321,10 @@ class OverworldToLevel5Controller(OverworldPathController):
 
 
 def make_post_l4_level5_controller() -> OverworldToLevel5Controller:
-    """Proven L4 island → Lost Hills → L5 0x76. Not the old At4A fixture."""
+    """L4 island or post-arrow-shop 0x4A → Lost Hills → L5 0x76."""
     return OverworldToLevel5Controller(
         hops=POST_L4_TO_LEVEL5_HOPS,
+        resume_on_screen=True,
         require_dungeon=True,
         max_frames=POST_L4_PATH_MAX_FRAMES,
     )

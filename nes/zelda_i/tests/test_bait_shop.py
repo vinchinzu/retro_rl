@@ -119,6 +119,20 @@ def test_natural_bait_fails_closed_when_short_of_60r() -> None:
     assert report["inventory_assist"] is None
 
 
+def test_bait_walk_allows_hidden_cave_payout_to_finish_counting() -> None:
+    """The 0x62 payout may still be below 60R on the first walking frame."""
+    from zelda_i.overworld.graph import ScreenHop
+
+    ram = _ram(screen=0x62, rupees=34, food=0)
+    env, mem = _poke_env(ram)
+    ctl = make_bait_purchase_controller(hops=(ScreenHop(0x52, "UP"),))
+    ctl.bind_env(env)
+    act = ctl.step(read_snapshot(ram))
+    assert ctl.failed is False
+    assert act.reason != "bait_need_60_rupees"
+    assert mem.calls == []
+
+
 def test_natural_bait_fails_closed_when_geometry_unverified() -> None:
     """Unverified plan fails closed with bait_shop_geometry_unobserved."""
     ram = _ram(rupees=100, food=0)
@@ -156,6 +170,20 @@ def test_natural_bait_already_owned_finishes_without_write() -> None:
     assert mem.calls == []
     assert ctl.report()["writes"] == 0
     assert ram[ADDR_RUPEES] == 100  # untouched
+
+
+def test_level7_bait_stage_accepts_food_carried_from_gathering() -> None:
+    """Level 7 starts at the pond; the purchase happened before Level 1."""
+    ram = _ram(screen=0x42, rupees=0, food=1)
+    env, mem = _poke_env(ram)
+    ctl = make_bait_purchase_controller()
+    ctl.bind_env(env)
+    action = ctl.step(read_snapshot(ram))
+    assert action.reason in ("done", "bait_already_owned")
+    assert ctl.success is True
+    assert mem.calls == []
+    assert ctl.report()["writes"] == 0
+    assert ram[ADDR_RUPEES] == 0
 
 
 def test_natural_bait_door_hunt_outside_0x34() -> None:

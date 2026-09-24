@@ -13,7 +13,7 @@ from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.ops import B_ITEM_CANDLE
 from zelda_i.dungeon.pause_select import PauseSelectController
-from zelda_i.overworld.cave_shop import CaveShopBuyController, make_potion_buy_controller
+from zelda_i.overworld.cave_shop import CaveShopBuyController
 from zelda_i.overworld.gather_run import (
     PRE_L1_LEAVE,
     pin_pre_l1,
@@ -309,15 +309,16 @@ RING_FROM_56_HOPS = RING_HOPS[4:]
 # at (96, 125) on the WEST side of 0x62's full-height bush column, so the
 # way back is north round it, 0x52 -> 0x53 -> 0x54 (691f, measured).
 RUPEES_62_HOPS = RING_RETURN_HOPS[:3] + (ScreenHop(0x63, "LEFT"), ScreenHop(0x62, "LEFT"))
-# That 100R buys a red potion (68R, ``cave_shop.make_potion_buy_controller``)
-# in 0x64's open cave on the way down; the drink is ``PotionDrinkGuard``.
-POTION_FROM_62_HOPS = (
+# The post-ring 100R funds Bait (60R) on a second visit to 0x34. Food stays
+# owned until the Level 7 Hungry Goriya, so this avoids the mountain-locked
+# post-L6 trip. The old 68R red-potion buy cannot share this 100R payout.
+BAIT_FROM_62_HOPS = (
     ScreenHop(0x52, "UP", align_x=96),
     ScreenHop(0x53, "RIGHT"),
     ScreenHop(0x54, "RIGHT"),
-    RING_RETURN_HOPS[2],
+    ScreenHop(0x44, "UP", align_x=116),
+    ScreenHop(0x34, "UP", align_x=132),
 )
-RING_RETURN_FROM_64_HOPS = RING_RETURN_HOPS[3:]
 
 def waypoint_action(controller: Any, snap: ZeldaSnapshot) -> FrameAction | None:
     """Walk this screen's corners in order, then decline.
@@ -1004,6 +1005,8 @@ CHAIN_NAME = "GatherChain"
 
 
 def chain_stages() -> list[tuple[str, Any]]:
+    from zelda_i.level7.entry import make_bait_purchase_controller
+
     letter = make_letter_controller()
     letter.hops = LETTER_FROM_0F_HOPS
     return [
@@ -1048,11 +1051,18 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("exit_ring", CaveExitController(clear=0)),
         ("rupees_62", make_secret_rupee_controller(0x62, RUPEES_62_HOPS, 8000)),
         ("exit_62", CaveExitController(clear=0)),
-        ("potion", make_potion_buy_controller(hops=POTION_FROM_62_HOPS)),
-        ("exit_64", CaveExitController()),
+        ("bait", make_bait_purchase_controller(hops=BAIT_FROM_62_HOPS)),
+        ("exit_bait", CaveExitController(clear=0)),
         (
             "ring_return",
-            HopWalkController(hops=RING_RETURN_FROM_64_HOPS, max_frames=14000, waypoints={}),
+            # The already-open 0x56 rupee cave sits beside a heart-drop lane.
+            # A heal detour there enters the cave and strands this hop.
+            HopWalkController(
+                hops=RING_RETURN_HOPS,
+                max_frames=14000,
+                waypoints={},
+                scoop_heal_radius=0,
+            ),
         ),
         ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS[2:], waypoints={})),
         ("pond_39_l1", PondFairyController()),

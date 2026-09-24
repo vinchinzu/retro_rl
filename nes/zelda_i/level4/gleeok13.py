@@ -106,6 +106,10 @@ class Level4Gleeok13Controller:
             if abs(tx - snap.link_x) <= 2 and abs(ty - snap.link_y) <= 1:
                 self._set_phase(Gleeok13Phase.PUSH, "at_push_stand")
                 return FrameAction(nes_action(PUSH_12_DIR), "push_block")
+            # The route ends at the y=141 turn node, three pixels above the
+            # block stand. Replanning each one-pixel step flips 141↔142.
+            if abs(tx - snap.link_x) <= 2 and ty - 4 <= snap.link_y < ty - 1:
+                return FrameAction(nes_action("DOWN"), "finish_push_stand")
             # ROM lattice around the room's blocks. The x-first hand walk
             # pressed LEFT into the (136..152, 133..141) pair for 8000f
             # from a (160,134) leftover (power-on 2026-09-24).

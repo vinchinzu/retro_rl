@@ -2,6 +2,25 @@
 
 Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L1.md](PRE_L1.md). Do not treat this file as the current plan, and do not write STATUS from it.
 
+## 2026-09-24: natural bomb budget after Level 8
+
+`natl8_3` leaves Level 8 on overworld `0x6D` with TF `0xFF`, 0 bombs,
+38 rupees, and 14 heart containers. A resumed ROM run from that measured
+predecessor (`post_l8_bomb_check2.json`) bought four bombs at `0x4A` for
+20 rupees and reached Level 9 room `0x76` with three bombs and no inventory
+write. The return from the shop enters `0x59` from the north at `(112,61)`;
+it must descend to the west passage before walking left. The old policy
+assumed an east arrival at `y=141` and timed out for 12,000 frames.
+
+A longer resumed run (`l9_bomb_suffix_credits.json`) collected Silver Arrows
+in room `0x10`, then failed the Patra join with zero bombs. The four-bomb
+pack was exhausted by the Level 9 entrance and prefix. Room `0x16` lists
+a bomb room item, but a room `0x16` recon fixture did not yield it while
+Patra was alive. The route now schedules two 20-rupee packs at `0x4A`; this second
+purchase still needs a wallet of at least 40 rupees at the Level 8 leave
+and a continuous power-on verification. Neither resumed run is a Clean or
+continuous credits claim.
+
 > **Probe names below are historical provenance labels, not paths.** The
 > one-shot probe CLIs under `scratch/` were deleted 2026-09-07 once their
 > beads closed; the measurements they produced live on in the constants and

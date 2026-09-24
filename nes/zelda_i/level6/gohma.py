@@ -111,7 +111,7 @@ GOHMA_WAIT = tuple(sorted(set(WAIT_SCROLL_B) | {CELLAR_MODE}))
 
 @dataclass
 class Level6GohmaController(HopController):
-    """Poke wooden arrows, climb the column, fire on each eye-open edge."""
+    """Require owned wooden arrows, climb the column, fire on eye-open edges."""
 
     spec_id: str = "level6_gohma_0x1c"
     room: int = LEVEL6_GOHMA_ROOM
@@ -121,7 +121,7 @@ class Level6GohmaController(HopController):
     cooldown: int = 0
     saw_gohma: bool = False
     poked: bool = False
-    poke_arrows: bool = True
+    poke_arrows: bool = False
     samples: list[dict[str, Any]] = field(default_factory=list)
     leftover: dict[str, Any] = field(default_factory=dict)
     inventory_assist: dict[str, Any] | None = None
@@ -327,7 +327,7 @@ class Level6GohmaController(HopController):
         }
 
 
-def make_gohma_controller(*, poke_arrows: bool = True) -> Level6GohmaController:
+def make_gohma_controller(*, poke_arrows: bool = False) -> Level6GohmaController:
     """Kill Gohma 0x1C with poked wooden arrows. Bow already earned."""
     return Level6GohmaController(poke_arrows=poke_arrows)
 

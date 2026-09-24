@@ -305,6 +305,34 @@ def test_level4_gleeok13_attaches_after_clear12() -> None:
     assert not level4_gleeok13_success(read_snapshot(ram))
 
 
+def test_level4_gleeok13_finishes_from_turn_node_without_replanning_flip() -> None:
+    """The power-on 0x12 leave approaches the push stand at (112,141)."""
+    from retro_harness.nes import nes_action
+    from zelda_i.level4.gleeok13 import make_gleeok13_controller
+    from zelda_i.ram import (
+        ADDR_LEVEL,
+        ADDR_LINK_X,
+        ADDR_LINK_Y,
+        ADDR_MODE,
+        ADDR_SCREEN,
+        PLAY_MODE,
+        read_snapshot,
+    )
+    import numpy as np
+
+    ctl = make_gleeok13_controller()
+    ram = np.zeros(0x800, dtype=np.uint8)
+    ram[ADDR_MODE], ram[ADDR_LEVEL], ram[ADDR_SCREEN] = PLAY_MODE, 4, 0x12
+    ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = 112, 141
+    for y in (141, 142):
+        ram[ADDR_LINK_Y] = y
+        action = ctl.step(read_snapshot(ram))
+        assert action.reason == "finish_push_stand"
+        assert list(action.action) == list(nes_action("DOWN"))
+    ram[ADDR_LINK_Y] = 143
+    assert ctl.step(read_snapshot(ram)).reason == "push_block"
+
+
 def test_level4_gleeok13_west_of_block_routes_around(monkeypatch) -> None:
     """West of the 0x68 block, the ROM lattice walks round it to the east push
     stand: never RIGHT into its west face (that pushes it the wrong way)."""

@@ -1,5 +1,13 @@
 # Zelda I Rupee Budget & Spending Schedule
 
+**Current measurement (rr-ps7.9):** Schedule A is a proposal, not a verified
+route. `bait_compose_poweron3` bought Bait naturally after the 0x62 payout
+(105R→45R, Food 0→1, zero inventory writes) and reached L4, but the arrow
+shop at 0x4A failed with 15R against an 80R price. The proposed L2 Armos
+income is not yet present in that continuous tape. The pre-L1 Bait stop also
+displaces the 68R red potion, so later health and shop balances need a new
+power-on measurement.
+
 **Bead:** rr-ps7.6  
 **Epic:** rr-ps7 (Zelda I Full-Game Route & Inventory-Clean Gate)  
 **Parent / Related Issues:** rr-8t4.5 (Bait at `0x34`), rr-ps7.7 (Wooden Arrows), rr-thlc (Second Potion Restock)  
