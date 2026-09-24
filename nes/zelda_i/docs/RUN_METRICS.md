@@ -45,6 +45,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **blue_ring_full_poweron17 (f549259a: + Patra lane stand)** | **ok (unlimited_health)** | level9-credits | **249503** | 6167 | 74/168 | 37 | 173 / 473 | 74 / 3 / 177 | 7:0d 6875f | 337.66 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
 | **blue_ring_full_poweron24 (92f1031d: hidden rupee caves, potions; no rupee writes)** | **ok (unlimited_health)** | level9-credits | 283010 | 10127 | 82/184 | 36 | 156 / 484 | 75 / 4 / **0** | 9:52 11407f | 336.4 | 1:44=boomerang 3:5d=rupee5 3:6b=key 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
 | **blue_ring_full_poweron31 (b8cc4ab6: Patra eye aim)** | **ok (unlimited_health)** | level9-credits | **275135** | 8219 | 82/183 | 35 | 149 / 479 | 75 / 4 / **0** | 7:49 4302f | 329.41 | same 25 as run 24 |
+| lastheart_poweron34 (Patra melee; guarded last heart) | level8_magic_key_stairs | level9-credits | 263596 | 8859 | 79/146 | 26 | 207 / 15 (7 target, 8 safety) | 66 / 3 / **0** | 8:1f 16150f | 272.03 | 19 rooms; see report |
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
@@ -75,6 +76,15 @@ orbited below the room (rr-e59v). Bomb/key/arrow/Food writes remain
 Run 31 (b8cc4ab6) is run 24 with the Patra eye aim (rr-e59v): every room
 before 0x52 replays frame for frame, and 0x52 fell 11,407 -> 3,362 frames
 (flutter there 2,077 -> 0), so the run is 275,135 frames.
+
+Last-heart power-on 34 had no state loads and reached L8 0x1F, where the
+Darknut clear timed out without a full-heart beam (`rr-secm`). Its last-heart
+guard made 7 target and 8 safety refills through that failure. The new Patra
+melee arm was not reached on this continuous run. From the saved L9
+predecessor, the same no-beam 0x61 fight and final Patra cleared through
+credits in 35,288 frames with one disclosed state load: 0x61 cost 3 hearts,
+final Patra 2 hearts / 1,087 frames, and the L9 suffix used 1 target plus 5
+safety refills. That suffix is development evidence, not a power-on result.
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
@@ -111,6 +121,7 @@ assist prevented. This is the number potions and better combat must drive to zer
 | 29r2 (7820e227) | L4 0x40 → stepladder | pickup-pose stall | +7984 | 0 | 2 | |
 | 29r3 (e7d25c8d) | L4 stepladder → L6 heart | full-hearts stop | +73389 | 5 + 6 safety | 110 | No potion left (restock at 0x64 landed after this pin); worst L5 0x05 17h, 0x64 12h. |
 | 29r4 (bb546dd4) | L6 heart → L8 0x1F | Darknut clear timeout | +60630 | 4 | 65 | 0x1F's clear needs the full-heart beam. |
+| lastheart_poweron34 | power-on → L8 0x1F | Darknut clear timeout | 263596 | 7 + 8 safety | 207 | No state loads; 0x1F spent 16,150f with 8.5h damage. Fresh predecessor pin: `LastHeart34_level8_magic_key_stairs`. |
 
 Run 29 is power-on in five pieces: each stop was a stall, fixed from its
 save point and resumed (a resume proves the pose only; the next continuous

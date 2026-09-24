@@ -23,7 +23,7 @@ from typing import Any
 import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.combat import direction_to_facing
+from zelda_i.combat import direction_to_facing, in_sword_hitbox
 from zelda_i.level9.ganon import LEVEL9, ROOM_BEFORE_GANON, hazard_dodge_dir
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
@@ -203,6 +203,57 @@ def patra_action(
     if int(snap.facing) != direction_to_facing(facing):
         return nes_action(facing), f"face_{facing.lower()}", 0
     return nes_action("A"), f"sword_pulse_{facing.lower()}", PATRA_ATTACK_COOLDOWN
+
+
+# 0x61 has a walkable east lane beside the eye orbit.  On the last-heart pin
+# Link enters below full health, so the sword beam never appears.  Holding this
+# turn-lattice node lands ordinary blade hits as the eyes pass; after they die,
+# the body needs a short chase because it can roam away from the lane.
+PATRA_61_MELEE_STAND = (192, 149)
+
+
+def patra_melee_action(
+    snap: ZeldaSnapshot,
+    *,
+    cooldown: int,
+    stand: tuple[int, int] = PATRA_61_MELEE_STAND,
+    facing: str = "LEFT",
+    room: tuple[int, int, int, int] = PATRA_ROOM_FULL,
+) -> tuple[list[int], str, int]:
+    """One no-beam Patra frame, using a room's melee lane and sword input."""
+    eyes = tuple(eye for eye in patra_eyes(snap) if eye.hp > 0)
+    next_cd = max(0, cooldown - 1)
+    if eyes:
+        x, y = int(snap.link_x), int(snap.link_y)
+        if max(abs(x - stand[0]), abs(y - stand[1])) > 3:
+            direction = room_step(snap, stand, tol=2)
+            if direction is not None:
+                return nes_action(direction), "melee_approach", next_cd
+        if int(snap.facing) != direction_to_facing(facing):
+            return nes_action(facing), "melee_face", next_cd
+        if cooldown > 0:
+            return nes_idle_action(), "melee_cooldown", next_cd
+        return nes_action("A"), "melee_swing", PATRA_ATTACK_COOLDOWN
+
+    body = patra_body(snap)
+    if body is None:
+        return nes_idle_action(), "melee_wait_door", next_cd
+    lx, ly = int(snap.link_x), int(snap.link_y)
+    dx, dy = int(body.x) - lx, int(body.y) - ly
+    if abs(dx) >= abs(dy):
+        direction = "RIGHT" if dx > 0 else "LEFT"
+    else:
+        direction = "DOWN" if dy > 0 else "UP"
+    if in_sword_hitbox(lx, ly, direction, body.x, body.y):
+        if int(snap.facing) != direction_to_facing(direction):
+            return nes_action(direction), "melee_body_face", next_cd
+        if cooldown > 0:
+            return nes_idle_action(), "melee_body_cooldown", next_cd
+        return nes_action("A"), "melee_body_swing", PATRA_ATTACK_COOLDOWN
+    xlo, xhi, ylo, yhi = room
+    goal = (max(xlo, min(xhi, int(body.x))), max(ylo, min(yhi, int(body.y))))
+    step = room_step(snap, goal, tol=12)
+    return nes_action(step or direction), "melee_body_chase", next_cd
 
 
 # --- Eye aim (rr-e59v) ------------------------------------------------------

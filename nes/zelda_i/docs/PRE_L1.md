@@ -1,5 +1,22 @@
 # Pre-L1 loadout
 
+## Current sitting leftover (2026-09-24)
+
+The no-beam L9 Patras clear with ordinary sword input under guarded
+last-heart refill. From `LastHeart30_level9_natural_silver_arrows`, the
+resumed route reached the credits in 35,288 frames, with one state load,
+TF `0xFF`, 14 containers, zero deaths, and six refills. Room 0x61 cost 3
+hearts; final Patra 0x52 cost 2. This is development evidence, not a Clean or
+power-on result.
+
+`lastheart_poweron34` had zero state loads and reached L8 0x1F with TF
+`0x7F`, two keys, five bombs, and 8.48/13 hearts. It timed out in that room
+after 16,150 frames; the beam is absent below full hearts. Its real
+predecessor pin is `LastHeart34_level8_magic_key_stairs`. Next: fix that
+Darknut clear from this pin, replay from the preceding L8 stage, then repeat
+power-on. The assisted result must keep its 7 target / 8 safety refills
+visible; zero is the Clean goal.
+
 ## Hidden rupees pay the ring (2026-09-24, rr-t49c)
 
 The 73→250 ring write is gone: the chain opens the hidden rupee caves on
