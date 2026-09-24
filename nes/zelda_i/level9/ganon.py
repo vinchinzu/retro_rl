@@ -15,7 +15,6 @@ from zelda_i.combat import (
     CONTACT_CHEBYSHEV,
     CONTACT_MANHATTAN,
     direction_to_facing,
-    in_sword_hitbox,
 )
 from zelda_i.dungeon.ids import FIREBALL_OBJECT_TYPE, MANHANDLA_PROJECTILE_TYPE
 from zelda_i.ram import (
@@ -123,14 +122,6 @@ def final_ending_screen(snap: ZeldaSnapshot) -> bool:
     )
 
 
-def _toward(link_x: int, link_y: int, target_x: int, target_y: int) -> str:
-    dx = int(target_x) - int(link_x)
-    dy = int(target_y) - int(link_y)
-    if abs(dx) >= abs(dy):
-        return "RIGHT" if dx > 0 else "LEFT"
-    return "DOWN" if dy > 0 else "UP"
-
-
 def hazard_dodge_dir(
     snap: ZeldaSnapshot,
     hazards: tuple[ZeldaObject, ...],
@@ -165,74 +156,139 @@ def ganon_fireballs(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     )
 
 
-def ganon_dodge_hazards(
-    snap: ZeldaSnapshot, boss: ZeldaObject | None
-) -> tuple[ZeldaObject, ...]:
-    shots = ganon_fireballs(snap)
-    if boss is None:
-        return shots
-    contact = max(abs(int(boss.x) - int(snap.link_x)), abs(int(boss.y) - int(snap.link_y)))
-    if contact <= CONTACT_CHEBYSHEV:
-        return shots + (boss,)
-    return shots
+# Ganon's blade and contact windows, as (Link - Ganon ObjX/ObjY) ranges,
+# measured by pinning both and swinging from a 4 px grid (what-if writes,
+# ``scratch/probe_ganon_hitbox.py``, Blue Ring power-on 14 pin). His RAM x/y
+# is the corner of a 32 px sprite: the old chase treated it as a 16 px body,
+# stood inside the contact window, and took all 7 hits of that fight (15.5
+# hearts). Sword beams pass through him, so the blade is the only weapon.
+GANON_CONTACT = ((-2, 22), (-14, 18))
+GANON_BLADE_WINDOWS = {
+    "UP": ((0, 20), (20, 32)),  # below him
+    "DOWN": ((0, 20), (-20, -14)),  # above him
+    "LEFT": ((24, 36), (-4, 16)),  # right of him
+    "RIGHT": ((-16, -4), (-4, 16)),  # left of him
+}
+# The Silver Arrow, loosed from outside the sprite (one that spawns inside
+# him never lands) on a lane narrower than the blade's: arrows at dy -3 flew
+# over him 60 times (Blue Ring power-on 10 pin); dy 0, 6 and 16 all landed.
+GANON_ARROW_LANES = {
+    "UP": ((0, 16), (48, 255)),
+    "DOWN": ((0, 16), (-255, -32)),
+    "LEFT": ((48, 255), (0, 16)),
+    "RIGHT": ((-255, -32), (0, 16)),
+}
+# A turn press walks Link ~2 px at Ganon: stands keep that off the near edge,
+# or the press leaves the window and the walk comes back (a 96<->98 flutter).
+GANON_FACE_MARGIN = 4
+# Link's turn nodes in room 0x42 (x%8==0, y%8==5); the four corners are wall.
+GANON_NODES = tuple(
+    (x, y)
+    for x in range(32, 209, 8)
+    for y in range(85, 190, 8)
+    if 48 <= x <= 192 or 101 <= y <= 173
+)
 
 
-def _sword_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str | None:
-    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
-        if in_sword_hitbox(
-            snap.link_x,
-            snap.link_y,
-            direction,
-            boss.x,
-            boss.y,
-            reach=24,
-            half_width=16,
-        ):
-            return direction
-    return None
+def _ganon_rel(xy: tuple[int, int], boss: ZeldaObject) -> tuple[int, int]:
+    return int(xy[0]) - int(boss.x), int(xy[1]) - int(boss.y)
 
 
-def _arrow_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str | None:
-    dx = int(boss.x) - int(snap.link_x)
-    dy = int(boss.y) - int(snap.link_y)
-    if abs(dx) <= 4 and dy:
-        return "DOWN" if dy > 0 else "UP"
-    if abs(dy) <= 4 and dx:
-        return "RIGHT" if dx > 0 else "LEFT"
-    return None
+def _inside(rel: tuple[int, int], window) -> bool:
+    (xlo, xhi), (ylo, yhi) = window
+    return xlo <= rel[0] <= xhi and ylo <= rel[1] <= yhi
 
 
-# Link's standable box in Ganon's room: a stunned Ganon can sit outside it
-# ((162,197), below the y=189 floor row), and aligning to his y there pressed
-# DOWN into the wall for 4997f on the power-on gathered spine.
-LINK_X_RANGE = (32, 208)
-LINK_Y_RANGE = (93, 189)
+def _link_xy(snap: ZeldaSnapshot) -> tuple[int, int]:
+    return int(snap.link_x), int(snap.link_y)
 
 
-def _arrow_align_direction(snap: ZeldaSnapshot, boss: ZeldaObject) -> str:
-    """Walk onto Ganon's column or row, whichever Link can stand on and is nearer."""
-    lx, ly, bx, by = int(snap.link_x), int(snap.link_y), int(boss.x), int(boss.y)
-    to_column = LINK_X_RANGE[0] <= bx <= LINK_X_RANGE[1]
-    to_row = LINK_Y_RANGE[0] <= by <= LINK_Y_RANGE[1]
-    if to_column and (not to_row or abs(bx - lx) <= abs(by - ly)):
-        return "RIGHT" if lx < bx else "LEFT"
-    if to_row:
-        return "DOWN" if ly < by else "UP"
-    return "RIGHT" if lx < bx else "LEFT"
+def ganon_contact(snap: ZeldaSnapshot, boss: ZeldaObject) -> bool:
+    return _inside(_ganon_rel(_link_xy(snap), boss), GANON_CONTACT)
 
 
-def _face_or_fire(
-    snap: ZeldaSnapshot,
-    direction: str,
-    button: str,
-    *,
-    face_reason: str,
-    fire_reason: str,
-    cooldown: int,
-) -> tuple[list[int], str, int]:
-    if int(snap.facing) != direction_to_facing(direction):
-        return nes_action(direction), face_reason, 0
-    return nes_action(direction, button), fire_reason, cooldown
+def _can_face(snap: ZeldaSnapshot, direction: str) -> bool:
+    """Facing ``direction`` costs no slide: already faced, or on its turn line.
+
+    A press across the lattice slides Link onto it first, so an arrow lane
+    at y=147 flipped 147<->149 for 638 frames until brown Ganon healed
+    (Blue Ring power-on 10 pin).
+    """
+    if int(snap.facing) == direction_to_facing(direction):
+        return True
+    if direction in ("UP", "DOWN"):
+        return int(snap.link_x) % 8 == 0
+    return int(snap.link_y) % 8 == 5
+
+
+def _window_direction(
+    snap: ZeldaSnapshot, boss: ZeldaObject, windows
+) -> tuple[str | None, bool]:
+    """``(direction, faced)``: fire when already faced inside a window; turn
+    only from inside its stand (the window less the turn's walk). One edge
+    for both flipped Link across it every frame (113<->114 on a lane)."""
+    rel = _ganon_rel(_link_xy(snap), boss)
+    for direction, window in windows.items():
+        if _inside(rel, window) and int(snap.facing) == direction_to_facing(direction):
+            return direction, True
+    for direction, window in windows.items():
+        if _inside(rel, _stand_window(direction, window)) and _can_face(snap, direction):
+            return direction, False
+    return None, False
+
+
+def _stand_window(direction: str, window):
+    """``window`` less ``GANON_FACE_MARGIN`` on the edge the turn walks toward."""
+    (xlo, xhi), (ylo, yhi) = window
+    m = GANON_FACE_MARGIN
+    return {
+        "UP": ((xlo, xhi), (ylo + m, yhi)),
+        "DOWN": ((xlo, xhi), (ylo, yhi - m)),
+        "LEFT": ((xlo + m, xhi), (ylo, yhi)),
+        "RIGHT": ((xlo, xhi - m), (ylo, yhi)),
+    }[direction]
+
+
+def _nearest_node(snap: ZeldaSnapshot, boss: ZeldaObject, windows) -> tuple[int, int] | None:
+    """Nearest turn node inside one of ``windows`` and out of contact."""
+    lx, ly = _link_xy(snap)
+    stands = [_stand_window(d, w) for d, w in windows.items()]
+    best: tuple[int, int] | None = None
+    for node in GANON_NODES:
+        rel = _ganon_rel(node, boss)
+        if _inside(rel, GANON_CONTACT) or not any(_inside(rel, w) for w in stands):
+            continue
+        if best is None or abs(node[0] - lx) + abs(node[1] - ly) < abs(best[0] - lx) + abs(best[1] - ly):
+            best = node
+    return best
+
+
+def _away_from(snap: ZeldaSnapshot, boss: ZeldaObject) -> str:
+    """Step out of the contact window the short way, inward at a wall."""
+    (cxlo, cxhi), (cylo, cyhi) = GANON_CONTACT
+    rx, ry = _ganon_rel(_link_xy(snap), boss)
+    lx, ly = _link_xy(snap)
+    exits = sorted(
+        (
+            (rx - cxlo + 1, "LEFT", lx > 32),
+            (cxhi - rx + 1, "RIGHT", lx < 208),
+            (ry - cylo + 1, "UP", ly > 85),
+            (cyhi - ry + 1, "DOWN", ly < 189),
+        ),
+        key=lambda e: e[0],
+    )
+    return next((d for _, d, ok in exits if ok), exits[0][1])
+
+
+def _walk_to(snap: ZeldaSnapshot, goal: tuple[int, int] | None, reason: str, cd: int):
+    from zelda_i.dungeon.hop_controller import room_step
+
+    if goal is None:
+        return nes_idle_action(), "no_stand", cd
+    step = room_step(snap, goal, tol=0)
+    if step is None:
+        return nes_idle_action(), "hold_stand", cd
+    return nes_action(step), reason, cd
 
 
 def ganon_action(
@@ -240,56 +296,44 @@ def ganon_action(
     *,
     cooldown: int,
 ) -> tuple[list[int], str, int]:
-    """Choose one Ganon combat frame from live boss coordinates.
+    """One Ganon frame from live boss coordinates and measured windows.
 
-    Face, then fire (Gohma). Cooldown dodges fireballs/contact or stands;
-    dest is RAM (brown / silver-arrow kill).
+    Blue: the blade from a window, else out of contact, else to the nearest
+    window node. Brown: the Silver Arrow from a lane node (his heal timer is
+    the clock). No fireball dodge: re-picking a sidestep each frame took 39
+    hits where standing took 12, and stretched the fight into more fireballs.
     """
     boss = ganon_object(snap)
     next_cd = max(0, cooldown - 1)
     if boss is None:
         return nes_idle_action(), "wait_ganon", next_cd
 
-    dodge = hazard_dodge_dir(snap, ganon_dodge_hazards(snap, boss))
-
     if boss.state != 0:
-        arrow_dir = _arrow_direction(snap, boss)
-        if arrow_dir is not None:
-            # Commit to the firing axis (Gohma FIRE_TOL). Dodging here
-            # walks off the column and the silver arrow misses.
+        if int(boss.hp) < GANON_HP_START:
+            # Brown resets HP to 240 and the Silver Arrow's hit is the kill
+            # (240 -> 176, the brown timer freezes). The defeat flag waits
+            # for Link on the remains: arrows into them, or a stand off
+            # them, held it unset for 7000 frames.
+            return _walk_to(snap, (int(boss.x), int(boss.y)), "to_ganon_remains", next_cd)
+        lane, faced = _window_direction(snap, boss, GANON_ARROW_LANES)
+        if lane is not None and not faced:
+            return nes_action(lane), "face_arrow", next_cd
+        if lane is not None:
             if cooldown > 0:
-                return nes_action(arrow_dir), "face_arrow", next_cd
-            return _face_or_fire(
-                snap,
-                arrow_dir,
-                "B",
-                face_reason="face_arrow",
-                fire_reason="silver_arrow",
-                cooldown=16,
-            )
-        if cooldown > 0 and dodge is not None:
-            return nes_action(dodge), "attack_dodge", next_cd
-        direction = _arrow_align_direction(snap, boss)
-        return nes_action(direction), "align_arrow", next_cd if cooldown else 0
+                return nes_idle_action(), "arrow_cooldown", next_cd
+            return nes_action("B"), "silver_arrow", 16
+        return _walk_to(snap, _nearest_node(snap, boss, GANON_ARROW_LANES), "align_arrow", next_cd)
 
-    sword_dir = _sword_direction(snap, boss)
-    if sword_dir is not None:
+    blade, faced = _window_direction(snap, boss, GANON_BLADE_WINDOWS)
+    if blade is not None and not faced:
+        return nes_action(blade), "face_sword", next_cd
+    if blade is not None:
         if cooldown > 0:
-            if dodge is not None:
-                return nes_action(dodge), "attack_dodge", next_cd
             return nes_idle_action(), "cooldown_stand", next_cd
-        return _face_or_fire(
-            snap,
-            sword_dir,
-            "A",
-            face_reason="face_sword",
-            fire_reason="sword_pulse",
-            cooldown=12,
-        )
-    if dodge is not None:
-        return nes_action(dodge), "attack_dodge", next_cd
-    direction = _toward(snap.link_x, snap.link_y, boss.x, boss.y)
-    return nes_action(direction), "chase_ganon", next_cd if cooldown else 0
+        return nes_action("A"), "sword_pulse", 12
+    if ganon_contact(snap, boss):
+        return nes_action(_away_from(snap, boss)), "leave_ganon_body", next_cd
+    return _walk_to(snap, _nearest_node(snap, boss, GANON_BLADE_WINDOWS), "walk_stand", next_cd)
 
 
 @dataclass
@@ -508,7 +552,6 @@ __all__ = [
     "final_ending_screen",
     "ganon_action",
     "ganon_defeated",
-    "ganon_dodge_hazards",
     "ganon_fireballs",
     "ganon_is_brown",
     "ganon_object",

@@ -896,15 +896,24 @@ class RoomFight:
     """The generic room engine as one phase of a bespoke hop controller.
 
     Built on first use and rebuilt after a failed engine (a timeout or a
-    knock out of the room), so the hop keeps fighting on its own gate.
+    knock out of the room), so the hop keeps fighting on its own gate. The
+    rebuild keeps the wave census: a fresh engine in a room already all dead
+    would wait on ``expected_enemy_count`` forever.
     """
 
     spec: DungeonRoomSpec
     _ctl: GenericDungeonRoomController | None = field(default=None, repr=False)
 
+    @property
+    def done(self) -> bool:
+        """The engine cleared the room and swept its drops and room item."""
+        return self._ctl is not None and self._ctl.success
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self._ctl is None or self._ctl.phase is DungeonPhase.FAILED:
+            seen = self._ctl.max_live_enemies if self._ctl is not None else 0
             self._ctl = GenericDungeonRoomController(spec=self.spec)
+            self._ctl.max_live_enemies = seen
             env = live_env.current()
             if env is not None:
                 self._ctl.bind_env(env)
