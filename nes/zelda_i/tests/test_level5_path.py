@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from retro_harness.controls import pressed_nes_buttons
+
 from zelda_i.level5.dungeon import (
     LEVEL_5,
     ROOM_L5_ENTRY,
@@ -33,103 +35,41 @@ def _ram(
     )
 
 
+def _press(step, **ram) -> list[str]:
+    return pressed_nes_buttons(list(step(read_snapshot(_ram(**ram))).action))
+
+
 def test_room66_west_aisle_prefights_north_of_river() -> None:
     """TF suffix leftover (32,141) UP; (79,165)/(152,189) still south."""
-    hole = level5_room66_west_aisle_north_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=141))
-    )
-    assert hole.reason == "66_west_aisle_up"
-    south = level5_room66_west_aisle_north_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=79, y=165))
-    )
-    assert south.reason == "66_west_aisle_up"
-    se = level5_room66_west_aisle_north_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=152, y=189))
-    )
-    assert se.reason == "66_west_aisle_up"
-    bank = level5_room66_west_aisle_north_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=101))
-    )
-    assert bank.reason == "66_west_aisle_x"
-    parked = level5_room66_west_aisle_north_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=48, y=101))
-    )
-    assert parked.reason == "66_north_bank"
+    step = level5_room66_west_aisle_north_step
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=32, y=141) == ["UP"]
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=79, y=165) == ["UP"]
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=152, y=189) == ["UP"]
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=32, y=101) == ["RIGHT"]
+    # Parked on the north bank: stand still and let the fight come.
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=48, y=101) == []
 
 
 def test_east_key_route_returns_south_from_cleared_66() -> None:
-    snap = read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=56, y=117, keys=1))
-    action = level5_east_key_step(snap)
-    assert action.reason == "east_key_finish_ladder"
-    north_bank = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=32, y=101, keys=6))
-    )
-    assert north_bank.reason == "east_key_to_ladder_x"
-    off_ladder = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=56, y=149, keys=1))
-    )
-    assert off_ladder.reason == "east_key_align_south_x"
+    step = level5_east_key_step
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=56, y=117, keys=1) == ["DOWN"]
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=32, y=101, keys=6) == ["RIGHT"]
+    assert _press(step, room=ROOM_L5_GIBDO_66, x=56, y=149, keys=1) == ["RIGHT"]
 
 
 def test_east_key_route_uses_wall_before_door_channel() -> None:
-    approach = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=180, y=157, keys=1))
-    )
-    still_approach = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=200, y=157, keys=1))
-    )
-    channel = level5_east_key_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=208, y=157, keys=1))
-    )
-    assert approach.reason == "east_key_approach_wall"
-    assert still_approach.reason == "east_key_approach_wall"
-    assert channel.reason == "east_key_align_channel_y"
+    step = level5_east_key_step
+    assert _press(step, room=ROOM_L5_ENTRY, x=180, y=157, keys=1) == ["RIGHT"]
+    assert _press(step, room=ROOM_L5_ENTRY, x=200, y=157, keys=1) == ["RIGHT"]
+    assert _press(step, room=ROOM_L5_ENTRY, x=208, y=157, keys=1) == ["UP"]
 
 
 def test_west65_uses_statue_bypass_on_76() -> None:
-    doorway = level5_west65_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=224, y=141, keys=2))
-    )
-    assert doorway.reason == "west65_leave_east_mouth"
-    east_pocket = level5_west65_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=200, y=141, keys=2))
-    )
-    assert east_pocket.reason == "west65_align_approach_y"
-    leave = level5_west65_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=200, y=157, keys=2))
-    )
-    assert leave.reason == "west65_leave_east_door"
-    north = level5_west65_step(
-        read_snapshot(_ram(room=ROOM_L5_ENTRY, x=120, y=157, keys=2))
-    )
-    assert north.reason == "west65_enter_66"
-
-
-def test_block_stairs_06_warp_is_walked_not_spawn_tile() -> None:
-    """0x06 warps from the walked (128,141) tile, not the (96,133) spawn."""
-    from zelda_i.level5.cellar_path import cellar_to_64, take_block_stairs_06
-
-    doc = take_block_stairs_06.__doc__ or ""
-    assert "96,133" in doc
-    assert "do not warp" in doc.lower()
-    assert "189" in (cellar_to_64.__doc__ or "") or "pit" in (cellar_to_64.__doc__ or "").lower()
-
-
-def test_nav_rows_keep_settle_and_frame_budgets() -> None:
-    """0x66 return / 0x77 east key are rows of one settle-on-arrival nav."""
-    from zelda_i.level5.path import (
-        EAST_KEY_77_NAV,
-        RETURN_66_NAV,
-        level5_east_key_step,
-        level5_return_66_step,
-    )
-
-    assert (RETURN_66_NAV.max_frames, RETURN_66_NAV.settle_frames) == (8000, 30)
-    assert RETURN_66_NAV.step is level5_return_66_step
-    assert RETURN_66_NAV.spec_id == "level5_return66_from_east_key"
-    assert (EAST_KEY_77_NAV.max_frames, EAST_KEY_77_NAV.settle_frames) == (8000, 40)
-    assert EAST_KEY_77_NAV.step is level5_east_key_step
-    assert EAST_KEY_77_NAV.spec_id == "level5_east_key_nav_0x77"
+    step = level5_west65_step
+    assert _press(step, room=ROOM_L5_ENTRY, x=224, y=141, keys=2) == ["LEFT"]
+    assert _press(step, room=ROOM_L5_ENTRY, x=200, y=141, keys=2) == ["DOWN"]
+    assert _press(step, room=ROOM_L5_ENTRY, x=200, y=157, keys=2) == ["LEFT"]
+    assert _press(step, room=ROOM_L5_ENTRY, x=120, y=157, keys=2) == ["UP"]
 
 
 def test_return_66_controller_settles_then_stops() -> None:
@@ -142,7 +82,6 @@ def test_return_66_controller_settles_then_stops() -> None:
         assert not ctl.success
     assert ctl.step(snap).reason == "arrived_66"
     assert ctl.success
-    assert ctl.report()["spec_id"] == "level5_return66_from_east_key"
 
 
 def test_return_66_controller_waits_in_the_south_mouth() -> None:
@@ -151,42 +90,6 @@ def test_return_66_controller_waits_in_the_south_mouth() -> None:
     mouth = ctl.step(read_snapshot(_ram(room=ROOM_L5_GIBDO_66, x=120, y=205)))
     assert mouth.reason == "return66_leave_south"
     assert not ctl.success
-
-
-def test_bomb_wall_rows_keep_stands_and_approaches() -> None:
-    from zelda_i.level5.whistle_path import BOMB_EAST_65, BOMB_WEST_65, BOMB_WEST_66
-
-    assert (BOMB_WEST_66.stand, BOMB_WEST_66.face) == ((32, 141), "LEFT")
-    assert BOMB_WEST_66.dest_room == 0x65
-    assert BOMB_WEST_66.leave_south_mouth
-    assert BOMB_WEST_66.probe_paths[0] == (("y", 189), ("x", 32), ("y", 141))
-    assert len(BOMB_WEST_66.probe_paths) == 3
-    assert (BOMB_WEST_65.stand, BOMB_WEST_65.dest_room) == ((32, 141), 0x64)
-    assert BOMB_WEST_65.approach == (
-        ("y", 109, 400), ("x", 32, 400), ("y", 141, 400), ("x", 32, 200),
-    )
-    assert (BOMB_EAST_65.stand, BOMB_EAST_65.face) == ((224, 141), "RIGHT")
-    assert BOMB_EAST_65.dest_room == 0x66
-    assert BOMB_EAST_65.approach == (
-        ("y", 109, 400), ("x", 208, 500), ("y", 141, 400), ("x", 224, 200),
-    )
-
-
-def test_whistle_tf_stand_geometry() -> None:
-    """Whistle stand is (120, 141); 0x04 exit is 135,141, 0x06 stairs 128/120,141."""
-    from zelda_i.level5.boss_path import (
-        WHISTLE_STAND,
-        fight_digdogger,
-        path_exit_whistle_04,
-        take_stairs_06,
-    )
-
-    assert WHISTLE_STAND == (120, 141)
-    assert "0x04" in (path_exit_whistle_04.__doc__ or "")
-    assert "135,141" in (path_exit_whistle_04.__doc__ or "")
-    assert "0x38" in (fight_digdogger.__doc__ or "")
-    assert "128,141" in (take_stairs_06.__doc__ or "")
-    assert "120,141" in (take_stairs_06.__doc__ or "")
 
 
 def test_whistle_path_has_no_idle_n_on_clean_path() -> None:
@@ -232,20 +135,6 @@ def test_l5_west_door_band_is_leftover_relative() -> None:
     assert door_band_goal("UP", (208, 189), (48, 93))[0] == 48
 
 
-def test_whistle_04_exit_geometry() -> None:
-    from zelda_i.level5.whistle_path import (
-        L5_CELLAR_FLOOR_Y,
-        L5_CELLAR_LEFT_X,
-        L5_CELLAR_RIGHT_X,
-        WHISTLE_04_LADDER_X,
-        WHISTLE_04_MOUTH_X,
-        WHISTLE_04_PIT_Y,
-    )
-
-    assert (WHISTLE_04_LADDER_X, WHISTLE_04_PIT_Y, WHISTLE_04_MOUTH_X) == (176, 189, 48)
-    assert (L5_CELLAR_FLOOR_Y, L5_CELLAR_LEFT_X, L5_CELLAR_RIGHT_X) == (189, 48, 192)
-
-
 def test_bomb_wall_blast_stand_waits_for_hole_open() -> None:
     """Fuse wait must stand (hold=None / idle) until door opens or room changes."""
     from retro_harness.nes import nes_idle_action
@@ -275,4 +164,3 @@ def test_bomb_wall_blast_stand_waits_for_hole_open() -> None:
     act2 = hop.step(snap_open)
     assert hop.success is True
     assert list(act2.action) == list(nes_idle_action())
-

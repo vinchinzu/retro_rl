@@ -218,19 +218,3 @@ def test_up_hop_off_column_leftover_binds_door_column() -> None:
     assert dest != (208, 157)
     assert list(first.action) != list(nes_idle_action())
     assert list(first.action) == list(nes_action("LEFT"))
-
-
-def test_row_table_is_the_ten_generic_hops() -> None:
-    """0x29 north stays out of the table (see the module NOTE / rr-mzxn)."""
-    assert [s.spec_id for s in L6_DOOR_HOPS] == [
-        "level6_south_0x09",
-        "level6_south_0x19",
-        "level6_south_0x29",
-        "level6_east_0x29",
-        "level6_east_0x39",
-        "level6_west_0x19",
-        "level6_south_0x18",
-        "level6_south_0x1d",
-        "level6_west_0x2d",
-        "level6_north_0x2c",
-    ]

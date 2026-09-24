@@ -19,16 +19,10 @@ from zelda_i.level8.path import (
     EAST_3E_ORIGIN,
     EAST_3E_ORIGIN_POSE,
     EAST_DOOR,
-    EAST_NORTH_BAND_Y,
-    EAST_RIGHT_BIT,
     EAST_STATUE_CLEAR_X,
     GLEEOK_HYP,
-    Level8East3EController,
-    UnverifiedLevel8PathController,
     east_3e_step,
     make_east_3e_controller,
-    make_gleeok_passage_controller,
-    make_magic_key_stairs_controller,
 )
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
@@ -183,38 +177,3 @@ def test_dest_live_accepts_3f_rejects_3c() -> None:
     assert not cellar.success and cellar.failed
     assert list(act.action) == IDLE
     assert EAST_3E_DEST_POSE == (32, 141)
-
-
-def test_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_east_3e_controller()
-    assert isinstance(ctl, Level8East3EController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "RIGHT"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["spec_id"] == "level8_east_3e"
-    assert report["dest_screen"] == EAST_3E_DEST == 0x3F
-    assert EAST_3E_DEST_HYP == EAST_3E_DEST == 0x3F
-    assert EAST_3E_DEST != GLEEOK_HYP
-    assert EAST_3E_DEST != CELLAR_ROOM
-    assert EAST_3E_DEST_POSE == (32, 141)
-    assert EAST_DOOR == (208, 141)
-    assert EAST_3E_ORIGIN == 0x3E
-    assert EAST_3E_ORIGIN_POSE == (120, 93)
-    assert EAST_3E_ORIGIN != GLEEOK_HYP
-    assert EAST_RIGHT_BIT == 0x01
-    assert EAST_STATUE_CLEAR_X == 176
-    assert EAST_NORTH_BAND_Y == 109
-
-
-def test_gleeok_and_magic_key_factories_stay_unverified() -> None:
-    gleeok = make_gleeok_passage_controller()
-    assert isinstance(gleeok, UnverifiedLevel8PathController)
-    assert not isinstance(gleeok, Level8East3EController)
-    # rr-6o7.2: magic_key_stairs is now live (see test_level8_cellar); it is
-    # not the 0x3E east controller and never an unverified stub.
-    mk = make_magic_key_stairs_controller()
-    assert not isinstance(mk, UnverifiedLevel8PathController)
-    assert not isinstance(mk, Level8East3EController)

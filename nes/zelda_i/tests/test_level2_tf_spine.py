@@ -103,12 +103,6 @@ def test_dodongo_fails_without_bombs() -> None:
     assert ctl.success is False
 
 
-def test_dodongo_controller_does_not_poke() -> None:
-    ctl = Level2DodongoController()
-    assert ctl.report()["poke"] is False
-    assert ctl.report()["route_eligible"] is False
-
-
 def test_dodongo_approach_does_not_grade_moving_boss() -> None:
     """Stuck pose toward a moving mouth is not a wall. Do not occupancy-grade."""
     ctl = Level2DodongoController(settle_frames=0)

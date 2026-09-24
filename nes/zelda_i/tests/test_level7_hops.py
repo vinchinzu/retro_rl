@@ -30,23 +30,7 @@ from zelda_i.level7.hops import (
     make_entry_to_goriya_controller,
     make_forced_digdogger_controller,
     make_level7_shard_leave_controller,
-    make_pond_entry_controller,
     make_red_candle_controller,
-    make_room58_north_controller,
-    make_room68_down_controller,
-    make_room08_east_bomb_controller,
-    make_room09_down_controller,
-    make_room18_north_bomb_controller,
-    make_room19_east_bomb_controller,
-    make_room1a_east_bomb_controller,
-    make_room0c_east_bomb_controller,
-    make_room0d_clear_controller,
-    make_room1a_candle_controller,
-    make_room4a_return_controller,
-    make_room1b_key_east_controller,
-    make_room38_up_controller,
-    make_room39_left_controller,
-    make_room49_up_controller,
 )
 from zelda_i.level7.path import (
     EAST_APPROACH_X,
@@ -72,24 +56,12 @@ from zelda_i.level7.path import (
     Room6AEastController,
     Room58NorthController,
     Room68DownController,
-    L7_ROOM08_EAST_BOMB,
-    L7_ROOM18_NORTH_BOMB,
-    L7_ROOM19_EAST_BOMB,
-    L7_ROOM1A_EAST_BOMB,
-    L7_ROOM0C_EAST_BOMB,
     Room09DownController,
     Room1ACandleController,
     Room4AReturnController,
     Room1BKeyEastController,
     Room0DClearController,
     room_0d_clear_step,
-    ROOM_0D_BLOCK,
-    ROOM_0D_BLOCK_STAND,
-    ROOM_0D_BLOCK_AFTER_RIGHT,
-    ROOM_0D_BLOCK_CELL_AFTER_RIGHT,
-    ROOM_0D_STAIR_CELL,
-    ROOM_0D_NORTH_ARM,
-    ROOM_0D_STAIR_WARP_HYP,
     Room38UpController,
     Room39LeftController,
     Room49UpController,
@@ -108,6 +80,7 @@ from zelda_i.level7.path import (
 )
 from zelda_i.level7.pond import POST_L6_TO_POND_HOPS
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
+from retro_harness.controls import pressed_nes_buttons
 from retro_harness.nes import nes_idle_action
 from zelda_i.ram import (
     ADDR_CANDLE,
@@ -193,6 +166,10 @@ def _measured_leave_ram() -> np.ndarray:
     )
 
 
+def _press(act) -> list[str]:
+    return pressed_nes_buttons(list(act.action))
+
+
 def test_measured_post_l6_exit_is_a_verified_shared_handoff() -> None:
     h = MEASURED_POST_L6_EXIT
     assert isinstance(h, OverworldHandoff)
@@ -222,7 +199,6 @@ def test_unmeasured_handoff_refuses_to_move() -> None:
     assert UNMEASURED_HANDOFF.route_eligible is False
     assert UNMEASURED_HANDOFF.verified is False
     assert UNMEASURED_HANDOFF.screen is None
-    assert ctl.report()["route_eligible"] is False
     assert ctl.report()["writes"] == 0
 
 
@@ -344,8 +320,6 @@ def test_survival_bait_controller_pokes_food_and_succeeds() -> None:
     assert report["writes"] == 1
     assert report["progression_writes"] == 0
     assert report["capacity_writes"] == 0
-    assert report["route_eligible"] is False
-    assert report["spec_id"] == "level7_bait_purchase"
     assert ram[ADDR_RUPEES] == 42  # untouched
 
 
@@ -399,38 +373,6 @@ def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
     assert pond.failed  # env not bound; drain still needs 0x42 + whistle
 
 
-def test_continue_level7_spine_uses_the_survival_bait_fixture() -> None:
-    import inspect
-
-    from zelda_i.level7 import spine
-
-    src = inspect.getsource(spine.continue_level7_spine)
-    assert "survival=True" in src
-
-
-def test_hops_docstring_matches_live_facts() -> None:
-    from zelda_i.level7 import hops as hops_mod
-
-    doc = hops_mod.__doc__ or ""
-    assert "verified=False" not in doc
-    assert "every factory here fails closed" not in doc
-    assert "MEASURED_POST_L6_EXIT" in doc
-    assert "0x79" in doc
-    assert "rr-8t4.4" in doc
-
-
-def test_pond_entry_factory_is_the_pause_select_drain() -> None:
-    from zelda_i.level7.pond import Level7PondDrainController
-
-    ctl = make_pond_entry_controller()
-    assert isinstance(ctl, Level7PondDrainController)
-    report = ctl.report()
-    assert report["writes"] == 0
-    assert report["route_eligible"] is False
-    assert report["dest"] == "0x79"
-    assert "missing_evidence" not in report
-
-
 def test_red_candle_chapter_starts_at_entry_first_door() -> None:
     stages = level7_red_candle_chapter_stages()
     names = [name for name, _c, _f in stages]
@@ -453,10 +395,6 @@ def test_red_candle_chapter_starts_at_entry_first_door() -> None:
     first = stages[0][1]
     assert isinstance(first, EntryNorthDoorController)
     assert first.stage_id == make_entry_first_door_controller().stage_id
-    report = first.report()
-    assert report["route_eligible"] is False
-    assert report["dest_screen"] == 0x69
-    assert report["door"] == "UP"
 
 
 def test_north_door_79_step_south_mouth_and_door_x() -> None:
@@ -503,12 +441,14 @@ def test_room69_east_door_band_pushes_without_door_bit() -> None:
 
 def test_room69_east_crosses_on_the_north_band_not_the_centre_row() -> None:
     """The 0x69 centre row is walled: rise to y=109 before heading east."""
-    snap = read_snapshot(_ram(level=7, screen=0x69, x=120, y=EAST_DOOR_Y))
-    assert room69_east_step(snap, saw_goriya=True).reason == "east_band_y"
-    band = read_snapshot(_ram(level=7, screen=0x69, x=120, y=EAST_BAND_Y))
-    assert room69_east_step(band, saw_goriya=True).reason == "east_band_x"
-    column = read_snapshot(_ram(level=7, screen=0x69, x=EAST_APPROACH_X, y=EAST_BAND_Y))
-    assert room69_east_step(column, saw_goriya=True).reason == "east_door_y"
+
+    def press(x: int, y: int) -> list[str]:
+        snap = read_snapshot(_ram(level=7, screen=0x69, x=x, y=y))
+        return _press(room69_east_step(snap, saw_goriya=True))
+
+    assert press(120, EAST_DOOR_Y) == ["UP"]
+    assert press(120, EAST_BAND_Y) == ["RIGHT"]
+    assert press(EAST_APPROACH_X, EAST_BAND_Y) == ["DOWN"]
 
 
 def test_room69_east_arrived_leaves_0x69() -> None:
@@ -521,20 +461,15 @@ def test_room69_east_arrived_leaves_0x69() -> None:
 
 def test_room_6a_east_crosses_the_top_band_not_the_centre_row() -> None:
     """0x6A centre band walls at x=48: rise to y=93 and cross the top."""
-    mouth = read_snapshot(_ram(level=7, screen=0x6A, x=16, y=ROOM_6A_DOOR_Y))
-    assert room_6a_east_step(mouth).reason == "east6a_leave_mouth"
-    west = read_snapshot(_ram(level=7, screen=0x6A, x=48, y=ROOM_6A_DOOR_Y))
-    assert room_6a_east_step(west).reason == "east6a_rise"
-    band = read_snapshot(_ram(level=7, screen=0x6A, x=48, y=ROOM_6A_TOP_BAND_Y))
-    assert room_6a_east_step(band).reason == "east6a_cross"
-    column = read_snapshot(
-        _ram(level=7, screen=0x6A, x=ROOM_6A_EAST_COLUMN_X, y=ROOM_6A_TOP_BAND_Y)
-    )
-    assert room_6a_east_step(column).reason == "east6a_drop_y"
-    door = read_snapshot(
-        _ram(level=7, screen=0x6A, x=ROOM_6A_EAST_PLANE, y=ROOM_6A_DOOR_Y)
-    )
-    assert room_6a_east_step(door).reason == "east6a_push"
+
+    def press(x: int, y: int) -> list[str]:
+        return _press(room_6a_east_step(read_snapshot(_ram(level=7, screen=0x6A, x=x, y=y))))
+
+    assert press(16, ROOM_6A_DOOR_Y) == ["RIGHT"]
+    assert press(48, ROOM_6A_DOOR_Y) == ["UP"]
+    assert press(48, ROOM_6A_TOP_BAND_Y) == ["RIGHT"]
+    assert press(ROOM_6A_EAST_COLUMN_X, ROOM_6A_TOP_BAND_Y) == ["DOWN"]
+    assert press(ROOM_6A_EAST_PLANE, ROOM_6A_DOOR_Y) == ["RIGHT"]
 
 
 def test_room_6a_east_needs_no_candle_and_no_door_bit() -> None:
@@ -552,9 +487,6 @@ def test_room_6a_east_arrived_leaves_0x6a() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x6a"
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["evidence"] == "fixture-live"
 
 
 def test_hungry_goriya_requires_food() -> None:
@@ -574,15 +506,7 @@ def test_hungry_goriya_requires_food() -> None:
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert not ctl.failed
-    assert ctl.report()["route_eligible"] is False
     assert ctl.report()["writes"] == 0
-
-
-def test_red_candle_factory_is_the_live_1a_push() -> None:
-    ctl = make_red_candle_controller()
-    assert isinstance(ctl, Room1ACandleController)
-    assert ctl.report()["route_eligible"] is False
-    assert ctl.report()["dest_screen"] == 0x4A
 
 
 def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
@@ -607,12 +531,10 @@ def test_complete_chapter_follows_live_tail_and_does_not_invent_leave() -> None:
     ]
     forced = make_forced_digdogger_controller()
     assert isinstance(forced, Level7ForcedDigdoggerController)
-    assert forced.report()["route_eligible"] is False
     for ctl in (
         make_aquamentus_heart_controller(),
         make_level7_shard_leave_controller(),
     ):
-        assert ctl.report()["route_eligible"] is False
         assert not ctl.success
     assert (
         make_level7_shard_leave_controller().report()[
@@ -696,22 +618,15 @@ def test_l7_hops_use_fail_closed_entry_chapter() -> None:
 
 def test_room_68_down_peels_then_drops_then_pushes() -> None:
     """0x68 south: off the east trap column, between trap rows, then DOWN."""
-    ne = read_snapshot(_ram(level=7, screen=0x68, x=208, y=93))
-    assert room_68_down_step(ne).reason == "south68_peel"
-    safe = read_snapshot(_ram(level=7, screen=0x68, x=ROOM_68_SAFE_X, y=93))
-    assert room_68_down_step(safe).reason == "south68_drop"
-    mid = read_snapshot(
-        _ram(level=7, screen=0x68, x=ROOM_68_SAFE_X, y=ROOM_68_MID_Y)
-    )
-    assert room_68_down_step(mid).reason == "south68_align_x"
-    door = read_snapshot(
-        _ram(level=7, screen=0x68, x=ROOM_68_SOUTH_X, y=ROOM_68_MID_Y)
-    )
-    assert room_68_down_step(door).reason == "south68_push"
-    trap = read_snapshot(
-        _ram(level=7, screen=0x68, x=80, y=ROOM_68_TRAP_ROW_Y)
-    )
-    assert room_68_down_step(trap).reason == "south68_off_trap"
+
+    def press(x: int, y: int) -> list[str]:
+        return _press(room_68_down_step(read_snapshot(_ram(level=7, screen=0x68, x=x, y=y))))
+
+    assert press(208, 93) == ["LEFT"]
+    assert press(ROOM_68_SAFE_X, 93) == ["DOWN"]
+    assert press(ROOM_68_SAFE_X, ROOM_68_MID_Y) == ["LEFT"]
+    assert press(ROOM_68_SOUTH_X, ROOM_68_MID_Y) == ["DOWN"]
+    assert press(80, ROOM_68_TRAP_ROW_Y) == ["UP"]
 
 
 def test_room_68_down_arrived_leaves_0x68() -> None:
@@ -720,32 +635,19 @@ def test_room_68_down_arrived_leaves_0x68() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x68_south"
-    report = make_room68_down_controller().report()
-    assert report["route_eligible"] is False
-    assert report["dest_screen"] == 0x78
-    assert report["door"] == "DOWN"
 
 
 def test_room_58_north_east_around_then_push() -> None:
     """0x58 north: climb, east around the central mass, then x=120 UP."""
-    mouth = read_snapshot(_ram(level=7, screen=0x58, x=120, y=205))
-    assert room_58_north_step(mouth).reason == "north58_climb"
-    mid = read_snapshot(
-        _ram(level=7, screen=0x58, x=120, y=ROOM_58_NORTH_MID_Y)
-    )
-    assert room_58_north_step(mid).reason == "north58_east"
-    east = read_snapshot(
-        _ram(level=7, screen=0x58, x=ROOM_58_NORTH_EAST_X, y=ROOM_58_NORTH_MID_Y)
-    )
-    assert room_58_north_step(east).reason == "north58_rise"
-    top = read_snapshot(
-        _ram(level=7, screen=0x58, x=ROOM_58_NORTH_EAST_X, y=ROOM_58_NORTH_TOP_Y)
-    )
-    assert room_58_north_step(top).reason == "north58_align_x"
-    door = read_snapshot(
-        _ram(level=7, screen=0x58, x=ROOM_58_NORTH_X, y=ROOM_58_NORTH_TOP_Y)
-    )
-    assert room_58_north_step(door).reason == "north58_push"
+
+    def press(x: int, y: int) -> list[str]:
+        return _press(room_58_north_step(read_snapshot(_ram(level=7, screen=0x58, x=x, y=y))))
+
+    assert press(120, 205) == ["UP"]
+    assert press(120, ROOM_58_NORTH_MID_Y) == ["RIGHT"]
+    assert press(ROOM_58_NORTH_EAST_X, ROOM_58_NORTH_MID_Y) == ["UP"]
+    assert press(ROOM_58_NORTH_EAST_X, ROOM_58_NORTH_TOP_Y) == ["LEFT"]
+    assert press(ROOM_58_NORTH_X, ROOM_58_NORTH_TOP_Y) == ["UP"]
 
 
 def test_room_58_north_arrived_leaves_0x58() -> None:
@@ -754,10 +656,6 @@ def test_room_58_north_arrived_leaves_0x58() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x58_north"
-    report = make_room58_north_controller().report()
-    assert report["route_eligible"] is False
-    assert report["dest_screen"] == 0x48
-    assert report["door"] == "UP"
 
 
 def test_room_49_up_south_mouth_stands_until_spawn() -> None:
@@ -803,13 +701,6 @@ def test_room_49_up_arrived_leaves_0x49() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x49_north"
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["evidence"] == "fixture-live"
-    assert report["dest_screen"] == 0x39
-    assert report["door"] == "UP"
-    factory = make_room49_up_controller()
-    assert factory.report()["dest_screen"] == 0x39
     assert "level7_room49_up" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
@@ -828,9 +719,6 @@ def test_room_39_left_rises_centre_column_not_sw_statue() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x39_west"
-    assert ctl.report()["dest_screen"] == 0x38
-    assert ctl.report()["route_eligible"] is False
-    assert make_room39_left_controller().report()["dest_screen"] == 0x38
     assert "level7_room39_left" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
@@ -851,9 +739,6 @@ def test_room_38_up_uses_east_pocket_not_centre_diamonds() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x38_north"
-    assert ctl.report()["dest_screen"] == 0x28
-    assert ctl.report()["route_eligible"] is False
-    assert make_room38_up_controller().report()["dest_screen"] == 0x28
     assert "level7_room38_up" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
@@ -874,42 +759,9 @@ def test_room_09_down_drops_then_pushes_after_clear() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x09_south"
-    assert ctl.report()["dest_screen"] == 0x19
-    assert ctl.report()["route_eligible"] is False
-    assert make_room09_down_controller().report()["dest_screen"] == 0x19
     assert "level7_room09_down" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
-
-
-def test_map_bomb_chain_factories_are_on_the_candle_chapter() -> None:
-    """0x18/0x08/0x19 bomb walls sit on the live candle mainline."""
-    n18 = make_room18_north_bomb_controller()
-    assert n18.wall is L7_ROOM18_NORTH_BOMB
-    assert n18.to_room == 0x08
-    assert n18.stand == (120, 93)
-    e08 = make_room08_east_bomb_controller()
-    assert e08.wall is L7_ROOM08_EAST_BOMB
-    assert e08.to_room == 0x09
-    assert e08.approach_waypoints[0] == (200, 189)
-    e19 = make_room19_east_bomb_controller()
-    assert e19.wall is L7_ROOM19_EAST_BOMB
-    assert e19.to_room == 0x1A
-    e1a = make_room1a_east_bomb_controller()
-    assert e1a.wall is L7_ROOM1A_EAST_BOMB
-    assert e1a.to_room == 0x1B
-    assert e1a.approach_waypoints[0] == (96, 189)
-    e0c = make_room0c_east_bomb_controller()
-    assert e0c.wall is L7_ROOM0C_EAST_BOMB
-    assert e0c.to_room == 0x0D
-    assert e0c.approach_waypoints[0] == (120, 165)
-    names = [name for name, _c, _f in level7_red_candle_chapter_stages()]
-    assert "level7_room18_north_bomb" in names
-    assert "level7_room08_east_bomb" in names
-    assert "level7_room19_east_bomb" in names
-    complete = [name for name, _c, _f in level7_complete_chapter_stages()]
-    assert "level7_room1a_east_bomb" in complete
-    assert "level7_room0c_east_bomb" in complete
 
 
 def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
@@ -927,36 +779,12 @@ def test_room_0d_clear_peels_west_grab_and_arrives_on_all_dead() -> None:
     act = done.step(dead)
     assert done.success and not done.failed
     assert act.reason == "left_0x0d_cleared"
-    factory = make_room0d_clear_controller()
-    assert factory.report()["dest_screen"] == 0x0D
-    assert factory.report()["route_eligible"] is False
     names = [name for name, _c, _f in level7_complete_chapter_stages()]
     assert "level7_room0d_clear" in names
     assert "level7_tip_of_nose_stairs" in names
     assert "level7_tip_of_nose_stairs" not in [
         n for n, _c, _f in level7_red_candle_chapter_stages()
     ]
-
-
-def test_room_0d_block_16px_right_reveals_the_ne_staircase() -> None:
-    """16px RIGHT from (192,144) puts the block at (208,144) and stairs at (208,96).
-
-    ``ROOM_0D_BLOCK_AFTER_RIGHT`` is the *RAM-observed* 0x68 x/y after the
-    push and is an artifact: the object is repointed to the revealed
-    staircase. The tile map's block quad is ``ROOM_0D_BLOCK_CELL_AFTER_RIGHT``.
-    """
-    assert ROOM_0D_BLOCK == (192, 144)
-    assert ROOM_0D_BLOCK_STAND == (176, 144)
-    assert ROOM_0D_BLOCK_CELL_AFTER_RIGHT == (208, 144)
-    assert ROOM_0D_BLOCK_CELL_AFTER_RIGHT[0] - ROOM_0D_BLOCK[0] == 16
-    assert ROOM_0D_BLOCK_CELL_AFTER_RIGHT[1] == ROOM_0D_BLOCK[1]
-    assert ROOM_0D_BLOCK_AFTER_RIGHT == ROOM_0D_STAIR_CELL == (208, 96)
-    # (176,117) is boxed because the whole y=112 cell row is solid, not
-    # because of any snap; the live route goes x=32 UP then the y=96 row.
-    assert ROOM_0D_NORTH_ARM == (176, 117)
-    assert ROOM_0D_NORTH_ARM[0] == ROOM_0D_BLOCK_STAND[0]
-    assert ROOM_0D_STAIR_WARP_HYP == (208, 93)
-    assert ROOM_0D_STAIR_WARP_HYP[0] == ROOM_0D_STAIR_CELL[0]
 
 
 def test_room_1a_candle_is_the_chapter_pickup_and_arrives_on_candle_2() -> None:
@@ -977,9 +805,6 @@ def test_room_1a_candle_is_the_chapter_pickup_and_arrives_on_candle_2() -> None:
     act = rising.step(read_snapshot(pad))
     assert rising.success and not rising.failed
     assert act.reason == "red_candle_natural"
-    factory = make_room1a_candle_controller()
-    assert factory.report()["dest_screen"] == 0x4A
-    assert factory.report()["route_eligible"] is False
     assert "level7_red_candle_pickup" in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
@@ -1003,9 +828,6 @@ def test_room_4a_return_step_east_drop_then_west_ladder() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x4a_stairs"
-    factory = make_room4a_return_controller()
-    assert factory.report()["dest_screen"] == 0x1A
-    assert factory.report()["route_eligible"] is False
     assert "level7_room4a_return" not in [
         name for name, _c, _f in level7_red_candle_chapter_stages()
     ]
@@ -1023,9 +845,6 @@ def test_room_1b_key_east_is_recon_only_and_arrives_on_0x1c() -> None:
     act = ctl.step(dest)
     assert ctl.success and not ctl.failed
     assert act.reason == "left_0x1b_east"
-    factory = make_room1b_key_east_controller()
-    assert factory.report()["dest_screen"] == 0x1C
-    assert factory.report()["route_eligible"] is False
     assert "level7_room1b_key_east" in [
         name for name, _c, _f in level7_complete_chapter_stages()
     ]

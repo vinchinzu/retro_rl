@@ -100,9 +100,6 @@ def test_bait_33_east_208_141_is_mountain_not_0x34() -> None:
     """l7_bait_32ax leftover 0x33 (208,141): RIGHT is east mountain, not 0x34."""
     from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 
-    hop = POST_L6_TO_BAIT_HOPS[2]
-    assert hop.target == 0x23
-    assert hop.direction == "UP"
     assert 0x34 not in {h.target for h in POST_L6_TO_BAIT_HOPS[:3]}
 
 

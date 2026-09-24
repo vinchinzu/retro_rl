@@ -211,11 +211,12 @@ def test_1e_approach_walks_the_lattice_round_the_blocks_with_tiles() -> None:
 
 def test_1e_south_band_centers_x_before_stand() -> None:
     """0x1e live: south y=189 then east column 176, not mid-y laterals."""
+    from retro_harness.nes import nes_action
+
     ctrl = make_bomb_north_1e_controller()
     wall = ctrl.wall
     act = ctrl.step(_snap(room=wall.room, x=96, y=141, bombs=4, level=2))
-    assert act.reason == "approach_y"
+    assert list(act.action) == list(nes_action("DOWN"))  # to the south band first
+    ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))  # waypoint hand-off
     act = ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))
-    assert act.reason == "approach_next"
-    act = ctrl.step(_snap(room=wall.room, x=96, y=189, bombs=4, level=2))
-    assert act.reason == "approach_x"
+    assert list(act.action) == list(nes_action("RIGHT"))  # then east along it

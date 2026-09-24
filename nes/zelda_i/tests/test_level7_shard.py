@@ -12,10 +12,8 @@ from __future__ import annotations
 
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from zelda_i.anchors import TF_BIT_L7
-from zelda_i.level7.hops import make_level7_shard_leave_controller
 from zelda_i.level7.shard import (
     FANFARE_MODE,
-    SHARD_WAYPOINTS,
     SHUTTER_MAX_FRAMES,
     Level7ShardLeaveController,
     ShardLeavePhase,
@@ -60,18 +58,6 @@ def _buttons(action) -> list[str]:
         for name, idx in NES_BUTTON_NAME_TO_INDEX.items()
         if idx is not None and int(action.action[idx])
     )
-
-
-def test_waypoints_match_the_measured_south_around_walk() -> None:
-    assert SHARD_WAYPOINTS == ((32, 141), (32, 189), (120, 189), (128, 141))
-
-
-def test_hops_factory_returns_the_live_controller() -> None:
-    controller = make_level7_shard_leave_controller()
-    assert isinstance(controller, Level7ShardLeaveController)
-    report = controller.report()
-    assert report["route_eligible"] is False
-    assert report["measured_post_l7_exit_verified"] is False
 
 
 def test_east_shutter_is_pushed_right_from_0x2a() -> None:

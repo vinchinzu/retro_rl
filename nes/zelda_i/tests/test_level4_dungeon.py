@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from retro_harness.controls import pressed_nes_buttons
 from zelda_i.dungeon.ids import VIRE_OBJECT_TYPE
 from zelda_i.level4.dungeon import (
     GEL_OBJECT_TYPE,
@@ -52,23 +53,18 @@ def test_stepladder_notch_stall_fails_without_bfs() -> None:
 
 
 def test_maze_50_live_corner_turns_at_observed_coordinates() -> None:
-    def snap(x: int, y: int) -> SimpleNamespace:
-        return SimpleNamespace(
+    def press(x: int, y: int) -> list[str]:
+        ctl = make_north_40_controller()
+        ctl.path_index = 4
+        snap = SimpleNamespace(
             level=4, screen=ROOM_L4_VIRES_50, mode=5,
             transitioning=False, link_x=x, link_y=y,
         )
+        return pressed_nes_buttons(list(ctl.step(snap).action))
 
-    below_corner = make_north_40_controller()
-    below_corner.path_index = 4
-    assert below_corner.step(snap(128, 101)).reason == "maze50_seek_4_UP"
-
-    at_corner = make_north_40_controller()
-    at_corner.path_index = 4
-    assert at_corner.step(snap(128, 93)).reason == "maze50_seek_4_LEFT"
-
-    door_column = make_north_40_controller()
-    door_column.path_index = 4
-    assert door_column.step(snap(120, 93)).reason == "maze50_seek_4_UP"
+    assert press(128, 101) == ["UP"]  # below the corner
+    assert press(128, 93) == ["LEFT"]  # at the corner
+    assert press(120, 93) == ["UP"]  # on the door column
 
 
 def test_room_31_west_alcove_clip_is_right_up() -> None:

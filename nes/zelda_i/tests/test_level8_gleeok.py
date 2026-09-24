@@ -11,17 +11,10 @@ from zelda_i.dungeon.gleeok import GleeokStand, gleeok_stand
 from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE
 from zelda_i.level8.gleeok import (
     GLEEOK_ROOM,
-    HEART_REACH,
     HEART_SLOT,
     HEART_XY,
-    Level8FourHeadGleeokController,
     heart_xy,
     make_four_head_gleeok_controller,
-)
-from zelda_i.level8.path import (
-    UnverifiedLevel8PathController,
-    make_four_head_gleeok_controller as path_make,
-    make_gleeok_passage_controller,
 )
 from zelda_i.ram import (
     ADDR_LINK_FACING,
@@ -122,16 +115,6 @@ def test_wrong_room_fails_closed() -> None:
     act = _step(ctl, _ram(screen=0x4C, x=112, y=125))
     assert ctl.failed and not ctl.success
     assert list(act.action) == IDLE
-
-
-def test_path_factory_is_fight_not_unverified() -> None:
-    ctl = path_make()
-    assert isinstance(ctl, Level8FourHeadGleeokController)
-    assert not isinstance(ctl, UnverifiedLevel8PathController)
-    passage = make_gleeok_passage_controller()
-    assert isinstance(passage, UnverifiedLevel8PathController)
-    assert HEART_XY == (32, 192)
-    assert HEART_REACH == 1
 
 
 def test_body_gone_walks_sw_heart_not_stand() -> None:

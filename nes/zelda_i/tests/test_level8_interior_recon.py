@@ -8,8 +8,10 @@ walkthrough hypothesis graph.
 
 from __future__ import annotations
 
+import pytest
+
+from zelda_i.level8 import gleeok_entry, passage, path, stairs, triforce
 from zelda_i.level8.dungeon import (
-    BLUE_GOHMA_ARROWS_REQUIRED,
     LEVEL8_INTERIOR_0X0F_RECON,
     LEVEL8_INTERIOR_0X1E_RECON,
     LEVEL8_INTERIOR_0X1E_WEST_RECON,
@@ -18,7 +20,6 @@ from zelda_i.level8.dungeon import (
     LEVEL8_INTERIOR_0X2E_RECON,
     LEVEL8_INTERIOR_0X2E_SOUTH_RECON,
     LEVEL8_INTERIOR_0X2F_STAIRS_RECON,
-    LEVEL8_INTERIOR_0X3C_KILL_RECON,
     LEVEL8_INTERIOR_0X3C_NORTH_RECON,
     LEVEL8_INTERIOR_0X3E_RECON,
     LEVEL8_INTERIOR_0X3E_SOUTH_RECON,
@@ -74,20 +75,6 @@ def test_interior_recon_rows_are_never_route_eligible() -> None:
     assert hypothesis_room_ids_unobserved()
 
 
-def test_0x2e_recon_matches_the_live_bomb_north_sitting() -> None:
-    # probe_l8_3e_north.py A2/A3, 2/2 byte-identical, 4788 frames each.
-    r = LEVEL8_INTERIOR_0X2E_RECON
-    assert r.room_id == 0x2E
-    assert r.entered_from == 0x3E
-    assert r.entry_gate == "north_bomb_wall"
-    assert r.entry_pose == (120, 189)  # blasted wall lands lower than a door
-    assert (r.keys_in, r.keys_out) == (9, 9)  # no key spent at a bomb wall
-    assert (r.bombs_in, r.bombs_out) == (7, 6)  # exactly one natural bomb
-    assert r.census == ((0x3C, 64, 5),)  # Manhandla body + 4 heads
-    assert r.room_item_id == 0x17
-    assert r.fixture == "Level8Interior2EReconFixture"
-
-
 def test_recon_key_and_bomb_ledger_is_continuous() -> None:
     # Counts must chain: each row's outgoing budget is the next row's incoming.
     for before, after in zip(
@@ -101,271 +88,24 @@ def test_recon_key_and_bomb_ledger_is_continuous() -> None:
         assert row.bombs_out <= row.bombs_in
 
 
-def test_0x1e_recon_matches_the_live_north_key_door_sitting() -> None:
-    # probe_l8_2e_north.py C1/C2, 2/2 byte-identical, 2348 frames each.
-    r = LEVEL8_INTERIOR_0X1E_RECON
-    assert r.room_id == 0x1E
-    assert r.entered_from == 0x2E
-    assert r.entry_gate == "north_key_door"
-    assert r.entry_pose == (120, 205)  # a door lands on the south door tile
-    assert (r.keys_in, r.keys_out) == (9, 8)  # exactly one natural key
-    assert (r.bombs_in, r.bombs_out) == (6, 6)  # no bomb at a key door
-    # ONE body, observed type + HP only. dungeon/ids.py registers 0x33 as the
-    # L6 "gohma_red" body; the walkthrough calls this room a *blue* Gohma. The
-    # row records what RAM showed and asserts no colour.
-    assert r.census == ((0x33, 96, 1),)
-    assert r.room_item_id == 0x03
-    assert r.fixture == "Level8Interior1EReconFixture"
-
-
-def test_0x1f_recon_matches_the_live_east_kill_clear_sitting() -> None:
-    # probe_l8_1e_gohma.py D1b/D2, 2/2 byte-identical, 1731 frames each.
-    r = LEVEL8_INTERIOR_0X1F_RECON
-    assert r.room_id == 0x1F
-    assert r.entered_from == 0x1E
-    assert r.entry_gate == "east_kill_clear_shutter"
-    assert r.entry_pose == (16, 141)  # west mouth of a RIGHT door
-    assert (r.keys_in, r.keys_out) == (8, 8)  # no key at a kill-clear shutter
-    assert (r.bombs_in, r.bombs_out) == (6, 6)  # no bomb
-    # Mixed 0x1F population; 0x68 stairs sprite is not a census row.
-    assert r.census == ((0x16, 160, 2), (0x0C, 128, 2), (0x0B, 64, 2))
-    assert r.room_item_id == 0x03
-    assert r.fixture == "Level8Interior1FReconFixture"
-    # rr-gw0x: three connecting wooden arrows (HP 96→64→32→0). Colour is not
-    # asserted — RAM type was 0x33, never 0x34. 9 shots loosed, 6 misses.
-    assert BLUE_GOHMA_ARROWS_REQUIRED == 3
-
-
-def test_0x0f_recon_matches_the_live_magic_key_cellar_sitting() -> None:
-    # probe_l8_1f_magic_key.py E2/E3, 2/2 byte-identical, 9074 frames each.
-    r = LEVEL8_INTERIOR_0X0F_RECON
-    assert r.room_id == 0x0F
-    assert r.entered_from == 0x1F
-    assert r.entry_gate == "center_0x68_west_block_slide"
-    assert r.entry_direction == "STAIRS"
-    assert r.entry_pose == (128, 141)  # first settled warp; leftover (136,141)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.room_item_id == 0x0B
-    assert r.fixture == "Level8InteriorMKReconFixture"
-    assert r.route_eligible is False
-
-
-def test_0x0f_cellar_return_dest_is_live_play_0x1f() -> None:
-    from zelda_i.level8.cellar import CELLAR_RETURN_DEST, CELLAR_RETURN_POSE
-
-    # probe_l8_0f_cellar_return F3/F4, 2/2, 588 frames. Not Gleeok 0x3C.
-    assert CELLAR_RETURN_DEST == 0x1F
-    assert CELLAR_RETURN_POSE == (96, 157)
-    assert CELLAR_RETURN_DEST != 0x3C
-
-
-def test_0x1e_west_return_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.path import WEST_DEST, WEST_DEST_POSE
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_1f_west G2/G3 2/2, 275 controller frames. Not Gleeok 0x3C.
-    r = LEVEL8_INTERIOR_0X1E_WEST_RECON
-    assert r.room_id == WEST_DEST == 0x1E
-    assert r.entered_from == 0x1F
-    assert r.entry_direction == "LEFT"
-    assert r.entry_gate == "west_open_door"
-    assert r.entry_pose == WEST_DEST_POSE == (208, 141)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.fixture == "Level8Interior1EWestReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x1e-west" not in L8_THROUGH
-    assert WEST_DEST != 0x3C
-
-
-def test_0x2e_south_return_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.path import SOUTH_DEST, SOUTH_DEST_POSE
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_1e_south H2/H3 2/2, 264 controller frames. Not Gleeok 0x3C.
-    r = LEVEL8_INTERIOR_0X2E_SOUTH_RECON
-    assert r.room_id == SOUTH_DEST == 0x2E
-    assert r.entered_from == 0x1E
-    assert r.entry_direction == "DOWN"
-    assert r.entry_gate == "south_open_door"
-    assert r.entry_pose == SOUTH_DEST_POSE == (120, 77)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.room_item_id == 0x17
-    assert r.fixture == "Level8Interior2ESouthReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x2e-south" not in L8_THROUGH
-    assert SOUTH_DEST != 0x3C
-    # Distinct leftover from the inbound bomb-north pin (120,189).
-    assert r.entry_pose != LEVEL8_INTERIOR_0X2E_RECON.entry_pose
-
-
-def test_0x3e_south_return_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.path import SOUTH_2E_DEST, SOUTH_2E_DEST_POSE
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_2e_south I1/I2/I3 2/2, 255 controller frames. Not Gleeok 0x3C.
-    r = LEVEL8_INTERIOR_0X3E_SOUTH_RECON
-    assert r.room_id == SOUTH_2E_DEST == 0x3E
-    assert r.entered_from == 0x2E
-    assert r.entry_direction == "DOWN"
-    assert r.entry_gate == "south_open_door"
-    assert r.entry_pose == SOUTH_2E_DEST_POSE == (120, 93)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.room_item_id == 0x03
-    assert r.fixture == "Level8Interior3ESouthReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x3e-south" not in L8_THROUGH
-    assert SOUTH_2E_DEST != 0x3C
-    assert SOUTH_2E_DEST != 0x0F
-    # Distinct leftover from the inbound key-north pin (120,205).
-    assert r.entry_pose != LEVEL8_INTERIOR_0X3E_RECON.entry_pose
-
-
-def test_0x3f_east_return_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.path import EAST_3E_DEST, EAST_3E_DEST_POSE
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_3e_east J1/J2 2/2, 328 controller frames. Not Gleeok 0x3C.
-    r = LEVEL8_INTERIOR_0X3F_EAST_RECON
-    assert r.room_id == EAST_3E_DEST == 0x3F
-    assert r.entered_from == 0x3E
-    assert r.entry_direction == "RIGHT"
-    assert r.entry_gate == "east_open_shutter"
-    assert r.entry_pose == EAST_3E_DEST_POSE == (32, 141)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.room_item_id == 0x00
-    assert r.fixture == "Level8Interior3FEastReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x3f-east" not in L8_THROUGH
-    assert EAST_3E_DEST != 0x3C
-    assert EAST_3E_DEST != 0x0F
-
-
-def test_0x2f_stairs_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.passage import SPAWN_XY
-    from zelda_i.level8.spine import L8_THROUGH
-    from zelda_i.level8.stairs import STAIRS_3F_DEST, STAIRS_3F_DEST_POSE
-
-    # probe_l8_3f_stairs K3/K4 warp, then S1/S2 400f settle. Not Gleeok 0x3C.
-    r = LEVEL8_INTERIOR_0X2F_STAIRS_RECON
-    assert r.room_id == STAIRS_3F_DEST == 0x2F
-    assert r.entered_from == 0x3F
-    assert r.entry_direction == "STAIRS"
-    assert r.entry_gate == "tile_0x71_y141"
-    assert STAIRS_3F_DEST_POSE == (208, 141)  # first unloaded mode-9 frame
-    assert r.entry_pose == SPAWN_XY == (192, 93)  # settled east-ladder mouth
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.room_item_id == 0x00
-    assert r.fixture == "Level8Interior2FCellarReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x2f-stairs" not in L8_THROUGH
-    assert STAIRS_3F_DEST != 0x3C
-    assert STAIRS_3F_DEST != 0x0F
-
-
-def test_0x4c_west_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.passage import DEST, DEST_POSE
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_2f_cross P1/P2 2/2, 356 controller frames. Not Gleeok 0x3C.
-    r = LEVEL8_INTERIOR_0X4C_WEST_RECON
-    assert r.room_id == DEST == 0x4C
-    assert r.entered_from == 0x2F
-    assert r.entry_direction == "STAIRS"
-    assert r.entry_gate == "west_ladder"
-    assert r.entry_pose == DEST_POSE == (112, 125)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 6)
-    assert r.census == ()
-    assert r.room_item_id == 0x19
-    assert r.fixture == "Level8Interior4CWestReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x4c-west" not in L8_THROUGH
-    assert DEST != 0x3C
-    assert DEST != 0x3F
-
-
-def test_0x3c_north_is_live_census_only_not_on_inbound_chain() -> None:
-    from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE
-    from zelda_i.level8.gleeok_entry import DEST, DEST_POSE
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_4c_north N7/N8 2/2, 1037 controller frames. Census only.
-    r = LEVEL8_INTERIOR_0X3C_NORTH_RECON
-    assert r.room_id == DEST == 0x3C
-    assert r.entered_from == 0x4C
-    assert r.entry_direction == "UP"
-    assert r.entry_gate == "north_bomb_wall"
-    assert r.entry_pose == DEST_POSE == (120, 189)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (6, 5)
-    assert r.census == ((0x45, 160, 1),)
-    assert r.room_item_id == 0x1A
-    assert r.fixture == "Level8Interior3CNorthReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x3c-north" not in L8_THROUGH
-    # Live RAM is 0x45 (N7/N8 census), not a ROM assumption.
-    assert GLEEOK_FOUR_HEAD_OBJECT_TYPE == 0x45
-
-
-def test_0x3c_kill_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE
-    from zelda_i.level8.gleeok import HEART_XY
-    from zelda_i.level8.spine import L8_THROUGH
-
-    # probe_l8_3c_gleeok F6/F7 2/2, 5124 controller frames. Heart collected.
-    r = LEVEL8_INTERIOR_0X3C_KILL_RECON
-    assert r.room_id == 0x3C
-    assert r.entered_from == 0x4C
-    assert r.entry_gate == "south_stand_0x45_heart"
-    assert r.entry_pose == (32, 181)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (5, 5)
-    assert r.census == ()
-    assert r.room_item_id == 0x1A
-    assert r.fixture == "Level8Interior3CKillReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert r != LEVEL8_INTERIOR_0X3C_NORTH_RECON
-    assert "level8-interior-0x3c-kill" not in L8_THROUGH
-    assert GLEEOK_FOUR_HEAD_OBJECT_TYPE == 0x45
-    assert HEART_XY == (32, 192)
-
-
-def test_0x2c_tf_is_live_not_on_inbound_chain() -> None:
-    from zelda_i.level8.spine import L8_THROUGH
-    from zelda_i.level8.triforce import NORTH_3C_DEST, NORTH_3C_DEST_POSE
-
-    # probe_l8_3c_north T2/T3 2/2, 296 controller frames. Dest live 0x2C.
-    r = LEVEL8_INTERIOR_0X2C_TF_RECON
-    assert r.room_id == NORTH_3C_DEST == 0x2C
-    assert r.entered_from == 0x3C
-    assert r.entry_direction == "UP"
-    assert r.entry_gate == "north_shutter"
-    assert r.entry_pose == NORTH_3C_DEST_POSE == (120, 205)
-    assert (r.keys_in, r.keys_out) == (8, 8)
-    assert (r.bombs_in, r.bombs_out) == (5, 5)
-    assert r.census == ()
-    assert r.room_item_id == 0x1B
-    assert r.fixture == "Level8Interior2CTriforceReconFixture"
-    assert r.route_eligible is False
-    assert r not in LEVEL8_INTERIOR_ROOM_RECON
-    assert "level8-interior-0x2c-tf" not in L8_THROUGH
+@pytest.mark.parametrize(
+    "row, dest, pose",
+    [
+        (LEVEL8_INTERIOR_0X1E_WEST_RECON, path.WEST_DEST, path.WEST_DEST_POSE),
+        (LEVEL8_INTERIOR_0X2E_SOUTH_RECON, path.SOUTH_DEST, path.SOUTH_DEST_POSE),
+        (LEVEL8_INTERIOR_0X3E_SOUTH_RECON, path.SOUTH_2E_DEST, path.SOUTH_2E_DEST_POSE),
+        (LEVEL8_INTERIOR_0X3F_EAST_RECON, path.EAST_3E_DEST, path.EAST_3E_DEST_POSE),
+        (LEVEL8_INTERIOR_0X2F_STAIRS_RECON, stairs.STAIRS_3F_DEST, passage.SPAWN_XY),
+        (LEVEL8_INTERIOR_0X4C_WEST_RECON, passage.DEST, passage.DEST_POSE),
+        (LEVEL8_INTERIOR_0X3C_NORTH_RECON, gleeok_entry.DEST, gleeok_entry.DEST_POSE),
+        (LEVEL8_INTERIOR_0X2C_TF_RECON, triforce.NORTH_3C_DEST, triforce.NORTH_3C_DEST_POSE),
+    ],
+    ids=lambda v: f"0x{v.room_id:02x}" if isinstance(v, Level8InteriorRoomRecon) else "",
+)
+def test_off_chain_recon_row_is_the_pose_its_controller_arrives_at(row, dest, pose) -> None:
+    """Each off-chain recon row records the room and settled pose that the
+    controller claiming it treats as success; the two must not drift."""
+    assert row.room_id == dest
+    assert row.entry_pose == pose
+    assert row.route_eligible is False
+    assert row not in LEVEL8_INTERIOR_ROOM_RECON

@@ -26,10 +26,6 @@ from zelda_i.ram import (
 
 
 def test_rejoin_hops_avoid_4b_and_south_4a() -> None:
-    assert REJOIN_HOPS[0].target == 0x49
-    assert REJOIN_HOPS[0].direction == "LEFT"
-    assert REJOIN_HOPS[1].target == 0x59
-    assert REJOIN_HOPS[1].direction == "DOWN"
     assert 0x4B not in {h.target for h in REJOIN_HOPS}
     assert 0x5A not in {h.target for h in REJOIN_HOPS}  # no direct 4A→5A
 

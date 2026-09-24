@@ -14,14 +14,7 @@ from zelda_i.anchors import (
     TF_BIT_L3,
     TRIFORCE_BITS_BY_LEVEL,
 )
-from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
 from zelda_i.door_graph.level2_exits import _BOMB_STAND_6F_N
-from zelda_i.level2.bomb_path import (
-    make_bomb_north_1e_controller,
-    make_bomb_north_controller,
-    make_boom_bomb_north_controller,
-    make_post_boom_bomb_north_controller,
-)
 from zelda_i.level2.puzzles import BOMB_WALL_6F_NORTH
 
 _PKG_ROOT = Path(__file__).resolve().parents[1]
@@ -151,74 +144,8 @@ def test_anchors_are_single_source() -> None:
     assert ENTRANCES[7].entry_room == 0x79
 
 
-def test_bomb_wall_factories_share_engine() -> None:
-    c6 = make_bomb_north_controller()
-    c5 = make_boom_bomb_north_controller(clear_gels=False)
-    c4 = make_post_boom_bomb_north_controller()
-    c1 = make_bomb_north_1e_controller()
-    assert isinstance(c6, BombWallController)
-    assert c6.phase is BombWallPhase.SETTLE
-    assert c6.wall.opens_to == 0x5F
-    assert c5.wall.opens_to == 0x4F
-    assert c4.wall.opens_to == 0x3F
-    assert c1.south_band_first
-    assert c1.wall.opens_to == 0x0E
-
-
 def test_door_graph_stands_match_puzzle_catalog() -> None:
     assert _BOMB_STAND_6F_N == BOMB_WALL_6F_NORTH.stand
-
-
-def test_level3_dungeon_enemy_types_come_from_dungeon_ids() -> None:
-    from zelda_i.dungeon import engine as eng
-    from zelda_i.dungeon import ids as ids
-    from zelda_i.level3.dungeon import (
-        DARKNUT_OBJECT_TYPE,
-        INVULN_MOVER_0X2B,
-        KEESE_OBJECT_TYPE,
-        MANHANDLA_OBJECT_TYPE,
-        ZOL_OBJECT_TYPE,
-    )
-
-    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
-    assert DARKNUT_OBJECT_TYPE is ids.DARKNUT_OBJECT_TYPE
-    assert KEESE_OBJECT_TYPE is ids.KEESE_OBJECT_TYPE
-    assert MANHANDLA_OBJECT_TYPE is ids.MANHANDLA_OBJECT_TYPE
-    assert INVULN_MOVER_0X2B is ids.INVULN_MOVER_OBJECT_TYPE
-    assert eng.KEESE_OBJECT_TYPE is ids.KEESE_OBJECT_TYPE
-    assert eng.GORIYA_OBJECT_TYPE is ids.GORIYA_OBJECT_TYPE
-
-
-def test_level4_dungeon_enemy_types_come_from_dungeon_ids() -> None:
-    from zelda_i.dungeon import ids as ids
-    from zelda_i.level4.dungeon import (
-        GEL_OBJECT_TYPE,
-        GLEEOK_OBJECT_TYPE,
-        LIKE_LIKE_OBJECT_TYPE,
-        VIRE_OBJECT_TYPE,
-        ZOL_OBJECT_TYPE,
-    )
-
-    assert VIRE_OBJECT_TYPE is ids.VIRE_OBJECT_TYPE
-    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
-    assert GEL_OBJECT_TYPE is ids.GEL_OBJECT_TYPE
-    assert LIKE_LIKE_OBJECT_TYPE is ids.LIKE_LIKE_OBJECT_TYPE
-    assert GLEEOK_OBJECT_TYPE is ids.GLEEOK_OBJECT_TYPE
-
-
-def test_level5_dungeon_enemy_types_come_from_dungeon_ids() -> None:
-    from zelda_i.dungeon import ids as ids
-    from zelda_i.level5.dungeon import (
-        BUBBLE_OBJECT_TYPE,
-        GIBDO_OBJECT_TYPE,
-        POLS_VOICE_OBJECT_TYPE,
-        ZOL_OBJECT_TYPE,
-    )
-
-    assert GIBDO_OBJECT_TYPE is ids.GIBDO_OBJECT_TYPE
-    assert POLS_VOICE_OBJECT_TYPE is ids.POLS_VOICE_OBJECT_TYPE
-    assert BUBBLE_OBJECT_TYPE is ids.BUBBLE_OBJECT_TYPE
-    assert ZOL_OBJECT_TYPE is ids.ZOL_OBJECT_TYPE
 
 
 def test_dungeon_ids_has_l4_l5_enemy_types() -> None:

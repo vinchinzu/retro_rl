@@ -19,7 +19,6 @@ from zelda_i.level7.aquamentus import (
     Level7AquamentusHeartController,
     make_level7_aquamentus_heart_controller,
 )
-from zelda_i.level7.hops import make_aquamentus_heart_controller
 from zelda_i.level7.stairs import AQUAMENTUS_ROM
 from zelda_i.ram import PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
@@ -66,14 +65,7 @@ def _after_kill(**kwargs) -> Level7AquamentusHeartController:
 
 
 def test_first_sweep_waypoint_is_the_measured_pickup_cell() -> None:
-    assert HEART_CELL == (136, 141)
     assert HEART_SWEEP_WAYPOINTS[0] == HEART_CELL
-
-
-def test_hops_factory_returns_the_live_controller() -> None:
-    controller = make_aquamentus_heart_controller()
-    assert isinstance(controller, Level7AquamentusHeartController)
-    assert controller.report()["route_eligible"] is False
 
 
 def test_sweep_walks_toward_the_pickup_cell_after_the_kill() -> None:

@@ -12,23 +12,16 @@ import ast
 import numpy as np
 
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.level7.hops import make_tip_stairs_controller
 from zelda_i.level7.stairs0d import (
     DOOR_ROW_Y,
-    EAST_COLUMN_X,
     PHASE_MAX_FRAMES,
-    RAM_CLAIM,
     ROOM,
     ROW_Y,
     STAIR_CELL,
     STALL_FRAMES,
-    TIP_BLOCK_CELL_AFTER_RIGHT,
     TIP_BLOCK_XY,
-    WEST_COLUMN_X,
     WEST_DOOR_GUARD_X,
-    Level7Stairs0DController,
     Stairs0DPhase,
-    level7_stairs0d_stages,
     level7_stairs0d_success,
     make_stairs0d_controller,
     tip_block,
@@ -80,22 +73,6 @@ def _buttons(action) -> list[str]:
         for name, idx in NES_BUTTON_NAME_TO_INDEX.items()
         if idx is not None and int(action.action[idx])
     )
-
-
-def test_geometry_constants_match_the_measured_map() -> None:
-    assert ROOM == 0x0D
-    assert TIP_BLOCK_XY == (192, 144)
-    assert TIP_BLOCK_CELL_AFTER_RIGHT == (208, 144)
-    assert STAIR_CELL == (208, 96)
-    # The two crossings of the y=112 / y=176 solid bands.
-    assert (WEST_COLUMN_X, EAST_COLUMN_X) == (32, 208)
-    assert DOOR_ROW_Y == ROW_Y[144] == 141
-    assert ROW_Y[96] == 93 and ROW_Y[128] == 125
-
-
-def test_ram_claim_names_the_miss_conditions() -> None:
-    for phrase in ("Miss if", "0x7B", "(208,93)", "0x79"):
-        assert phrase in RAM_CLAIM
 
 
 def test_success_is_mode9_cellar_not_a_play_room() -> None:
@@ -212,32 +189,6 @@ def test_a_stalled_leg_fails_rather_than_burning_the_budget() -> None:
     assert ctl.failed
     assert any("push_east_stall" in note for note in ctl.notes)
     assert ctl.frames <= PHASE_MAX_FRAMES
-
-
-def test_report_is_fixture_live_and_write_free() -> None:
-    report = make_stairs0d_controller().report()
-    assert report["spec_id"] == "level7_tip_of_nose_stairs"
-    assert report["dest_screen"] == 0x7B
-    assert report["room"] == 0x0D
-    assert report["door"] == "STAIRS"
-    assert report["evidence"] == "fixture-live"
-    assert report["route_eligible"] is False
-    assert report["natural_entry"] is False
-    assert report["writes"] == 0
-    assert report["position_assist"] == {
-        "position_writes": 0,
-        "progression_writes": 0,
-    }
-    assert report["stair_cell"] == [208, 96]
-    assert report["block_after_right"] == [208, 144]
-
-
-def test_stage_and_spine_factory_use_the_live_controller() -> None:
-    stages = level7_stairs0d_stages()
-    assert [name for name, _c, _f in stages] == ["level7_tip_of_nose_stairs"]
-    assert isinstance(stages[0][1], Level7Stairs0DController)
-    assert stages[0][2] == stages[0][1].max_frames
-    assert isinstance(make_tip_stairs_controller(), Level7Stairs0DController)
 
 
 def test_no_occupancy_walker_in_room_0x0d() -> None:

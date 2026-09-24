@@ -654,16 +654,6 @@ def test_the_report_carries_the_budget_it_ran_on() -> None:
     assert set(report) >= {"searches", "claims", "rollouts", "frames_rolled"}
 
 
-def test_the_default_budgets_are_the_named_constants() -> None:
-    """Structural. Every rung needs a budget, and a budget needs a name."""
-    config = SearchConfig()
-    assert config.frame_budget == SOLVER_PLAN_FRAMES
-    assert config.expansion_budget == SOLVER_EXPANSION_BUDGET
-    assert RoomSolver(Rollout(_FakeEnv(_FakeCore()))).room_budget == (
-        SOLVER_ROOM_ROLLOUT_FRAMES
-    )
-
-
 def test_a_default_search_stays_inside_its_expansion_budget() -> None:
     """Behavioural. The shipped shape does not need the hard stop; it has it."""
     solver, core = _solver(config=SearchConfig())

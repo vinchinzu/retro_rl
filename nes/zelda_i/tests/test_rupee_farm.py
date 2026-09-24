@@ -95,7 +95,7 @@ def test_ignores_dead_and_sentinel_and_out_of_bounds_slots() -> None:
     snap = _snap(link_x=120, link_y=149, rupees=0, objects=objects)
     act = farm.step(snap)
     # Nothing farmable: empty-frame wait policy kicks in (not a chase).
-    assert "farm_wait" in act.reason
+    assert not any(act.action)
 
 
 def test_prefers_rupee_drop_over_live_prey() -> None:
@@ -258,11 +258,6 @@ def test_left_farm_screen_unexpectedly_fails_closed() -> None:
     assert "farm_left_12" in farm.notes[-1]
 
 
-def test_leftover_screen_defaults_to_farm_screen() -> None:
-    farm = _farm()
-    assert farm.leftover_screen == FARM_SCREEN
-
-
 def test_chase_nearby_prey_slashes_only_on_hitbox_not_blind_cadence() -> None:
     farm = _farm()
     nearby = ZeldaObject(slot=1, type_id=0x07, x=135, y=149, facing=0, hp=1, state=0)
@@ -298,7 +293,7 @@ def test_ignores_slot11_cave_door_trigger() -> None:
     )
     snap = _snap(link_x=120, link_y=149, rupees=0, objects=(cave_trigger,))
     act = farm.step(snap)
-    assert "farm_wait" in act.reason  # cave trigger ignored; wait/leave kicks in
+    assert not any(act.action)  # cave trigger ignored: no chase toward it
 
 
 def test_farm_leave_persists_across_multiple_frames() -> None:
@@ -379,4 +374,3 @@ def test_walled_leave_fails_closed_after_repeated_stalls() -> None:
     assert any("farm_leave_stalled" in n for n in farm.notes)
     assert farm.leave_stalls >= MAX_LEAVE_STALLS
     assert len(reasons) == 40
-

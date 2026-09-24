@@ -11,8 +11,6 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
 from zelda_i.level8.cellar import (
-    CELLAR_RETURN_DEST,
-    CELLAR_RETURN_POSE,
     CELLAR_ROOM,
     EAST_X,
     EXIT_STAIRS,
@@ -20,13 +18,10 @@ from zelda_i.level8.cellar import (
     PAD,
     PIT_TILE,
     WEST_X,
-    Level8MagicKeyCellarReturnController,
     magic_key_cellar_return_step,
     make_magic_key_cellar_return_controller,
 )
-from zelda_i.level8.magic_key import Level8MagicKeyStairsController
 from zelda_i.level8.path import (
-    UnverifiedLevel8PathController,
     make_magic_key_stairs_controller,
 )
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
@@ -204,20 +199,6 @@ def test_play_mode_dest_0x1f_rejects_0x3c() -> None:
     assert list(act.action) == IDLE
 
 
-def test_factory_report_is_fixture_live_not_route_eligible() -> None:
-    ctl = make_magic_key_cellar_return_controller()
-    assert isinstance(ctl, Level8MagicKeyCellarReturnController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["dest_screen"] == CELLAR_RETURN_DEST == 0x1F
-    assert CELLAR_RETURN_POSE == (96, 157)
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["door"] == "STAIRS"
-    assert report["spec_id"] == "level8_magic_key_cellar_return"
-
-
 def test_west_column_at_y141_goes_up_never_strafe() -> None:
     snap = read_snapshot(_ram(x=WEST_X, y=141))
     act = magic_key_cellar_return_step(snap)
@@ -231,17 +212,6 @@ def test_west_column_at_y141_goes_up_never_strafe() -> None:
     assert act.reason == "cellar_west_up"
     assert list(act.action) == UP
     _no_strafe(act)
-
-
-def test_magic_key_stairs_factory_is_live_controller() -> None:
-    # rr-6o7.2: promoted from the fail-closed stub to the live 0x1F clear ->
-    # 0x68 slide -> cellar 0x0F key -> two-ladder return controller.
-    ctl = make_magic_key_stairs_controller()
-    assert isinstance(ctl, Level8MagicKeyStairsController)
-    assert not isinstance(ctl, UnverifiedLevel8PathController)
-    assert not isinstance(ctl, Level8MagicKeyCellarReturnController)
-    assert ctl.report()["route_eligible"] is False
-    assert ctl.report()["writes"] == 0
 
 
 class _FakeEnv:

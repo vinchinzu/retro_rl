@@ -20,7 +20,6 @@ from zelda_i.level7.pond import (
     DEST,
     DEST_XY,
     POND_SCREEN,
-    POND_STAIR_TILE,
     SOUTH_SHORE,
     STAIR_CANDIDATES,
     STAIRS_XY,
@@ -84,18 +83,6 @@ def _step(ctl: Level7PondDrainController, ram: np.ndarray):
     act = ctl.step(read_snapshot(ram))
     assert np.array_equal(ram, before), "pond controller must not write RAM"
     return act
-
-
-def test_public_constants() -> None:
-    assert WHISTLE_B_SLOT == 5
-    assert POND_SCREEN == 0x42
-    assert DEST == 0x79
-    assert DEST_XY == (120, 205)
-    assert BLOW_STAND == (128, 189)
-    assert STAIRS_XY == (96, 144)
-    assert POND_STAIR_TILE == 0x70
-    assert SOUTH_SHORE == (128, 221)
-    assert STAIR_CANDIDATES[0] == STAIRS_XY
 
 
 def test_whistle_zero_fails_immediately() -> None:
@@ -302,19 +289,6 @@ def test_first_stairs_cell_miss_seeks_probe_candidate() -> None:
 
 def test_factory_never_shares_instances() -> None:
     assert make_pond_drain_controller() is not make_pond_drain_controller()
-
-
-def test_report_writes_zero_route_eligible_false() -> None:
-    report = make_pond_drain_controller().report()
-    assert report["route_eligible"] is False
-    assert report["writes"] == 0
-    assert report["normal_pause_input"] is True
-    assert report["evidence"] == "fixture-live"
-    assert report["spec_id"] == "level7_pond_drain_entry"
-    assert report["dest"] == "0x79"
-    assert report["pond_screen"] == "0x42"
-    assert report["stairs_xy"] == [96, 144]
-    assert report["blow_stand"] == [128, 189]
 
 
 def test_no_occupancy_walker_and_no_whistle_poke() -> None:

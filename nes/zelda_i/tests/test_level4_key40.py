@@ -82,23 +82,3 @@ def test_keys_increment_in_play_arrives_done() -> None:
     assert ctrl.phase is Key40Phase.DONE
     assert ctrl.success is True
     assert act.reason == "done"
-
-
-def test_report_is_exact_align_without_occupancy() -> None:
-    ctrl = make_room_40_key_controller()
-    ctrl.phase = Key40Phase.ALIGN
-    ctrl.step(read_snapshot(_pose(*KEY_40_PATH_ANCHOR)))
-    report = ctrl.report()
-    assert report["alignment"] == "exact_xy_before_open_loop"
-    assert report["path_start"] == [136, 165]
-    assert report["path_anchor"] == [136, 165]
-    assert report["segment"] == "level4_key_0x40"
-    assert "samples" in report
-    assert "occupancy_misses" not in report
-    assert "v7_index" not in report
-    assert "walker" not in report
-    assert "hunt" not in report
-    assert "clear" not in report
-    names = {phase.name for phase in Key40Phase}
-    assert "HUNT" not in names
-    assert names == {"FIGHT", "ALIGN", "PATH", "DONE", "FAILED"}

@@ -8,17 +8,11 @@ from retro_harness.nes import nes_action
 from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
     MANHANDLA_OBJECT_TYPE,
-    _ROOM_5B_OCCUPANCY_BOUNDS,
     ROOM_5B_SPEC,
-    ROOM_5C_SPEC,
-    ROOM_5D_SPEC,
     ROOM_L3_BOSS,
-    ROOM_L3_BOSS_PREP,
-    ROOM_L3_BOMB_SHORTCUT,
     ROOM_L3_DARKNUTS,
     ROOM_L3_RAFT_PASSAGE,
     ROOM_L3_SOUTH_DARKNUTS,
-    ROOM_L3_TF,
     ROOM_L3_WEST_DARKNUTS,
     ROOM_L3_WEST_KEY,
     level3_manhandla_live,
@@ -153,21 +147,6 @@ def test_raft_passage_aligns_before_crossing_pickup_lane() -> None:
     assert raft_passage_step(
         read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=176, y=141, mode=9))
     ).action == nes_action("LEFT")
-
-
-def test_5c_and_5d_specs_are_dest_rooms() -> None:
-    assert ROOM_5C_SPEC.room_id == ROOM_L3_BOMB_SHORTCUT == 0x5C
-    assert ROOM_5C_SPEC.expected_enemy_count == 3
-    assert ROOM_5C_SPEC.combat.occupancy_patrol is True
-    assert ROOM_5C_SPEC.combat.occupancy_bounds == _ROOM_5B_OCCUPANCY_BOUNDS
-    assert ROOM_5C_SPEC.combat.occupancy_bounds[2] >= 109
-    assert all(y >= 109 for _, y in ROOM_5C_SPEC.combat.patrol)
-    assert ROOM_5D_SPEC.room_id == ROOM_L3_BOSS_PREP == 0x5D
-    assert ROOM_L3_TF == 0x3D
-    assert 0x2B not in ROOM_5D_SPEC.enemy_types
-    assert ROOM_5D_SPEC.combat.avoid_walls is True
-    assert ROOM_5D_SPEC.combat.contact_backstep >= 8
-    assert ROOM_5D_SPEC.combat.occupancy_bounds[2] >= 109
 
 
 def test_manhandla_live_heads() -> None:

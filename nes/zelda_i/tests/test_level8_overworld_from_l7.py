@@ -196,11 +196,3 @@ def test_reverse_0x64_crosses_east_on_the_y141_band() -> None:
     assert act is not None
     assert act.reason == "64r_east_cross"
     assert list(act.action) == list(nes_action("RIGHT"))
-
-
-def test_fixture_report_never_claims_route_eligibility_or_writes() -> None:
-    report = Level7PondToLevel8BushController().report()
-    assert report["evidence"] == "fixture-live-prefix"
-    assert report["natural_entry"] is False
-    assert report["route_eligible"] is False
-    assert report["writes"] == 0

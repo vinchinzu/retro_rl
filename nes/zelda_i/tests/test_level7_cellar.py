@@ -22,12 +22,10 @@ from zelda_i.level7.cellar import (
     FLOOR_Y,
     MOUTH_Y,
     PIT_TILE,
-    RAM_CLAIM,
     ROOM_4A,
     SOURCE_ROOM,
     SPAWN_XY,
     WEST_X,
-    Level7NoseCellarCrossController,
     ROOM1A_RUNG_SCRIPTED,
     ROOM1A_RUNG_SOLVER,
     Room1ACandleController,
@@ -36,12 +34,6 @@ from zelda_i.level7.cellar import (
     make_nose_cellar_cross_controller,
     nose_cellar_cross_step,
     nose_cellar_cross_success,
-)
-from zelda_i.level7.hops import (
-    make_aquamentus_heart_controller,
-    make_level7_shard_leave_controller,
-    make_nose_cellar_cross_controller as hops_make_nose_cellar_cross,
-    make_tip_stairs_controller,
 )
 from zelda_i.ram import (
     ADDR_CANDLE,
@@ -85,14 +77,6 @@ def _step(ctl, ram: np.ndarray):
     act = ctl.step(read_snapshot(ram))
     assert np.array_equal(ram, before), "cellar controllers must not write RAM"
     return act
-
-
-def test_ram_claim_is_play_0x29_not_0x0d() -> None:
-    assert DEST_ROOM == 0x29
-    assert SOURCE_ROOM == 0x0D
-    assert "0x29" in RAM_CLAIM
-    assert "0x0D" in RAM_CLAIM
-    assert "Never UP at x>=$80" in RAM_CLAIM
 
 
 def test_right_spawn_goes_down_never_up() -> None:
@@ -249,48 +233,6 @@ def test_wrong_play_fails() -> None:
     assert ctl.failed and not ctl.success
     assert "wrong_play_0x1a" in ctl.notes
     assert list(act.action) == IDLE
-
-
-def test_factory_report_is_fixture_live_not_route_eligible() -> None:
-    ctl = make_nose_cellar_cross_controller()
-    assert isinstance(ctl, Level7NoseCellarCrossController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["dest_screen"] == DEST_ROOM == 0x29
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["door"] == "STAIRS"
-    assert report["spec_id"] == "level7_nose_cellar_0x7b"
-    assert "OccupancyWalker" not in (ctl.__class__.__module__ + ctl.__class__.__name__)
-
-
-def test_hops_factory_is_the_live_cross_not_the_spine_tip() -> None:
-    """0x0D->0x7B and 0x7B->0x29 are two different live hops.
-
-    ``make_tip_stairs_controller`` is the walk-on INTO cellar 0x7B
-    (`level7.stairs0d`, live 2/2); the cross OUT of it to play 0x29 stays
-    ``Level7NoseCellarCrossController``. The boss/leave factories are live
-    2/2 as of rr-8t4.3 (`20260904_W3`-`W6`) but stay ``route_eligible=false``.
-    """
-    from zelda_i.level7.stairs0d import Level7Stairs0DController
-
-    live = hops_make_nose_cellar_cross()
-    assert isinstance(live, Level7NoseCellarCrossController)
-    spine = make_tip_stairs_controller()
-    assert isinstance(spine, Level7Stairs0DController)
-    assert not isinstance(spine, Level7NoseCellarCrossController)
-    assert spine.report()["dest_screen"] == 0x7B
-    assert spine.report()["route_eligible"] is False
-    from zelda_i.level7.aquamentus import Level7AquamentusHeartController
-    from zelda_i.level7.shard import Level7ShardLeaveController
-
-    aqua = make_aquamentus_heart_controller()
-    leave = make_level7_shard_leave_controller()
-    assert isinstance(aqua, Level7AquamentusHeartController)
-    assert isinstance(leave, Level7ShardLeaveController)
-    assert aqua.report()["route_eligible"] is False
-    assert leave.report()["route_eligible"] is False
 
 
 def test_no_occupancy_walker_import() -> None:

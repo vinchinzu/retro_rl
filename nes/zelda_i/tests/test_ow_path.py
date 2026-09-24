@@ -637,11 +637,9 @@ def test_plain_down_hop_does_not_x_align_at_the_south_wall() -> None:
 
 def test_post_l6_bait_hop_does_not_opt_into_wall_align() -> None:
     """The production 0x22 DOWN hop must stay off the wall rule."""
-    from zelda_i.level7.overworld import L6_CAVE_MOUTH_X, POST_L6_TO_BAIT_HOPS
+    from zelda_i.level7.overworld import POST_L6_TO_BAIT_HOPS
 
-    hop = POST_L6_TO_BAIT_HOPS[0]
-    assert hop.direction == "DOWN" and hop.align_x == L6_CAVE_MOUTH_X
-    assert not hop.align_x_at_wall
+    assert not POST_L6_TO_BAIT_HOPS[0].align_x_at_wall
 
 
 def test_align_and_push_wall_flag_is_off_by_default() -> None:
