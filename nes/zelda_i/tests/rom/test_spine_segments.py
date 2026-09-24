@@ -75,14 +75,13 @@ def test_live_power_on_through_level1_triforce() -> None:
     assert int(snap.triforce) & 0x01
     assert int(snap.screen) == 0x36
     assert int(snap.bow) == 1
-    # Deterministic emulator, fixed input script: banded around the exact
-    # measured frame count, not pinned to it (a future timing tweak in an
-    # upstream stage should not need to hand-edit this number).
-    assert 20000 <= run.end_frame <= 25000
+    # A stall ceiling, not a band: a faster route is not a failure.
+    # Measured 16882f (2026-09-24, lattice walkers).
+    assert run.end_frame <= 20000
 
 
 def test_live_power_on_through_level2_entry() -> None:
-    """Power-on -> Level 1 TF -> Moon door -> L2 entry 0x7d. Measured: 27456f."""
+    """Power-on -> Level 1 TF -> Moon door -> L2 entry 0x7d. Measured 21736f."""
     run, snap = _run("level2-entry")
     assert run.success, run.report()
     assert run.failed_stage is None
@@ -92,14 +91,15 @@ def test_live_power_on_through_level2_entry() -> None:
     assert int(snap.screen) == 0x7D
     assert (int(snap.link_x), int(snap.link_y)) == (120, 205)
     assert int(snap.bow) == 1
-    assert 24000 <= run.end_frame <= 32000
+    assert run.end_frame <= 26000
 
 
 def test_live_power_on_gathered_level1_triforce_no_l1_assist() -> None:
     """Default gathered spine -> L1 TF, L1 health assist off.
 
-    Measured 2026-09-22: 46193f, gather chain last-heart refill 6 writes,
-    pokes rupees=20 (bomb pack) + keys=1 (backtrack44), 0 deaths.
+    Measured 2026-09-24: 74227f with the hidden-rupee detours, the Blue
+    Ring and a red potion. The wallet is never written: the only count
+    write left before L1's Triforce is keys=1 at backtrack44.
     """
     env = make_env(GAME, "NONE", GAME_DIR, render_mode="rgb_array")
     try:
@@ -113,4 +113,7 @@ def test_live_power_on_gathered_level1_triforce_no_l1_assist() -> None:
     assert int(snap.sword) == 2
     assert int(snap.heart_containers) == 7  # 6 gathered + Aquamentus
     assert run.report()["gather"]["engage_hearts"] == 1
-    assert 42000 <= run.end_frame <= 52000
+    assert int(snap.ring) == 1
+    writes = (run.report().get("inventory_assist") or {}).get("writes") or []
+    assert not [w for w in writes if w.get("field") == "rupees"], writes
+    assert run.end_frame <= 82000
