@@ -18,8 +18,12 @@ writes remain.
 2. Refill hot spots under last-heart (run 29r3): L5 0x05 (17h), 0x64 Blue
    Darknuts (12h), L6 0x38/0x3A (12h). Last-heart run 30 reached L6 0x09
    with 6 + 1 safety refills (run 29: 15 by L8).
-3. More drinks: a second restock stop after L5/L6 (0x64 again, or 0x4B's
-   burn cave), sized by the wallet the dungeons leave (rr-thlc).
+3. More drinks (rr-thlc): the 0x64 restock stage already runs after L6, but
+   run 37 arrives with 27R and no potion, short of a 40R blue potion plus
+   the 20R reserved for later arrows. L5 entry has 20R and a full red potion.
+   An extra stop needs natural rupees first. A trial drinking at the assisted
+   two-heart floor replayed run 37 exactly; a three-heart trigger changed
+   early timing and stalled at L3 0x69, so the last-heart trigger remains.
 4. Bomb/key top-ups (rr-doua: 75 bombs, 4 keys poked in run 31) and the L7
    Food (rr-8t4.4/.5). Arrows@6:1c is the other write left.
 5. Survival credits: run 31 (b8cc4ab6) went power-on to credits in 275,135
