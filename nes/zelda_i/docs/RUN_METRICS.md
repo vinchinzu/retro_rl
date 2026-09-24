@@ -41,6 +41,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **blue_ring_full_poweron9 (+ L9 0x04 north-aisle lattice leg)** | **ok (unlimited_health)** | level9-credits | **260248** | 7354 | 73/172 | 42 | 199 / 570 | 72 / 5 / 177 | 7:0d 8448f | 387.56 | 1:43=map 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 6:58=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
 | **blue_ring_full_poweron10 (+ Patra outside the orbit)** | **ok (unlimited_health)** | level9-credits | **257943** | 7094 | 76/171 | 39 | 166 / 549 | 72 / 5 / 177 | 7:0d 8448f | 356.33 | 1:43=map 2:1e=bombs 2:3e=key 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 6:58=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
 | **blue_ring_full_poweron14 (+ room-item sweep, lattice bomb approach, leave_wall latch)** | **ok (unlimited_health)** | level9-credits | 262777 | 6461 | 71/163 | 30 | 200 / 593 | 72 / 4 / 177 | 7:0d 12100f | 402.83 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:29=key 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
+| **blue_ring_full_poweron16 (d8b8235c: L9 join on the engine, Ganon windows, Gleeok turn-node stand, L6 0x09 south row, L7 0x0D ring lure)** | **ok (unlimited_health)** | level9-credits | **251516** | 5983 | 76/169 | 37 | 221 / 515 | 69 / 3 / 177 | 7:0d 6875f | 380.15 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
@@ -54,6 +55,11 @@ room-item sweep exposed (L2 0x1E bomb approach, L4 0x21 water stand, L6
 0x39 leave_wall tug); run 14 reached the credits with 50 of 76 room items
 taken (L2-L4 complete). Hearts per tape vary widely (356-403h across runs
 10-14 on similar code): score combat on offsets, not on these rows.
+Run 16 (2026-09-23): 11,261 fewer frames and 23 fewer hearts than run 14.
+Run 15 had stopped in L6 0x09 (the stairs' south halt idled); the fix was
+replayed from its save point, resumed to the credits, then run 16 started
+from power-on. Run 16 predates the Patra lane stand (f549259a): 0x61 cost
+it 39 hearts, which that change scores at 1.6h over 36 offsets.
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
