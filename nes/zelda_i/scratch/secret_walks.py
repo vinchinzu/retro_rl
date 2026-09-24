@@ -355,3 +355,15 @@ def potion_from_62():
     from zelda_i.overworld.gather_segments import POTION_FROM_62_HOPS
 
     return make_potion_buy_controller(hops=POTION_FROM_62_HOPS)
+
+
+def l2_entry():
+    from zelda_i.level2.overworld import OverworldToLevel2Controller
+
+    return OverworldToLevel2Controller(door_path=True, require_dungeon=True)
+
+
+def l4_stepladder():
+    from zelda_i.level4.stepladder import make_stepladder_controller
+
+    return make_stepladder_controller(clear_first=False)

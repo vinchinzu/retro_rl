@@ -45,7 +45,6 @@ from zelda_i.ram import (
     ADDR_FOOD,
     ADDR_KEYS,
     ADDR_RAFT,
-    ADDR_RUPEES,
     ADDR_SELECTED_ITEM,
     ADDR_TRIFORCE,
     PLAY_MODE,
@@ -329,19 +328,6 @@ def poke_keys(env: Any, n: int = 4) -> str:
         return f"poke_fail={exc!r}"
 
 
-def poke_rupees(env: Any, n: int = 60) -> str:
-    """Top up the rupee **count** (``$066D``). Not Clean. Grants no item.
-
-    Survival spine / recon only (the L7 Bait buy needs 60R; a natural OW farm
-    is a separate bead). Document in the trial report.
-    """
-    try:
-        env.unwrapped.data.set_value("rupees", int(n) & 0xFF)
-        return f"rupees={n}"
-    except Exception as exc:
-        return f"poke_fail={exc!r}"
-
-
 def poke_food(
     env: Any,
     *,
@@ -450,9 +436,8 @@ def poke_wooden_arrows(
 
 
 # Fields this helper may write. Anything else is an undiscovered-item grant.
-OWNED_INVENTORY_FIELDS: frozenset[str] = frozenset(
-    {"bombs", "keys", "rupees", "selected_item"}
-)
+# Rupees are earned (hidden caves, drops): never written, since 2026-09-24.
+OWNED_INVENTORY_FIELDS: frozenset[str] = frozenset({"bombs", "keys", "selected_item"})
 
 
 def apply_owned_inventory(
@@ -460,10 +445,9 @@ def apply_owned_inventory(
     *,
     bombs: int | None = None,
     keys: int | None = None,
-    rupees: int | None = None,
     select_bomb: bool = True,
 ) -> dict[str, Any]:
-    """Documented Survival top-up of bombs/keys/rupees + B-slot select.
+    """Documented Survival top-up of bombs/keys + B-slot select.
 
     Writes only ``OWNED_INVENTORY_FIELDS``. Does not grant boom, sword,
     raft, candle, triforce, or bomb capacity.
@@ -471,18 +455,6 @@ def apply_owned_inventory(
     snap = read_snapshot(env.get_ram())
     writes: list[dict[str, Any]] = []
     notes: list[str] = []
-    if rupees is not None and int(snap.rupees) < int(rupees):
-        msg = poke_rupees(env, int(rupees))
-        writes.append(
-            {
-                "field": "rupees",
-                "address": ADDR_RUPEES,
-                "from": int(snap.rupees),
-                "to": int(rupees),
-                "msg": msg,
-            }
-        )
-        notes.append(msg)
     if bombs is not None and int(snap.bombs) < int(bombs):
         msg = poke_bombs(env, int(bombs))
         writes.append(
@@ -862,7 +834,7 @@ __all__ = [
     "OWNED_INVENTORY_FIELDS", "PUSH_FRAMES", "SETTLE_FRAMES", "WOODEN_ARROWS",
     "apply_owned_inventory", "bomb_stand", "ensure_bomb", "exit_door",
     "fight_clear", "goto", "idle", "live_killables", "mem_write", "objs",
-    "poke_bombs", "poke_food", "poke_keys", "poke_rupees",
+    "poke_bombs", "poke_food", "poke_keys",
     "poke_wooden_arrows",
     "push_dir", "room_fields",
 ]

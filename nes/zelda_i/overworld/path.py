@@ -25,6 +25,7 @@ from zelda_i.combat import (
     overworld_threat_objects,
 )
 from zelda_i.dungeon.behaviors import ZORA_SHOT_SPEED, is_projectile
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.dungeon.threat import (
     MIN_DODGE_BODY,
@@ -823,17 +824,10 @@ class OverworldPathController:
             if self.maze_wp_index >= len(self.maze_waypoints):
                 return self._swing("RIGHT", "maze_exit")
             tx, ty = self.maze_waypoints[self.maze_wp_index]
-        if self.stuck > self.stuck_threshold:
-            action, self.stuck = unstick_wiggle(self.stuck, reason="maze_unstick")
-            return action
-        dx = tx - snap.link_x
-        dy = ty - snap.link_y
-        if abs(dx) > self.maze_tol:
-            direction = "RIGHT" if dx > 0 else "LEFT"
-        elif abs(dy) > self.maze_tol:
-            direction = "DOWN" if dy > 0 else "UP"
-        else:
-            direction = "RIGHT"
+        # The ROM lattice route to the corner, not a bigger-axis press, and
+        # no unstick: its wait kept a knocked-back Link still, so the stuck
+        # count only grew (0x5C (192, 85), 19830 frames, 2026-09-24).
+        direction = room_step(snap, (tx, ty), tol=self.maze_tol, env=self._env) or "RIGHT"
         return self._swing(direction, f"maze_wp{self.maze_wp_index}")
 
     def _farm_action(self, snap: ZeldaSnapshot) -> FrameAction | None:

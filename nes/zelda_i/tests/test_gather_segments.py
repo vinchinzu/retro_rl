@@ -13,22 +13,18 @@ from zelda_i.overworld.gather_segments import (
     RETURN_7C_HOPS,
     LETTER_HOPS,
     NE_HOPS,
-    POTION_HOPS,
     RING_HOPS,
     RING_RETURN_HOPS,
     RING_PRICE,
     WHITE_HOPS,
-    ArrivalController,
     BombWallController,
     CaveMouthController,
     NortheastController,
-    SEGMENTS,
     main,
     make_candle_controller,
     make_heart_l8_controller,
     make_heart_m3_controller,
     make_letter_controller,
-    make_potion_controller,
     make_ring_controller,
     make_white_controller,
 )
@@ -93,7 +89,6 @@ def test_every_hop_direction_matches_the_screen_grid() -> None:
         0x1E: LETTER_HOPS,
         0x0E: CANDLE_HOPS,
         0x0C: WHITE_HOPS,
-        0x65: POTION_HOPS,
         0x47: RING_HOPS,
         0x34: RING_RETURN_HOPS,
         0x7C: HEART_L8_HOPS,
@@ -154,17 +149,7 @@ def test_white_cave_under_five_containers_fails_fast() -> None:
     ctrl._after_hops(_snap(screen=0x0A, mode=CAVE_MODE, health=0x22))
     assert "white_cave_reached_containers_3_of_5" in ctrl.notes
     assert ctrl.success is False
-    assert SEGMENTS["gather_white"].save_red is False
     assert ctrl._at_stop(_snap(screen=0x0A, mode=CAVE_MODE, sword=2)) is True
-
-
-def test_late_arrivals_do_not_enter_level_1() -> None:
-    assert _targets(POTION_HOPS) == (0x64,)
-    assert POTION_HOPS[0].direction == "LEFT"
-    assert _targets(RING_HOPS) == (
-        0x48, 0x58, 0x57, 0x56, 0x55, 0x65, 0x64, 0x54, 0x44, 0x34
-    )
-    assert _targets(RING_RETURN_HOPS)[-1] == 0x58
 
 
 def test_ring_stage_buys_the_middle_shop_item() -> None:
@@ -225,12 +210,6 @@ def test_candle_byte_without_the_debit_is_not_a_stop() -> None:
     assert ctrl._at_stop(unpaid) is False
     paid = _snap(screen=0x0C, mode=CAVE_MODE, candle=1, rupees=20)
     assert ctrl._at_stop(paid) is True
-
-
-def test_dispatcher_lists_names_and_does_not_walk() -> None:
-    assert main([]) == 2
-    assert main(["nope"]) == 2
-    assert main(["gather_letter", "gather_ne"]) == 2
 
 
 def test_letter_stop_needs_the_letter_byte_not_the_cave() -> None:
@@ -350,17 +329,6 @@ def test_heart_l8_aims_at_the_right_item_not_the_old_man() -> None:
     assert action.action == nes_action("RIGHT")
 
 
-def test_heart_l8_red_pose_is_not_a_leave() -> None:
-    from zelda_i.overworld.gather_run import written_leave
-
-    assert SEGMENTS["heart_l8"].save_red is False
-    assert written_leave("GatherHeartL8Leave", False, "/tmp/x.state", save_red=False) is None
-    assert (
-        written_leave("GatherHeartL8Leave", True, "/tmp/x.state", save_red=False)
-        == "/tmp/x.state"
-    )
-
-
 def test_heart_m3_bombs_only_facing_the_rock() -> None:
     """The measured doorway is the rock's bottom face at x 136..152; a bomb
     dropped facing east lands on open sand (0x2C's first try)."""
@@ -379,7 +347,6 @@ def test_heart_m3_bombs_only_facing_the_rock() -> None:
 def test_heart_m3_is_the_same_take_any_cave() -> None:
     ctrl = make_heart_m3_controller()
     assert (ctrl.interior_x, ctrl.interior_y) == (152, 149)
-    assert SEGMENTS["heart_m3"].save_red is False
     ctrl._entry_containers = 3
     ctrl._after_hops(
         _snap(
@@ -392,25 +359,6 @@ def test_heart_m3_is_the_same_take_any_cave() -> None:
         )
     )
     assert (112, 140) in ctrl._cave_walker.grid.blocked
-
-
-def test_potion_shut_opening_fails_and_cave_finishes() -> None:
-    ctrl = make_potion_controller()
-    assert isinstance(ctrl, ArrivalController)
-    aim = _snap(screen=0x64, mode=PLAY_MODE, link_x=128, link_y=77)
-    assert ctrl._at_stop(aim) is False
-    for _ in range(40):
-        ctrl._after_hops(aim)
-        if "opening_closed" in ctrl.notes:
-            break
-    assert ctrl.success is False
-    assert "opening_closed" in ctrl.notes
-
-    open_ctrl = make_potion_controller()
-    cave = _snap(screen=0x64, mode=CAVE_MODE, link_x=128, link_y=77)
-    assert open_ctrl._at_stop(cave) is False
-    open_ctrl._after_hops(cave)
-    assert open_ctrl.success is True
 
 
 def test_every_waypoint_list_is_single_axis_moves() -> None:
@@ -568,3 +516,9 @@ def test_cave_exit_idles_through_the_exit_mode() -> None:
     assert ctrl.success is True
 
 
+
+
+def test_cli_takes_one_token_and_rejects_unknown_stages() -> None:
+    assert main([]) == 2
+    assert main(["nope"]) == 2
+    assert main(["chain:not_a_stage"]) == 2

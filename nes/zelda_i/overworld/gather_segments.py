@@ -18,8 +18,6 @@ from zelda_i.overworld.gather_run import (
     PRE_L1_LEAVE,
     pin_pre_l1,
     run_chain,
-    run_segment,
-    write_entry_pin,
 )
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import PondFairyController
@@ -248,7 +246,6 @@ LETTER_FROM_0F_HOPS = (
     ScreenHop(0x1E, "LEFT", align_y=141),
 ) + LETTER_HOPS
 
-POTION_HOPS = (ScreenHop(0x64, "LEFT", align_y=141),)
 # 0x37's west edge is sealed. Reach 0x34 from the south through the
 # measured western forest and the 0x54/0x44 north gaps.
 RING_HOPS = (
@@ -319,36 +316,6 @@ POTION_FROM_62_HOPS = (
     RING_RETURN_HOPS[2],
 )
 RING_RETURN_FROM_64_HOPS = RING_RETURN_HOPS[3:]
-
-
-def step_toward(
-    controller: Any,
-    snap: Any,
-    x: int,
-    y: int,
-    reason: str,
-    tol: int = 6,
-    y_first: bool = False,
-) -> FrameAction | None:
-    """Walk to ``(x, y)``. None means Link is already inside ``tol`` px.
-
-    ``y_first`` fixes the row before the column: on a clear row (0x2C's
-    y=165 under the rock) a knockback off it must be undone before walking
-    on, or RIGHT jams on the rock corner.
-    """
-    dx = int(x) - int(snap.link_x)
-    dy = int(y) - int(snap.link_y)
-    moves = [
-        (abs(dx) > tol, "RIGHT" if dx > 0 else "LEFT"),
-        (abs(dy) > tol, "DOWN" if dy > 0 else "UP"),
-    ]
-    if y_first:
-        moves.reverse()
-    for off, direction in moves:
-        if off:
-            return controller._swing(direction, reason)
-    return None
-
 
 def waypoint_action(controller: Any, snap: ZeldaSnapshot) -> FrameAction | None:
     """Walk this screen's corners in order, then decline.
@@ -878,41 +845,6 @@ class NortheastController(OverworldPathController):
             return self._fail("secret_rupees_not_taken")
         return centre_item_walk(snap, SECRET_MOBLIN, "secret")
 
-
-@dataclass
-class ArrivalController(OverworldPathController):
-    hops: tuple[ScreenHop, ...] = ()
-    farm_below_hearts: int = 0
-    evade: bool = False
-    max_frames: int = 5000
-    screen: int = 0
-    aim_x: int = 128
-    aim_y: int = 96
-    aim_dir: str = "UP"
-    _pushed: int = 0
-
-    def _wants_post_hop(self) -> bool:
-        return True
-
-    def _at_stop(self, snap: ZeldaSnapshot) -> bool:
-        return False
-
-    def _after_hops(self, snap: ZeldaSnapshot):
-        if snap.level != 0 or snap.screen != self.screen:
-            return self._fail(f"not_on_{self.screen:#04x}")
-        if snap.mode == CAVE_MODE:
-            return self._finish("cave_open")
-        if snap.mode != PLAY_MODE:
-            return push(self.aim_dir, "wait_play")
-        walk = step_toward(self, snap, self.aim_x, self.aim_y, "opening")
-        if walk is not None:
-            return walk
-        self._pushed += 1
-        if self._pushed < 30:
-            return push(self.aim_dir, "try_opening")
-        return self._fail("opening_closed")
-
-
 def _candle(snap: ZeldaSnapshot) -> int:
     return int(snap.candle)
 
@@ -1039,18 +971,6 @@ def make_letter_controller() -> CaveMouthController:
 def make_white_controller() -> GatherWhiteController:
     return GatherWhiteController()
 
-
-def make_potion_controller() -> ArrivalController:
-    return ArrivalController(
-        hops=POTION_HOPS,
-        max_frames=5000,
-        screen=0x64,
-        aim_x=128,
-        aim_y=80,
-        aim_dir="UP",
-    )
-
-
 def make_ring_controller(hops: tuple[ScreenHop, ...] = RING_HOPS) -> CaveShopBuyController:
     return CaveShopBuyController(
         hops=hops,
@@ -1072,94 +992,6 @@ def make_ring_controller(hops: tuple[ScreenHop, ...] = RING_HOPS) -> CaveShopBuy
         farm_below_hearts=0,
         evade=False,
     )
-
-
-@dataclass(frozen=True)
-class SegmentSpec:
-    name: str
-    from_state: str
-    enter: str
-    leave: str
-    factory: Callable[[], Any]
-    bombs: int | None = None
-    rupees: int | None = None
-    candle: int | None = None
-    select: str | None = None
-    # A red pose is still written for the other stops. The heart leave is not.
-    save_red: bool = True
-    # Whole hearts at which the health assist refills. 1 is last-heart.
-    engage_hearts: int = 1
-
-
-SEGMENTS: dict[str, SegmentSpec] = {
-    "gather_ne": SegmentSpec(
-        name="gather_ne",
-        from_state="BFS_2C",
-        enter="GatherNEEnter",
-        leave="GatherNE100Leave",
-        factory=NortheastController,
-    ),
-    "gather_letter": SegmentSpec(
-        name="gather_letter",
-        from_state="BFS_1E",
-        enter="GatherLetterEnter",
-        leave="GatherLetterLeave",
-        factory=make_letter_controller,
-    ),
-    "gather_candle": SegmentSpec(
-        name="gather_candle",
-        from_state="BFS_0E",
-        enter="GatherCandleEnter",
-        leave="GatherCandleLeave",
-        factory=make_candle_controller,
-        rupees=80,
-    ),
-    "heart_m3": SegmentSpec(
-        name="heart_m3",
-        from_state="BFS_2C",
-        enter="GatherHeartM3Enter",
-        leave="GatherHeartM3Leave",
-        factory=make_heart_m3_controller,
-        bombs=8,
-        select="bomb",
-        save_red=False,
-    ),
-    "gather_white": SegmentSpec(
-        name="gather_white",
-        from_state="BFS_0C",
-        enter="GatherWhiteEnter",
-        leave="GatherWhiteLeave",
-        factory=make_white_controller,
-        engage_hearts=2,
-        save_red=False,
-    ),
-    "heart_l8": SegmentSpec(
-        name="heart_l8",
-        from_state="BFS_7C",
-        enter="GatherHeartL8Enter",
-        leave="GatherHeartL8Leave",
-        factory=make_heart_l8_controller,
-        bombs=8,
-        select="bomb",
-        save_red=False,
-    ),
-    "gather_potion": SegmentSpec(
-        name="gather_potion",
-        from_state="BFS_65",
-        enter="GatherPotionEnter",
-        leave="GatherPotionLeave",
-        factory=make_potion_controller,
-    ),
-    "gather_ring": SegmentSpec(
-        name="gather_ring",
-        from_state="GatherChain_exit_47",
-        enter="GatherRingEnter",
-        leave="GatherRingLeave",
-        factory=make_ring_controller,
-        rupees=RING_PRICE,
-    ),
-}
-
 
 # Bomb shop to White Sword, Blue Ring, and L1 mouth. One env. The start is the
 # power-on pre-l1 leave (``pin`` writes it).
@@ -1224,34 +1056,14 @@ def chain_stages() -> list[tuple[str, Any]]:
     ]
 
 
-def _run_segment(spec: SegmentSpec) -> dict[str, Any]:
-    poke: dict[str, Any] = {}
-    if spec.bombs is not None:
-        poke["bombs"] = spec.bombs
-    if spec.rupees is not None:
-        poke["rupees"] = spec.rupees
-    if spec.candle is not None:
-        poke["candle"] = spec.candle
-    if spec.select is not None:
-        poke["select"] = spec.select
-    write_entry_pin(spec.from_state, spec.enter, segment=spec.name, **poke)
-    return run_segment(
-        spec.factory(),
-        from_state=spec.enter,
-        segment=spec.name,
-        save_as=spec.leave,
-        save_red=spec.save_red,
-        engage_hearts=spec.engage_hearts,
-    )
-
-
 def main(argv: list[str] | None = None) -> int:
+    """``pin`` (power-on pre-l1 leave), ``chain``, or ``chain:<stage>``.
+
+    One stop alone is ``scripts/stage_replay.py GatherChain_<prev> <factory>``.
+    """
     args = list(sys.argv[1:] if argv is None else argv)
-    if not args:
-        for name in SEGMENTS:
-            print(name)
-        return 2
     if len(args) != 1:
+        print("usage: gather_segments pin | chain | chain:<stage>")
         return 2
     token = args[0]
     if token == "pin":
@@ -1278,14 +1090,7 @@ def main(argv: list[str] | None = None) -> int:
             engage_hearts=2,
         )
         return 0 if result["ok"] else 1
-    if token == "all":
-        results = [_run_segment(spec) for spec in SEGMENTS.values()]
-        return 0 if all(r["ok"] for r in results) else 1
-    spec = SEGMENTS.get(token)
-    if spec is None:
-        return 2
-    result = _run_segment(spec)
-    return 0 if result["ok"] else 1
+    return 2
 
 
 if __name__ == "__main__":

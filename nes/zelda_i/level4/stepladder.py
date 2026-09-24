@@ -12,8 +12,9 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
-from zelda_i.dungeon.hop_controller import stairs_step
+from zelda_i.dungeon.hop_controller import room_step, stairs_step
 from zelda_i.level4.occupancy import (
+    ROOM_60_DOCK_NORTH_XY,
     ROOM_60_CLIP_BUDGET,
     ROOM_60_DOCK_MOUTH_X_MIN,
     ROOM_60_WAYPOINTS,
@@ -685,6 +686,11 @@ class Level4StepladderController:
             # v27 leftover (171,189): abs(dx)>4 idled 4px short of the UP column.
             # Geom from (176,151) y-first to island y=141 then LEFT (not LEFT at 151).
             # v28-v31 LEFT at y=149..157 is water / y-yo-yo; dock continues north.
+            if i >= 2 and xy[0] > ROOM_60_DOCK_NORTH_XY[0] + 4 and xy[1] > 141 + 2:
+                # Knocked east past the dock (run 18: (167,189) -> (200,189)
+                # in 12 frames), UP is water: back onto the x=176 column first.
+                step = room_step(snap, (ROOM_60_DOCK_NORTH_XY[0], xy[1]), tol=2)
+                return FrameAction(nes_action(step or "LEFT"), "rejoin_dock_x")
             if i >= 2 and xy[0] >= 160 and abs(xy[1] - 141) > 2:
                 direction = "UP" if xy[1] > 141 else "DOWN"
                 if (self.frames % 6) < 3:
