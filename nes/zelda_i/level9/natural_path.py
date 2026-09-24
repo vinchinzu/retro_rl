@@ -68,7 +68,11 @@ from zelda_i.level9.path import (
     final_patra_to_ganon_step,
     leftover_door_step,
 )
-from zelda_i.level9.patra import PATRA_STAND_DY, final_patra_north_door_earned, patra_action
+from zelda_i.level9.patra import (
+    PATRA_STAND_DY,
+    PatraAim,
+    final_patra_north_door_earned,
+)
 from zelda_i.level9.room51 import room51_to_41_step
 from zelda_i.level9.stairs import (
     BOMB_WALL_04_WEST,
@@ -962,13 +966,13 @@ class NaturalFinalPatraController(_NaturalEndingController):
     """Adapt the proven Patra policy only from the exact natural join state."""
 
     # Run 23 (power-on, 0 state loads) reached 0x52 with an orbit whose last
-    # eye swings below the room (y=245): the lane stand wins at ~11,000f
-    # over three offsets, but the old 6000f budget failed it every time.
-    # A faster last-eye kill is bead work; the budget must not end the run.
+    # eye swings below the room (y=245): the lane stand won at ~11,000f, and
+    # the old 6000f budget failed it every time. ``PatraAim`` fires only on
+    # a predicted eye hit (rr-e59v); the budget must not end the run.
     max_frames: int = 14000
-    cooldown: int = 0
     start_checked: bool = False
     stand_dy: int = PATRA_STAND_DY
+    aim: PatraAim = field(default_factory=PatraAim)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -982,11 +986,8 @@ class NaturalFinalPatraController(_NaturalEndingController):
         if final_patra_north_door_earned(snap):
             self.success = True
             return self._action(nes_idle_action(), "patra_north_door_earned")
-        action, reason, self.cooldown = patra_action(
-            snap,
-            cooldown=self.cooldown,
-            stand_dy=self.stand_dy,
-        )
+        self.aim.stand_dy = self.stand_dy
+        action, reason = self.aim.step(snap)
         return self._action(action, reason)
 
 
