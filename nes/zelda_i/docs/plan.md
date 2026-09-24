@@ -50,14 +50,19 @@ over 12 offsets), cellar 0x4F ladder align, L9 0x04 north-aisle leg.
 
 Next, in order, from the ledger of run 9:
 
-1. Heart drains (hearts lost under the refill): L9 Patra 0x52 24.0, L9
-   0x61 23.0, L8 Gleeok 0x3C 16.7, L8 0x3E 14.0, L6 0x28 13.5, L6 0x38 12.5,
-   L6 0x3A 12.5, L5 0x05 11.0, L9 0x42 10.0, L6 0x09 10.0. Score any combat
-   change with `stage_replay.py --idle` offsets from a pin cut at the room.
+1. Heart drains. Patra now stands outside the orbit (0x52 24h -> 6.8h mean,
+   0x61 23h -> 2h); run 10 reached the credits again at 356.3h. Its worst
+   rooms: L8 Gleeok 0x3C 16.7 (far stands never kill the heads; 22 px stays),
+   L8 0x3E 14.0, L9 0x20 13.5, L6 0x28/0x38/0x3A 12.5-13.5 (offset means are
+   4.9-8.0; the threat evader fails there), L5 0x05 11.0. Score any combat
+   change with `stage_replay.py --idle` offsets from a pin cut at the room;
+   `hits by cause` now works under the refill ($04F0 arming).
 2. rr-iu0g: the remaining L9 `chase_sword_step` clears onto the engine.
-3. rr-qb6w: the dungeon keys the ledger reports untaken (L2 0x3E, L5 0x26,
-   0x47, L6 0x2D, 0x58, L8 0x4C, L9 0x61); taking them is how the key
-   top-ups retire (rr-doua).
+3. rr-qb6w: engine clears now sweep the room's own key/bombs/rupees
+   (`_room_item_goal`, world-flag gated): L2-L4 items are all taken on run
+   14. Still left: L5 0x26/0x47 keys (not engine clears), L6 0x29/0x2D keys
+   (tape-dependent), L7 bombs/rupees, L8 0x4C key, L9 0x61 key. Taking them
+   is how the key top-ups retire (rr-doua).
 4. Slow visits: L7 0x0D Wallmasters 8,448f, L2 0x6E 4,302f, L5 0x65 3,940f.
 5. Overworld hearts still skipped: ladder heart 0x5F, raft heart 0x2F
    (rr-ps7.4.*), for 16 containers.
