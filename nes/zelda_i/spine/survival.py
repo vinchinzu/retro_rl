@@ -29,7 +29,7 @@ from zelda_i.route.chain import (
 from retro_harness.env import read_state_bytes, save_state, state_path
 from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist
 from zelda_i.paths import GAME, GAME_DIR
-from zelda_i.overworld.gather_segments import RING_PRICE, chain_stages as gather_chain_stages
+from zelda_i.overworld.gather_segments import chain_stages as gather_chain_stages
 from zelda_i.overworld.nav import NavPhase, OverworldToLevel1Controller
 from zelda_i.level1.bow import level1_bow_stages, level1_bow_success
 from zelda_i.level1.bow_cellar import (
@@ -53,7 +53,6 @@ from zelda_i.overworld.gathering import (
     pre_l1_bomb_shop_success,
     pre_l1_stages,
 )
-from zelda_i.overworld.shop_p7 import SHOP_P7_PRICE
 from zelda_i.level1.finish import LEVEL1_TRIFORCE_BIT
 from zelda_i.level2.overworld import (
     SEGMENT_MAX_FRAMES as L2_NAV_MAX_FRAMES,
@@ -128,11 +127,6 @@ SPINE_BOMB_RETOPUP: frozenset[str] = frozenset(
 # spent count (ASSIST_CONTRACT). Natural extra is L1 0x72 west of entrance.
 SPINE_L1_KEY_POKE = 1
 SPINE_L1_KEY_RETOPUP: frozenset[str] = frozenset({"backtrack44"})
-
-# Coast pack is 20R. The walk arrives short and one hit from death, so the
-# north farm is not the buy. Rupee count only. Not Clean. Not rr-ttyu.3.
-SPINE_PRE_L1_SHOP_RUPEES = SHOP_P7_PRICE
-SPINE_PRE_L1_RUPEE_RETOPUP: frozenset[str] = frozenset({"bomb_topup"})
 
 _BOW_HOPS = (
     SpineHop(
@@ -424,34 +418,6 @@ def topup_owned_keys(env, run: SpineRun, *, keys: int = SPINE_L1_KEY_POKE) -> No
     run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
 
 
-# The L7 Bait buy costs 60R; the measured post-L6 leave carries 42R. Top the
-# owned rupee count up to 60 before the Bait stage (ASSIST_CONTRACT shortcut;
-# a natural OW farm is bead rr-doua-style follow-up). Not Clean. No item grant.
-SPINE_L7_BAIT_RUPEES = 60
-
-
-def topup_owned_rupees(
-    env,
-    run: SpineRun,
-    *,
-    rupees: int = SPINE_L7_BAIT_RUPEES,
-    force: bool = False,
-) -> None:
-    """Documented Survival rupee count top-up. Not Clean.
-
-    ``force`` writes even when ``allow_pokes`` is off (pre-l1 coast pack).
-    Already-funded wallets write nothing.
-    """
-    if run.skipping:
-        return
-    if not force and not _pokes_allowed(run):
-        return
-    if int(read_snapshot(env.get_ram()).rupees) >= int(rupees):
-        return
-    extra = apply_owned_inventory(env, rupees=rupees, select_bomb=False)
-    run.inventory_assist = merge_inventory_assist(run.inventory_assist, extra)
-
-
 def _record_bombs_out(env, run: SpineRun) -> None:
     end = read_snapshot(env.get_ram())
     run.bombs = spine_bomb_report(
@@ -471,9 +437,6 @@ def _run_stages(
     room_timer=None,
     retopup: frozenset[str] = frozenset(),
     key_retopup: frozenset[str] = frozenset(),
-    rupee_retopup: frozenset[str] = frozenset(),
-    rupee_targets: dict[str, int] | None = None,
-    forced_rupee_retopup: frozenset[str] = frozenset(),
     update_bombs: bool = False,
 ) -> bool:
     """Run named controller stages onto ``run``. False if a stage failed."""
@@ -486,19 +449,11 @@ def _run_stages(
         elif run.save_points:
             save_state(env, GAME_DIR, GAME, save_point_name(run.save_points, name))
         poked = len((run.inventory_assist or {}).get("writes") or [])
-        if name in forced_rupee_retopup:
-            topup_owned_rupees(
-                env, run, rupees=SPINE_PRE_L1_SHOP_RUPEES, force=True
-            )
         if pokes:
-            if name in (rupee_targets or {}):
-                topup_owned_rupees(env, run, rupees=rupee_targets[name])
             if name in retopup:
                 topup_owned_inventory(env, run)
             if name in key_retopup:
                 topup_owned_keys(env, run)
-            if name in rupee_retopup:
-                topup_owned_rupees(env, run)
         elif getattr(controller, "poke_arrows", None) is True:
             controller.poke_arrows = False
         for write in ((run.inventory_assist or {}).get("writes") or [])[poked:]:
@@ -611,8 +566,6 @@ def _continue_level1_spine(
     if through in _L1_DEDICATED_THROUGH:
         if through in ("level1-arrows", "level1-bombs"):
             hop_kw["key_retopup"] = SPINE_L1_KEY_RETOPUP
-        if through == "pre-l1":
-            hop_kw["forced_rupee_retopup"] = SPINE_PRE_L1_RUPEE_RETOPUP
         attach_hops(
             env,
             run,
@@ -923,7 +876,6 @@ GATHER_WHITE_ENGAGE_HEARTS = 2
 def _run_gather_chain(env, run: SpineRun, chain_assist: Any, run_stages, hop_kw) -> bool:
     """The gather stages, with the ``white`` stage's own refill floor."""
     stages = gather_stages()
-    hop_kw = dict(hop_kw, rupee_targets={"ring": RING_PRICE})
     floor = getattr(chain_assist, "engage_at_whole_hearts", None)
     if floor is None or floor >= GATHER_WHITE_ENGAGE_HEARTS:
         return run_stages(env, run, stages, **dict(hop_kw, assist=chain_assist))
@@ -958,10 +910,7 @@ def _run_gathered_prefix(
     allow_pokes = run.allow_pokes
     run.allow_pokes = False
     pre_kw = dict(hop_kw, assist=None)
-    ok = run_stages(
-        env, run, pre_l1_stages(),
-        forced_rupee_retopup=SPINE_PRE_L1_RUPEE_RETOPUP, **pre_kw,
-    )
+    ok = run_stages(env, run, pre_l1_stages(), **pre_kw)
     if ok and not run.skipping and not pre_l1_bomb_shop_success(read_snapshot(env.get_ram())):
         ok = run.success = False
         run.failed_stage = "pre_l1_shop_p7"

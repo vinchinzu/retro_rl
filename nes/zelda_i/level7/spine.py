@@ -24,10 +24,6 @@ L7_THROUGH: tuple[str, ...] = (
     "level7-red-candle",
     "level7",
 )
-# The Bait buy needs 60R; the measured L6 leave carries 42R. Documented
-# Survival rupee count top-up before the Bait stage (ASSIST_CONTRACT). A
-# natural overworld rupee farm is a separate bead.
-SPINE_L7_RUPEE_RETOPUP: frozenset[str] = frozenset({"level7_bait_purchase"})
 L7_STOPS: dict[str, str] = {
     "level7-bait-shop": "level7_bait_shop",
     "level7-entry": "level7_entry",
@@ -61,8 +57,7 @@ def continue_level7_spine(
         room_timer=room_timer,
         assist=assist,
         on_frame=on_frame,
-        rupee_retopup=SPINE_L7_RUPEE_RETOPUP if survival else frozenset(),
     )
 
 
-__all__ = ["L7_STOPS", "L7_THROUGH", "SPINE_L7_RUPEE_RETOPUP", "continue_level7_spine"]
+__all__ = ["L7_STOPS", "L7_THROUGH", "continue_level7_spine"]

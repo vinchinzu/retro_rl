@@ -32,6 +32,10 @@ Pedestal spacing: adjacent pedestals sit close together (0x4A mid Bombs 20R
 at y≈149 vs Arrows at y≈165; 0x5E mid Key 100R vs Candle 60R at y≈149) — the
 per-shop ``buy_y``/``buy_x`` must be precise enough that the UP-stairs +
 lateral walk touches the intended pedestal, not its neighbor.
+
+``PotionShopBuyController`` is the one subclass: a potion shop sells only
+after the 0x0E letter has been shown inside it once, and waits on its
+keeper's text before the wares can be touched.
 """
 
 from __future__ import annotations
@@ -42,24 +46,80 @@ from typing import Any, Callable
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import mouth_step
+from zelda_i.dungeon.pause_select import (
+    B_SLOT_LETTER,
+    PauseSelectController,
+    b_slot_owned,
+    pause_dropped,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.path import OverworldPathController
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
-from zelda_i.ram import CAVE_MODE, ZeldaSnapshot
+from zelda_i.ram import (
+    ADDR_POTION,
+    ADDR_SELECTED_ITEM,
+    CAVE_MODE,
+    PLAY_MODE,
+    ZeldaSnapshot,
+    read_u8,
+)
 
 __all__ = [
+    "BLUE_POTION_PRICE",
     "BUY_BUDGET",
     "CAVE_DIALOG_IDLE",
     "CaveShopBuyController",
     "CaveShopBuyPhase",
     "DOOR_HUNT_TIMEOUT",
     "NORTH_GAP_Y_HI",
+    "POTION_SHOP_SCREEN",
+    "PotionShopBuyController",
+    "RED_POTION_PRICE",
+    "make_potion_buy_controller",
 ]
 
 BUY_BUDGET = 900
 CAVE_DIALOG_IDLE = 120
 DOOR_HUNT_TIMEOUT = 1800
 NORTH_GAP_Y_HI = 120
+# A pedestal left of the stairs (x=112) is walked to from the right. UP
+# slides Link to the NEAREST 8 px column, not onward (measured: UP at x=95
+# slid to 96, then LEFT to 95, a tug-of-war beside the 88 blue potion), so
+# LEFT runs until the pedestal's column is the nearest. A right-hand
+# pedestal overshot by a pixel or two must not turn back.
+PEDESTAL_SLACK = 3
+
+# Potion shop, cave type 0x1A (ROM cave table, file offset 0x18610): blue
+# potion (item 0x1F) 40R on the left, red (0x20) 68R on the right. Measured
+# 2026-09-23 at 0x64: an OPEN mouth at x=112 (no slot-11 tile object; UP
+# at x=112 from y=93 enters) although ``locations`` lists it as a secret.
+# Keeper 0x74 at (120, 128). Its ObjState is 0 before the letter (no text,
+# no wares, Link free), 1 while its text types (Link halted, $40), 2 once
+# the wares are up. B on the letter (slot 15) inside sets $0666 1 -> 2 on
+# that frame. Walking over a pedestal while the keeper is at 1 buys
+# nothing. Touch rows: blue (88, 157), red (152, 157) from y=165.
+POTION_SHOP_SCREEN = 0x64
+POTION_MOUTH_X = 112
+POTION_MOUTH_Y = 77
+POTION_KEEPER = 0x74
+KEEPER_WARES_UP = 2
+LETTER_TAKEN = 1
+LETTER_SHOWN = 2
+BLUE_POTION_PRICE = 40
+RED_POTION_PRICE = 68
+BLUE_POTION_X = 88
+RED_POTION_X = 152
+POTION_BUY_Y = 165
+POTION_BUY_BUDGET = 1500
+# Lattice row under the mouth; ``mouth_step`` routes there from any side
+# (the ring return arrives at (60, 61), boxed in by trees to the east).
+POTION_APPROACH_Y = 93
+# START is dropped for ~40 frames after a cave's mode 11 (entry walk, mode
+# init, a 14-frame halt). Link free this long means the menu will open.
+CAVE_SETTLE_FRAMES = 8
+LETTER_PRESS_TRIES = 3
+LETTER_PRESS_GAP = 4
 
 
 class CaveShopBuyPhase(Enum):
@@ -318,6 +378,9 @@ class CaveShopBuyController(OverworldPathController):
             return FrameAction(nes_action("UP"), "shop_up_stairs")
         if snap.link_x < self.buy_x:
             return FrameAction(nes_action("RIGHT"), "shop_right")
+        if snap.link_x > self.buy_x + PEDESTAL_SLACK:
+            # Inside the slack, UP slides on to the pedestal's column.
+            return FrameAction(nes_action("LEFT"), "shop_left")
         return FrameAction(nes_action("UP"), "shop_touch")
 
     def report(self) -> dict[str, Any]:
@@ -338,3 +401,212 @@ class CaveShopBuyController(OverworldPathController):
             }
         )
         return base
+
+
+def _potion(snap: ZeldaSnapshot) -> int:
+    return int(snap.potion)
+
+
+@dataclass
+class PotionShopBuyController(CaveShopBuyController):
+    """Buy a potion: show the letter once, wait for the wares, buy, restore B.
+
+    ``item`` is ``"red"`` (68R, right), ``"blue"`` (40R, left) or ``"auto"``:
+    red when the wallet holds 68 on arriving at the shop screen, else blue.
+    Short of the chosen price, the base class fails closed (or farms, with a
+    ``farm``). The B item held on entering the cave is put back after the
+    purchase, so a later stage's B is what it was (showing the letter and the
+    buy both move the cursor). Stops inside the cave at the pedestal.
+    """
+
+    item: str = "auto"
+    keeper: int = POTION_KEEPER
+    letter_shows: int = 0
+    chosen: str = ""
+    _prior_b: int | None = None
+    _select: PauseSelectController | None = None
+    _letter_presses: int = 0
+    _letter_gap: int = 0
+    _restore_done: bool = False
+    _settled: int = 0
+
+    def __post_init__(self) -> None:
+        self._configure("blue" if self.item == "auto" else self.item)
+        super().__post_init__()
+
+    def _configure(self, item: str) -> None:
+        if item not in ("red", "blue"):
+            raise ValueError(f"potion item must be red, blue or auto: {item!r}")
+        red = item == "red"
+        self.chosen = item
+        self.price = RED_POTION_PRICE if red else BLUE_POTION_PRICE
+        self.buy_x = RED_POTION_X if red else BLUE_POTION_X
+        self.success_threshold = 2 if red else 1
+        self.success_note = f"{item}_potion_bought"
+
+    def reset(self) -> None:
+        super().reset()
+        self._prior_b = None
+        self._select = None
+        self._letter_presses = 0
+        self._letter_gap = 0
+        self._restore_done = False
+        self._settled = 0
+
+    def _at_stop(self, snap: ZeldaSnapshot) -> bool:
+        return self._purchase_done(snap) and self._restore_done
+
+    def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.phase is CaveShopBuyPhase.HOP:
+            if int(snap.letter) < LETTER_TAKEN:
+                return self._fail("potion_shop_needs_letter")
+            if self.item == "auto":
+                self._configure("red" if snap.rupees >= RED_POTION_PRICE else "blue")
+        return super()._after_hops(snap)
+
+    def _simple_door_hunt(self, snap: ZeldaSnapshot) -> FrameAction:
+        if (
+            snap.level != 0
+            or snap.mode != PLAY_MODE
+            or snap.screen != self.shop_screen
+            or self.phase_frames > self.door_hunt_timeout
+        ):
+            return super()._simple_door_hunt(snap)
+        direction = mouth_step(
+            snap, int(self.door_x or POTION_MOUTH_X), POTION_APPROACH_Y, env=self._env
+        )
+        return self._swing(direction, "potion_mouth")
+
+    def _selector(self, want: int) -> PauseSelectController:
+        ctl = PauseSelectController(want=want)
+        ctl.bind_env(self._env)
+        return ctl
+
+    def _cave_settled(self, snap: ZeldaSnapshot) -> bool:
+        """Link free and the mode past its init for ``CAVE_SETTLE_FRAMES``."""
+        free = int(snap.is_updating_mode) != 0 and (
+            not snap.objects or int(snap.objects[0].state) == 0
+        )
+        self._settled = self._settled + 1 if free else 0
+        return self._settled >= CAVE_SETTLE_FRAMES
+
+    def _buy_step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if not self._in_shop_cave(snap):
+            return super()._buy_step(snap)
+        if self._env is None:
+            return self._fail("potion_shop_env_not_bound")
+        ram = self._env.get_ram()
+        settled = self._cave_settled(snap)
+        if self._prior_b is None:
+            self._prior_b = int(read_u8(ram, ADDR_SELECTED_ITEM))
+        if self._purchase_done(snap):
+            act = self._restore_b(snap, ram, settled)
+            return act if act is not None else super()._buy_step(snap)
+        keeper = next((o for o in snap.objects if int(o.type_id) == self.keeper), None)
+        if keeper is not None and int(keeper.state) == KEEPER_WARES_UP:
+            return super()._buy_step(snap)
+        self.buy_frames += 1
+        if self.buy_frames > self.buy_budget:
+            return self._fail(f"potion_wares_timeout_letter{int(snap.letter)}")
+        if keeper is not None and int(keeper.state) == 0 and int(snap.letter) == LETTER_TAKEN:
+            return self._show_letter(snap, settled)
+        return FrameAction(nes_idle_action(), "potion_shop_text")
+
+    def _show_letter(self, snap: ZeldaSnapshot, settled: bool) -> FrameAction:
+        """Letter on B, one press: ``$0666`` 1 -> 2 and the keeper talks."""
+        link_free = not snap.objects or int(snap.objects[0].state) == 0
+        if self._select is None:
+            if not settled:
+                return FrameAction(nes_idle_action(), "potion_letter_wait")
+            self._select = self._selector(B_SLOT_LETTER)
+        if pause_dropped(self._select, self._env.get_ram()):
+            self._select, self._settled = None, 0
+            return FrameAction(nes_idle_action(), "potion_pause_dropped")
+        act = self._select.drive(snap)
+        if self._select.failed:
+            return self._fail(f"letter_{self._select.fail_reason}")
+        if act is not None:
+            return act
+        self._letter_gap += 1
+        if self._letter_presses >= LETTER_PRESS_TRIES and self._letter_gap > LETTER_PRESS_GAP:
+            return self._fail("letter_not_shown")
+        if link_free and (self._letter_presses == 0 or self._letter_gap > LETTER_PRESS_GAP):
+            self._letter_presses += 1
+            self._letter_gap = 0
+            if self._letter_presses == 1:
+                self.letter_shows += 1
+            return FrameAction(nes_action("B"), "potion_show_letter")
+        return FrameAction(nes_idle_action(), "potion_letter_press_wait")
+
+    def _restore_b(self, snap: ZeldaSnapshot, ram: Any, settled: bool) -> FrameAction | None:
+        """Put the B item from the cave entry back. None once it is there."""
+        if self._restore_done:
+            return None
+        prior = self._prior_b
+        if self._select is not None and self._select.want != prior:
+            self._select = None  # the letter select is finished
+        if self._select is None:
+            selected = int(read_u8(ram, ADDR_SELECTED_ITEM))
+            if prior is None or prior == selected or not b_slot_owned(ram, prior):
+                self._restore_done = True
+                return None
+            if not settled:
+                return FrameAction(nes_idle_action(), "potion_restore_wait")
+            self._select = self._selector(prior)
+        if pause_dropped(self._select, ram):
+            self._select, self._settled = None, 0
+            return FrameAction(nes_idle_action(), "potion_pause_dropped")
+        act = self._select.drive(snap)
+        if self._select.failed:
+            return self._fail(f"restore_b_{self._select.fail_reason}")
+        if act is None:
+            self._restore_done = True
+        return act
+
+    def report(self) -> dict[str, Any]:
+        base = super().report()
+        base.update(
+            {
+                "item": self.item,
+                "chosen": self.chosen,
+                "letter_shows": self.letter_shows,
+                "prior_b": self._prior_b,
+                "b_restored": self._restore_done,
+            }
+        )
+        return base
+
+
+def make_potion_buy_controller(
+    *, hops: tuple[ScreenHop, ...] | None = None, item: str = "auto"
+) -> PotionShopBuyController:
+    """Potion buy at 0x64. Zero-arg: ``stage_replay.py`` target.
+
+    ``hops`` default is the ring return's leg to 0x64 (``RING_RETURN_HOPS``
+    through its 0x64 row): the chain's pose after ``exit_ring`` on 0x34,
+    arriving on 0x64 from the north at x=60. Any other arrival works too
+    (``mouth_step`` routes to the mouth). Needs the letter taken (``$0666``
+    >= 1) and the price in the wallet on arrival (68 red, 40 blue).
+    """
+    if hops is None:
+        from zelda_i.overworld.gather_segments import RING_RETURN_HOPS
+
+        last = next(
+            i for i, hop in enumerate(RING_RETURN_HOPS) if hop.target == POTION_SHOP_SCREEN
+        )
+        hops = RING_RETURN_HOPS[: last + 1]
+    return PotionShopBuyController(
+        hops=tuple(hops),
+        item=item,
+        shop_screen=POTION_SHOP_SCREEN,
+        cave_x=POTION_MOUTH_X,
+        cave_y=POTION_MOUTH_Y,
+        buy_y=POTION_BUY_Y,
+        buy_budget=POTION_BUY_BUDGET,
+        success_getter=_potion,
+        success_addr=ADDR_POTION,
+        farm_below_hearts=0,
+        evade=False,
+        max_frames=12000,
+        require_sword=True,
+    )

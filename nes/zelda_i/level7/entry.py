@@ -58,8 +58,8 @@ POST_L6_EXIT_STATE = "Level6ExitOverworld"
 # ``verified=True``: every field below is the live settled RAM at the frame
 # ``level7_post_l6_overworld`` begins.  ``route_eligible`` stays False until
 # the greened ``POST_L6_TO_POND_HOPS`` prefix reaches pond ``0x42``.  The
-# 42R -> 60R Bait gap is closed downstream by a documented Survival rupee
-# top-up (``SPINE_L7_RUPEE_RETOPUP``); a natural OW farm is a separate bead.
+# 60R Bait is paid from the wallet the gathering's hidden rupees leave
+# after the Blue Ring; there is no rupee write.
 # Re-measured 2026-09-22 on the gathered spine (White Sword, blue candle
 # from the gathering, three overworld hearts). Keys/bombs/rupees are lower
 # bounds; the wooden-sword arrival (8 containers, candle 0, bombs 8, 42R)

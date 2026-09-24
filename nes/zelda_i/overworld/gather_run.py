@@ -312,7 +312,6 @@ def run_chain(
     from_state: str,
     chain: str,
     engage_hearts: int = 1,
-    rupee_topups: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Run ``stages`` back to back in one env. Stop at the first red stage.
 
@@ -326,25 +325,10 @@ def run_chain(
     env = open_env(from_state=from_state)
     results: list[dict[str, Any]] = []
     total = 0
-    inventory_assist: list[dict[str, Any]] = []
     obs = None
     try:
         assist.apply_env(env, frame=0)
         for name, controller in stages:
-            target = (rupee_topups or {}).get(name)
-            if target is not None:
-                before = read_snapshot(env.get_ram()).rupees
-                if before < target:
-                    note = poke_rupees(env, target)
-                    inventory_assist.append(
-                        {
-                            "stage": name,
-                            "field": "rupees",
-                            "from": before,
-                            "to": target,
-                            "note": note,
-                        }
-                    )
             if hasattr(controller, "bind_env"):
                 controller.bind_env(env)
             limit = int(getattr(controller, "max_frames", 8000) or 8000)
@@ -387,7 +371,6 @@ def run_chain(
         "frames": total,
         "stages": results,
         "assist": assist.report(),
-        "inventory_assist": inventory_assist,
     }
     out = RECORDINGS_DIR / f"{chain}_report.json"
     RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)

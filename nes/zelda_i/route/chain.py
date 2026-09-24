@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from zelda_i.dungeon.pause_select import PotionDrinkGuard
 from zelda_i.level1.clear import Level1Clear53Controller, Level1Clear63Controller
 from zelda_i.level1.path import (
     CLEAR_53_MAX_FRAMES,
@@ -233,6 +234,8 @@ class ControllerStageResult:
     damage: float = 0.0
     healed: float = 0.0
     damage_by_room: dict[str, float] = field(default_factory=dict)
+    # ``PotionDrinkGuard.report()`` when the stage drank or held a refill.
+    potion: dict[str, Any] | None = None
 
     def observe_hearts(self, hearts: float, room: str = "") -> None:
         if self.hearts_in is None:
@@ -279,6 +282,8 @@ class ControllerStageResult:
         if self.frame_base or self.end_frame:
             payload["frame_base"] = self.frame_base
             payload["end_frame"] = self.end_frame
+        if self.potion is not None:
+            payload["potion"] = dict(self.potion)
         return payload
 
 
@@ -346,6 +351,7 @@ def run_controller_stage(
     assist: UnlimitedHealthAssist | None = None,
     on_frame: FrameCallback | None = None,
     frame_base: int = 0,
+    potions: bool = True,
 ) -> tuple[Any, ControllerStageResult]:
     """Run one controller without duplicating the standard emulator loop.
 
@@ -363,6 +369,13 @@ def run_controller_stage(
 
     When the controller defines ``bind_env``, it is called once with ``env``
     before the first step (position-assist controllers write through it).
+
+    ``potions`` (default on) runs the controller inside a
+    :class:`~zelda_i.dungeon.pause_select.PotionDrinkGuard`: with no potion
+    owned it is ``controller.step`` untouched; at the last heart with one it
+    drinks, and the assist's refill is held for it (``refill_hold``), so a
+    real potion is spent before a Survival write. The stage report carries
+    ``potion`` when that happened.
     """
     bind_controller_env(controller, env)
     result = ControllerStageResult(
@@ -372,21 +385,33 @@ def run_controller_stage(
         frame_base=frame_base,
         end_frame=frame_base,
     )
-    for frame in range(1, max_frames + 1):
-        snap = read_snapshot(env.get_ram())
-        room = f"{int(snap.level)}:{int(snap.screen):02x}"
-        result.observe_hearts(hearts_held(snap), room)
-        fa = controller.step(snap)
-        action = fa.action
-        obs, *_ = env.step(action)
-        result.frames = frame
-        result.end_frame = frame_base + frame
-        _observe_room_timer(room_timer, env, frame=result.end_frame)
-        result.observe_hearts(ram_hearts(env.get_ram()), room)
-        _apply_assist(assist, env, frame=result.end_frame)
-        _notify_frame(on_frame, env, obs, action, frame=result.end_frame)
-        if controller_stage_done(controller):
-            break
+    guard = PotionDrinkGuard(inner=controller) if potions else None
+    stepper = controller if guard is None else guard
+    if guard is not None:
+        guard.bind_env(env)
+        if assist is not None:
+            assist.refill_hold = guard.holds_refill
+    try:
+        for frame in range(1, max_frames + 1):
+            snap = read_snapshot(env.get_ram())
+            room = f"{int(snap.level)}:{int(snap.screen):02x}"
+            result.observe_hearts(hearts_held(snap), room)
+            fa = stepper.step(snap)
+            action = fa.action
+            obs, *_ = env.step(action)
+            result.frames = frame
+            result.end_frame = frame_base + frame
+            _observe_room_timer(room_timer, env, frame=result.end_frame)
+            result.observe_hearts(ram_hearts(env.get_ram()), room)
+            _apply_assist(assist, env, frame=result.end_frame)
+            _notify_frame(on_frame, env, obs, action, frame=result.end_frame)
+            if controller_stage_done(controller):
+                break
+    finally:
+        if guard is not None and assist is not None:
+            assist.refill_hold = None
+    if guard is not None and (guard.drinks or guard.frames or guard.notes):
+        result.potion = guard.report()
     result.success = bool(controller.success)
     return obs, result
 

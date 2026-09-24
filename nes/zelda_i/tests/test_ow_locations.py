@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from zelda_i.anchors import (
     SCREEN_BRACELET_ARMOS,
@@ -22,13 +23,12 @@ from zelda_i.overworld.locations import (
     CAVE_SHOP_SPECIAL,
     CAVE_WHITE_SWORD,
     CAVE_WOOD_SWORD,
-    HEART_H5_NEAREST_SPINE_HOP_DIR,
-    HEART_H5_NEAREST_SPINE_SCREEN,
-    HEART_H5_POCKET_X,
-    HEART_H5_POCKET_Y,
-    HEART_H5_SCREEN,
     Q1_VANILLA,
+    SECRET_PAYOUT,
+    SECRET_RUPEE_CAVES,
     bomb_farms,
+    cave_keeper,
+    decode_cave_wares,
     decode_ow_attrs,
     easy_farms,
     farm_at,
@@ -42,6 +42,7 @@ from zelda_i.overworld.locations import (
     q1_shops,
     restock_for,
     rupee_farms,
+    secret_payout,
     spawns_from_rom,
     worth_heart_farm,
     worth_rupee_farm,
@@ -184,18 +185,6 @@ def test_worth_rupee_farm_route_screens() -> None:
     assert k5.drop_group == "C"
 
 
-def test_heart_h5_pocket_is_west_of_l2_prefix() -> None:
-    """0x47 burn heart: pocket measured, burn unverified, candle not on spine."""
-    loc = location("heart_h5")
-    assert loc is not None
-    assert loc.screen == HEART_H5_SCREEN == 0x47
-    assert loc.open == "burn"
-    assert HEART_H5_NEAREST_SPINE_SCREEN == 0x48
-    assert HEART_H5_NEAREST_SPINE_HOP_DIR == "LEFT"
-    assert HEART_H5_POCKET_X == (149, 184)
-    assert HEART_H5_POCKET_Y == (133, 157)
-
-
 def test_worth_heart_farm_skips_leevers_keeps_4a() -> None:
     """Heart-farm hook must not chase 0x48 leevers; 0x4A tektites stay legal."""
     assert farm_at(0x48) is not None and farm_at(0x48).prey == "leever"
@@ -233,3 +222,56 @@ def test_spawn_table_matches_rom() -> None:
     assert from_rom[0x4A].prey == spot.prey
     assert from_rom[0x4A].grouped is False
     assert 0x77 not in from_rom
+
+
+_need_rom = pytest.mark.skipif(not _ROM.is_file(), reason="local Zelda I ROM not present")
+
+
+@_need_rom
+def test_catalog_rupee_caves_are_the_rom_secrets() -> None:
+    """Every cave type whose wares are one middle rupee is a "rupees" row, and
+    the payout the route counts on is the ROM's price (10R caves were once
+    catalogued as a gamble, so no walk ever visited them)."""
+    wares = decode_cave_wares(_ROM.read_bytes())
+    secret_types = {t: secret_payout(w) for t, w in wares.items() if secret_payout(w)}
+    assert secret_types == SECRET_PAYOUT
+    for loc in Q1_VANILLA:
+        if loc.cave_id in secret_types:
+            assert loc.kind == "rupees", loc
+            assert loc.vanilla == f"rupees_{secret_types[loc.cave_id]}", loc
+        else:
+            assert loc.kind != "rupees", loc
+
+
+@_need_rom
+def test_catalog_shops_sell_something() -> None:
+    """A "shop" row's cave type has at least one non-rupee ware (a paid hint
+    shows three rupee slots and sells nothing)."""
+    wares = decode_cave_wares(_ROM.read_bytes())
+    for loc in q1_shops():
+        items = {w.item for w in wares[loc.cave_id] if not w.empty}
+        assert items - {0x18}, loc
+
+
+@_need_rom
+def test_secret_spots_are_catalogued_rupee_caves() -> None:
+    """The measured secret objects sit on screens the ROM routes to a rupee
+    cave, and a bomb stand faces a rock while a burn stand faces a tree."""
+    attrs = {row.screen: row for row in decode_ow_attrs(_ROM.read_bytes())}
+    for screen, spot in SECRET_RUPEE_CAVES.items():
+        assert attrs[screen].cave_id == spot.cave_id, hex(screen)
+        assert spot.rupees == SECRET_PAYOUT[spot.cave_id]
+        want = "bomb" if spot.uses_bomb else "burn"
+        assert location_at(screen).open == want, hex(screen)
+        # Stand on the ROM turn lattice's axis for the facing: a vertical
+        # face needs a lattice column, a horizontal one a lattice row.
+        sx, sy = spot.stand
+        assert (sx % 8 == 0) if spot.face in ("UP", "DOWN") else (sy % 8 == 5), hex(screen)
+
+
+def test_cave_keeper_matches_measured_sprites() -> None:
+    """Keeper object type = cave type + $5A, from four live caves."""
+    assert cave_keeper(0x11) == 0x6B  # take-any old man (0x7B, 0x2C)
+    assert cave_keeper(0x18) == 0x72  # 0x0E letter
+    assert cave_keeper(0x21) == 0x7B  # 0x48 30R moblin
+    assert cave_keeper(0x22) == 0x7C  # 0x0F 100R moblin

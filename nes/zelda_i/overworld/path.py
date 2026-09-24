@@ -1776,7 +1776,12 @@ class OverworldPathController:
             leg2 = [(gx, y) for y in range(min(sy, gy), max(sy, gy) + 1, LATTICE_STEP)]
         else:
             gy_set = sorted(g[1] for g in goals)
-            gy = sy if sy in gy_set else min(gy_set, key=lambda v: abs(v - sy))
+            if hop.align_y is None and hop.y_band is None:
+                # No align: the fall-through pushes along Link's own row
+                # (0x5B (48, 205) LEFT into rock, 9750 frames, 2026-09-23).
+                gy = sy
+            else:
+                gy = sy if sy in gy_set else min(gy_set, key=lambda v: abs(v - sy))
             gx = next(iter(goals))[0]
             leg1 = [(sx, y) for y in range(min(sy, gy), max(sy, gy) + 1, LATTICE_STEP)]
             leg2 = [(x, gy) for x in range(min(sx, gx), max(sx, gx) + 1, LATTICE_STEP)]

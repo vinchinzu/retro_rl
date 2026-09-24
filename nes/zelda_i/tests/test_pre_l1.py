@@ -33,9 +33,6 @@ from zelda_i.overworld.graph import (
 )
 from zelda_i.overworld.locations import (
     CAVE_SHOP_ARROWS,
-    HEART_H5_NEAREST_SPINE_HOP_DIR,
-    HEART_H5_NEAREST_SPINE_SCREEN,
-    HEART_H5_SCREEN,
     OPEN_OPEN,
     location,
 )
@@ -108,9 +105,6 @@ def test_zd_left_two_from_candle_shop_is_lost_hills() -> None:
 
 
 def test_zd_burn_heart_and_90r_shield_are_west_of_0x48() -> None:
-    assert HEART_H5_SCREEN == 0x47
-    assert HEART_H5_NEAREST_SPINE_SCREEN == 0x48
-    assert HEART_H5_NEAREST_SPINE_HOP_DIR == "LEFT"
     heart = location("heart_h5")
     shield = location("shop_g5")
     assert heart is not None and heart.screen == 0x47 and heart.open == "burn"

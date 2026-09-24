@@ -59,24 +59,13 @@ bomb gates through the assisted full-game clear while route experience and
 reusable skills are still being built and refactored.
 The spine applies this at L2 entry, again before `SPINE_BOMB_RETOPUP`
 stages, and at the natural L3 Raft boundary before the bomb-heavy boss suffix.
-Extended 2026-09-02 to the **rupee count** for the L7 Bait buy
-(`SPINE_L7_RUPEE_RETOPUP`, applied before `level7_bait_purchase`): the measured
-post-L6 leave carries 42R and Bait costs 60R, so the owned rupee count is
-topped to 60 — mirroring the bomb/key top-ups. A natural overworld rupee farm
-is a separate bead.
-Extended to the pre-l1 coast pack (`SPINE_PRE_L1_RUPEE_RETOPUP`, applied
-before `bomb_topup`): the walk arrives on `0x6F` short of 20R and one hit from
-death, so the owned rupee count is topped to `SHOP_P7_PRICE` (20) — rupees
-only, heart assist off. Same rules as the L7 Bait top-up. Not a Clean farm
-and not bead rr-ttyu.3.
-Extended 2026-09-23 to the gathering Blue Ring at `0x34`: immediately before
-the `ring` stage, the Survival spine tops the owned rupee count up to 250R
-when short. Link then wakes the Armos and buys the ring through the shop;
-`ADDR_RING` is never written by the assist. The standalone `gather_segments
-chain` development runner discloses the same count write in
-`inventory_assist`. The prior gathered leave had 72R, so a natural 250R
-farm remains open. Main-spine checkpoints made before this purchase are
-obsolete even when their later dungeon stages were green.
+Rupee-count top-ups (L7 Bait 60R, pre-l1 coast pack 20R, gathering Blue
+Ring 250R) were **retired on 2026-09-24**. The gather chain now opens the
+hidden rupee caves on and beside its walk (`SECRET_RUPEE_CAVES` in
+`overworld/locations.py`: 0x2D, 0x28, 0x48, 0x5B, 0x6B, 0x56 before the
+ring; 0x62 after it), which pays the 250R ring and the 60R candle from play.
+The wallet caps at 255, so the order matters. Nothing writes `$066D`; a
+short wallet now fails the buy instead of being topped up.
 **Not Clean.** Strip or replace with farms during the later resource pass; do
 not treat a top-up tape as natural inventory.
 
@@ -86,11 +75,10 @@ Allowed fields only:
 |-------|--------------------|------|
 | bombs | `$0658` / `bombs` | Count top-up at a verified route bomb gate, through the assisted full-game clear. Never write `max_bombs` (`$067C`). |
 | keys | `$066E` / `keys` | Count top-up of the already-used key item. |
-| rupees | `$066D` / `rupees` | Count top-up to a verified shop cost (L7 Bait 60R; pre-l1 coast pack 20R; gathering Blue Ring 250R). Never grants an item. |
 | selected_item | `$0656` / `selected_item` | B-slot select of an **already owned** item (bombs=`1`). |
 
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
-/ `poke_keys` / `poke_rupees`). `progression_writes` and `capacity_writes` stay 0.
+/ `poke_keys`). `progression_writes` and `capacity_writes` stay 0.
 
 ### Bait / Food byte at the L7 shop (operator exception, 2026-09-02)
 
@@ -117,9 +105,8 @@ Allowed fields only:
 The implementation is `zelda_i.dungeon.ops.poke_food`, wired into
 `SurvivalBaitPurchaseController`. List the write in the stage
 `inventory_assist` / `report()["writes"]`. `progression_writes` and
-`capacity_writes` stay 0. The disclosed rupee **count** top-up
-(`SPINE_L7_RUPEE_RETOPUP`, 42→60) still fires before the stage and represents
-the cost paid. A natural buy from a mapped route replaces both.
+`capacity_writes` stay 0. The wallet is not topped up for it (retired
+2026-09-24). A natural buy from a mapped route replaces the Food write.
 
 ### One-room Link position — L6 0x3A stairs (retired, superseded 2026-09-03)
 
