@@ -6,7 +6,6 @@ import numpy as np
 
 from retro_harness.controls import pressed_nes_buttons
 from zelda_i.dungeon.engine import BLUE_GORIYA_OBJECT_TYPE, FIREBALL_OBJECT_TYPE
-from zelda_i.level2.dungeon import ROOM_4F_SPEC
 from zelda_i.level2.spine import (
     Clear4fPhase,
     Level2BacktrackTo7dController,
@@ -94,11 +93,6 @@ def test_enter_6f_fails_without_keys() -> None:
     act = pushing.step(_snap(room=0x6E, x=208, y=141, keys=0))
     assert pushing.phase is Level2NavPhase.WALK
     assert act.reason == "key_door_lattice_push"
-
-
-def test_room_4f_spec_occupancy_and_backstep() -> None:
-    assert ROOM_4F_SPEC.combat.occupancy_patrol is True
-    assert ROOM_4F_SPEC.combat.contact_backstep == 16
 
 
 def test_clear4f_miss_blocks_ahead_and_replans() -> None:

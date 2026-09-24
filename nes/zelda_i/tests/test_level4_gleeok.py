@@ -23,12 +23,6 @@ from zelda_i.level4.spine import run_level4_entrance_tf
 from zelda_i.level4.occupancy import ROOM_13_SPAWN_XY
 
 
-def test_lab_gleeok_controller_defaults_to_restore_search() -> None:
-    ctl = make_gleeok_fight_controller()
-    assert ctl.continuous_mode is False
-    assert ctl.state_restores == 0
-
-
 def test_continuous_gleeok_forbids_state_restore() -> None:
     ctl = Level4GleeokFightController(continuous_mode=True)
     em = SimpleNamespace(

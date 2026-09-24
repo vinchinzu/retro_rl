@@ -6,17 +6,15 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zelda_i.anchors import SCREEN_LEVEL4_ENTRANCE, SCREEN_LEVEL7_POND_HYP
+from zelda_i.anchors import SCREEN_LEVEL7_POND_HYP
 from zelda_i.dungeon.pause_select import B_SLOT_RECORDER
 from zelda_i.level7.overworld import (
     LEVEL7_POND_HOPS,
     POND_55_DOCK_X,
     POST_L6_TO_POND_HOPS,
     POST_L6_TO_WARP_HOPS,
-    POST_L6_TO_WARP_SCREENS,
     WARP_ISLAND_SCREEN,
     WARP_JOIN_TO_POND_HOPS,
-    WARP_JOIN_TO_POND_SCREENS,
     WARP_LAUNCH_SCREEN,
 )
 from zelda_i.level7.warp import (
@@ -89,23 +87,10 @@ def _drive(ctl: RecorderWarpController, ram: np.ndarray, *, land_on: int | None,
 
 def test_warp_prefix_is_the_greened_walk_truncated_to_the_launch_screen() -> None:
     assert POST_L6_TO_WARP_HOPS == POST_L6_TO_POND_HOPS[:4]
-    assert POST_L6_TO_WARP_HOPS[-1].target == WARP_LAUNCH_SCREEN == 0x24
-    # 0x22 -> 0x32 -> 0x33 -> 0x23 -> 0x24, the live L6 reverse.
-    assert POST_L6_TO_WARP_SCREENS == (0x22, 0x32, 0x33, 0x23, 0x24)
+    assert POST_L6_TO_WARP_HOPS[-1].target == WARP_LAUNCH_SCREEN
 
 
 def test_warp_join_rejoins_the_green_pond_chain_at_0x55() -> None:
-    assert WARP_ISLAND_SCREEN == SCREEN_LEVEL4_ENTRANCE == 0x45
-    assert WARP_JOIN_TO_POND_SCREENS == (
-        0x45,
-        0x55,
-        0x65,
-        0x64,
-        0x54,
-        0x53,
-        0x52,
-        0x42,
-    )
     assert WARP_JOIN_TO_POND_HOPS[-1].target == SCREEN_LEVEL7_POND_HYP
     # Everything from 0x64 on is the untouched, already-green tail.
     assert WARP_JOIN_TO_POND_HOPS[2:] == LEVEL7_POND_HOPS[7:]

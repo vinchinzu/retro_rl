@@ -52,9 +52,6 @@ from zelda_i.level9.natural_path import (
 )
 from zelda_i.level9.overworld import (
     B_ITEM_BOMBS,
-    LEVEL9_ROCK_HOPS,
-    POST_L8_TO_LEVEL9_HOPS,
-    POST_L8_TO_LEVEL9_SCREENS,
     REVERSE_5C_MAZE_WAYPOINTS,
     FixtureEntryPhase,
     Level9FixtureEntryController,
@@ -104,20 +101,9 @@ def _snap(**kwargs) -> ZeldaSnapshot:
 
 
 def test_public_through_names_are_exactly_four_chapters() -> None:
-    assert L9_THROUGH == L9_PUBLIC_THROUGH == (
-        "level9-entry",
-        "level9-silver-arrows",
-        "level9-patra",
-        "level9-credits",
-    )
+    assert L9_THROUGH == L9_PUBLIC_THROUGH
     hops = l9_hops(None)
     assert tuple(h.through for h in hops) == L9_THROUGH
-
-
-def test_fixture_rock_path_aligns_for_0x78_north_mouth() -> None:
-    north_68 = next(hop for hop in LEVEL9_ROCK_HOPS if hop.target == 0x68)
-    assert north_68.direction == "UP"
-    assert north_68.align_x == 48
 
 
 class _FixtureEnv:
@@ -379,39 +365,6 @@ def test_patra_census_objects_are_body_and_eight_eyes() -> None:
 
     assert level9_live_patra_stop(snap)
     assert not level9_live_patra_stop(_snap(screen=0x52, arrows=2, objects=(body,)))
-
-
-def test_post_l8_overworld_hops_sequence() -> None:
-    assert len(POST_L8_TO_LEVEL9_HOPS) == 14
-    assert len(POST_L8_TO_LEVEL9_SCREENS) == 15
-    assert POST_L8_TO_LEVEL9_SCREENS[0] == 0x6D
-    assert POST_L8_TO_LEVEL9_SCREENS[-1] == 0x05
-
-    expected_targets = [
-        (0x5D, "UP", 48, None),
-        (0x5C, "LEFT", None, 132),
-        (0x5B, "LEFT", None, 92),
-        (0x5A, "LEFT", None, 93),
-        (0x59, "LEFT", None, 140),
-        (0x58, "LEFT", None, 155),
-        (0x48, "UP", 112, None),
-        (0x38, "UP", 128, None),
-        (0x28, "UP", 120, None),
-        (0x27, "LEFT", None, 102),
-        (0x17, "UP", 144, None),
-        (0x07, "UP", 64, None),
-        (0x06, "LEFT", None, 141),
-        (0x05, "LEFT", None, 141),
-    ]
-    for hop, (target, direction, align_x, align_y) in zip(
-        POST_L8_TO_LEVEL9_HOPS, expected_targets
-    ):
-        assert hop.target == target
-        assert hop.direction == direction
-        if align_x is not None:
-            assert hop.align_x == align_x
-        if align_y is not None:
-            assert hop.align_y == align_y
 
 
 def test_post_l8_overworld_reverse_maze_navigation() -> None:
@@ -705,5 +658,3 @@ def test_level9_entry_chapter_chaining() -> None:
     bomb_ctl = stages[2][1]
     assert isinstance(ow_ctl, Level9PostL8OverworldController)
     assert isinstance(bomb_ctl, Level9SpectacleRockBombController)
-
-

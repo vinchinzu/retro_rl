@@ -177,11 +177,12 @@ def test_walk_or_swing_dodges_a_fireball_without_the_magic_shield() -> None:
 
 
 def test_magic_shield_blocks_the_fireball_instead() -> None:
+    """With the magic shield the fireball is blockable: walk on, no dodge."""
     snap = _shot_snap(
         x=120, y=140, ox=144, oy=148, type_id=FIREBALL_TYPE, magic_shield=1
     )
     act = walk_or_swing(0, "RIGHT", "hop0", snap, period=10, hold=3)
-    assert act.reason == "hop0_shield"
+    assert list(act.action) == list(nes_action("RIGHT"))
 
 
 def test_dodge_flips_side_at_the_screen_edge() -> None:
@@ -206,7 +207,7 @@ def test_shot_behind_link_does_not_dodge() -> None:
     """Only the approach band matters; a passed shot is not a threat."""
     snap = _shot_snap(x=120, y=140, ox=80, oy=140)
     act = walk_or_swing(0, "RIGHT", "hop0", snap, period=10, hold=3)
-    assert act.reason == "hop0"
+    assert list(act.action) == list(nes_action("RIGHT"))
 
 
 def test_track_knockback_charges_stuck_on_damage() -> None:

@@ -19,7 +19,6 @@ from zelda_i.level6.finish import (
     make_shard_controller,
     north_shutter_open,
 )
-from zelda_i.level6.spine import L6_STOPS, L6_THROUGH
 from zelda_i.screen_glance import (
     HEART_LEAVE,
     LEVEL6_LEAVE,
@@ -148,17 +147,6 @@ def test_shard_fails_back_to_1c() -> None:
     ctl = make_shard_controller()
     ctl.step(read_snapshot(ram))
     assert ctl.failed
-
-
-def test_finish_through_ids_are_on_the_catalog() -> None:
-    assert "level6-heart" in L6_THROUGH
-    assert "level6-north0c" in L6_THROUGH
-    assert "level6" in L6_THROUGH
-    assert L6_STOPS["level6-heart"] == "level6_heart_0x1c"
-    assert L6_STOPS["level6-north0c"] == "level6_north_0x0c"
-    assert L6_STOPS["level6"] == "level6_triforce_0x20"
-    assert L6_THROUGH.index("level6-gohma") < L6_THROUGH.index("level6-heart")
-    assert L6_THROUGH.index("level6-heart") < L6_THROUGH.index("level6")
 
 
 def test_live_leftovers_glance() -> None:

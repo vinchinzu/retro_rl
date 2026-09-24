@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
+from retro_harness.controls import pressed_nes_buttons
 from zelda_i.level9.dungeon import LEVEL9
 from zelda_i.level9.room51 import (
     ROOM51,
@@ -51,41 +52,21 @@ def test_in_room_51() -> None:
 
 
 def test_room51_to_41_step_waypoints() -> None:
-    # 1. South mouth approach
-    step = room51_to_41_step(_mock_snap(link_x=120, link_y=205))
-    assert step.reason == "room51_approach_south_aisle"
+    """South mouth -> west aisle -> centre -> east aisle -> north door."""
 
-    # 2. West aisle navigation
-    step = room51_to_41_step(_mock_snap(link_x=120, link_y=185))
-    assert step.reason == "room51_nav_west_aisle"
+    def heading(**kw) -> list[str]:
+        act = room51_to_41_step(_mock_snap(**kw))
+        return [b for b in pressed_nes_buttons(list(act.action)) if b != "A"]
 
-    # 3. Climb west aisle
-    step = room51_to_41_step(_mock_snap(link_x=96, link_y=160))
-    assert step.reason == "room51_climb_west_aisle"
-
-    # 4. Cross center aisle
-    step = room51_to_41_step(_mock_snap(link_x=96, link_y=141))
-    assert step.reason == "room51_cross_center_aisle"
-
-    # 5. Climb east aisle
-    step = room51_to_41_step(_mock_snap(link_x=128, link_y=120))
-    assert step.reason == "room51_climb_east_aisle"
-
-    # 6. Align north door
-    step = room51_to_41_step(_mock_snap(link_x=128, link_y=93))
-    assert step.reason == "room51_align_north_door"
-
-    # 7. Push north through door
-    step = room51_to_41_step(_mock_snap(link_x=120, link_y=93))
-    assert step.reason == "room51_push_north"
-
-    # 8. Scroll transition
-    step = room51_to_41_step(_mock_snap(transitioning=True))
-    assert step.reason == "room41_scroll"
-
-    # 9. Arrived in 0x41
-    step = room51_to_41_step(_mock_snap(screen=0x41))
-    assert step.reason == "room41_arrived"
+    assert heading(link_x=120, link_y=205) == ["UP"]  # approach the south aisle
+    assert heading(link_x=120, link_y=185) == ["LEFT"]  # into the west aisle
+    assert heading(link_x=96, link_y=160) == ["UP"]  # climb the west aisle
+    assert heading(link_x=96, link_y=141) == ["RIGHT"]  # cross the centre aisle
+    assert heading(link_x=128, link_y=120) == ["UP"]  # climb the east aisle
+    assert heading(link_x=128, link_y=93) == ["LEFT"]  # align on the north door
+    assert heading(link_x=120, link_y=93) == ["UP"]  # push through
+    assert heading(transitioning=True) == ["UP"]  # hold through the scroll
+    assert heading(screen=0x41) == []  # arrived
 
 
 def test_room51_dump_evidence() -> None:

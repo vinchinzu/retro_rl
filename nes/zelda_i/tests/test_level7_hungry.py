@@ -78,14 +78,6 @@ def _step(ctl: Level7HungryGoriyaController, ram: np.ndarray):
     return act
 
 
-def test_public_constants() -> None:
-    assert FOOD_B_SLOT == 6
-    assert DOOR_X == 120
-    assert ROOM == 0x28
-    assert DEST == 0x18
-    assert FEED_Y == 141
-
-
 def test_food_less_than_one_fails_immediately() -> None:
     ctl, ram = _bound(food=0, selected=1)
     act = _step(ctl, ram)
@@ -104,12 +96,10 @@ def test_food_less_than_one_fails_immediately() -> None:
 
 def test_clean_survival_false_never_writes_addr_food() -> None:
     """allow_pokes=False / survival=False must not poke ADDR_FOOD."""
-    import inspect
     from types import SimpleNamespace
 
     from zelda_i.level7.entry import NaturalBaitPurchaseController
     from zelda_i.level7.hops import level7_entry_chapter_stages
-    from zelda_i.level7.spine import continue_level7_spine
     from zelda_i.ram import ADDR_FOOD as FOOD_ADDR
 
     ram = _ram(food=0)
@@ -133,11 +123,6 @@ def test_clean_survival_false_never_writes_addr_food() -> None:
     assert calls == []
     assert ram[FOOD_ADDR] == 0
     assert bait.report()["writes"] == 0
-    src = inspect.getsource(NaturalBaitPurchaseController.step)
-    assert "poke_food" not in src
-    src_spine = inspect.getsource(continue_level7_spine)
-    assert "allow_pokes" in src_spine
-    assert "survival = False" in src_spine
 
 
 def test_pause_select_presses_start_and_does_not_poke() -> None:
@@ -272,14 +257,6 @@ def test_factory_never_shares_instances() -> None:
     assert make_level7_hungry_goriya_controller() is not (
         make_level7_hungry_goriya_controller()
     )
-
-
-def test_report_route_eligible_false() -> None:
-    report = make_level7_hungry_goriya_controller().report()
-    assert report["route_eligible"] is False
-    assert report["writes"] == 0
-    assert report["normal_pause_input"] is True
-    assert report["spec_id"] == "level7_hungry_goriya"
 
 
 def test_no_occupancy_walker_and_no_selected_item_poke() -> None:

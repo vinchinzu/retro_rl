@@ -9,41 +9,30 @@ from __future__ import annotations
 
 import ast
 
-from zelda_i.dungeon.bomb_wall import BombWallController
-from zelda_i.level7.cellar import DEST_ROOM
-from zelda_i.level7.graph import LEVEL7_ROOM_BY_ID, PRE_BOSS
+from retro_harness.controls import pressed_nes_buttons
 from zelda_i.level7.pre_boss import (
-    L7_ROOM29_EAST_APPROACH,
-    L7_ROOM29_EAST_BOMB,
     make_room29_east_bomb_controller,
 )
-from zelda_i.level7.stairs import AQUAMENTUS_ROM
+from zelda_i.ram import PLAY_MODE, read_snapshot
+from zelda_i.tests.ram_helpers import make_ram
 
 
-def test_wall_geometry_matches_probe() -> None:
-    assert DEST_ROOM == 0x29
-    assert LEVEL7_ROOM_BY_ID[PRE_BOSS].ram_id == DEST_ROOM
-    assert AQUAMENTUS_ROM == 0x2A
-    assert L7_ROOM29_EAST_BOMB.room == DEST_ROOM == 0x29
-    assert L7_ROOM29_EAST_BOMB.stand == (208, 141)
-    assert L7_ROOM29_EAST_BOMB.face == "RIGHT"
-    assert L7_ROOM29_EAST_BOMB.opens_to == AQUAMENTUS_ROM == 0x2A
-    assert L7_ROOM29_EAST_APPROACH == ((96, 189), (208, 189), (208, 141))
-
-
-def test_factory_returns_configured_bomb_wall_controller() -> None:
+def test_factory_walks_the_south_band_then_faces_the_east_wall() -> None:
+    """The factory's controller walks (96,189) -> (208,189) -> (208,141)
+    and faces RIGHT at the stand: the measured approach, not the centre."""
     ctl = make_room29_east_bomb_controller()
-    assert isinstance(ctl, BombWallController)
-    assert ctl.level == 7
-    assert ctl.wall is L7_ROOM29_EAST_BOMB
-    assert ctl.wall.room == 0x29
-    assert ctl.wall.opens_to == 0x2A
-    assert ctl.stand == (208, 141)
-    assert ctl.face == "RIGHT"
-    assert ctl.approach_waypoints == L7_ROOM29_EAST_APPROACH
-    assert ctl.approach_waypoints[0] == (96, 189)
-    assert ctl.approach_tol == 4
-    assert ctl.select_item == 1
+
+    def press(x: int, y: int) -> list[str]:
+        ram = make_ram(
+            {"mode": PLAY_MODE, "level": 7, "screen": 0x29, "bombs": 4}, x=x, y=y
+        )
+        # A waypoint hand-off spends one idle frame; the second step walks.
+        ctl.step(read_snapshot(ram))
+        return pressed_nes_buttons(list(ctl.step(read_snapshot(ram)).action))
+
+    assert press(96, 189) == ["RIGHT"]
+    assert press(208, 189) == ["UP"]
+    assert press(208, 141) == ["RIGHT"]
 
 
 def test_factory_never_shares_instances() -> None:

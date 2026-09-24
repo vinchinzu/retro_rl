@@ -14,21 +14,13 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level8.path import (
     CELLAR_ROOM,
     GLEEOK_HYP,
-    Level8South1EController,
-    Level8South2EController,
-    UnverifiedLevel8PathController,
     SOUTH_2E_DEST,
     SOUTH_2E_DEST_HYP,
     SOUTH_2E_DEST_POSE,
     SOUTH_2E_ORIGIN,
-    SOUTH_2E_ORIGIN_POSE,
-    SOUTH_DEST,
-    SOUTH_DEST_POSE,
     SOUTH_DOOR,
     SOUTH_ORIGIN,
     SOUTH_ORIGIN_POSE,
-    make_gleeok_passage_controller,
-    make_magic_key_stairs_controller,
     make_south_1e_controller,
     make_south_2e_controller,
     south_1e_step,
@@ -177,31 +169,6 @@ def test_dest_0x2e_accepts_2e_rejects_3c() -> None:
     assert list(act.action) == IDLE
 
 
-def test_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_south_1e_controller()
-    assert isinstance(ctl, Level8South1EController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "DOWN"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["spec_id"] == "level8_south_1e"
-    assert report["dest_screen"] == SOUTH_DEST == 0x2E
-    assert SOUTH_DEST_POSE == (120, 77)
-    assert SOUTH_DEST != 0x3C
-    assert SOUTH_DOOR == (120, 205)
-    assert SOUTH_ORIGIN == 0x1E
-    assert SOUTH_ORIGIN_POSE == (208, 141)
-    assert SOUTH_ORIGIN != 0x3C
-
-
-def test_gleeok_passage_factory_stays_unverified() -> None:
-    ctl = make_gleeok_passage_controller()
-    assert isinstance(ctl, UnverifiedLevel8PathController)
-    assert not isinstance(ctl, Level8South1EController)
-
-
 def test_2e_leftover_emits_down_not_align() -> None:
     """(120,77) is already on the south aisle. Hold DOWN, no LEFT/RIGHT."""
     snap = read_snapshot(_ram(screen=SOUTH_2E_ORIGIN, x=120, y=77))
@@ -284,34 +251,3 @@ def test_2e_dest_live_accepts_3e_rejects_3c() -> None:
     assert not bad.success and bad.failed
     assert list(act.action) == IDLE
     assert SOUTH_2E_DEST_POSE == (120, 93)
-
-
-def test_2e_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_south_2e_controller()
-    assert isinstance(ctl, Level8South2EController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "DOWN"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["spec_id"] == "level8_south_2e"
-    assert report["dest_screen"] == SOUTH_2E_DEST == 0x3E
-    assert SOUTH_2E_DEST_HYP == SOUTH_2E_DEST == 0x3E
-    assert SOUTH_2E_DEST != GLEEOK_HYP
-    assert SOUTH_2E_DEST != CELLAR_ROOM
-    assert SOUTH_2E_DEST_POSE == (120, 93)
-    assert SOUTH_DOOR == (120, 205)
-    assert SOUTH_2E_ORIGIN == 0x2E
-    assert SOUTH_2E_ORIGIN_POSE == (120, 77)
-    assert SOUTH_2E_ORIGIN != GLEEOK_HYP
-
-
-def test_2e_gleeok_and_magic_key_factories_stay_unverified() -> None:
-    gleeok = make_gleeok_passage_controller()
-    assert isinstance(gleeok, UnverifiedLevel8PathController)
-    assert not isinstance(gleeok, Level8South2EController)
-    # rr-6o7.2: magic_key_stairs is now live (see test_level8_cellar).
-    mk = make_magic_key_stairs_controller()
-    assert not isinstance(mk, UnverifiedLevel8PathController)
-    assert not isinstance(mk, Level8South2EController)

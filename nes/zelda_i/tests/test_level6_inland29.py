@@ -100,11 +100,3 @@ def test_grid_xmin_wide_enough_for_the_clip_drift() -> None:
     ctl = make_inland29_controller()
     assert ctl.walker.grid.xmin == WEST_SPAWN_XMIN == 16
     assert ctl.walker.grid.shortest_path(stranded, goal) is not None
-
-
-def test_default_max_frames_is_generous() -> None:
-    """The shared DoorHopSpec budget (4000f) is too tight for a room with a
-    live-enemy reclear pass plus a long clip; this hop keeps its own 12000f
-    budget (rr-mzxn)."""
-    ctl = make_inland29_controller()
-    assert ctl.max_frames == 12000

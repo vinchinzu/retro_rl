@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from retro_harness.controls import pressed_nes_buttons
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BombWallPhase
 from zelda_i.dungeon.door_hop import door_band_goal
@@ -488,7 +489,7 @@ def test_clear_5c_conserves_bombs_for_manhandla() -> None:
     _plant_darknut(ram, slot=1, x=96, y=141, facing=2)
     ctl = Level3Clear5cController()
     act = ctl.step(read_snapshot(ram))
-    assert act.reason != "place_bomb"
+    assert "B" not in pressed_nes_buttons(list(act.action))
 
 
 def test_clear_5c_does_not_chase_north_onto_diamonds() -> None:
@@ -520,6 +521,5 @@ def test_clear_5c_avoids_direct_shield_slash() -> None:
     _plant_darknut(ram, slot=1, x=90, y=141, facing=2)  # facing 2 = LEFT (towards Link)
     ctl = Level3Clear5cController()
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "flank"
-    assert act.reason != "sword_slash"
+    assert pressed_nes_buttons(list(act.action)) in (["UP"], ["DOWN"])
 

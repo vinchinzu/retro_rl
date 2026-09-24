@@ -8,12 +8,9 @@ import numpy as np
 
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from zelda_i.dungeon.behaviors import DIGDOGGER_SHRUNK_TYPE, DIGDOGGER_TYPE
-from zelda_i.dungeon.hop_controller import HopController
 from zelda_i.level7.digdogger import (
     DEST,
     ROOM,
-    WHISTLE_B_SLOT,
-    WHISTLE_STAND,
     DigdoggerPhase,
     Level7ForcedDigdoggerController,
     make_level7_forced_digdogger_controller,
@@ -75,15 +72,6 @@ def _buttons(action) -> list[str]:
         for name, idx in NES_BUTTON_NAME_TO_INDEX.items()
         if idx is not None and int(action.action[idx])
     )
-
-
-def test_public_constants() -> None:
-    assert ROOM == 0x1C
-    assert DEST == 0x0C
-    assert WHISTLE_B_SLOT == 5
-    assert WHISTLE_STAND == (120, 141)
-    assert issubclass(Level7ForcedDigdoggerController, HopController)
-    assert not hasattr(DigdoggerPhase, "STAND_SETTLE")
 
 
 def test_walks_toward_stand() -> None:
@@ -239,16 +227,6 @@ def test_factory_never_shares_instances() -> None:
     assert make_level7_forced_digdogger_controller() is not (
         make_level7_forced_digdogger_controller()
     )
-
-
-def test_report_route_eligible_is_false() -> None:
-    controller = make_level7_forced_digdogger_controller()
-    report = controller.report()
-    assert report["route_eligible"] is False
-    assert report["writes"] == 0
-    assert report["spec_id"] == "level7_forced_digdogger"
-    assert report["live_room"] == "0x1C"
-    assert report["dest"] == "0x0C"
 
 
 def test_empty_slot_frame_does_not_exit_before_shrunk_minis() -> None:

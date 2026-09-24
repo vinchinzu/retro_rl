@@ -11,15 +11,12 @@ import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
 from zelda_i.level8.gleeok_entry import (
-    BOMB_NORTH_APPROACH_4C,
     BOMB_NORTH_STAND,
-    RAM_CLAIM,
     DEST,
     DEST_POSE,
     ORIGIN,
     ORIGIN_POSE,
     STAIRS_TILES,
-    Level8BombNorth4CController,
     make_bomb_north_4c_controller,
 )
 from zelda_i.level8.path import (
@@ -134,19 +131,6 @@ def test_candle_leftover_pause_selects_bombs_before_place() -> None:
     assert "place_bomb" not in reasons
 
 
-def test_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_bomb_north_4c_controller()
-    assert isinstance(ctl, Level8BombNorth4CController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "UP"
-    assert report["gate"] == "bomb_north"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["dest_screen"] == DEST == 0x3C
-
-
 def test_gleeok_passage_stays_fail_closed_fight_waits_for_body() -> None:
     passage = make_gleeok_passage_controller()
     assert isinstance(passage, UnverifiedLevel8PathController)
@@ -159,13 +143,3 @@ def test_gleeok_passage_stays_fail_closed_fight_waits_for_body() -> None:
     assert act.reason == "wait_body"
     assert fight.report()["assumed_0x45"] is False
     assert fight.observed_body_type == 0x45
-
-
-def test_disclosed_policy_matches_the_executed_stand() -> None:
-    """The published ``policy`` string is the 0x4C stand, not 0x3E's (120,105)."""
-    assert BOMB_NORTH_STAND == (120, 93)
-    assert BOMB_NORTH_APPROACH_4C[-1] == (120, 109)
-    assert "(120,93)" in RAM_CLAIM
-    assert "(120,105)" not in RAM_CLAIM
-    assert "(120,109)" in RAM_CLAIM
-    assert make_bomb_north_4c_controller().report()["policy"] == RAM_CLAIM

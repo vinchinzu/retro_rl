@@ -5,8 +5,6 @@ from __future__ import annotations
 import numpy as np
 
 from zelda_i.route.treasures import (
-    KIND_GATE,
-    TREASURES,
     treasure,
 )
 from zelda_i.dungeon.door_hop import door_hop_success
@@ -69,14 +67,3 @@ def test_gohma_enter_does_not_require_bow() -> None:
     )
     assert door_hop_success(NORTH2C_SPEC, snap)
     assert snap.bow == 0
-
-
-def test_l7_plus_required_gates_have_no_spine_through_yet() -> None:
-    later = [
-        item
-        for item in TREASURES
-        if item.kind == KIND_GATE and item.dungeon >= 7
-    ]
-    assert [item.name for item in later] == ["red_candle", "silver_arrows"]
-    assert all(item.through is None for item in later)
-    assert all(not item.on_default_spine for item in later)

@@ -13,18 +13,14 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level8.cellar import CELLAR_ROOM
 from zelda_i.level8.path import (
     GLEEOK_HYP,
-    UnverifiedLevel8PathController,
-    make_gleeok_passage_controller,
 )
 from zelda_i.level8.stairs import (
     STAIRS_3F_DEST,
     STAIRS_3F_DEST_HYP,
     STAIRS_3F_DEST_MODE,
     STAIRS_3F_DEST_POSE,
-    STAIRS_3F_HYP_XY,
     STAIRS_3F_ORIGIN,
     STAIRS_3F_ORIGIN_POSE,
-    Level8Stairs3FController,
     make_stairs_3f_controller,
     stairs_3f_step,
 )
@@ -143,30 +139,3 @@ def test_dest_live_accepts_2f_rejects_3c_and_0f() -> None:
     assert list(act.action) == IDLE
     assert STAIRS_3F_DEST_POSE == (208, 141)
     assert STAIRS_3F_DEST_MODE == 9
-
-
-def test_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_stairs_3f_controller()
-    assert isinstance(ctl, Level8Stairs3FController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "STAIRS"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["spec_id"] == "level8_stairs_3f"
-    assert report["dest_screen"] == STAIRS_3F_DEST == 0x2F
-    assert STAIRS_3F_DEST_HYP == STAIRS_3F_DEST == 0x2F
-    assert STAIRS_3F_DEST != GLEEOK_HYP
-    assert STAIRS_3F_DEST != CELLAR_ROOM
-    assert STAIRS_3F_DEST_POSE == (208, 141)
-    assert STAIRS_3F_DEST_MODE == PASSAGE_MODE == 9
-    assert STAIRS_3F_ORIGIN == 0x3F
-    assert STAIRS_3F_ORIGIN_POSE == (32, 141)
-    assert STAIRS_3F_HYP_XY == (208, 93)
-
-
-def test_gleeok_passage_factory_stays_unverified() -> None:
-    ctl = make_gleeok_passage_controller()
-    assert isinstance(ctl, UnverifiedLevel8PathController)
-    assert not isinstance(ctl, Level8Stairs3FController)

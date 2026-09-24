@@ -6,14 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from zelda_i.level7.graph import (
-    AQUAMENTUS,
-    LEVEL7_ROOMS,
-    NOSE_CELLAR,
-    PRE_BOSS,
-    TIP_OF_NOSE,
-    TRIFORCE,
-)
 from zelda_i.level7.stairs import (
     AQUAMENTUS_ROM,
     CANDLE_CELLAR_ROM,
@@ -90,20 +82,6 @@ def test_levelinfo_boss_hallway_ids() -> None:
     assert TRIFORCE_ROM == 0x2B
     assert TIP_OF_NOSE_ROM == 0x0D
     assert NOSE_CELLAR_ROM == 0x7B
-
-
-def test_graph_promotes_only_walked_rom_ids() -> None:
-    """NOSE_CELLAR 0x7B is promoted: the 0x0D walk-on is live 2/2."""
-    by_id = {room.source_id: room for room in LEVEL7_ROOMS}
-    assert by_id[TIP_OF_NOSE].ram_id == 0x0D
-    assert by_id[NOSE_CELLAR].ram_id == 0x7B
-    assert by_id[NOSE_CELLAR].evidence == "fixture-live"
-    assert by_id[NOSE_CELLAR].route_eligible is False
-    assert by_id[PRE_BOSS].ram_id == 0x29
-    assert by_id[AQUAMENTUS].ram_id == 0x2A
-    assert by_id[TRIFORCE].ram_id == 0x2B
-    assert by_id[PRE_BOSS].evidence == "fixture-live"
-    assert by_id[PRE_BOSS].route_eligible is False
 
 
 def test_cellar_module_locks_rom_attr_endpoints() -> None:

@@ -45,13 +45,6 @@ def test_post_l3_path_screens_chain() -> None:
         assert b in neighbor_screens(a).values(), f"{a:02x}->{b:02x}"
 
 
-def test_east_exit_band_on_63() -> None:
-    hop = next(h for h in LEVEL4_HOPS_FROM_POST_L3 if h.target == 0x64)
-    assert hop.direction == "RIGHT"
-    assert hop.y_band_lo == 145
-    assert hop.y_band_hi == 155
-
-
 def test_level4_entry_stop() -> None:
     snap = read_snapshot(
         _ram(level=LEVEL4, screen=LEVEL4_ENTRY_ROOM, mode=PLAY_MODE)

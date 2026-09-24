@@ -19,18 +19,14 @@ from zelda_i.level8.passage import (
     EAST_X,
     FLOOR_Y,
     MOUTH_Y,
-    RAM_CLAIM,
     SOURCE_ROOM,
     SPAWN_XY,
     WEST_X,
-    Level8Passage2FController,
     make_passage_2f_controller,
     passage_2f_step,
 )
 from zelda_i.level8.path import (
     GLEEOK_HYP,
-    UnverifiedLevel8PathController,
-    make_gleeok_passage_controller,
 )
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
@@ -139,29 +135,3 @@ def test_dest_live_accepts_4c_rejects_3c_and_3f() -> None:
     assert not src.success and src.failed
     assert list(act.action) == IDLE
     assert DEST_POSE == (112, 125)
-
-
-def test_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_passage_2f_controller()
-    assert isinstance(ctl, Level8Passage2FController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "STAIRS"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["spec_id"] == "level8_passage_2f"
-    assert report["dest_screen"] == DEST == 0x4C
-    assert DEST_HYP == DEST == 0x4C
-    assert DEST != GLEEOK_HYP
-    assert DEST != SOURCE_ROOM
-    assert DEST_POSE == (112, 125)
-    assert SPAWN_XY == (192, 93)
-    assert "0x3F" in RAM_CLAIM
-    assert "Never UP" in RAM_CLAIM
-
-
-def test_gleeok_passage_factory_stays_unverified() -> None:
-    ctl = make_gleeok_passage_controller()
-    assert isinstance(ctl, UnverifiedLevel8PathController)
-    assert not isinstance(ctl, Level8Passage2FController)

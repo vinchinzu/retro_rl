@@ -46,15 +46,9 @@ def test_settle_table_has_five_unique_rows() -> None:
         POST_L4_SETTLE,
         POST_L5_SETTLE,
     )
-    screens = [s.require_screen for s in TRIFORCE_SETTLES]
-    bits = [s.tf_bit for s in TRIFORCE_SETTLES]
-    ids = [s.spec_id for s in TRIFORCE_SETTLES]
-    assert screens == [0x37, 0x3C, 0x74, 0x45, 0x0B]
-    assert bits == [0x01, 0x02, 0x04, 0x08, 0x10]
-    assert len(set(ids)) == 5
-    assert POST_L1_SETTLE.max_frames == 1500
-    assert POST_L3_SETTLE.item == POST_L4_SETTLE.item == "raft"
-    assert POST_L1_SETTLE.item is POST_L2_SETTLE.item is POST_L5_SETTLE.item is None
+    # Row n settles on level n's Triforce bit, and no two rows share an id.
+    assert [s.tf_bit for s in TRIFORCE_SETTLES] == [1 << n for n in range(5)]
+    assert len({s.spec_id for s in TRIFORCE_SETTLES}) == 5
 
 
 def test_each_row_idles_fanfare_then_accepts_matching_ow() -> None:

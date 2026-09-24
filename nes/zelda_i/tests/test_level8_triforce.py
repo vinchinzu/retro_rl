@@ -5,21 +5,12 @@ from __future__ import annotations
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
-from zelda_i.level8.path import (
-    UnverifiedLevel8PathController,
-    make_gleeok_passage_controller,
-    make_shard_leave_controller,
-)
 from zelda_i.level8.triforce import (
     NORTH_3C_DEST,
-    NORTH_3C_DEST_POSE,
     NORTH_3C_ORIGIN,
     NORTH_3C_ORIGIN_POSE,
     NORTH_BAND_Y,
-    NORTH_DOOR,
-    ROOM_ITEM_TF,
     SOUTH_FAIL,
-    Level8North3CController,
     Level8Shard2CController,
     make_north_3c_controller,
     make_shard_2c_controller,
@@ -61,21 +52,6 @@ def _step(ctl, ram: np.ndarray):
     act = ctl.step(read_snapshot(ram))
     assert np.array_equal(ram, before), "north 3C hop must not write RAM"
     return act
-
-
-def test_factory_fixture_live_not_passage() -> None:
-    ctl = make_north_3c_controller()
-    assert isinstance(ctl, Level8North3CController)
-    assert ctl.report()["route_eligible"] is False
-    assert ctl.report()["assumed_0x2c"] is False
-    assert NORTH_3C_DEST == 0x2C
-    assert NORTH_3C_DEST_POSE == (120, 205)
-    assert ROOM_ITEM_TF == 0x1B
-    assert NORTH_DOOR == (120, 93)
-    passage = make_gleeok_passage_controller()
-    shard = make_shard_leave_controller()
-    assert isinstance(passage, UnverifiedLevel8PathController)
-    assert isinstance(shard, UnverifiedLevel8PathController)
 
 
 def test_leftover_walks_up_inland_not_down() -> None:

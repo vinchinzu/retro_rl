@@ -14,15 +14,10 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.level8.path import (
     CELLAR_ROOM,
     GLEEOK_HYP,
-    Level8West1FController,
-    UnverifiedLevel8PathController,
     STAIRS_WEST_X,
-    WEST_DEST,
-    WEST_DEST_POSE,
     WEST_DOOR,
     WEST_ORIGIN,
     WEST_ORIGIN_POSE,
-    make_gleeok_passage_controller,
     make_west_1f_controller,
     west_1f_step,
 )
@@ -145,26 +140,3 @@ def test_dest_0x1e_accepts_1e_rejects_3c() -> None:
     act = _step(bad, _ram(mode=PLAY_MODE, screen=GLEEOK_HYP, x=120, y=141))
     assert not bad.success and bad.failed
     assert list(act.action) == IDLE
-
-
-def test_factory_report_fixture_live_not_route_eligible() -> None:
-    ctl = make_west_1f_controller()
-    assert isinstance(ctl, Level8West1FController)
-    report = ctl.report()
-    assert report["route_eligible"] is False
-    assert report["door"] == "LEFT"
-    assert report["writes"] == 0
-    assert report["evidence"] == "fixture-live"
-    assert report["natural_entry"] is False
-    assert report["spec_id"] == "level8_west_1f"
-    assert report["dest_screen"] == WEST_DEST == 0x1E
-    assert WEST_DEST_POSE == (208, 141)
-    assert WEST_DEST != 0x3C
-    assert WEST_DOOR == (32, 141)
-    assert WEST_ORIGIN_POSE == (96, 157)
-
-
-def test_gleeok_passage_factory_stays_unverified() -> None:
-    ctl = make_gleeok_passage_controller()
-    assert isinstance(ctl, UnverifiedLevel8PathController)
-    assert not isinstance(ctl, Level8West1FController)

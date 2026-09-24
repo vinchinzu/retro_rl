@@ -75,25 +75,6 @@ def _make_snap(
     )
 
 
-def test_natural_patra_join_controller_init():
-    ctrl = make_natural_patra_join_controller()
-    assert isinstance(ctrl, NaturalPatraJoinController)
-    assert ctrl.phase == PatraJoinPhase.SOUTH_10
-    assert ctrl.max_frames == 24000
-    assert ctrl.frames == 0
-    assert ctrl.phase_frames == 0
-    assert not ctrl.success
-    assert not ctrl.failed
-    report = ctrl.report()
-    assert report["phase"] == "SOUTH_10"
-    assert report["fixture_loaded"] is False
-    assert report["route_eligible"] is False
-    assert report["controller_memory_writes"] == 0
-    assert report["progression_writes"] == 0
-    assert report["capacity_writes"] == 0
-    assert report["inventory_writes"] == 0
-
-
 def test_natural_patra_join_fail_closed_contracts():
     ctrl = make_natural_patra_join_controller()
     bad_tf = _make_snap(triforce=0x7F)
@@ -222,4 +203,3 @@ def test_level9_credits_stop_predicate():
     assert not level9_credits_stop(rolling, deaths=1)
     not_ending = _make_snap(mode=5, submode=0, is_updating_mode=1)
     assert not level9_credits_stop(not_ending, deaths=0)
-

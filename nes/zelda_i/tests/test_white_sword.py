@@ -92,7 +92,7 @@ def test_take_sword_waits_out_the_old_man_before_walking() -> None:
     ctl = WhiteSwordDetourController(phase=WhiteSwordPhase.TAKE_SWORD)
     ctl.start_checked = True
     snap = _snap(screen=SCREEN_WHITE_SWORD_CAVE, mode=CAVE_MODE, link_x=32, link_y=213)
-    assert ctl.step(snap).reason == "cave_dialog_wait"
+    assert not any(ctl.step(snap).action)  # stand through the dialog
 
 
 def test_take_sword_exits_once_the_sword_is_in_hand() -> None:

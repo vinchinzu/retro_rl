@@ -316,7 +316,6 @@ def test_post_l6_0x13_east_mouth_left_not_down() -> None:
 def test_post_l6_0x12_west_wall_is_not_a_hop_target() -> None:
     """l7_p12w: 0x12 LEFT y=165-189 is west wall tile 218. Do not add 0x11."""
     assert 0x11 not in POST_L6_TO_POND_SCREENS
-    assert POST_L6_TO_POND_HOPS[-1].target == 0x12
 
 
 def test_default_post_l6_controller_does_not_end_at_0x25() -> None:

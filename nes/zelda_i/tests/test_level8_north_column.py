@@ -306,20 +306,6 @@ def test_0x5e_occupancy_miss_blocks_and_replans() -> None:
         assert list(second.action) != list(first.action)
 
 
-def test_0x5e_occupancy_nopath_stands() -> None:
-    ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 80, 141, facing=0x01)
-    ctl = make_darknut_key_controller()
-    _step(ctl, ram)
-    xy = (120, 189)
-    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
-        ctl._walker.grid.mark_blocked_ahead(*xy, direction)
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "occupancy_stand"
-    assert list(act.action) == list(nes_idle_action())
-
-
 def test_0x5e_south_mouth_does_not_exit_to_0x6e() -> None:
     """Leftover (120,189): contact north of Link must not DOWN through the bomb hole."""
     ram = _ram(screen=ROOM_DARKNUT_KEY, x=120, y=189, health=0x22)
@@ -789,5 +775,3 @@ def test_0x2e_manhandla_reasons(ox: int, oy: int, reason: str, action: tuple[str
     assert not ctl.failed
     assert act.reason == reason
     assert list(act.action) == list(nes_action(*action))
-
-

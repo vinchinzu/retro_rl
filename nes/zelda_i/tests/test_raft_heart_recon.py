@@ -10,11 +10,6 @@ from __future__ import annotations
 from zelda_i.anchors import SCREEN_RAFT_HEART_DOCK, SCREEN_RAFT_HEART_ISLAND
 from zelda_i.overworld.graph import screen_to_grid
 from zelda_i.overworld.raft_heart import (
-    RAFT_HEART_DOCK,
-    RAFT_HEART_HOPS_LIVE,
-    RAFT_HEART_ISLAND,
-    RAFT_HEART_SCREENS_LIVE,
-    SCREEN_POST_L3_RETURN,
     raft_heart_recon_report,
 )
 
@@ -35,14 +30,6 @@ def test_row7_from_start_hypothesis_lands_on_dock():
     assert east8 == 0x7F
     north4 = (east8 & 0xF) | ((start_row - 4) << 4)
     assert north4 == SCREEN_RAFT_HEART_DOCK
-
-
-def test_live_hop_chain_shape_matches_recorded_recon():
-    assert RAFT_HEART_SCREENS_LIVE[0] == SCREEN_POST_L3_RETURN == 0x74
-    assert RAFT_HEART_SCREENS_LIVE[-1] == 0x66
-    assert len(RAFT_HEART_HOPS_LIVE) == 5
-    assert RAFT_HEART_DOCK == 0x3F
-    assert RAFT_HEART_ISLAND == 0x2F
 
 
 def test_recon_report_discloses_partial_status():

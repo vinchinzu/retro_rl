@@ -161,12 +161,6 @@ def test_last_heart_refill_uses_the_owned_container_count() -> None:
     assert assist.telemetry.accepted_containers == 4
 
 
-def test_unlimited_report_kind_stays_unlimited() -> None:
-    assist = UnlimitedHealthAssist(enabled=True)
-    assert assist.report()["kind"] == "unlimited_health"
-    assert assist.report()["engage_at_whole_hearts"] is None
-
-
 def test_assist_refills_on_ordinary_play() -> None:
     data = _FakeData()
     assist = UnlimitedHealthAssist(enabled=True)

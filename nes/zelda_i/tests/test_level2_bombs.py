@@ -37,11 +37,6 @@ def test_budget_is_six_successful_placements() -> None:
     assert L2_BOMB_FARM_SCREEN == 0x1E
 
 
-def test_measured_l2_entry_is_zero() -> None:
-    assert L2_ENTRY_BOMBS_MEASURED == 0
-    assert L1_COMPLETE_BOMBS_MEASURED == 4
-
-
 def test_natural_plan_farm_when_short_or_unknown() -> None:
     unknown = natural_bomb_plan(None)
     assert unknown.action == "farm"

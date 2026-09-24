@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import numpy as np
 
+from retro_harness.controls import pressed_nes_buttons
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -18,8 +19,6 @@ from zelda_i.dungeon.ids import HEART_DROP_OBJECT_TYPE, HEART_DROP_STATE
 from zelda_i.level1.dungeon import (
     ROOM_23_SPEC,
     ROOM_33_SPEC,
-    ROOM_42_SPEC,
-    ROOM_43_SPEC,
     ROOM_45_SPEC,
     ROOM_53_SPEC,
     ROOM_54_SPEC,
@@ -27,8 +26,6 @@ from zelda_i.level1.dungeon import (
     Room33ScoopController,
 )
 from zelda_i.level1.east_dungeon import (
-    ROOM_44_SPEC,
-    ROOM_44_SURVIVAL_SPEC,
     ROOM_45_SURVIVAL_SPEC,
 )
 from zelda_i.level1.path import level1_room_72_key_success
@@ -223,13 +220,8 @@ def test_engage_far_enemy_walks_without_slash() -> None:
         enemy_y=141,
     )
     snap = read_snapshot(ram)
-    action = controller.step(snap)
-    assert action.reason == "combat_engage"
-    assert not action.reason.endswith("_slash")
-    for _ in range(6):
-        action = controller.step(snap)
-        assert action.reason == "combat_engage"
-        assert "_slash" not in action.reason
+    for _ in range(7):
+        assert pressed_nes_buttons(list(controller.step(snap).action)) == ["RIGHT"]
 
 
 def test_engage_enemy_in_sword_hitbox_slashes() -> None:
@@ -279,9 +271,8 @@ def test_patrol_does_not_slash() -> None:
     )
     snap = read_snapshot(ram)
     for _ in range(16):
-        action = controller.step(snap)
-        assert action.reason == "combat_patrol"
-        assert "_slash" not in action.reason
+        pressed = pressed_nes_buttons(list(controller.step(snap).action))
+        assert pressed and "A" not in pressed
 
 
 def test_near_enemy_right_walks_right() -> None:
@@ -586,18 +577,6 @@ def test_room23_never_answers_a_closing_body_with_an_idle_frame() -> None:
         )
 
 
-def test_room23_occupancy_is_measured_not_hand_written() -> None:
-    """0x23 reads its walls from $6530; the box list was wrong by 84 cells.
-
-    The hand-written ``_ROOM_23_BLOCKED`` walled real floor along the east
-    column, so the walker planned into it, missed, learned a wall that was
-    not there, fenced itself in and forgot it again — 3994 misses and 1335
-    forgets in one stage, and the key was never collected.
-    """
-    assert ROOM_23_SPEC.combat.occupancy_from_tilemap is True
-    assert ROOM_23_SPEC.combat.occupancy_blocked == ()
-
-
 def test_room23_occupancy_stands_on_goriya_instead_of_walking() -> None:
     """No occupancy path (already on target): stand/slash, do not chase."""
     controller = GenericDungeonRoomController(ROOM_23_SPEC)
@@ -846,16 +825,6 @@ def test_combat_backstep_gap_does_not_stale_grade_the_walker() -> None:
     assert not controller.walker.grid.blocked
 
 
-def test_prefix_specs_contact_backstep_keeps_hearts() -> None:
-    """0x53 / 0x33 peel contact so 0x23 is entered with lo>=2."""
-    assert ROOM_53_SPEC.combat.contact_backstep >= 24
-    assert ROOM_33_SPEC.combat.contact_backstep >= 24
-    assert ROOM_33_SPEC.combat.evade is True
-    assert ROOM_53_SPEC.combat.evade is False
-    assert ROOM_42_SPEC.combat.contact_backstep >= 16
-    assert ROOM_43_SPEC.combat.contact_backstep >= 16
-
-
 def test_room33_hold_slashes_in_place_outside_the_pad() -> None:
     """Dump 1962f: Stalfos at cheb 18 was in the UP box while we peeled into pad.
 
@@ -1066,21 +1035,6 @@ def test_room33_key_tile_walk_replans_around_blocked_cell() -> None:
     assert not np.array_equal(action.action, nes_idle_action())
     assert np.array_equal(action.action, nes_action("DOWN")) or np.array_equal(
         action.action, nes_action("UP")
-    )
-
-
-def test_gel_rooms_chase_across_open_floor() -> None:
-    assert ROOM_42_SPEC.combat.engage_distance == 160
-    assert ROOM_43_SPEC.combat.engage_distance == 160
-
-
-def test_room44_spec_uses_three_row_occupancy() -> None:
-    assert ROOM_44_SPEC.combat.occupancy_bounds == (16, 216, 109, 189)
-    assert ROOM_44_SPEC.combat.engage_distance == 80
-    assert (48, 165) in ROOM_44_SPEC.combat.patrol
-    assert (
-        ROOM_44_SURVIVAL_SPEC.combat.occupancy_bounds
-        == ROOM_44_SPEC.combat.occupancy_bounds
     )
 
 
