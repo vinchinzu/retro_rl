@@ -224,6 +224,22 @@ def _step_return_66(env, assist, total: list[int]) -> bool:
     return bool(ctl.success and snap.screen == ROOM_L5_GIBDO_66)
 
 
+def clear_gibdos_65_from_66(env, assist, total: list[int], hops: list[dict]) -> bool:
+    """0x65's Gibdos, entered from 0x66's west bomb hole: fight if the wave is live."""
+    from zelda_i.dungeon.engine import DoorRoute, RewardKind, RewardSpec
+    from zelda_i.level5.boss_path import _fight_if_live
+    from zelda_i.level5.dungeon import GIBDO_OBJECT_TYPE, ROOM_65_SPEC
+
+    spec = replace(
+        ROOM_65_SPEC,
+        spec_id="level5_whistle_65_from_66_gibdos",
+        source_room=ROOM_L5_GIBDO_66,
+        entry=DoorRoute("LEFT", ((208, 141),)),
+        reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    )
+    return _fight_if_live(env, assist, total, hops, spec, (GIBDO_OBJECT_TYPE,), "fight_65")
+
+
 def run_level5_whistle_suffix(env, *, assist, frame_base: int):
     """0x77 leftover → 0x66 bomb-west → 0x04 Recorder. Env-stepping, no pokes."""
     from zelda_i.ram import ADDR_WHISTLE, read_u8
@@ -239,6 +255,11 @@ def run_level5_whistle_suffix(env, *, assist, frame_base: int):
     if not bomb66.get("success"):
         return False, total[0], {"failed": "bomb_west_66", "hops": hops}
 
+    # bomb_west_from_65 walks a cleared room. Run 18 came in with 0x65's
+    # Gibdos alive: 12 hearts of knockbacks carried Link off the y=141
+    # stand to (32, 189), where LEFT held until the stage failed.
+    if not clear_gibdos_65_from_66(env, assist, total, hops):
+        return False, total[0], {"failed": "gibdos_65", "hops": hops}
     bomb65 = bomb_west_from_65(env, assist, total)
     hops.append({"hop": "bomb_west_65", "ok": bool(bomb65.get("success"))})
     if not bomb65.get("success"):
