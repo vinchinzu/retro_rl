@@ -34,19 +34,16 @@ def _pose(x: int, y: int, *, keys: int = 4) -> np.ndarray:
     return ram
 
 
-def test_leftover_and_nearby_stay_align_y_first() -> None:
-    leftover = make_room_40_key_controller()
-    leftover.phase = Key40Phase.ALIGN
-    act = leftover.step(read_snapshot(_pose(*ROOM_40_LEFTOVER_XY)))
-    assert leftover.phase is Key40Phase.ALIGN
-    assert act.reason == "align_DOWN"
-
-    for xy in ((130, 159), (142, 159)):
+def test_the_open_loop_maze_starts_only_on_the_anchor() -> None:
+    """The hold6 maze is open loop, so any start but the anchor walks it
+    wrong; off the anchor ALIGN keeps walking (a lattice route: the old
+    y-first press ran into the (160, 125) block from (158, 117))."""
+    for xy in (ROOM_40_LEFTOVER_XY, (130, 159), (142, 159), (158, 117)):
         ctrl = make_room_40_key_controller()
         ctrl.phase = Key40Phase.ALIGN
         act = ctrl.step(read_snapshot(_pose(*xy)))
-        assert ctrl.phase is Key40Phase.ALIGN
-        assert act.reason.startswith("align_")
+        assert ctrl.phase is Key40Phase.ALIGN, xy
+        assert act.reason.startswith("align_"), xy
 
 
 def test_exact_anchor_enters_path_next_frame() -> None:
