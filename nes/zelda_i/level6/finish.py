@@ -144,7 +144,7 @@ class _FinishHop(HopController):
 
 @dataclass
 class Level6HeartController(_FinishHop):
-    """Occupancy to room-center heart. Incoming containers +1, lo==hi."""
+    """Occupancy to room-center heart. Stops on incoming containers +1."""
 
     spec_id: str = "level6_heart_0x1c"
     room: int = LEVEL6_GOHMA_ROOM
@@ -159,12 +159,11 @@ class Level6HeartController(_FinishHop):
         )
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
+        # The container, not full hearts: only the Survival refill fills
+        # them, and a last-heart run stood on the taken heart 4000 frames.
         if self.incoming_containers is None:
             return False
-        return (
-            snap.heart_containers > self.incoming_containers
-            and snap.health_is_full
-        )
+        return snap.heart_containers > self.incoming_containers
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         left = self._leave_guard(snap)
@@ -334,10 +333,10 @@ def _play_1c(snap: ZeldaSnapshot) -> bool:
 
 
 def level6_heart_success(snap: ZeldaSnapshot) -> bool:
-    """Play 0x1C, heart +1 from 7, full, TF still 0x1F."""
+    """Play 0x1C, heart +1 from 7, TF still 0x1F (hearts need not be full)."""
     if not _play_1c(snap):
         return False
-    if snap.heart_containers < POST_HEART_CONTAINERS or not snap.health_is_full:
+    if snap.heart_containers < POST_HEART_CONTAINERS:
         return False
     return not gohma_live(snap)
 
@@ -348,7 +347,7 @@ def level6_north0c_success(snap: ZeldaSnapshot) -> bool:
         return False
     if snap.mode != PLAY_MODE or snap.transitioning or snap.screen != LEVEL6_TF_ROOM:
         return False
-    return snap.heart_containers >= POST_HEART_CONTAINERS and snap.health_is_full
+    return snap.heart_containers >= POST_HEART_CONTAINERS
 
 
 def level6_success(snap: ZeldaSnapshot) -> bool:

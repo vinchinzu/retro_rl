@@ -68,26 +68,25 @@ def test_heart_walks_up_from_south_mouth() -> None:
     assert ctl.incoming_containers == 7
 
 
-def test_heart_success_needs_container_and_full() -> None:
+def test_heart_success_is_the_container_not_full_hearts() -> None:
+    """Last-heart run 29 took the 0x1C heart (11 -> 12 containers) at 9 of
+    12 hearts and stood 4000 frames waiting for a full bar only the
+    Survival refill gives."""
     ram = _ram()
     assert not level6_heart_success(read_snapshot(ram))
-    ram[ADDR_HEALTH] = 0x77
+    ram[ADDR_HEALTH] = 0x75  # 8 containers, 6 whole hearts
     ram[ADDR_ROOM_ITEM_ID] = 0
     assert level6_heart_success(read_snapshot(ram))
     ram[ADDR_OBJ_TYPE + 1] = GOHMA_OBJECT_TYPE
     assert not level6_heart_success(read_snapshot(ram))
 
-
-def test_heart_arrives_on_plus_one_full() -> None:
-    ram = _ram()
     ctl = make_heart_controller()
+    ram = _ram()
     ctl.step(read_snapshot(ram))
-    ram[ADDR_HEALTH] = 0x77
-    ram[ADDR_LINK_X] = HEART_XY[0]
-    ram[ADDR_LINK_Y] = HEART_XY[1]
+    ram[ADDR_HEALTH] = 0x75
+    ram[ADDR_LINK_X], ram[ADDR_LINK_Y] = HEART_XY
     ctl.step(read_snapshot(ram))
-    assert ctl.success
-    assert not ctl.failed
+    assert ctl.success and not ctl.failed
 
 
 def test_heart_fails_if_gohma_live() -> None:

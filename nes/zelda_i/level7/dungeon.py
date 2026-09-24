@@ -172,7 +172,7 @@ def level7_complete_stop(
     incoming_heart_containers: int | None,
     spec: Level7StopSpec = LEVEL7_COMPLETE_STOP,
 ) -> bool:
-    """Settled L7 leave with shard, one natural heart, and full health."""
+    """Settled L7 leave with shard and one natural heart (any health)."""
     return bool(
         incoming_heart_containers is not None
         and _at_exact_stop(snap, spec)
@@ -180,7 +180,6 @@ def level7_complete_stop(
         and candle == RED_CANDLE
         and whistle >= 1
         and snap.heart_containers == incoming_heart_containers + 1
-        and snap.health_is_full
     )
 
 
