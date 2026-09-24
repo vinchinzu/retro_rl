@@ -212,6 +212,16 @@ def test_spine_retopup_l2_bomb_walls_retired() -> None:
     assert len(SPINE_BOMB_RETOPUP) == 0
 
 
+def test_spine_level3_has_no_bomb_topup() -> None:
+    """Natural Darknut drops retire L3 bomb top-ups (rr-doua)."""
+    import inspect
+    from zelda_i.spine.survival import _continue_level3_spine
+
+    src = inspect.getsource(_continue_level3_spine)
+    assert "topup_owned_bombs" not in src
+    assert "topup_owned_inventory" not in src
+
+
 def test_merge_inventory_assist_appends_writes() -> None:
     first = {
         "writes": [{"field": "bombs", "from": 0, "to": 16}],
@@ -261,7 +271,7 @@ def test_topup_owned_inventory_records_poke_on_run() -> None:
     assert report["poke_keys"] == 2
 
 
-def test_l3_boss_topup_preserves_carried_keys() -> None:
+def test_topup_owned_bombs_preserves_carried_keys() -> None:
     ram = np.zeros(0x800, dtype=np.uint8)
     ram[ADDR_BOMBS] = 8
     ram[ADDR_KEYS] = 4
@@ -277,7 +287,7 @@ def test_l3_boss_topup_preserves_carried_keys() -> None:
         get_ram=lambda: ram,
         unwrapped=SimpleNamespace(data=_Data(), em=None),
     )
-    run = SpineRun(through="level3", success=True, boot_frames=199)
+    run = SpineRun(through="level4", success=True, boot_frames=199)
     topup_owned_bombs(env, run)
     assert values["bombs"] == 16
     assert "keys" not in values
