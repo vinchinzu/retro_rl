@@ -78,6 +78,36 @@ POST_L8_TO_LEVEL9_SCREENS: tuple[int, ...] = path_screens_from_hops(
     0x6D, POST_L8_TO_LEVEL9_HOPS
 )
 
+# Post-L8 route via 0x4A bomb shop (rr-ps7.5) to purchase 4 bombs for Level 9.
+POST_L8_TO_BOMB_SHOP_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x5D, "UP", align_x=48),
+    ScreenHop(0x5C, "LEFT", align_y=132),
+    ScreenHop(0x5B, "LEFT", align_y=92),
+    ScreenHop(0x5A, "LEFT", align_y=93),
+    ScreenHop(0x59, "LEFT", align_y=140),
+    ScreenHop(0x49, "UP", align_x=112),
+    ScreenHop(0x4A, "RIGHT", align_y=141),
+)
+
+POST_L8_FROM_BOMB_SHOP_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x49, "LEFT", align_y=141),
+    ScreenHop(0x59, "DOWN", align_x=112),
+    ScreenHop(0x58, "LEFT", align_y=155),
+    ScreenHop(0x48, "UP", align_x=112),
+    ScreenHop(0x38, "UP", align_x=128),
+    ScreenHop(0x28, "UP", align_x=120),
+    ScreenHop(0x27, "LEFT", align_y=102),
+    ScreenHop(0x17, "UP", align_x=144),
+    ScreenHop(0x07, "UP", align_x=64),
+    ScreenHop(0x06, "LEFT", align_y=141),
+    ScreenHop(SCREEN_LEVEL9_ROCK_HYP, "LEFT", align_y=141),
+)
+
+POST_L8_VIA_BOMB_SHOP_HOPS: tuple[ScreenHop, ...] = (
+    *POST_L8_TO_BOMB_SHOP_HOPS,
+    *POST_L8_FROM_BOMB_SHOP_HOPS,
+)
+
 
 class FixtureEntryPhase(Enum):
     """Fixture-only phases for the disclosed 0x77 -> Level 9 entry trial."""
@@ -558,6 +588,8 @@ class Level9PostL8OverworldController(OverworldPathController):
     max_frames: int = 12_000
     reverse_maze_waypoints: tuple[tuple[int, int], ...] = REVERSE_5C_MAZE_WAYPOINTS
     reverse_maze_wp_index: int = 0
+    stop_screen: int = SCREEN_LEVEL9_ROCK_HYP
+    check_handoff: bool = True
     _handoff_checked: bool = field(default=False, init=False, repr=False)
     failed: bool = field(default=False, init=False, repr=False)
     blocked_reason: str = field(default="", init=False, repr=False)
@@ -579,7 +611,7 @@ class Level9PostL8OverworldController(OverworldPathController):
     def __post_init__(self) -> None:
         if not self.hops:
             self.hops = POST_L8_TO_LEVEL9_HOPS
-        if not self.handoff.complete():
+        if self.check_handoff and not self.handoff.complete():
             self.max_frames = 1
 
     def bind_env(self, env: Any) -> None:
@@ -607,13 +639,18 @@ class Level9PostL8OverworldController(OverworldPathController):
             and snap.level == 0
             and snap.mode == PLAY_MODE
             and not snap.transitioning
-            and snap.screen == SCREEN_LEVEL9_ROCK_HYP
+            and snap.screen == self.stop_screen
         )
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
         if self._at_stop(snap):
-            return self._finish("level9_spectacle_rock_reached")
-        return self._fail_now("post_l8_path_exhausted_off_0x05")
+            note = (
+                "level9_spectacle_rock_reached"
+                if self.stop_screen == SCREEN_LEVEL9_ROCK_HYP
+                else "level9_post_l8_overworld_reached"
+            )
+            return self._finish(note)
+        return self._fail_now(f"post_l8_path_exhausted_off_{self.stop_screen:#04x}")
 
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
@@ -673,6 +710,30 @@ class Level9PostL8OverworldController(OverworldPathController):
             # forever against a real wall a few pixels south of the (240,141)
             # arrival edge, never crossing into 0x58 at all.
             return self._swing("LEFT", "59_walk_left_0x58")
+
+        if snap.screen == 0x59 and hop.target == 0x49:
+            if abs(snap.link_x - 112) > 4:
+                btn = "LEFT" if snap.link_x > 112 else "RIGHT"
+                return self._swing(btn, "59_align_x112")
+            return self._swing("UP", "59_north_0x49")
+
+        if snap.screen == 0x49 and hop.target == 0x4A:
+            if abs(snap.link_y - 141) > 4:
+                btn = "UP" if snap.link_y > 141 else "DOWN"
+                return self._swing(btn, "49_align_y141")
+            return self._swing("RIGHT", "49_east_0x4a")
+
+        if snap.screen == 0x4A and hop.target == 0x49:
+            if abs(snap.link_y - 141) > 4:
+                btn = "UP" if snap.link_y > 141 else "DOWN"
+                return self._swing(btn, "4a_align_y141")
+            return self._swing("LEFT", "4a_west_0x49")
+
+        if snap.screen == 0x49 and hop.target == 0x59:
+            if abs(snap.link_x - 112) > 4:
+                btn = "LEFT" if snap.link_x > 112 else "RIGHT"
+                return self._swing(btn, "49_align_x112")
+            return self._swing("DOWN", "49_south_0x59")
 
         if snap.screen == 0x58 and hop.target == 0x48:
             # Arrival band y~141 has an obstacle blocking LEFT somewhere in
@@ -768,7 +829,7 @@ class Level9PostL8OverworldController(OverworldPathController):
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.failed or self.phase is PathNavPhase.FAILED:
             return FrameAction(nes_idle_action(), self.blocked_reason or "failed")
-        if not self._handoff_checked:
+        if self.check_handoff and not self._handoff_checked:
             mismatch = self.handoff.mismatch(snap)
             if mismatch is not None:
                 return self._fail_now(mismatch)

@@ -13,6 +13,7 @@ from zelda_i.level7.entry import (
     BAIT_SHOP_SCREEN_HYP,
     MEASURED_POST_L6_EXIT,
     POST_L6_TRIFORCE,
+    UNVERIFIED_BAIT_PLAN,
     NaturalBaitPurchaseController,
     SurvivalBaitPurchaseController,
     make_bait_purchase_controller,
@@ -292,14 +293,14 @@ def test_verified_handoff_without_hops_still_refuses() -> None:
 def test_bait_plan_fails_closed_without_60r_or_shop_geometry() -> None:
     assert BAIT_SHOP_SCREEN_HYP == 0x34
     ram = _ram(rupees=20, food=0)
-    ctl = make_bait_purchase_controller()
+    ctl = make_bait_purchase_controller(plan=UNVERIFIED_BAIT_PLAN)
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert ctl.failed
     assert act.reason == "bait_need_60_rupees"
     assert ctl.report()["writes"] == 0
     ram[ADDR_RUPEES] = BAIT_COST
-    ctl = make_bait_purchase_controller()
+    ctl = make_bait_purchase_controller(plan=UNVERIFIED_BAIT_PLAN)
     ctl.bind_env(_env(ram))
     act = ctl.step(read_snapshot(ram))
     assert act.reason == "bait_shop_geometry_unobserved"
@@ -346,7 +347,7 @@ def test_natural_bait_stays_fail_closed_and_survival_is_opt_in() -> None:
     survival = level7_entry_chapter_stages(survival=True)
     assert isinstance(dict((n, c) for n, c, _f in clean)["level7_bait_purchase"], NaturalBaitPurchaseController)
     assert isinstance(
-        dict((n, c) for n, c, _f in survival)["level7_bait_purchase"], SurvivalBaitPurchaseController
+        dict((n, c) for n, c, _f in survival)["level7_bait_purchase"], NaturalBaitPurchaseController
     )
     # Stage names are identical either way.
     assert [n for n, _c, _f in clean] == [n for n, _c, _f in survival]
@@ -368,7 +369,8 @@ def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
         "level7_pond_drain_entry",
     ]
     by_name = {n: c for n, c, _f in stages}
-    assert isinstance(by_name["level7_bait_purchase"], SurvivalBaitPurchaseController)
+    assert isinstance(by_name["level7_bait_purchase"], NaturalBaitPurchaseController)
+    assert not isinstance(by_name["level7_bait_purchase"], SurvivalBaitPurchaseController)
     pond = by_name["level7_pond_drain_entry"]
     assert not isinstance(pond, SurvivalBaitPurchaseController)
     from zelda_i.level7.pond import Level7PondDrainController

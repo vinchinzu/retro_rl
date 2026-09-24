@@ -111,6 +111,7 @@ def make_bomb_shop_controller(
     hops: tuple[ScreenHop, ...] = BOMB_SHOP_HOPS,
     restock_farm: bool = True,
     want: int | None = None,
+    resume_on_screen: bool = False,
 ) -> CaveShopBuyController:
     """0x37 (or leftover) -> 0x4A cave -> bombs mid pedestal (20R). No poke.
 
@@ -143,6 +144,7 @@ def make_bomb_shop_controller(
         kind, extra = BombRestockController, {"want": int(want), "min_headroom": 1}
     return kind(
         hops=hops,
+        resume_on_screen=resume_on_screen,
         enter_cave=True,
         door_x=BOMB_SHOP_CAVE_X,
         door_dir="UP",
@@ -224,19 +226,31 @@ def make_bomb_restock_controller(
 
 
 def bomb_restock_stages(
-    hops: tuple[ScreenHop, ...], tag: str, *, want: int
+    hops: tuple[ScreenHop, ...],
+    tag: str,
+    *,
+    want: int,
+    shop_screen: int = SHOP_E5_SCREEN,
 ) -> tuple[tuple[str, Any, int], ...]:
-    """Spine stages for a 0x44 bomb buy on a walk that crosses it: buy, exit.
+    """Spine stages for a bomb buy on a walk that crosses it: buy, exit.
 
-    ``hops`` is the whole walk; the buy walks it as far as 0x44. The buy
-    resumes from the screen Link is on (0x64 after a potion restock there),
-    and the walk after these stages should too: Link is on 0x44 after a
-    buy and still where he started after a skip.
+    ``hops`` is the whole walk; the buy walks it as far as ``shop_screen``
+    (0x44 by default, or 0x4A). The buy resumes from the screen Link is on,
+    and the walk after these stages should too: Link is on ``shop_screen``
+    after a buy and still where he started after a skip.
     """
     from zelda_i.overworld.gather_segments import CaveExitController
 
-    to_shop = hops[: [hop.target for hop in hops].index(SHOP_E5_SCREEN) + 1]
-    buy = make_bomb_restock_controller(hops=to_shop, want=want)
+    to_shop = hops[: [hop.target for hop in hops].index(shop_screen) + 1]
+    if shop_screen == BOMB_SHOP_SCREEN:
+        buy = make_bomb_shop_controller(
+            hops=to_shop,
+            restock_farm=False,
+            want=want,
+            resume_on_screen=True,
+        )
+    else:
+        buy = make_bomb_restock_controller(hops=to_shop, want=want)
     return (
         (f"bomb_restock_{tag}", buy, buy.max_frames),
         (f"exit_bomb_restock_{tag}", CaveExitController(clear=0), 600),

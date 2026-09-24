@@ -29,15 +29,24 @@ from zelda_i.overworld.locations import farm_at
 from zelda_i.overworld.rupee_farm import RupeeFarmController
 from zelda_i.ram import ADDR_ARROWS, ZeldaSnapshot
 
+from zelda_i.overworld.arrow_shop import (
+    ArrowRestockController,
+    arrow_restock_stages,
+    make_arrow_restock_controller,
+)
+
 __all__ = [
     "ARROW_SHOP_CAVE_X",
     "ARROW_SHOP_MAX_FRAMES",
     "ARROW_SHOP_PRICE",
     "ARROW_SHOP_SCREEN",
+    "ArrowRestockController",
     "ArrowShopNavPhase",
     "OverworldToArrowShopController",
+    "arrow_restock_stages",
     "level1_arrows_stages",
     "level1_arrows_success",
+    "make_arrow_restock_controller",
     "make_arrow_shop_controller",
 ]
 

@@ -58,11 +58,12 @@ by operator direction on 2026-08-23: bomb-count top-ups may be used at verified
 bomb gates through the assisted full-game clear while route experience and
 reusable skills are still being built and refactored.
 Bomb and key top-ups from power-on through L8 were **retired on 2026-09-24**
-(rr-doua). Between dungeons the spine buys 20R bomb packs when the carried
-count is short of the next dungeon's walls (`BombRestockController`: 0x4A
-before L2, 0x44 on the L3 → L4 and L7 → L8 walks), room drops cover the
-rest, and L1 takes 0x72's key so `backtrack44` needs no key write. Only
-the L9 chapter gates (`SPINE_L9_RETOPUP`) still write the bomb count.
+(rr-doua), and Level 9 bomb top-ups were **retired on 2026-09-24** (rr-ps7.5).
+Between dungeons the spine buys 20R bomb packs when the carried count is short
+of the next dungeon's walls (`BombRestockController`: 0x4A before L2, 0x44 on
+the L3 → L4 and L7 → L8 walks, and 0x4A on the post-L8 walk to Spectacle Rock),
+room drops cover the rest, and L1 takes 0x72's key so `backtrack44` needs no key
+write. `SPINE_L9_RETOPUP` is empty. Zero bomb count top-ups remain on the spine.
 Rupee-count top-ups (L7 Bait 60R, pre-l1 coast pack 20R, gathering Blue
 Ring 250R) were **retired on 2026-09-24**. The gather chain now opens the
 hidden rupee caves on and beside its walk (`SECRET_RUPEE_CAVES` in
@@ -77,40 +78,31 @@ Allowed fields only:
 
 | Field | Address / data key | Rule |
 |-------|--------------------|------|
-| bombs | `$0658` / `bombs` | Count top-up at a verified route bomb gate, through the assisted full-game clear. Never write `max_bombs` (`$067C`). |
-| keys | `$066E` / `keys` | Count top-up of the already-used key item. |
 | selected_item | `$0656` / `selected_item` | B-slot select of an **already owned** item (bombs=`1`). |
 
 Every write must be listed in the run report (`inventory_assist` / `poke_bombs`
 / `poke_keys`). `progression_writes` and `capacity_writes` stay 0.
 
-### Bait / Food byte at the L7 shop (operator exception, 2026-09-02)
+### Bait / Food byte at the L7 shop (retired, superseded 2026-09-24)
+
+**Retired.** `rr-8t4.5` (natural 60R bait buy at 0x34) is closed. The natural buy
+via `NaturalBaitPurchaseController` (`level7/entry.py`) superseded this poke;
+it is no longer used or authorized. `SurvivalBaitPurchaseController` is off
+the spine, `poke_food` is never called on the spine, and `inventory_assist`
+is empty. Kept below for historical record only.
 
 The natural L6 → bait-shop overworld route is a **mountain-locked desert
 pocket** (`0x22/0x32/0x33/0x23/0x24/0x25`) with no southward outlet to the
 row-4/5 band that holds pond `0x42` and shop `0x34`; the shop and pond are
 only reached walking north out of the western forest band from *start*. Mapping
-that route is its own campaign (bead `rr-8t4.4`). Until it lands, the Survival
-spine's Bait stage (`level7_bait_purchase`) runs
-`SurvivalBaitPurchaseController`: one disclosed write of the owned **Food**
-byte in place of the natural 60R buy, so `level7-entry` and L7-B can run.
-**Not Clean** — Clean keeps `NaturalBaitPurchaseController` fail-closed.
+that route was its own campaign (bead `rr-8t4.4`). The natural buy at 0x34
+replaces the Food write.
 
-Food is a **consumable gate item** (spent feeding the Hungry Goriya in L7-B),
-not an owned resource count, so it is disclosed here separately from the
-bomb/key/rupee top-ups and is **not** written through `apply_owned_inventory`.
-
-Allowed fields only:
+Formerly allowed fields (now retired):
 
 | Field | Address / data key | Rule |
 |-------|--------------------|------|
-| food | `$065D` / `ADDR_FOOD` | Once, at `level7_bait_purchase` on the Survival spine, set to `1` if still 0. Never a rupee, Whistle, door, or TF write. |
-
-The implementation is `zelda_i.dungeon.ops.poke_food`, wired into
-`SurvivalBaitPurchaseController`. List the write in the stage
-`inventory_assist` / `report()["writes"]`. `progression_writes` and
-`capacity_writes` stay 0. The wallet is not topped up for it (retired
-2026-09-24). A natural buy from a mapped route replaces the Food write.
+| food | `$065D` / `ADDR_FOOD` | [RETIRED 2026-09-24] Once, at `level7_bait_purchase` on the Survival spine, set to `1` if still 0. Never a rupee, Whistle, door, or TF write. |
 
 ### One-room Link position — L6 0x3A stairs (retired, superseded 2026-09-03)
 
