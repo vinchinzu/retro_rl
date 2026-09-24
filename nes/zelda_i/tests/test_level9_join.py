@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from retro_harness.nes import nes_action
 from zelda_i.level9.dungeon import (
     FULL_TRIFORCE,
     LEVEL9,
@@ -22,6 +23,7 @@ from zelda_i.level9.natural_path import (
     NaturalPatraJoinController,
     NaturalRouteUnavailableController,
     PatraJoinPhase,
+    cellar_west_to_east_step,
     make_natural_patra_join_controller,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
@@ -97,6 +99,15 @@ def test_natural_patra_join_fail_closed_contracts():
     ctrl4.step(death)
     assert ctrl4.failed
     assert "link_death" in ctrl4.notes[-1]
+
+
+def test_cellar_east_ladder_recovers_from_knockback_past_its_column():
+    over = cellar_west_to_east_step(_make_snap(screen=0x75, mode=9, link_x=208))
+    aligned = cellar_west_to_east_step(_make_snap(screen=0x75, mode=9, link_x=192))
+    assert over.reason == "cellar_align_east_ladder"
+    assert list(over.action) == list(nes_action("LEFT"))
+    assert aligned.reason == "cellar_east_climb"
+    assert list(aligned.action) == list(nes_action("UP"))
 
 
 def test_every_join_clear_runs_on_the_engine():

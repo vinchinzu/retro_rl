@@ -3,16 +3,18 @@
 ## Now
 
 Toward a Clean continuous run, the assist left is the heart refill plus the
-bomb/key counts and the L7 Food. Rupees are earned (hidden caves, see
-[PRE_L1.md](PRE_L1.md)); potions carry the last heart through L3.
+bomb/key counts, L6 wooden arrows, and L7 Food. Rupees are earned (hidden
+caves, see [PRE_L1.md](PRE_L1.md)). Last-heart power-on 37 reached credits
+with zero deaths or state loads, but 23 health refills and those inventory
+writes remain.
 
-1. No-beam fights under last-heart. Both L9 Patras now use ordinary sword
-   attacks when Link lacks full hearts: 0x61 from a walkable east stand and
-   final 0x52 from a south stand. The L9 predecessor resumed through credits
-   with 6 refills (previously 7), but a fresh power-on run 34 stops at L8
-   0x1F after 16,150 frames (rr-secm). Its new predecessor pin is
-   `LastHeart34_level8_magic_key_stairs`; fix the Darknut fight without a
-   beam, then repeat power-on before claiming a continuous last-heart clear.
+1. Reduce the 23 last-heart refills in run 37 (7 target, 16 safety). The
+   largest drains were L5 0x05 (16h), L5 0x64 (15h), L9 0x10 (14.5h), L6
+   0x3A (12.5h), and L9 0x20 (12.5h). Final Patra 0x52 still used a refill:
+   it entered with 6.49 hearts and took 7. The L9 Patras now use melee
+   below full health; L8 0x1F's trapped Darknuts are bombed after the outer
+   wave. The next run should lower one measured refill cluster and then
+   repeat power-on, preserving the zero-state-load credits gate.
 2. Refill hot spots under last-heart (run 29r3): L5 0x05 (17h), 0x64 Blue
    Darknuts (12h), L6 0x38/0x3A (12h). Last-heart run 30 reached L6 0x09
    with 6 + 1 safety refills (run 29: 15 by L8).
@@ -22,8 +24,8 @@ bomb/key counts and the L7 Food. Rupees are earned (hidden caves, see
    Food (rr-8t4.4/.5). Arrows@6:1c is the other write left.
 5. Survival credits: run 31 (b8cc4ab6) went power-on to credits in 275,135
    frames with no rupee write; final Patra's drifted eye lap is fixed
-   (rr-e59v, 11,407 -> 3,362f). Last-heart L9 melee clears from its saved
-   predecessor in 35,288f, but that run has one state load and six refills.
+   (rr-e59v, 11,407 -> 3,362f). Run 37 is the continuous last-heart
+   credits milestone: 293,488f with 23 refills and inventory writes.
 
 Zelda Dungeon calls this The Gathering. Order:
 

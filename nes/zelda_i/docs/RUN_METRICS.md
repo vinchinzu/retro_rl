@@ -46,6 +46,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **blue_ring_full_poweron24 (92f1031d: hidden rupee caves, potions; no rupee writes)** | **ok (unlimited_health)** | level9-credits | 283010 | 10127 | 82/184 | 36 | 156 / 484 | 75 / 4 / **0** | 9:52 11407f | 336.4 | 1:44=boomerang 3:5d=rupee5 3:6b=key 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
 | **blue_ring_full_poweron31 (b8cc4ab6: Patra eye aim)** | **ok (unlimited_health)** | level9-credits | **275135** | 8219 | 82/183 | 35 | 149 / 479 | 75 / 4 / **0** | 7:49 4302f | 329.41 | same 25 as run 24 |
 | lastheart_poweron34 (Patra melee; guarded last heart) | level8_magic_key_stairs | level9-credits | 263596 | 8859 | 79/146 | 26 | 207 / 15 (7 target, 8 safety) | 66 / 3 / **0** | 8:1f 16150f | 272.03 | 19 rooms; see report |
+| **lastheart_poweron37 (0x1F inner bombs, 0x75 ladder)** | **ok (guarded_last_heart)** | level9-credits | **293488** | 9472 | 92/170 | 30 | 315 / **23** (7 target, 16 safety) | 91 / 3 / **0** | 7:0d 5039f | 388.33 | 24 rooms; see report |
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
@@ -86,6 +87,16 @@ credits in 35,288 frames with one disclosed state load: 0x61 cost 3 hearts,
 final Patra 2 hearts / 1,087 frames, and the L9 suffix used 1 target plus 5
 safety refills. That suffix is development evidence, not a power-on result.
 
+Last-heart power-on 37 is the first continuous run of this arm to credits:
+zero state loads or deaths, TF `0xFF`, 14 containers, and no rupee write.
+It remains Survival with 23 health refills (7 target, 16 safety), 91 bombs
+and 3 keys granted in total, plus the L6 wooden arrows and L7 Food writes.
+L8 0x1F now spends 0–5 held bombs on the two inner Darknuts after the
+outer wave; run 37 used 3 and cleared the whole Magical Key stage in 3,805f
+(run 34 timed out after 16,000f of the clear). A cellar 0x75 knockback
+recovery at x>192 let the L9 join finish. Final Patra entered with 6.49
+hearts, took 7, and needed a refill despite its no-beam melee clear.
+
 ## Stabilization loop after the lattice walkers (2026-09-23)
 
 Each continuous run failed one stage later than the last; each stall was
@@ -122,6 +133,7 @@ assist prevented. This is the number potions and better combat must drive to zer
 | 29r3 (e7d25c8d) | L4 stepladder → L6 heart | full-hearts stop | +73389 | 5 + 6 safety | 110 | No potion left (restock at 0x64 landed after this pin); worst L5 0x05 17h, 0x64 12h. |
 | 29r4 (bb546dd4) | L6 heart → L8 0x1F | Darknut clear timeout | +60630 | 4 | 65 | 0x1F's clear needs the full-heart beam. |
 | lastheart_poweron34 | power-on → L8 0x1F | Darknut clear timeout | 263596 | 7 + 8 safety | 207 | No state loads; 0x1F spent 16,150f with 8.5h damage. Fresh predecessor pin: `LastHeart34_level8_magic_key_stairs`. |
+| lastheart_poweron37 | power-on → credits | ok, Survival | 293488 | 7 + 16 safety | 315 | Zero state loads or deaths. L8 0x1F clears by bombs; both L9 Patras clear by melee. Refill count and remaining inventory writes are the Clean gap. |
 
 Run 29 is power-on in five pieces: each stop was a stall, fixed from its
 save point and resumed (a resume proves the pose only; the next continuous
