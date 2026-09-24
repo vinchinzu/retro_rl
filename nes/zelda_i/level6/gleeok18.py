@@ -16,7 +16,9 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.dungeon.gleeok import (
     FIREBALL_DODGE_DIST,
+    GLEEOK_STAND_DY,
     STAND_DY,
+    GleeokStand,
     _fireball_dodge_dir,
     _south_stand_action,
     gleeok_fireballs,
@@ -68,8 +70,7 @@ class Level6Gleeok18Controller:
     spec_id: str = "level6_gleeok_0x18"
     room: int = LEVEL6_GLEEOK_ROOM
     max_frames: int = GLEEOK_18_MAX_FRAMES
-    stand_dy: int = STAND_DY
-    fireball_dodge_dist: int = FIREBALL_DODGE_DIST
+    stand_dy: int = GLEEOK_STAND_DY
     frames: int = 0
     success: bool = False
     failed: bool = False
@@ -77,6 +78,11 @@ class Level6Gleeok18Controller:
     samples: list[dict[str, Any]] = field(default_factory=list)
     saw_0x44: bool = False
     saw_0x46: bool = False
+    _stand: GleeokStand | None = field(default=None, init=False, repr=False)
+    _env: Any = field(default=None, init=False, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
 
     def _emit(
         self, snap: ZeldaSnapshot, action: FrameAction, *, force: bool = False
@@ -158,19 +164,10 @@ class Level6Gleeok18Controller:
                 snap, FrameAction(nes_action("LEFT", "UP"), "diamond_clip")
             )
 
-        dodge = _fireball_dodge_dir(snap, thr=self.fireball_dodge_dist)
-        if dodge is not None:
-            return self._emit(
-                snap, FrameAction(nes_action(dodge), "fb_dodge")
-            )
-
-        act = _south_stand_action(snap, bodies[0], stand_dy=self.stand_dy)
-        reason = (
-            "south_stand"
-            if list(act) == list(nes_action("UP", "A"))
-            else "south_walk"
-        )
-        return self._emit(snap, FrameAction(act, reason))
+        if self._stand is None:
+            self._stand = GleeokStand(stand_dy=self.stand_dy)
+        action, reason = self._stand.step(snap, bodies[0], env=self._env)
+        return self._emit(snap, FrameAction(action, reason))
 
     def report(self) -> dict[str, Any]:
         return {
@@ -179,7 +176,7 @@ class Level6Gleeok18Controller:
             "frames": self.frames,
             "notes": list(self.notes),
             "samples": list(self.samples),
-            "policy": "LEFT+UP y>173 then L4 south-stand on 0x44",
+            "policy": "LEFT+UP y>173 then GleeokStand (turn node, A pulses) on 0x44",
             "saw_0x44": self.saw_0x44,
             "saw_0x46": self.saw_0x46,
             "stand_dy": self.stand_dy,

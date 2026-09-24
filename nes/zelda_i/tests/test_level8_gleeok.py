@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 from retro_harness.nes import nes_action, nes_idle_action
 
+from zelda_i.dungeon.gleeok import GleeokStand, gleeok_stand
 from zelda_i.level8.dungeon import GLEEOK_FOUR_HEAD_OBJECT_TYPE
 from zelda_i.level8.gleeok import (
     GLEEOK_ROOM,
@@ -23,6 +24,7 @@ from zelda_i.level8.path import (
     make_gleeok_passage_controller,
 )
 from zelda_i.ram import (
+    ADDR_LINK_FACING,
     ADDR_LINK_X,
     ADDR_LINK_Y,
     ADDR_OBJ_HP,
@@ -79,11 +81,40 @@ def test_empty_0x3c_waits_for_body() -> None:
     assert act.reason == "wait_body"
 
 
-def test_south_mouth_walks_inland() -> None:
+def test_south_mouth_waits_for_body() -> None:
     ctl = make_four_head_gleeok_controller()
     act = _step(ctl, _ram(y=189))
     assert not ctl.failed
-    assert act.reason in ("wait_body", "south_inland")
+    assert act.reason == "wait_body"
+
+
+def _body_ram(x: int, y: int, facing: int) -> np.ndarray:
+    ram = _ram(x=x, y=y)
+    ram[ADDR_OBJ_TYPE + 1] = 0x45
+    ram[ADDR_LINK_X + 1] = 124
+    ram[ADDR_LINK_Y + 1] = 111
+    ram[ADDR_OBJ_HP + 1] = 160
+    ram[ADDR_LINK_FACING] = facing
+    return ram
+
+
+def test_stand_is_a_turn_node_under_the_heads() -> None:
+    # body.x 124 is off the x%8 lattice: the old stand flipped 120<->122.
+    body = SimpleNamespace(x=124, y=111)
+    assert gleeok_stand(body, 30) == (128, 141)
+    assert gleeok_stand(body, 22) == (128, 133)
+
+
+def test_stand_turns_once_then_pulses_a() -> None:
+    ctl = make_four_head_gleeok_controller()
+    face = _step(ctl, _body_ram(128, 141, facing=0x01))
+    assert face.reason == "south_face" and list(face.action) == UP
+    # The turn walks Link up a pixel: still the stand, and A alone swings.
+    presses = [_step(ctl, _body_ram(128, 140, facing=0x08)) for _ in range(GleeokStand(stand_dy=30).period)]
+    reasons = [p.reason for p in presses]
+    assert "south_walk" not in reasons
+    assert reasons.count("south_swing") >= 1 and reasons.count("south_stand") >= 1
+    assert all(list(p.action) == list(nes_action("A")) for p in presses if p.reason == "south_swing")
 
 
 def test_wrong_room_fails_closed() -> None:

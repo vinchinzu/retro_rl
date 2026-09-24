@@ -1,9 +1,9 @@
 """L8 four-head Gleeok 0x3C south-stand fight (live type 0x45).
 
-Idle until the body is present (arrival census is empty). South-stand
-(body.x, body.y+22) face UP then UP+A. Fireball dodge manhattan ≤14.
-Stop when type 0x45 is absent; then walk the SW diamond for heart 0x1A.
-Do not chase heads while the body remains. OccupancyWalker banned.
+Idle until the body is present (arrival census is empty). Stand on the turn
+node under the body at dy 30 (below the hanging heads), face UP once, then
+pulse A. No fireball dodge. Stop when type 0x45 is absent; then walk to the
+heart container 0x1A. Do not chase heads while the body remains.
 """
 
 from __future__ import annotations
@@ -14,10 +14,8 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.gleeok import (
-    FIREBALL_DODGE_DIST,
-    STAND_DY,
-    _fireball_dodge_dir,
-    _south_stand_action,
+    GLEEOK_STAND_DY,
+    GleeokStand,
     gleeok_fireballs,
     gleeok_heads_live,
 )
@@ -47,13 +45,14 @@ HEART_ITEM = 0x1A
 HEART_SLOT = 19
 HEART_XY = (32, 192)
 HEART_REACH = 1
-CLIP_Y = 173
+
+
 RAM_CLAIM = (
     "From play 0x3C leftover (120,189), idle until body type 0x45 is "
-    "present, south-stand (body.x, body.y+22) face UP+A, Magical Sword, "
-    "fireball dodge manhattan ≤14. Body type 0x45 goes absent. Do not "
-    "chase heads while body remains. Hearts Survival-refilled. Keys/bombs/"
-    "MK/TF unchanged except the natural heart-container +1 when 0x1A is "
+    "present, stand on the turn node at (body.x, body.y+30), face UP, pulse "
+    "A; no fireball dodge. Body type 0x45 goes absent. Do not chase heads "
+    "while body remains. Hearts Survival-refilled. Keys/bombs/MK/TF "
+    "unchanged except the natural heart-container +1 when 0x1A is "
     "collected. Deaths 0. progression_writes=0 capacity_writes=0. No HP poke."
 )
 
@@ -86,8 +85,7 @@ class Level8FourHeadGleeokController:
     spec_id: str = "level8_four_head_gleeok"
     room: int = GLEEOK_ROOM
     max_frames: int = GLEEOK_4HEAD_MAX_FRAMES
-    stand_dy: int = STAND_DY
-    fireball_dodge_dist: int = FIREBALL_DODGE_DIST
+    stand_dy: int = GLEEOK_STAND_DY
     frames: int = 0
     success: bool = False
     failed: bool = False
@@ -100,8 +98,8 @@ class Level8FourHeadGleeokController:
     body_gone: bool = False
     hc_in: int | None = None
     hc_out: int | None = None
-    _armed: bool = False
     route_eligible: bool = False
+    _stand: GleeokStand | None = field(default=None, init=False, repr=False)
     _env: Any = field(default=None, init=False, repr=False)
 
     def bind_env(self, env: Any) -> None:
@@ -209,28 +207,10 @@ class Level8FourHeadGleeokController:
                 return self._emit(snap, FrameAction(nes_action(step), "heart_walk"))
             return self._emit(snap, FrameAction(nes_idle_action(), "heart_stand"))
 
-        dodge = _fireball_dodge_dir(snap, thr=self.fireball_dodge_dist)
-        if dodge is not None:
-            self._armed = False
-            return self._emit(snap, FrameAction(nes_action(dodge), "fb_dodge"))
-
-        # South mouth y=189: walk inland. LEFT+UP only if still on the
-        # door lip (L6 clip analog); OccupancyWalker banned.
-        if snap.link_y > CLIP_Y:
-            self._armed = False
-            return self._emit(
-                snap, FrameAction(nes_action("LEFT", "UP"), "south_inland")
-            )
-
-        act = _south_stand_action(snap, bodies[0], stand_dy=self.stand_dy)
-        swinging = list(act) == list(nes_action("UP", "A"))
-        if swinging and not self._armed:
-            self._armed = True
-            return self._emit(snap, FrameAction(nes_action("UP"), "south_face"))
-        if not swinging:
-            self._armed = False
-            return self._emit(snap, FrameAction(act, "south_walk"))
-        return self._emit(snap, FrameAction(act, "south_stand"))
+        if self._stand is None:
+            self._stand = GleeokStand(stand_dy=self.stand_dy)
+        action, reason = self._stand.step(snap, bodies[0], env=self._env)
+        return self._emit(snap, FrameAction(action, reason))
 
     def report(self) -> dict[str, Any]:
         return {
