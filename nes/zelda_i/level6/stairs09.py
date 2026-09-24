@@ -20,6 +20,7 @@ from typing import Any
 from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import lattice_goto_route, room_step
 from zelda_i.level6.occupancy import l6_leftover
 from zelda_i.level6.overworld import LEVEL6, LEVEL6_ROD_WIZZ_ROOM
 from zelda_i.level6.path import (
@@ -47,6 +48,8 @@ __all__ = [
 STAIRS_09_MAX_FRAMES = 4000
 STAIRS_09_SAMPLE_PERIOD = 8
 STAIRS_09_SOUTH_HALT_Y = 181
+# The turn row above the halt: back onto it, never idle on the halt row.
+STAIRS_09_INLAND_Y = 173
 STAIRS_09_IDLE_MIN = 240
 # v13: left 0x68 y-moves then slot11 jumps 96,131 → 208,96 (~16f later).
 NE_BLOCK_X_MIN = 184
@@ -211,6 +214,13 @@ class Level6Stairs09Controller:
         if abs(xy[0] - tx) <= PUSH_ALIGN_TOL and abs(xy[1] - ty) <= PUSH_ALIGN_TOL:
             return None
         self.walker.last_dir = None
+        # The ROM lattice first: the axis presses below turned off the turn
+        # rows (LEFT at y=179 slid Link onto the y=181 halt row, Blue Ring
+        # power-on 15). They stay as the fallback with no tile map bound.
+        if lattice_goto_route(None, snap, (tx, ty), slack=0) is not None:
+            step = room_step(snap, (tx, ty), tol=PUSH_ALIGN_TOL)
+            if step is not None:
+                return self._emit(snap, FrameAction(nes_action(step), f"{tag}_lattice"))
         # NW leftover (56,109): RIGHT on y=109 to EAST_CLEAR_X, DOWN east of
         # x=96 to CLIP_CLEAR_Y, then LEFT to south-face. DOWN at x=48/56/64
         # boxes y=157 tile 118. Historical (112,173) is already south-clear.
@@ -307,9 +317,14 @@ class Level6Stairs09Controller:
 
         xy = (int(snap.link_x), int(snap.link_y))
         if xy[1] >= STAIRS_09_SOUTH_HALT_Y:
+            # Idle here was a no-escape stall: the stand walk pressed LEFT
+            # from (128,179), off the turn rows, which slid Link onto y=181,
+            # and the halt then held him for the whole 4000 frames (Blue
+            # Ring power-on 15). Step back up to the row above instead.
             self.walker.last_dir = None
+            step = room_step(snap, (xy[0], STAIRS_09_INLAND_Y), tol=0)
             return self._emit(
-                snap, FrameAction(nes_idle_action(), "south_halt")
+                snap, FrameAction(nes_action(step or "UP"), "south_inland")
             )
 
         if self.phase is Stairs09Phase.TO_PUSH:

@@ -435,6 +435,7 @@ def level7_stairs0d_stages() -> tuple[tuple[str, Any, int], ...]:
 
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
+_0D_RING_X = 36  # the outer ring: a Wallmaster emerges at once
 ROOM_0D = ROOM
 
 ROOM0D_CLEAR_MAX_FRAMES = 30000
@@ -461,7 +462,11 @@ ROOM_0D_STAIR_WARP_HYP = (208, 93)
 # Plus-corner 0x27 park here until they peel to the west wall one-at-a-time.
 _0D_STATUE_XY = frozenset({(128, 125), (128, 157), (160, 125), (160, 157)})
 _0D_NUDGE = (52, 117)
-_0D_HOME = (96, 141)
+# Wait beside the column the Wallmaster climbs, not 44 px inland: from
+# (96,141) most withdrew into the wall before reaching Link. Over 12 offsets
+# x 3 Blue Ring power-on pins (14/10/3): 11876f (sd 5298) -> 3597f (sd 1682),
+# 36/36, 0 hearts; (48,117) and (64,117) were within noise.
+_0D_HOME = (56, 117)
 
 
 def _0d_spawners(snap: ZeldaSnapshot) -> tuple[tuple[ZeldaObject, ...], tuple[ZeldaObject, ...]]:
@@ -552,7 +557,7 @@ def room_0d_clear_step(snap: ZeldaSnapshot, ctl: Room0DClearController) -> Frame
     x, y = int(snap.link_x), int(snap.link_y)
     live, parked = _0d_spawners(snap)
     incoming = tuple(o for o in parked if int(o.state) != 0)
-    if x < 44:
+    if x < 44 and ctl._phase != "nudge":
         ctl._phase = "retreat"
         ctl._phase_n = 0
         return FrameAction(nes_action("RIGHT"), "clear0d_grab_peel")
@@ -591,16 +596,18 @@ def room_0d_clear_step(snap: ZeldaSnapshot, ctl: Room0DClearController) -> Frame
             ctl._phase_n = 0
         return FrameAction(nes_idle_action(), "clear0d_home")
     if ctl._phase == "nudge":
+        # A Wallmaster emerges the frame Link stands on the outer ring (x<=36
+        # here; x>=40 never, measured by pinning Link along y=117). The x<44
+        # grab peel above used to stop every nudge at ~x=42, so 0x0D lapped
+        # nudge/home ~100 times (11352f, Blue Ring power-on 14) waiting on
+        # luck. Touch the ring, then retreat and fight what comes out.
+        # Holding the ring 3 or 8 frames was slower over 36 offsets.
         ctl._phase_n += 1
-        if x > 42:
-            return FrameAction(nes_action("LEFT"), "clear0d_nudge")
-        if ctl._phase_n >= 72 or x <= 40:
+        if x <= _0D_RING_X or ctl._phase_n >= 72:
             ctl._phase = "retreat"
             ctl._phase_n = 0
             return FrameAction(nes_action("RIGHT"), "clear0d_nudge_done")
-        if ctl.frames % _SWING_PERIOD < _SWING_HOLD:
-            return FrameAction(nes_action("LEFT", "A"), "clear0d_nudge_slash")
-        return FrameAction(nes_action("LEFT"), "clear0d_nudge_face")
+        return FrameAction(nes_action("LEFT"), "clear0d_nudge")
     tx, ty = _0D_NUDGE
     if abs(x - tx) <= 6 and abs(y - ty) <= 6:
         ctl._phase = "nudge"
