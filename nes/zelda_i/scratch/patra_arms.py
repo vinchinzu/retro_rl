@@ -1,21 +1,30 @@
-"""Patra arms for ``ab_stage.sh``: module knobs patched per process. Scratch."""
-import zelda_i.level9.patra as pa
+"""Patra arms for ``ab_stage.sh`` / A-B evals: the old lane stand vs ``PatraAim``. Scratch."""
+from dataclasses import dataclass
+
 from zelda_i.level9.natural_path import NaturalFinalPatraController
-from zelda_i.level9.prefix import make_stairs_61_controller
+from zelda_i.level9.patra import patra_action
 
 
-def arm(clear: int, dist: int, cd: int, room: str):
-    def make():
-        pa.PATRA_MIN_CLEAR = clear
-        pa.PATRA_ATTACK_COOLDOWN = cd
-        if room == "52":
-            return NaturalFinalPatraController(stand_dy=dist)
-        ctl = make_stairs_61_controller()
-        ctl.patra_stand_dy = dist
-        return ctl
-    return make
+@dataclass
+class LaneStandFinalPatra(NaturalFinalPatraController):
+    """The pre-rr-e59v policy: body-lane stand, pulse A on the lane."""
+
+    cooldown: int = 0
+
+    def step(self, snap):
+        if self.success or self.failed or not self.start_checked or snap.mode == 17:
+            return super().step(snap)
+        from zelda_i.level9.patra import final_patra_north_door_earned
+        from retro_harness.nes import nes_idle_action
+        if final_patra_north_door_earned(snap):
+            self.success = True
+            return self._action(nes_idle_action(), "patra_north_door_earned")
+        action, reason, self.cooldown = patra_action(snap, cooldown=self.cooldown, stand_dy=self.stand_dy)
+        return self._action(action, reason)
 
 
-p52_c44_d64, p52_c56_d84_cd8, p52_c44_d84 = arm(44, 64, 12, "52"), arm(56, 84, 8, "52"), arm(44, 84, 12, "52")
-p61_c44_d64, p61_c56_d84_cd8, p61_c44_d84 = arm(44, 64, 12, "61"), arm(56, 84, 8, "61"), arm(44, 84, 12, "61")
-p52_cd8, p61_cd8, p52_cd6, p61_cd6 = arm(56, 84, 8, "52"), arm(56, 84, 8, "61"), arm(56, 84, 6, "52"), arm(56, 84, 6, "61")
+def aim_le2():
+    """Drift-latched aim, and aim once two or fewer eyes remain."""
+    ctl = NaturalFinalPatraController()
+    ctl.aim.aim_eyes = 2
+    return ctl
