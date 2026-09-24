@@ -25,7 +25,7 @@ from zelda_i.combat import (
     overworld_threat_objects,
 )
 from zelda_i.dungeon.behaviors import ZORA_SHOT_SPEED, is_projectile
-from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.dungeon.hop_controller import ow_edge_band_step, room_step
 from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.dungeon.threat import (
     MIN_DODGE_BODY,
@@ -69,6 +69,7 @@ from zelda_i.overworld.graph import (
     MAZE_WAYPOINT_TOL,
     SCREEN_5C_MAZE,
     ScreenHop,
+    hop_exit_band,
     is_5c_maze_hop,
 )
 from zelda_i.overworld.hunt import SHOT_DWELL_SPEED, ScreenHunter, blade_lands, hop_lane, link_busy
@@ -1674,6 +1675,15 @@ class OverworldPathController:
         if self.stuck <= self.stuck_threshold:
             return None
         action, self.stuck = unstick_wiggle(self.stuck)
+        if action.reason.endswith("_wait") and snap.level == 0 and self._hop is not None:
+            # The wiggle is spent. Idling keeps Link still, so ``stuck`` only
+            # grows (0x1E ``letter``: 2528 frames): walk the ROM lattice to
+            # the hop's exit band instead. It moves Link, which resets the
+            # count; a stall that no node reaches still waits.
+            lo, hi = hop_exit_band(self._hop)
+            step = ow_edge_band_step(self._env, snap, self._hop.direction, lo, hi)
+            if step is not None:
+                return self._swing(step, "unstick_lattice")
         return action
 
     def _rung_edge(self, snap: ZeldaSnapshot) -> FrameAction | None:

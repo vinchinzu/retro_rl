@@ -455,8 +455,9 @@ class PostLevel6OverworldController(OverworldPathController):
             act = bait_32_north_action(snap, swing=self._swing)
             if act is not None:
                 return act
-        if self.stuck > self.stuck_threshold:
-            return FrameAction(nes_idle_action(), "post_l6_path_stuck_wait")
+        # A stall goes to the ladder's unstick rung (a lattice step to the
+        # exit band). The idle that stood here outranked every rung that
+        # could move Link, and idling only grows the stuck count.
         return None
 
     def _reentry_refusal(self, snap: ZeldaSnapshot) -> str | None:
