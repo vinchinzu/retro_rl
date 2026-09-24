@@ -1,6 +1,6 @@
 """Score one L9 Patra-join room over RNG offsets. Scratch.
 
-Loads ``<prefix>_<PHASE>`` (cut by ``cut_l9_join_pins.py``), latches the
+Loads ``<prefix>_<PHASE>`` (cut by ``cut_pins.py``), latches the
 join at that phase, plays N idle frames, then runs under the Survival refill
 until the join reaches the room's stop phase (Link is in the next room).
 One line per offset plus the mean: frames, damage (whole hearts), and the
