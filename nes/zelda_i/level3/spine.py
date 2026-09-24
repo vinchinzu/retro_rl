@@ -28,9 +28,20 @@ from zelda_i.level3.dungeon import (
     ROOM_L3_RAFT_PASSAGE,
 )
 from zelda_i.level3.overworld import (
+    LEVEL3_HOPS_FROM_POST_L2,
     POST_L2_PATH_MAX_FRAMES,
     OverworldPostL2ToLevel3Controller,
 )
+from zelda_i.overworld.armos_rupees import (
+    ARMOS_4E_CAVE_ID,
+    ARMOS_4E_PAYOUT,
+    ARMOS_4E_SCREEN,
+    ARMOS_4E_STAND,
+    ARMOS_4E_TILE,
+    ArmosRupeeController,
+)
+from zelda_i.overworld.gather_segments import CaveExitController, HopWalkController
+from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.settle import PostL2TriforceSettleController
 from zelda_i.overworld.settle import POST_L2_SETTLE_MAX_FRAMES
 from zelda_i.level3.boss_path import level3_boss_suffix_stages
@@ -210,8 +221,63 @@ def l3_hops(*, after_entry=None) -> tuple[SpineHop, ...]:
                     POST_L2_SETTLE_MAX_FRAMES,
                 ),
                 (
+                    "walk_armos_3d",
+                    HopWalkController(
+                        hops=LEVEL3_HOPS_FROM_POST_L2[:2]
+                        + (ScreenHop(0x3D, "UP", align_x=120),),
+                        waypoints={},
+                        max_frames=10000,
+                    ),
+                    10000,
+                ),
+                ("armos_rupees_3d", ArmosRupeeController(), 5000),
+                ("exit_armos_3d", CaveExitController(clear=0), 600),
+                (
+                    "return_4d_from_armos",
+                    HopWalkController(
+                        hops=(ScreenHop(0x4D, "DOWN", align_x=120),),
+                        waypoints={},
+                        max_frames=5000,
+                    ),
+                    5000,
+                ),
+                (
+                    "walk_armos_4e",
+                    HopWalkController(
+                        hops=(ScreenHop(0x4E, "RIGHT"),),
+                        waypoints={},
+                        max_frames=5000,
+                    ),
+                    5000,
+                ),
+                (
+                    "armos_rupees_4e",
+                    ArmosRupeeController(
+                        screen=ARMOS_4E_SCREEN,
+                        stand=ARMOS_4E_STAND,
+                        face="RIGHT",
+                        armos=ARMOS_4E_TILE,
+                        cave_id=ARMOS_4E_CAVE_ID,
+                        payout=ARMOS_4E_PAYOUT,
+                    ),
+                    5000,
+                ),
+                ("exit_armos_4e", CaveExitController(clear=0), 600),
+                (
+                    "return_4d_from_4e",
+                    HopWalkController(
+                        hops=(ScreenHop(0x4D, "LEFT"),),
+                        waypoints={},
+                        max_frames=5000,
+                    ),
+                    5000,
+                ),
+                (
                     "enter_level3",
-                    OverworldPostL2ToLevel3Controller(require_dungeon=True),
+                    OverworldPostL2ToLevel3Controller(
+                        hops=LEVEL3_HOPS_FROM_POST_L2[2:],
+                        require_dungeon=True,
+                    ),
                     POST_L2_PATH_MAX_FRAMES,
                 ),
             ),

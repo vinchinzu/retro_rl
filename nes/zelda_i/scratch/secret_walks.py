@@ -14,6 +14,48 @@ def to_67():
     return HopWalkController(hops=(ScreenHop(0x67, "DOWN"),), waypoints={}, max_frames=4000)
 
 
+def to_71_from_62():
+    return HopWalkController(
+        hops=(ScreenHop(0x72, "DOWN", align_x=104), ScreenHop(0x71, "LEFT", align_y=125)),
+        waypoints={}, max_frames=8000,
+    )
+
+
+def to_3d_from_l2():
+    return HopWalkController(hops=(
+        ScreenHop(0x4C, "DOWN", align_x=112),
+        ScreenHop(0x4D, "RIGHT", y_band_lo=133, y_band_hi=145),
+        ScreenHop(0x3D, "UP", align_x=120),
+    ), waypoints={}, max_frames=10000)
+
+
+def back_3c_from_3d():
+    return HopWalkController(hops=(ScreenHop(0x3C, "LEFT", align_y=141),), waypoints={}, max_frames=5000)
+
+
+def exit_cave():
+    from zelda_i.overworld.gather_segments import CaveExitController
+    return CaveExitController(clear=0)
+
+
+def back_4d_from_3d():
+    return HopWalkController(hops=(ScreenHop(0x4D, "DOWN", align_x=120),), waypoints={}, max_frames=5000)
+
+
+def level3_from_4d():
+    from zelda_i.level3.overworld import LEVEL3_HOPS_FROM_POST_L2, OverworldPostL2ToLevel3Controller
+    targets = [hop.target for hop in LEVEL3_HOPS_FROM_POST_L2]
+    return OverworldPostL2ToLevel3Controller(
+        hops=LEVEL3_HOPS_FROM_POST_L2[targets.index(0x4D) + 1 :],
+        require_dungeon=True,
+    )
+
+
+def select_arrows():
+    from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, PauseSelectController
+    return PauseSelectController(want=B_SLOT_ARROWS, name="arrows")
+
+
 def to_67_66_65():
     return HopWalkController(
         hops=(ScreenHop(0x67, "DOWN"), ScreenHop(0x66, "LEFT"), ScreenHop(0x65, "LEFT")),
@@ -250,6 +292,10 @@ def probe_51():
 def probe_3d():
     """BFS_3D pin; armos (144, 128) touched from (128, 125) RIGHT."""
     return SecretProbe(0x3D, ArmosTouch(0x3D, (128, 125), "RIGHT", (144, 128), 0x21))
+
+
+def armos_3d():
+    return ArmosTouch(0x3D, (128, 125), "RIGHT", (144, 128), 0x21)
 
 
 def probe_4e():

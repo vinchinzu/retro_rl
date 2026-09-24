@@ -158,7 +158,7 @@ def _measured_leave_ram() -> np.ndarray:
         arrows=1,
         health=0xAA,  # 11 containers, full
         whistle=1,
-        food=0,
+        food=1,
         rod=1,
         bow=1,
         candle=1,
@@ -177,7 +177,7 @@ def test_measured_post_l6_exit_is_a_verified_shared_handoff() -> None:
     assert h.screen == SCREEN_LEVEL6_ENTRANCE
     assert (h.link_x, h.link_y) == (112, 125)
     assert h.triforce == POST_L6_TRIFORCE == 0x3F
-    assert h.food == 0
+    assert h.food == 1
     assert h.selected_item == 2  # arrows, from the Gohma kill
     assert h.verified is True
     assert h.route_eligible is False  # walk to pond 0x42 still unobserved

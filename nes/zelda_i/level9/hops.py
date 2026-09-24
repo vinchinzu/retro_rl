@@ -91,7 +91,11 @@ def _stage(name: str, controller) -> tuple[str, Any, int]:
     return (name, controller, controller.max_frames)
 
 
-LEVEL9_BOMBS_WANTED = 4
+# Entry and the Silver Arrows prefix spend four bombs; the Patra join and
+# ending still need bombs after that. A four-bomb pack reaches room 0x10 with
+# zero (Nat3 L8-leave suffix, l9_bomb_suffix_credits). The first Patra in
+# room 0x16 hides its bomb item until killed, so carry two shop packs instead.
+LEVEL9_BOMBS_WANTED = 8
 
 
 def level9_entry_chapter(
@@ -100,7 +104,7 @@ def level9_entry_chapter(
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
     post_l8_hops: tuple[Any, ...] = POST_L8_VIA_BOMB_SHOP_HOPS,
 ) -> tuple[tuple[str, Any, int], ...]:
-    """Post-L8 OW → Bomb restock at 0x4A → White Sword detour → Spectacle Rock bomb → L9 room 0x76.
+    """Post-L8 OW → two bomb packs at 0x4A → White Sword detour → Spectacle Rock → L9.
 
     The detour slots in here because the post-L8 overworld leg already ends on
     0x05, the screen it departs from and returns to, and because Level 9's
@@ -128,6 +132,10 @@ def level9_entry_chapter(
             _stage("level9_post_l8_overworld", post_l8_to_shop),
             *bomb_restock_stages(
                 to_shop, "l8", want=LEVEL9_BOMBS_WANTED, shop_screen=BOMB_SHOP_SCREEN
+            ),
+            *bomb_restock_stages(
+                to_shop, "l8_second", want=LEVEL9_BOMBS_WANTED,
+                shop_screen=BOMB_SHOP_SCREEN,
             ),
             _stage("level9_post_l8_to_rock", post_l8_to_rock),
         )

@@ -116,13 +116,13 @@ def test_clean_no_poke_fails_closed_without_natural_arrows() -> None:
     assert ctl.inventory_assist is None
 
 
-def test_clean_suffix_gohma_does_not_poke_survival_suffix_does() -> None:
+def test_default_suffix_gohma_requires_natural_arrows() -> None:
     from zelda_i.level6.spine_suffix import l6_suffix_hops
 
     clean = next(h for h in l6_suffix_hops(poke_arrows=False) if h.through == "level6-gohma")
     survival = next(h for h in l6_suffix_hops() if h.through == "level6-gohma")
     assert clean.stages()[-1][1].poke_arrows is False
-    assert survival.stages()[-1][1].poke_arrows is True
+    assert survival.stages()[-1][1].poke_arrows is False
 
 
 def test_entrance_tf_skips_ow_and_forbids_pokes() -> None:
@@ -141,7 +141,8 @@ def test_poke_writes_arrows_and_b_not_bow() -> None:
     ram = _ram(bow=1, arrows=0)
     _plant_gohma(ram)
     mem = _AssignMem()
-    ctl = _bound(ram, mem)
+    ctl = make_gohma_controller(poke_arrows=True)
+    ctl.bind_env(_env(ram, mem))
     ctl.step(read_snapshot(ram))
     assert not ctl.failed
     addrs = [addr for addr, _fmt, _val in mem.calls]
@@ -285,4 +286,3 @@ def test_clean_gohma_kills_and_succeeds_without_pokes() -> None:
     snap = read_snapshot(ram)
     assert ctl.arrived(snap)
     assert level6_gohma_success(snap)
-

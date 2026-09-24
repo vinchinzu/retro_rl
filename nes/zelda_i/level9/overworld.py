@@ -703,12 +703,12 @@ class Level9PostL8OverworldController(OverworldPathController):
             return self._swing("LEFT", "5a_walk_left_0x59")
 
         if snap.screen == 0x59 and hop.target == 0x58:
-            # rr-mzxn follow-on: 0x59 is a plain east-west pass-through at
-            # y=141 -- no vertical obstacle. The y<155 check used to fire
-            # here (misattributed from the *next* hop's align_y=155, which
-            # is where Link actually needs to descend), so DOWN was held
-            # forever against a real wall a few pixels south of the (240,141)
-            # arrival edge, never crossing into 0x58 at all.
+            # The direct walk arrives from 0x5A at y=141. The bomb-shop
+            # return arrives from 0x49 at (112,61), above the west passage;
+            # first descend through the center opening. Do not descend to
+            # y=155 here: the east arrival has a wall immediately below it.
+            if snap.link_y < 137:
+                return self._swing("DOWN", "59_descend_to_west_passage")
             return self._swing("LEFT", "59_walk_left_0x58")
 
         if snap.screen == 0x59 and hop.target == 0x49:
@@ -1132,11 +1132,20 @@ class Level9SpectacleRockBombController:
             if _rock_secret_unrevealed(snap) and self.b_presses < ROCK_MAX_BOMBS:
                 self._set_phase(SpectacleRockBombPhase.ROCK_LEFT_X, "rock_secret_missed_retry")
                 return self._action(nes_idle_action(), "rock_retry")
-            if self.phase_frames > 500:
+            if self.phase_frames > 1200:
                 return self._fail("left_rock_mouth_did_not_enter")
             ax_x = self._axis(snap, axis="x", target=80, tolerance=4, reason="left_rock_mouth_realign")
             if ax_x is not None:
                 return ax_x
+            # The rock entrance triggers at y=157. A knockback during blast
+            # wait can push Link north of the entrance (e.g. y=149); walk
+            # down into the opening instead of pushing up into the wall.
+            if snap.link_y < 157:
+                if _body_near(snap) and (self.phase_frames % 16 in (0, 1)):
+                    return self._action(nes_action("DOWN", "A"), "enter_left_spectacle_rock_slash_down")
+                return self._action(nes_action("DOWN"), "enter_left_spectacle_rock_from_north")
+            if _body_near(snap) and (self.phase_frames % 16 in (0, 1)):
+                return self._action(nes_action("UP", "A"), "enter_left_spectacle_rock_slash")
             return self._action(nes_action("UP"), "enter_left_spectacle_rock")
 
         return self._fail("unknown_spectacle_rock_bomb_phase")

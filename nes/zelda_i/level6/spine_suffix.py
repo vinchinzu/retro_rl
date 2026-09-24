@@ -102,30 +102,34 @@ def _north2c_stages():
     return (*_west2d_stages(), *door_hop_stages(NORTH2C_SPEC))
 
 
-def _gohma_stages(*, poke_arrows: bool = True):
+def _gohma_stages(*, poke_arrows: bool = False):
+    from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, PauseSelectController
+
+    select = PauseSelectController(want=B_SLOT_ARROWS, name="arrows")
     ctl = make_gohma_controller(poke_arrows=poke_arrows)
     return (
         *_north2c_stages(),
+        ("level6_select_arrows", select, select.max_frames),
         ("level6_gohma_0x1c", ctl, ctl.max_frames),
     )
 
 
-def _heart_stages(*, poke_arrows: bool = True):
+def _heart_stages(*, poke_arrows: bool = False):
     ctl = make_heart_controller()
     return (*_gohma_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
-def _north0c_stages(*, poke_arrows: bool = True):
+def _north0c_stages(*, poke_arrows: bool = False):
     ctl = make_north0c_controller()
     return (*_heart_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
-def _level6_stages(*, poke_arrows: bool = True):
+def _level6_stages(*, poke_arrows: bool = False):
     ctl = make_shard_controller()
     return (*_north0c_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
 
-def _exit_stages(*, poke_arrows: bool = True):
+def _exit_stages(*, poke_arrows: bool = False):
     ctl = make_exit_controller()
     return (*_level6_stages(poke_arrows=poke_arrows), (ctl.spec_id, ctl, ctl.max_frames))
 
@@ -135,7 +139,7 @@ def _door_success(spec):
 
 
 def l6_suffix_hops(
-    *, poke_arrows: bool = True, require_prior_tf: bool = True
+    *, poke_arrows: bool = False, require_prior_tf: bool = True
 ) -> tuple[SpineHop, ...]:
     tf1f = dict(tf_eq=0x1F) if require_prior_tf else {}
     rod1f = dict(rod=True, **(dict(tf_eq=0x1F) if require_prior_tf else {}))

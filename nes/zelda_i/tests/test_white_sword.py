@@ -111,6 +111,8 @@ def test_entry_chapter_runs_the_detour_before_the_rock_bomb() -> None:
         "level9_post_l8_overworld",
         "bomb_restock_l8",
         "exit_bomb_restock_l8",
+        "bomb_restock_l8_second",
+        "exit_bomb_restock_l8_second",
         "level9_post_l8_to_rock",
         "level9_white_sword",
         "level9_spectacle_rock_bomb",

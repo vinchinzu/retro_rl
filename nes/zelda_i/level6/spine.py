@@ -104,8 +104,7 @@ def run_level6_from_entrance(
 ):
     """Fixture-live L6 from play 0x79. Skip the OW entry hop. No pokes.
 
-    ``poke_arrows`` defaults False (Clean fail-closed). Survival spine still
-    calls ``l6_suffix_hops()`` with the wooden-arrow poke.
+    ``poke_arrows`` defaults False; the continuous spine buys arrows at 0x4A.
     """
     from zelda_i.route.chain import run_controller_stage
 

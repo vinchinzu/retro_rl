@@ -89,7 +89,7 @@ MEASURED_POST_L6_EXIT = OverworldHandoff(
     heart_containers=11,
     selected_item=2,  # arrows still selected from the Gohma kill
     whistle=1,
-    food=0,
+    food=1,
     rod=1,
     bow=1,
     arrows=1,
@@ -194,7 +194,15 @@ class NaturalBaitPurchaseController(CaveShopBuyController):
             self.notes.append("bait_already_owned")
             return FrameAction(nes_idle_action(), "bait_already_owned")
         rupees = int(read_u8(ram, ADDR_RUPEES))
-        if not self.plan.can_pay(rupees) and self.phase is CaveShopBuyPhase.HOP:
+        # A hidden-cave payout counts up over several overworld frames after
+        # its exit. The 0x62 reward is still counting when the gathered route
+        # starts the walk to 0x34; check the wallet at the shop instead.
+        at_shop = snap.screen == self.plan.shop_screen or self._in_shop_cave(snap)
+        if (
+            not self.plan.can_pay(rupees)
+            and self.phase is CaveShopBuyPhase.HOP
+            and (at_shop or not self.hops)
+        ):
             return self._fail("bait_need_60_rupees")
         if not self.plan.shop_geometry_verified or self.plan.shop_cave_xy is None:
             return self._fail("bait_shop_geometry_unobserved")

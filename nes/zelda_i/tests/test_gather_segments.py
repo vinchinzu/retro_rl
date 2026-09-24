@@ -408,7 +408,7 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
         "white", "back_1a", "walk_48",
         "rupees_48", "exit_48", "heart_47", "exit_47",
         "rupees_5b", "exit_5b", "rupees_6b", "exit_6b", "rupees_56", "exit_56",
-        "ring", "exit_ring", "rupees_62", "exit_62", "potion", "exit_64",
+        "ring", "exit_ring", "rupees_62", "exit_62", "bait", "exit_bait",
         "ring_return", "walk_pond_l1", "pond_39_l1", "walk_37",
     ]
     stages = dict(chain_stages())
@@ -416,6 +416,9 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
     assert stages["select_candle"].want == 4
     assert _targets(stages["walk_37"].hops)[-1] == 0x37
     assert stages["ring"].price == 250
+    assert stages["bait"].price == 60
+    assert _targets(stages["bait"].hops) == (0x52, 0x53, 0x54, 0x44, 0x34)
+    assert _targets(stages["ring_return"].hops)[0] == 0x44
     assert _targets(stages["walk_pond_l1"].hops)[0] == 0x59
     # Burn caves exit by stairs: nothing to clear, DOWN would re-enter.
     for name, ctl in stages.items():
