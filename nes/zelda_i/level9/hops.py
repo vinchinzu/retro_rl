@@ -28,6 +28,12 @@ from zelda_i.level9.dungeon import (
     level9_live_patra_stop,
     level9_silver_arrows_stop,
 )
+from zelda_i.overworld.bomb_shop import BOMB_SHOP_SCREEN, bomb_restock_stages
+from zelda_i.level9.overworld import (
+    POST_L8_TO_LEVEL9_HOPS,
+    POST_L8_VIA_BOMB_SHOP_HOPS,
+    SCREEN_LEVEL9_ROCK_HYP,
+)
 from zelda_i.overworld.white_sword import make_white_sword_detour_controller
 from zelda_i.level9.natural_path import (
     NaturalCreditsController,
@@ -85,12 +91,16 @@ def _stage(name: str, controller) -> tuple[str, Any, int]:
     return (name, controller, controller.max_frames)
 
 
+LEVEL9_BOMBS_WANTED = 4
+
+
 def level9_entry_chapter(
     route: Level9NaturalRouteSelection = SELECTED_NATURAL_ROUTE,
     *,
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
+    post_l8_hops: tuple[Any, ...] = POST_L8_VIA_BOMB_SHOP_HOPS,
 ) -> tuple[tuple[str, Any, int], ...]:
-    """Post-L8 OW → White Sword detour → Spectacle Rock bomb → L9 room 0x76.
+    """Post-L8 OW → Bomb restock at 0x4A → White Sword detour → Spectacle Rock bomb → L9 room 0x76.
 
     The detour slots in here because the post-L8 overworld leg already ends on
     0x05, the screen it departs from and returns to, and because Level 9's
@@ -98,8 +108,38 @@ def level9_entry_chapter(
     power-on run arrives with the wooden sword and 10 heart containers.
     """
     del route
+    targets = [hop.target for hop in post_l8_hops]
+    if BOMB_SHOP_SCREEN in targets:
+        shop_idx = targets.index(BOMB_SHOP_SCREEN)
+        to_shop = post_l8_hops[: shop_idx + 1]
+        post_l8_to_shop = make_post_l8_overworld_controller(
+            handoff=handoff,
+            hops=to_shop,
+            stop_screen=BOMB_SHOP_SCREEN,
+        )
+        from_shop = post_l8_hops[shop_idx + 1 :]
+        post_l8_to_rock = make_post_l8_overworld_controller(
+            handoff=handoff,
+            hops=from_shop,
+            stop_screen=SCREEN_LEVEL9_ROCK_HYP,
+            resumed=True,
+        )
+        walk = (
+            _stage("level9_post_l8_overworld", post_l8_to_shop),
+            *bomb_restock_stages(
+                to_shop, "l8", want=LEVEL9_BOMBS_WANTED, shop_screen=BOMB_SHOP_SCREEN
+            ),
+            _stage("level9_post_l8_to_rock", post_l8_to_rock),
+        )
+    else:
+        walk = (
+            _stage(
+                "level9_post_l8_overworld",
+                make_post_l8_overworld_controller(handoff=handoff, hops=post_l8_hops),
+            ),
+        )
     return (
-        _stage("level9_post_l8_overworld", make_post_l8_overworld_controller(handoff)),
+        *walk,
         _stage("level9_white_sword", make_white_sword_detour_controller()),
         _stage("level9_spectacle_rock_bomb", make_spectacle_rock_bomb_controller(handoff)),
     )

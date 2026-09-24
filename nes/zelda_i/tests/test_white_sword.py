@@ -108,7 +108,12 @@ def test_entry_chapter_runs_the_detour_before_the_rock_bomb() -> None:
     stages = level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF)
     names = [name for name, _, _ in stages]
     assert names == [
-        "level9_post_l8_overworld", "level9_white_sword", "level9_spectacle_rock_bomb",
+        "level9_post_l8_overworld",
+        "bomb_restock_l8",
+        "exit_bomb_restock_l8",
+        "level9_post_l8_to_rock",
+        "level9_white_sword",
+        "level9_spectacle_rock_bomb",
     ]
 
 

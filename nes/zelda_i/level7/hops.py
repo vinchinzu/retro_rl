@@ -28,6 +28,7 @@ from zelda_i.level7.dungeon import (
 from zelda_i.level7.entry import (
     BAIT_COST,
     UNVERIFIED_BAIT_PLAN,
+    VERIFIED_BAIT_PLAN,
     BaitPurchasePlan,
     make_bait_purchase_controller,
     make_post_l6_overworld_controller,
@@ -415,7 +416,7 @@ def level7_entry_chapter_stages(
     warp_launch: int = WARP_LAUNCH_SCREEN,
     warp_target: int = WARP_ISLAND_SCREEN,
     join_hops: tuple[ScreenHop, ...] = WARP_JOIN_TO_POND_HOPS,
-    bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
+    bait_plan: BaitPurchasePlan = VERIFIED_BAIT_PLAN,
     survival: bool = False,
 ) -> tuple[Stage, ...]:
     """Post-L6 OW -> Recorder warp -> pond approach -> Bait -> L7 entry.
@@ -424,9 +425,9 @@ def level7_entry_chapter_stages(
     launch screen ``0x24`` and ``level7.warp.RecorderWarpController`` blows the
     owned Recorder until the cycle lands on the L4 island door ``0x45``; the
     join hops rejoin the already-green pond chain at ``0x55``
-    (``LEVEL7_ROUTE.md`` H1).  ``survival=True`` swaps the fail-closed natural
-    Bait buy for the disclosed ``SurvivalBaitPurchaseController`` (one
-    ``ADDR_FOOD`` write); Clean keeps the natural buy.
+    (``LEVEL7_ROUTE.md`` H1).  Natural Bait buy uses
+    ``make_bait_purchase_controller`` (no ``ADDR_FOOD`` write, off the Food
+    fixture).
     """
     post = make_post_l6_overworld_controller(
         handoff=handoff, hops=post_l6_hops, dest_screen=warp_launch
@@ -437,11 +438,7 @@ def level7_entry_chapter_stages(
     approach = OverworldToLevel7PondController(
         hops=join_hops, max_frames=POND_APPROACH_MAX_FRAMES, resume_on_screen=True
     )
-    bait = (
-        make_survival_bait_purchase_controller(plan=bait_plan)
-        if survival
-        else make_bait_purchase_controller(plan=bait_plan)
-    )
+    bait = make_bait_purchase_controller(plan=bait_plan)
     pond = make_pond_entry_controller()
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
@@ -589,15 +586,14 @@ def l7_hops(
     *,
     handoff: OverworldHandoff = UNMEASURED_HANDOFF,
     post_l6_hops: tuple[ScreenHop, ...] = POST_L6_TO_WARP_HOPS,
-    bait_plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN,
+    bait_plan: BaitPurchasePlan = VERIFIED_BAIT_PLAN,
     survival: bool = False,
 ) -> tuple[SpineHop, ...]:
     """Build fresh L7 chapter rows.  Defaults stay ``route_eligible=false``.
 
-    ``survival=True`` (the ``continue_level7_spine`` seam) swaps the Bait stage
-    for the disclosed ``ADDR_FOOD`` fixture. ``survival=False`` keeps the
-    natural buy and writes no Food. Interior chapter factories stay
-    ``route_eligible=false``.
+    Natural Bait buy (rr-8t4.5) uses ``NaturalBaitPurchaseController`` without
+    an ``ADDR_FOOD`` poke (the Survival Food fixture is retired). Interior
+    chapter factories stay ``route_eligible=false``.
     """
 
     def _shop_stages() -> tuple[Stage, ...]:

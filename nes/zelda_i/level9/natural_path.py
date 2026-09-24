@@ -147,8 +147,21 @@ class NaturalRouteUnavailableController:
 
 def make_post_l8_overworld_controller(
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
+    *,
+    hops: tuple[Any, ...] = (),
+    stop_screen: int | None = None,
+    resumed: bool = False,
 ) -> Level9PostL8OverworldController:
-    return Level9PostL8OverworldController(handoff=handoff)
+    kwargs: dict[str, Any] = {
+        "handoff": handoff,
+        "check_handoff": not resumed,
+        "resume_on_screen": resumed,
+    }
+    if hops:
+        kwargs["hops"] = hops
+    if stop_screen is not None:
+        kwargs["stop_screen"] = stop_screen
+    return Level9PostL8OverworldController(**kwargs)
 
 
 def make_spectacle_rock_bomb_controller(

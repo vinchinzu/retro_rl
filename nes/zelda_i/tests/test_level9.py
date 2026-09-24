@@ -645,16 +645,31 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
 
 def test_level9_entry_chapter_chaining() -> None:
     stages = level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF)
-    assert len(stages) == 3
+    assert len(stages) == 6
     assert stages[0][0] == "level9_post_l8_overworld"
-    assert stages[1][0] == "level9_white_sword"
-    assert stages[2][0] == "level9_spectacle_rock_bomb"
+    assert stages[1][0] == "bomb_restock_l8"
+    assert stages[2][0] == "exit_bomb_restock_l8"
+    assert stages[3][0] == "level9_post_l8_to_rock"
+    assert stages[4][0] == "level9_white_sword"
+    assert stages[5][0] == "level9_spectacle_rock_bomb"
     assert stages[0][2] == 12_000
-    assert stages[1][2] == 20_000
-    assert stages[2][2] == 4000
+    assert stages[2][2] == 600
+    assert stages[3][2] == 12_000
+    assert stages[4][2] == 20_000
+    assert stages[5][2] == 4000
 
     # Both controllers accept measured handoff and have route_eligible when complete
     ow_ctl = stages[0][1]
-    bomb_ctl = stages[2][1]
+    bomb_ctl = stages[5][1]
     assert isinstance(ow_ctl, Level9PostL8OverworldController)
     assert isinstance(bomb_ctl, Level9SpectacleRockBombController)
+
+    from zelda_i.level9.overworld import POST_L8_TO_LEVEL9_HOPS
+
+    direct_stages = level9_entry_chapter(
+        handoff=MEASURED_POST_L8_HANDOFF, post_l8_hops=POST_L8_TO_LEVEL9_HOPS
+    )
+    assert len(direct_stages) == 3
+    assert direct_stages[0][0] == "level9_post_l8_overworld"
+    assert direct_stages[1][0] == "level9_white_sword"
+    assert direct_stages[2][0] == "level9_spectacle_rock_bomb"

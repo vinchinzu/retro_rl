@@ -244,3 +244,45 @@ def test_static_open_eye_fires_once_not_every_frame() -> None:
     assert reasons.count("arrow_shot") == 1
     assert ctl.arrow_pulses == 1
     assert reasons[-1] in ("eye_wait", "cooldown")
+
+
+def test_clean_gohma_with_owned_arrows_does_not_poke_and_fights() -> None:
+    """When arrows are already owned, poke_arrows=False sets poked=True,
+    logs 'arrows_already_set', does zero RAM writes, and continues the fight."""
+    ram = _ram(bow=1, arrows=1, x=128, y=STAND_Y, eye=0x70, facing=FACE_NORTH)
+    _plant_gohma(ram, x=128)
+    mem = _AssignMem()
+    ctl = make_clean_gohma_controller()
+    ctl.bind_env(_env(ram, mem))
+    action = ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert ctl.poke_arrows is False
+    assert ctl.poked is True
+    assert "arrows_already_set" in ctl.notes
+    assert len(mem.calls) == 0
+    assert ctl.inventory_assist is None
+    assert action.reason == "arrow_shot"
+    assert ctl.arrow_pulses == 1
+
+
+def test_clean_gohma_kills_and_succeeds_without_pokes() -> None:
+    """Natural arrows allow clean Gohma kill: no pokes, body_gone arrival,
+    and level6_gohma_success passes."""
+    ram = _ram(bow=1, arrows=1, x=120, y=STAND_Y, eye=0x70, facing=FACE_NORTH)
+    _plant_gohma(ram, x=120)
+    mem = _AssignMem()
+    ctl = make_gohma_controller(poke_arrows=False)
+    ctl.bind_env(_env(ram, mem))
+    # Fire shot
+    ctl.step(read_snapshot(ram))
+    assert not ctl.failed
+    assert ctl.arrow_pulses == 1
+    assert len(mem.calls) == 0
+
+    # Gohma defeated (HP=0, body removed)
+    ram[ADDR_OBJ_TYPE + 1] = 0
+    ram[ADDR_OBJ_HP + 1] = 0
+    snap = read_snapshot(ram)
+    assert ctl.arrived(snap)
+    assert level6_gohma_success(snap)
+

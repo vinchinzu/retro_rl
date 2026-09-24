@@ -100,7 +100,9 @@ class PostLevel8Handoff:
     def mismatch(self, snap: ZeldaSnapshot) -> str | None:
         if snap.triforce != FULL_TRIFORCE:
             return TRIFORCE_NOT_FULL
-        if snap.bombs < 1:
+        if self.bombs is not None and snap.bombs < self.bombs:
+            return BOMBS_NOT_NATURAL
+        if self.bombs is None and snap.bombs < 1:
             return BOMBS_NOT_NATURAL
         if not self.complete():
             return MISSING_POST_L8_LEFTOVER
@@ -113,21 +115,22 @@ class PostLevel8Handoff:
 
 UNMEASURED_POST_L8_HANDOFF = PostLevel8Handoff()
 
-# rr-6o7.3: `--through level8` is power-on spine-green (`level8_ow_leave_settle`
-# stage).  The shard fanfare returns Link to OW `0x6D` `(96,93)` mode 5 with
-# TF `0xFF`, Magical Key 1, heart containers 10 (full), B = bombs.
+# rr-6o7.3 / rr-ps7.5: `--through level8` is power-on spine-green
+# (`level8_ow_leave_settle` stage, natl8_3). The shard fanfare returns Link to
+# OW `0x6D` `(96,93)` mode 5 with TF `0xFF`, Magical Key 1, heart containers 14,
+# bombs 0, rupees 38. Link leaves L8 with 0 bombs and purchases bombs on the
+# post-L8 walk to Spectacle Rock.
 # Keys/bombs/rupees are recorded for `complete()` but `mismatch()` only gates
-# on screen / level / mode / TF / bombs>0 (rupee & drop pickups vary run to
-# run).  This is the natural L9 overworld predecessor.
+# on screen / level / mode / TF / bombs>=floor.
 MEASURED_POST_L8_HANDOFF = PostLevel8Handoff(
     screen=0x6D,
     link_x=96,
     link_y=93,
-    keys=1,
-    bombs=14,
-    rupees=56,
-    heart_containers=10,
-    selected_item=1,
+    keys=0,
+    bombs=0,
+    rupees=38,
+    heart_containers=14,
+    selected_item=0,
     magic_key=1,
     bow=1,
     arrows=1,

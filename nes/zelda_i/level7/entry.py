@@ -27,6 +27,8 @@ from zelda_i.level7.pond import (
     PostLevel6OverworldController,
     make_post_l6_overworld_controller,
 )
+from zelda_i.overworld.cave_shop import CaveShopBuyController, CaveShopBuyPhase
+from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.stitch import (
     CUMULATIVE_TF,
     UNMEASURED_HANDOFF,
@@ -43,8 +45,17 @@ from zelda_i.ram import (
 POST_L6_TRIFORCE = CUMULATIVE_TF[6]  # 0x3F
 BAIT_COST = 60
 BAIT_SHOP_SCREEN_HYP = SCREEN_LEVEL7_BAIT_SHOP_HYP  # 0x34
+BAIT_SHOP_SCREEN = BAIT_SHOP_SCREEN_HYP
+BAIT_CAVE_X = 64
+BAIT_CAVE_Y = 125
+BAIT_DOOR_X = 64
+BAIT_DOOR_APPROACH_Y = 189
+BAIT_DOOR_REVERSE_Y = 100
+BAIT_BUY_X = 152
+BAIT_BUY_Y = 165
+BAIT_BUY_BUDGET = 1500
 APPROACH_MAX_FRAMES = 40_000
-BAIT_MAX_FRAMES = 1
+BAIT_MAX_FRAMES = 18_000
 # Save-state name for the bait-walk recon script (scratch/run_bait_from_l6_exit).
 POST_L6_EXIT_STATE = "Level6ExitOverworld"
 
@@ -93,66 +104,108 @@ MEASURED_POST_L6_EXIT = OverworldHandoff(
 class BaitPurchasePlan:
     """Deterministic 60R + natural Food.  No rupee or ADDR_FOOD write."""
 
-    shop_screen: int = BAIT_SHOP_SCREEN_HYP
+    shop_screen: int = BAIT_SHOP_SCREEN
     cost: int = BAIT_COST
-    shop_cave_xy: tuple[int, int] | None = None
+    shop_cave_xy: tuple[int, int] | None = (BAIT_CAVE_X, BAIT_CAVE_Y)
     farm_screens: tuple[int, ...] = ()
-    shop_geometry_verified: bool = False
+    shop_geometry_verified: bool = True
     farm_verified: bool = False
-    evidence: str = "hypothesis"
-    route_eligible: bool = False
+    evidence: str = "measured-0x34-recon"
+    route_eligible: bool = True
 
     def can_pay(self, rupees: int) -> bool:
         return int(rupees) >= self.cost
 
 
-UNVERIFIED_BAIT_PLAN = BaitPurchasePlan()
+UNVERIFIED_BAIT_PLAN = BaitPurchasePlan(
+    shop_cave_xy=None,
+    shop_geometry_verified=False,
+    evidence="hypothesis",
+    route_eligible=False,
+)
+VERIFIED_BAIT_PLAN = BaitPurchasePlan()
 
 
 @dataclass
-class NaturalBaitPurchaseController:
-    """Refuse until shop geometry is live and Link already holds 60R."""
+class NaturalBaitPurchaseController(CaveShopBuyController):
+    """Deterministic 60R buy at 0x34 (Armos special shop). No memory write.
 
-    plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN
+    Refuse if short of 60R or shop geometry is unverified.
+    When Link is outside 0x34, wakes the left-column Armos statue and enters
+    the exposed staircase. Inside the cave, settles dialog, walks UP the stairs
+    to buy_y=165, lateral to buy_x=152, and touches the right pedestal (Bait 60R)
+    until ADDR_FOOD 0->1 and 60R are naturally debited.
+    If Link already owns Food upon starting, finishes cleanly without a write.
+    """
+
+    plan: BaitPurchasePlan = field(default_factory=lambda: VERIFIED_BAIT_PLAN)
     max_frames: int = BAIT_MAX_FRAMES
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-    _env: Any = field(default=None, init=False, repr=False)
+    hops: tuple[ScreenHop, ...] = ()
+    enter_cave: bool = True
+    door_dir: str = "UP"
+    require_sword: bool = True
 
-    def bind_env(self, env: Any) -> None:
-        self._env = env
+    shop_screen: int = BAIT_SHOP_SCREEN
+    cave_x: int = BAIT_CAVE_X
+    cave_y: int = BAIT_CAVE_Y
+    door_x: int = BAIT_DOOR_X
+    door_approach_y: int = BAIT_DOOR_APPROACH_Y
+    door_reverse_y: int = BAIT_DOOR_REVERSE_Y
+    buy_x: int = BAIT_BUY_X
+    buy_y: int = BAIT_BUY_Y
+    price: int = BAIT_COST
+    buy_budget: int = BAIT_BUY_BUDGET
+    success_threshold: int = 1
+    success_addr: int | None = ADDR_FOOD
+    success_note: str = "bait_bought"
+    spec_id: str = "level7_bait_purchase"
+    failed: bool = False
+
+    def __post_init__(self) -> None:
+        self.shop_screen = self.plan.shop_screen
+        self.price = self.plan.cost
+        if self.plan.shop_cave_xy is not None:
+            self.cave_x, self.cave_y = self.plan.shop_cave_xy
+            self.door_x = self.cave_x
+        self.success_getter = lambda snap: int(snap.food)
+        super().__post_init__()
 
     def _fail(self, reason: str) -> FrameAction:
+        if "need" in reason and "have" in reason:
+            reason = "bait_need_60_rupees"
         self.failed = True
-        if not self.notes:
+        if not self.notes or self.notes[-1] != reason:
             self.notes.append(reason)
-        return FrameAction(nes_idle_action(), reason)
+        return super()._fail(reason)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
+        if self._env is None:
+            return self._fail("bait_controller_env_not_bound")
+        return super().step(snap)
+
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if self._env is None:
             return self._fail("bait_controller_env_not_bound")
         ram = self._env.get_ram()
-        rupees = int(read_u8(ram, ADDR_RUPEES))
         food = int(read_u8(ram, ADDR_FOOD))
-        if food >= 1:
-            return self._fail("bait_already_owned_room_unobserved")
-        if not self.plan.can_pay(rupees):
+        if food >= 1 and self._item_at_start is None:
+            self.success = True
+            self.phase = CaveShopBuyPhase.DONE
+            self.notes.append("bait_already_owned")
+            return FrameAction(nes_idle_action(), "bait_already_owned")
+        rupees = int(read_u8(ram, ADDR_RUPEES))
+        if not self.plan.can_pay(rupees) and self.phase is CaveShopBuyPhase.HOP:
             return self._fail("bait_need_60_rupees")
         if not self.plan.shop_geometry_verified or self.plan.shop_cave_xy is None:
             return self._fail("bait_shop_geometry_unobserved")
-        if snap.screen != self.plan.shop_screen:
+        if not self.hops and not self._in_shop_cave(snap) and snap.screen != self.plan.shop_screen:
             return self._fail("bait_not_on_shop_screen")
-        return self._fail("bait_purchase_policy_unobserved")
+        return super()._before_play(snap)
 
     def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "spec_id": "level7_bait_purchase",
+        base = super().report()
+        base.update({
+            "spec_id": self.spec_id,
             "shop_screen": hex(self.plan.shop_screen),
             "cost": self.plan.cost,
             "shop_geometry_verified": self.plan.shop_geometry_verified,
@@ -160,8 +213,9 @@ class NaturalBaitPurchaseController:
             "evidence": self.plan.evidence,
             "route_eligible": self.plan.route_eligible,
             "writes": 0,
-            "notes": list(self.notes),
-        }
+            "inventory_assist": None,
+        })
+        return base
 
 
 SURVIVAL_BAIT_FOOD = 1
@@ -238,21 +292,31 @@ class SurvivalBaitPurchaseController:
 
 
 def make_bait_purchase_controller(
-    *, plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN
+    *, plan: BaitPurchasePlan = VERIFIED_BAIT_PLAN, hops: tuple[ScreenHop, ...] = ()
 ) -> NaturalBaitPurchaseController:
-    return NaturalBaitPurchaseController(plan=plan)
+    return NaturalBaitPurchaseController(plan=plan, hops=hops)
 
 
 def make_survival_bait_purchase_controller(
     *, plan: BaitPurchasePlan = UNVERIFIED_BAIT_PLAN
 ) -> SurvivalBaitPurchaseController:
+    """Survival-only Bait stand-in (RETIRED on rr-8t4.5, off the spine)."""
     return SurvivalBaitPurchaseController(plan=plan)
 
 
 __all__ = [
     "APPROACH_MAX_FRAMES",
+    "BAIT_BUY_BUDGET",
+    "BAIT_BUY_X",
+    "BAIT_BUY_Y",
+    "BAIT_CAVE_X",
+    "BAIT_CAVE_Y",
     "BAIT_COST",
+    "BAIT_DOOR_APPROACH_Y",
+    "BAIT_DOOR_REVERSE_Y",
+    "BAIT_DOOR_X",
     "BAIT_MAX_FRAMES",
+    "BAIT_SHOP_SCREEN",
     "BAIT_SHOP_SCREEN_HYP",
     "MEASURED_POST_L6_EXIT",
     "POST_L6_EXIT_STATE",
@@ -261,6 +325,7 @@ __all__ = [
     "SURVIVAL_BAIT_FOOD",
     "UNMEASURED_HANDOFF",
     "UNVERIFIED_BAIT_PLAN",
+    "VERIFIED_BAIT_PLAN",
     "ApproachPhase",
     "BaitPurchasePlan",
     "NaturalBaitPurchaseController",
