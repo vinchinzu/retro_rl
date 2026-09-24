@@ -11,7 +11,12 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.anchors import SCREEN_LEVEL8_BUSH
+from zelda_i.anchors import (
+    SCREEN_LEVEL4_ENTRANCE,
+    SCREEN_LEVEL4_RAFT_DOCK,
+    SCREEN_LEVEL8_BUSH,
+)
+from zelda_i.level7.overworld import POND_55_DOCK_X as RAFT_DOCK_X
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level7.dungeon import MEASURED_POST_L7_EXIT
 from zelda_i.level8.overworld import (
@@ -324,6 +329,12 @@ class PostLevel7ToBushController(OverworldPathController):
         if self.stuck > self.stuck_threshold:
             self._lattice_hop = self.hop_index
         source = self.hops[self.hop_index - 1].target if self.hop_index else None
+        if snap.screen == SCREEN_LEVEL4_ENTRANCE and source == SCREEN_LEVEL4_RAFT_DOCK:
+            # A Zora-spit dodge UP onto 0x55's dock column rafts Link to the
+            # L4 island, where no hop starts (run 22: 37207 frames of the
+            # stuck wait below). The dock column x=128 rafts him back DOWN.
+            step = ow_edge_band_step(self._env, snap, "DOWN", RAFT_DOCK_X - 4, RAFT_DOCK_X + 4)
+            return self._swing(step or "DOWN", "raft_back_to_0x55")
         if self._lattice_hop == self.hop_index and snap.screen == source:
             # Stalled on this hop: the ROM lattice to its exit band for the
             # rest of it. The idle below sat 34,960f in the 0x5C maze on the

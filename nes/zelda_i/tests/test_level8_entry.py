@@ -642,3 +642,22 @@ def test_magic_key_and_gleeok_stages_are_named_and_blocked() -> None:
         ctl.step(read_snapshot(_ram(level=8)))
         assert ctl.failed, name
         assert not ctl.success, name
+
+
+def test_rafted_to_the_l4_island_mid_walk_rafts_back() -> None:
+    """Run 22: a Zora-spit dodge UP onto 0x55's dock column rafted Link to
+    the L4 island 0x45, where no hop starts; the stuck rule idled 37207
+    frames. On 0x45 with the hop leaving 0x55, the walk presses DOWN (the
+    dock column rafts back)."""
+    from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
+    from zelda_i.level8.entry import make_post_l7_to_bush_controller
+    from zelda_i.overworld.graph import ScreenHop
+
+    hops = (ScreenHop(0x55, "UP"), ScreenHop(0x56, "RIGHT"))
+    ctl = make_post_l7_to_bush_controller(hops=hops)
+    ctl.hop_index = 1
+    ram = _ram()
+    ram[ADDR_LEVEL], ram[ADDR_SCREEN] = 0, 0x45
+    act = ctl._extra_hop_action(read_snapshot(ram), hops[1])
+    assert act is not None and act.reason.startswith("raft_back_to_0x55")
+    assert act.action[NES_BUTTON_NAME_TO_INDEX["DOWN"]]
