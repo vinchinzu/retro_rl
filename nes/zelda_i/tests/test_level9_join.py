@@ -16,7 +16,9 @@ from zelda_i.level9.hops import (
     Level9NaturalRouteSelection,
     level9_patra_chapter,
 )
+from zelda_i.dungeon.engine import DungeonPhase, GenericDungeonRoomController
 from zelda_i.level9.natural_path import (
+    JOIN_CLEAR_SPECS,
     NaturalPatraJoinController,
     NaturalRouteUnavailableController,
     PatraJoinPhase,
@@ -114,6 +116,53 @@ def test_natural_patra_join_fail_closed_contracts():
     ctrl4.step(death)
     assert ctrl4.failed
     assert "link_death" in ctrl4.notes[-1]
+
+
+def test_every_join_clear_runs_on_the_engine():
+    clears = [p for p in PatraJoinPhase if p.name.startswith("CLEAR_")]
+    assert set(JOIN_CLEAR_SPECS) == set(clears)
+    for phase, spec in JOIN_CLEAR_SPECS.items():
+        assert spec.room_id == int(phase.name.removeprefix("CLEAR_"), 16)
+        assert spec.level == LEVEL9
+        assert spec.combat.contact_backstep == 16
+
+
+class _DoneFight:
+    done = True
+
+    def step(self, snap):  # pragma: no cover - a done fight is never stepped
+        raise AssertionError("stepped a finished fight")
+
+
+def test_join_clear_hands_on_once_the_engine_is_done():
+    ctrl = make_natural_patra_join_controller()
+    ctrl.start_checked = True
+    ctrl._set_phase(PatraJoinPhase.CLEAR_41)
+    ctrl._fights[PatraJoinPhase.CLEAR_41] = _DoneFight()
+    act = ctrl.step(_make_snap(screen=0x41))
+    assert act.reason == "clear_41_done"
+    assert ctrl.phase == PatraJoinPhase.NORTH_41
+
+
+def test_join_clear_cap_hands_on_without_the_engine():
+    ctrl = make_natural_patra_join_controller()
+    ctrl.start_checked = True
+    ctrl._set_phase(PatraJoinPhase.CLEAR_31)
+    ctrl.phase_frames = 2000
+    ctrl.step(_make_snap(screen=0x31))
+    assert ctrl.phase == PatraJoinPhase.NAV_BOMB_31
+
+
+def test_room_fight_rebuild_keeps_the_wave_census():
+    fight = make_natural_patra_join_controller()._fights[PatraJoinPhase.CLEAR_20]
+    failed = GenericDungeonRoomController(spec=fight.spec)
+    failed.max_live_enemies = 5
+    failed.phase = DungeonPhase.FAILED
+    fight._ctl = failed
+    fight.step(_make_snap(screen=0x20))
+    assert fight._ctl is not failed
+    assert fight._ctl.max_live_enemies == 5
+    assert not fight.done
 
 
 def test_patra_chapter_wiring():

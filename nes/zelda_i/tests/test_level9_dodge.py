@@ -7,6 +7,7 @@ from zelda_i.combat import (
     CONTACT_MANHATTAN,
     FACING_EAST,
     FACING_NORTH,
+    FACING_WEST,
 )
 from zelda_i.dungeon.door_hop import door_band_goal
 from zelda_i.dungeon.ids import FIREBALL_OBJECT_TYPE
@@ -19,6 +20,7 @@ from zelda_i.level9.ganon import (
     ROOM_BEFORE_GANON,
     ROOM_GANON,
     ganon_action,
+    ganon_contact,
     hazard_dodge_dir,
 )
 from zelda_i.level9.natural_path import NaturalPatraJoinController, PatraJoinPhase
@@ -167,83 +169,61 @@ def test_patra_faces_north_then_fires() -> None:
     assert fire_cd > 0
 
 
-def test_ganon_cooldown_dodges_fireball_at_boundary_not_idle() -> None:
-    boss = _obj(OBJ_GANON, 120, 126, slot=1, hp=0xF0, state=0)
-    ball = _obj(FIREBALL_OBJECT_TYPE, 127, 157, slot=2)
-    snap = _snap(
-        link_x=120,
-        link_y=150,
-        facing=FACING_NORTH,
-        objects=(boss, ball),
-    )
-    action, reason, cooldown = ganon_action(snap, cooldown=8)
-    assert reason == "attack_dodge"
-    assert list(action) == list(nes_action("LEFT"))
-    assert cooldown == 7
-    assert list(action) != list(nes_idle_action())
-
-
-def test_ganon_sword_cooldown_without_hazard_stands_idle() -> None:
-    boss = _obj(OBJ_GANON, 120, 130, slot=1, hp=0xF0, state=0)
-    snap = _snap(
-        link_x=120,
-        link_y=150,
-        facing=FACING_NORTH,
-        objects=(boss,),
-    )
-    action, reason, cooldown = ganon_action(snap, cooldown=8)
+def test_ganon_blade_from_below_window_not_inside_sprite() -> None:
+    # Link 26 px under Ganon's corner, on his column: the measured UP window.
+    boss = _obj(OBJ_GANON, 112, 125, slot=1, hp=0xF0, state=0)
+    north = _snap(link_x=120, link_y=151, facing=FACING_NORTH, objects=(boss,))
+    fire, reason, cooldown = ganon_action(north, cooldown=0)
+    assert reason == "sword_pulse"
+    assert list(fire) == list(nes_action("A"))
+    assert cooldown == 12
+    hold, reason, cooldown = ganon_action(north, cooldown=8)
     assert reason == "cooldown_stand"
-    assert list(action) == list(nes_idle_action())
+    assert list(hold) == list(nes_idle_action())
     assert cooldown == 7
 
 
-def test_ganon_faces_then_swings() -> None:
-    boss = _obj(OBJ_GANON, 120, 130, slot=1, hp=0xF0, state=0)
-    sideways = _snap(
-        link_x=120, link_y=150, facing=FACING_EAST, objects=(boss,)
-    )
-    face, face_reason, face_cd = ganon_action(sideways, cooldown=0)
-    assert face_reason == "face_sword"
+def test_ganon_turns_only_from_inside_the_stand() -> None:
+    boss = _obj(OBJ_GANON, 112, 125, slot=1, hp=0xF0, state=0)
+    sideways = _snap(link_x=120, link_y=151, facing=FACING_EAST, objects=(boss,))
+    face, reason, _ = ganon_action(sideways, cooldown=0)
+    assert reason == "face_sword"
     assert list(face) == list(nes_action("UP"))
-    assert face_cd == 0
-
-    north = _snap(
-        link_x=120, link_y=150, facing=FACING_NORTH, objects=(boss,)
-    )
-    fire, fire_reason, fire_cd = ganon_action(north, cooldown=0)
-    assert fire_reason == "sword_pulse"
-    assert list(fire) == list(nes_action("UP", "A"))
-    assert fire_cd == 12
+    # dy 21 is inside the window but not its stand: the turn would walk out.
+    edge = _snap(link_x=120, link_y=146, facing=FACING_EAST, objects=(boss,))
+    _, reason, _ = ganon_action(edge, cooldown=0)
+    assert reason != "face_sword"
 
 
-def test_ganon_brown_aligned_stays_on_axis_during_cooldown() -> None:
-    boss = _obj(OBJ_GANON, 120, 130, slot=1, hp=0xF0, state=0xFF)
-    ball = _obj(FIREBALL_OBJECT_TYPE, 127, 157, slot=2)
-    snap = _snap(
-        link_x=120, link_y=150, facing=FACING_NORTH, objects=(boss, ball)
-    )
-    action, reason, cooldown = ganon_action(snap, cooldown=8)
-    assert reason == "face_arrow"
-    assert list(action) == list(nes_action("UP"))
-    assert cooldown == 7
+def test_ganon_steps_out_of_the_sprite() -> None:
+    # The old chase stood here: 8 px into the 32 px sprite, hit every iframe.
+    boss = _obj(OBJ_GANON, 112, 125, slot=1, hp=0xF0, state=0)
+    inside = _snap(link_x=120, link_y=133, facing=FACING_NORTH, objects=(boss,))
+    assert ganon_contact(inside, boss)
+    _, reason, _ = ganon_action(inside, cooldown=0)
+    assert reason == "leave_ganon_body"
 
 
-def test_ganon_faces_then_fires_silver_arrow() -> None:
-    boss = _obj(OBJ_GANON, 120, 130, slot=1, hp=0xF0, state=0xFF)
-    sideways = _snap(
-        link_x=120, link_y=150, facing=FACING_EAST, objects=(boss,)
-    )
-    face, face_reason, _ = ganon_action(sideways, cooldown=0)
-    assert face_reason == "face_arrow"
-    assert list(face) == list(nes_action("UP"))
+def test_ganon_silver_arrow_from_a_lane_outside_the_sprite() -> None:
+    boss = _obj(OBJ_GANON, 64, 133, slot=1, hp=0xF0, state=0xF0)
+    lane = _snap(link_x=120, link_y=141, facing=FACING_WEST, objects=(boss,))
+    fire, reason, cooldown = ganon_action(lane, cooldown=0)
+    assert reason == "silver_arrow"
+    assert list(fire) == list(nes_action("B"))
+    assert cooldown == 16
+    # dy -3: the arrow flies over him (Blue Ring power-on 10).
+    over = _snap(link_x=120, link_y=130, facing=FACING_WEST, objects=(boss,))
+    _, reason, _ = ganon_action(over, cooldown=0)
+    assert reason != "silver_arrow"
 
-    north = _snap(
-        link_x=120, link_y=150, facing=FACING_NORTH, objects=(boss,)
-    )
-    fire, fire_reason, fire_cd = ganon_action(north, cooldown=0)
-    assert fire_reason == "silver_arrow"
-    assert list(fire) == list(nes_action("UP", "B"))
-    assert fire_cd == 16
+
+def test_dying_ganon_is_walked_onto_not_shot() -> None:
+    # The killing arrow drops a brown Ganon's HP below 240; the defeat flag
+    # waits for Link on the remains.
+    boss = _obj(OBJ_GANON, 64, 141, slot=1, hp=176, state=0xF4)
+    lane = _snap(link_x=120, link_y=141, facing=FACING_WEST, objects=(boss,))
+    _, reason, _ = ganon_action(lane, cooldown=0)
+    assert reason == "to_ganon_remains"
 
 
 def test_leftover_door_band_off_column_uses_door_x() -> None:

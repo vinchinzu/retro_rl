@@ -11,13 +11,14 @@ from __future__ import annotations
 from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.hop_controller import room_step
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BombWallController, BombWallPhase
+from zelda_i.dungeon.engine import DoorRoute
 from zelda_i.dungeon.hop_controller import stairs_step
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.dungeon import (
@@ -41,7 +42,7 @@ from zelda_i.level9.overworld import (
     Level9SpectacleRockBombController,
 )
 from zelda_i.level9.prefix import (
-    Level9North76Controller, make_bomb_north_20_controller, make_bomb_north_65_controller,
+    ROOM_10_WIZZROBES_SPEC, Level9North76Controller, RoomFight, make_bomb_north_20_controller, make_bomb_north_65_controller,
     make_bomb_west_06_controller, make_cellar_60_controller, make_cellar_70_controller,
     make_cellar_75_controller, make_east_14_controller, make_east_15_controller,
     ROOM_10_MOUTH_X, ROOM_10_SOUTH_Y,
@@ -81,8 +82,6 @@ from zelda_i.level9.stairs import (
     ROOM41,
     ROOM51,
     ROOM61,
-    chase_sword_step,
-    live_combat_objects,
     pushable_block,
     room03_stairs_step,
     room30_stairs_step,
@@ -356,14 +355,13 @@ class PatraJoinPhase(Enum):
 NAV_BLOCK_20_WPS = ((176, 93), (176, 189), (96, 189), (96, 157))
 # Phases that assume Link is standing in room 0x20. Room 0x20's north wall is
 # the bombed hole this join just came through, so any of them can find itself
-# back in 0x10 (see the CLEAR_20 guard below).
+# back in 0x10 (see the re-entry guard in ``step``).
 _ROOM_20_PHASES = (
     PatraJoinPhase.CLEAR_20,
     PatraJoinPhase.NAV_BLOCK_20,
     PatraJoinPhase.PUSH_BLOCK_20,
     PatraJoinPhase.STAIRS_20,
 )
-_ROOM_20_NORTH_Y = 101
 _MAX_10_REENTRIES = 2
 # Same story one bomb-hole later: BOMB_31 blows 0x31's west wall and Link
 # enters 0x30 from the east, so CLEAR_30's chase can shove him back into 0x31
@@ -373,11 +371,58 @@ _ROOM_30_PHASES = (
     PatraJoinPhase.CLEAR_30,
     PatraJoinPhase.STAIRS_30,
 )
-_ROOM_30_EAST_X = 200
 _MAX_31_REENTRIES = 2
 _BOMB_RECOVER_FRAMES = 1200
 NAV_61_WPS = ((48, 157), (48, 93), (120, 93), (120, 77))
 NAV_BOMB_31_WPS = ((120, 189), (48, 189), (48, 141))
+
+# The join's six clears run on the generic engine (rr-iu0g), tuned like 0x10's
+# Wizzrobes. The greedy dominant-axis chase they replace took 12 hearts in
+# 0x20 on every one of 12 RNG offsets, and 0x31's gate counted its 0x2B trap
+# as live, so that clear always ran out its 2000-frame cap.
+_JOIN_WIZZROBES = replace(
+    ROOM_10_WIZZROBES_SPEC,
+    spec_id="level9_join_20_wizzrobes",
+    source_room=0x10,
+    room_id=0x20,
+    entry=DoorRoute("DOWN", ((120, 93),)),
+    # A 16 px peel before the swing: 0x20 8.3 -> 7.4h, 0x04 5.6 -> 5.2h,
+    # neutral elsewhere. The evader stalled 0x31 on 12 of 12 offsets, and
+    # 0x30 stays ~1.4h behind the old chase (5 vs 3 median) for 330 fewer
+    # frames; no patrol, dash or inland rule closed that.
+    combat=replace(
+        ROOM_10_WIZZROBES_SPEC.combat, patrol=((72, 189), (168, 189)), contact_backstep=16
+    ),
+)
+JOIN_CLEAR_SPECS = {
+    PatraJoinPhase.CLEAR_20: _JOIN_WIZZROBES,
+    PatraJoinPhase.CLEAR_41: replace(
+        _JOIN_WIZZROBES, spec_id="level9_join_41_like_likes", source_room=0x51,
+        room_id=ROOM41, entry=DoorRoute("UP", ((120, 189),)), enemy_types=(0x17,),
+        expected_enemy_count=4,
+        combat=replace(_JOIN_WIZZROBES.combat, patrol=((72, 141), (168, 141))),
+    ),
+    PatraJoinPhase.CLEAR_31: replace(
+        _JOIN_WIZZROBES, spec_id="level9_join_31_mixed", source_room=ROOM41,
+        room_id=ROOM31, entry=DoorRoute("UP", ((120, 189),)),
+        enemy_types=(0x17, 0x23, 0x24), expected_enemy_count=7,
+        combat=replace(_JOIN_WIZZROBES.combat, patrol=((72, 157), (168, 157))),
+    ),
+    PatraJoinPhase.CLEAR_30: replace(
+        _JOIN_WIZZROBES, spec_id="level9_join_30_wizzrobes", source_room=ROOM31,
+        room_id=ROOM30, entry=DoorRoute("LEFT", ((208, 141),)), expected_enemy_count=4,
+        combat=replace(_JOIN_WIZZROBES.combat, patrol=((72, 173), (168, 173))),
+    ),
+    PatraJoinPhase.CLEAR_04: replace(
+        _JOIN_WIZZROBES, spec_id="level9_join_04_wizzrobes", source_room=0x67,
+        room_id=ROOM04, entry=DoorRoute("DOWN", ((192, 109),)), expected_enemy_count=4,
+    ),
+    PatraJoinPhase.CLEAR_03: replace(
+        _JOIN_WIZZROBES, spec_id="level9_join_03_zols", source_room=ROOM04,
+        room_id=ROOM03, entry=DoorRoute("LEFT", ((208, 141),)),
+        enemy_types=(0x13, 0x14, 0x17), expected_enemy_count=4,
+    ),
+}
 
 
 def cellar_west_to_east_step(snap: ZeldaSnapshot) -> FrameAction:
@@ -418,11 +463,6 @@ class NaturalPatraJoinController(_NaturalEndingController):
     reentries_31: int = 0
     bomb_31_recover: int = 0
     bomb_04_recover: int = 0
-    cooldown: int = 0
-    stuck_xy: tuple[int, int] | None = None
-    stuck_frames: int = 0
-    escape_frames: int = 0
-    escape_dir: str = "UP"
     wp_stuck_frames: int = 0
     wp_escape_frames: int = 0
     wp_best_dist: int = -1
@@ -432,8 +472,10 @@ class NaturalPatraJoinController(_NaturalEndingController):
     phase_leftover: tuple[int, int] | None = None
     _bomb_31: BombWallController = field(init=False, repr=False)
     _bomb_04: BombWallController = field(init=False, repr=False)
+    _fights: dict[PatraJoinPhase, RoomFight] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._fights = {phase: RoomFight(spec) for phase, spec in JOIN_CLEAR_SPECS.items()}
         self._bomb_31 = BombWallController(
             wall=BOMB_WALL_31_WEST,
             level=LEVEL9,
@@ -467,6 +509,17 @@ class NaturalPatraJoinController(_NaturalEndingController):
         self.wp_escape_frames = 0
         self.wp_best_dist = -1
         self.phase_leftover = None
+
+    def _clear(
+        self, snap: ZeldaSnapshot, cap: int, next_phase: PatraJoinPhase, tag: str
+    ) -> FrameAction:
+        """This phase's room on the engine until it is done or ``cap`` frames."""
+        fight = self._fights[self.phase]
+        if fight.done or self.phase_frames >= cap:
+            self._set_phase(next_phase)
+            return self._action(nes_idle_action(), f"{tag}_done")
+        act = fight.step(snap)
+        return self._action(act.action, f"{tag}_{act.reason}")
 
     def _wp_step(self, snap: ZeldaSnapshot, dx: int, dy: int, *, x_first: bool) -> str:
         """Direction toward a waypoint, with a no-*progress* escape.
@@ -532,9 +585,8 @@ class NaturalPatraJoinController(_NaturalEndingController):
             ):
                 return self._fail("natural_patra_join_predecessor_contract_miss")
 
-        # Re-entry guard. CLEAR_20's chase_sword_step follows a Wizzrobe
-        # anywhere in the room, including up through the open bomb hole in
-        # 0x20's north wall, which drops Link back into 0x10 with a 0x20 phase
+        # Re-entry guard. A hit or a chase in 0x20 can carry Link up through
+        # the open bomb hole in 0x20's north wall, back into 0x10 with a 0x20 phase
         # still latched -- every 0x20 waypoint is then meaningless and the
         # controller ping-ponged in 0x10 until the 24000-frame timeout (live
         # power-on, rr-sz8.7, 2026-09-06). Re-derive the phase from the room
@@ -596,25 +648,9 @@ class NaturalPatraJoinController(_NaturalEndingController):
             else:
                 return self._action(nes_action("DOWN"), "south_10_scroll")
 
-        # 2. CLEAR_20
+        # 2. CLEAR_20 (the 2500-frame cap bounds a room whose clear stalls)
         if self.phase == PatraJoinPhase.CLEAR_20:
-            combat = live_combat_objects(snap)
-            # Gate on room_all_dead, not a visible count: Wizzrobes read hp 0
-            # while dematerialized, so a teleport gap looks like a clear. In a
-            # live power-on run this phase "finished" after ~1,000 frames with
-            # the room still populated, and NAV_BLOCK_20 then spent the whole
-            # remaining budget being shoved off waypoint 0 (rr-sz8.7). Same
-            # lesson as room 0x10's Wizzrobes and stairs_61's spawn race; the
-            # 2500-frame cap still bounds rooms whose 0x2B traps never clear.
-            if snap.room_all_dead or self.phase_frames >= 2500:
-                self._set_phase(PatraJoinPhase.NAV_BLOCK_20)
-            elif snap.link_y <= _ROOM_20_NORTH_Y:
-                # Never fight in the north band: that is where the bomb hole
-                # back into 0x10 is.
-                return self._action(nes_action("DOWN"), "clear_20_leave_north_band")
-            else:
-                act, self.cooldown = chase_sword_step(snap, self.cooldown)
-                return self._action(act.action, "clear_20_combat")
+            return self._clear(snap, 2500, PatraJoinPhase.NAV_BLOCK_20, "clear_20")
 
         # 3-5. ROM block + stairs first (same shape as stairs_61): the
         # NAV_BLOCK_20 waypoints held wp3 for 22433f on the power-on
@@ -710,12 +746,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
 
         # 9. CLEAR_41
         if self.phase == PatraJoinPhase.CLEAR_41:
-            combat = live_combat_objects(snap)
-            if len(combat) == 0 or self.phase_frames >= 1800:
-                self._set_phase(PatraJoinPhase.NORTH_41)
-                return self._action(nes_idle_action(), "clear_41_done")
-            act, self.cooldown = chase_sword_step(snap, self.cooldown)
-            return self._action(act.action, "clear_41_combat")
+            return self._clear(snap, 1800, PatraJoinPhase.NORTH_41, "clear_41")
 
         # 10. NORTH_41
         if self.phase == PatraJoinPhase.NORTH_41:
@@ -733,12 +764,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
 
         # 11. CLEAR_31
         if self.phase == PatraJoinPhase.CLEAR_31:
-            combat = live_combat_objects(snap)
-            if len(combat) == 0 or self.phase_frames >= 2000:
-                self._set_phase(PatraJoinPhase.NAV_BOMB_31)
-                return self._action(nes_idle_action(), "clear_31_done")
-            act, self.cooldown = chase_sword_step(snap, self.cooldown)
-            return self._action(act.action, "clear_31_combat")
+            return self._clear(snap, 2000, PatraJoinPhase.NAV_BOMB_31, "clear_31")
 
         # 12. NAV_BOMB_31
         if self.phase == PatraJoinPhase.NAV_BOMB_31:
@@ -794,16 +820,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
 
         # 14. CLEAR_30
         if self.phase == PatraJoinPhase.CLEAR_30:
-            combat = live_combat_objects(snap)
-            if snap.room_all_dead or self.phase_frames >= 2000:
-                self._set_phase(PatraJoinPhase.STAIRS_30)
-                return self._action(nes_idle_action(), "clear_30_done")
-            if snap.link_x >= _ROOM_30_EAST_X:
-                # Never fight in the east band: that is the bombed hole back
-                # into 0x31 (same guard as CLEAR_20's north band).
-                return self._action(nes_action("LEFT"), "clear_30_leave_east_band")
-            act, self.cooldown = chase_sword_step(snap, self.cooldown)
-            return self._action(act.action, "clear_30_combat")
+            return self._clear(snap, 2000, PatraJoinPhase.STAIRS_30, "clear_30")
 
         # 15. STAIRS_30
         if self.phase == PatraJoinPhase.STAIRS_30:
@@ -829,12 +846,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
 
         # 17. CLEAR_04
         if self.phase == PatraJoinPhase.CLEAR_04:
-            combat = live_combat_objects(snap)
-            if snap.room_all_dead or self.phase_frames >= 1200:
-                self._set_phase(PatraJoinPhase.NAV_BOMB_04)
-                return self._action(nes_idle_action(), "clear_04_done")
-            act, self.cooldown = chase_sword_step(snap, self.cooldown)
-            return self._action(act.action, "clear_04_combat")
+            return self._clear(snap, 1200, PatraJoinPhase.NAV_BOMB_04, "clear_04")
 
         # 18. NAV_BOMB_04
         if self.phase == PatraJoinPhase.NAV_BOMB_04:
@@ -892,60 +904,15 @@ class NaturalPatraJoinController(_NaturalEndingController):
             # south of it and holding UP for 240 frames moves it zero pixels;
             # once room_all_dead it slides 144 -> 128 in the same 240 frames
             # (live from the L9Stairs03StallReal pin, rr-sz8.7). So this phase
-            # must actually finish the room -- bailing early only strands
-            # STAIRS_03 pressing an immovable block forever. Gate on
-            # room_all_dead rather than a live-object count, the same way room
-            # 0x10's Wizzrobes do: 0x2B traps are invulnerable and never clear,
-            # and real enemies read hp 0 mid-teleport.
-            if snap.room_all_dead:
-                self._set_phase(PatraJoinPhase.STAIRS_03)
-                return self._action(nes_idle_action(), "clear_03_done")
-            # The naive chase walks only along the dominant axis, so a wall
-            # between Link and a wandering flyer pins him in place -- observed
-            # parked at (144,165) for 7,000 frames chasing one 0x13 that the
-            # same policy kills in ~1,100 frames from an unblocked start.
-            # Reuse the stairs_61 no-progress escape: step toward the room's
-            # open center, then resume.
-            # A pinned chase routes to the nearest target on the ROM lattice
-            # instead: the greedy escape toward the centre pressed LEFT/DOWN
-            # into blocks at (144,109) for 11000 frames (baseline full run).
-            xy = (int(snap.link_x), int(snap.link_y))
-            if xy == self.stuck_xy:
-                self.stuck_frames += 1
-            else:
-                self.stuck_xy = xy
-                self.stuck_frames = 0
-            if self.stuck_frames > 30:
-                self.escape_frames = 40
-                self.stuck_frames = 0
-            if self.escape_frames > 0:
-                self.escape_frames -= 1
-                targets = [o for o in live_combat_objects(snap) if o.type_id in (0x13, 0x14, 0x17)]
-                goal = (
-                    min(targets, key=lambda o: abs(o.x - xy[0]) + abs(o.y - xy[1]))
-                    if targets else None
-                )
-                step = room_step(
-                    snap, (120, 141) if goal is None else (int(goal.x), int(goal.y)), tol=12
-                )
-                if step is not None:
-                    return self._action(nes_action(step), "clear_03_stuck_escape")
-            act, self.cooldown = chase_sword_step(snap, self.cooldown, types=(0x13, 0x14, 0x17))
-            return self._action(act.action, "clear_03_combat")
+            # has no cap of its own -- bailing early only strands STAIRS_03
+            # pressing an immovable block forever.
+            return self._clear(snap, self.max_frames, PatraJoinPhase.STAIRS_03, "clear_03")
 
         # 21. STAIRS_03
         if self.phase == PatraJoinPhase.STAIRS_03:
             if snap.mode in (CELLAR_MODE, 10, 16) or stair_transition_modes(snap.mode):
                 self._set_phase(PatraJoinPhase.CELLAR_77)
                 return self._action(nes_idle_action(), "stairs_03_transition")
-            likes = tuple(obj for obj in live_combat_objects(snap) if obj.type_id == 0x17)
-            grabbed = any(
-                abs(int(obj.x) - snap.link_x) <= 8 and abs(int(obj.y) - snap.link_y) <= 8
-                for obj in likes
-            )
-            if grabbed:
-                act, self.cooldown = chase_sword_step(snap, self.cooldown, types=(0x17,))
-                return self._action(act.action, "room03_fight_like_like")
             if snap.mode == PLAY_MODE and not snap.transitioning:
                 # ROM block + stairs first (the 0x20 / 0x61 shape); the
                 # align walk spent 5084f here on the power-on gathered spine.

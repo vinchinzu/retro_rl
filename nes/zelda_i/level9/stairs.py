@@ -17,7 +17,6 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
-from zelda_i.combat import in_sword_hitbox
 from zelda_i.dungeon.ids import object_name
 from zelda_i.level2.puzzles import BombWall, DOOR_RIGHT
 from zelda_i.level9.ganon import LEVEL9
@@ -590,29 +589,6 @@ def room03_stairs_step(snap: ZeldaSnapshot) -> FrameAction:
             return walk_to_step(snap, ROOM03_PUSH_X, ROOM03_SLOT_Y, y_first=True)
         return walk_to_step(snap, ROOM03_STAIR_X, ROOM03_STAIR_Y, y_first=False, tol=0)
     return walk_to_step(snap, ROOM03_STAIR_X, ROOM03_STAIR_Y, y_first=False, tol=0)
-
-
-def chase_sword_step(
-    snap: ZeldaSnapshot, cooldown: int, types: tuple[int, ...] | None = None,
-) -> tuple[FrameAction, int]:
-    enemies = live_combat_objects(snap)
-    if types is not None:
-        enemies = tuple(obj for obj in enemies if obj.type_id in types)
-    if not enemies:
-        return FrameAction(nes_idle_action(), "chase_clear"), max(0, cooldown - 1)
-    if cooldown > 0:
-        return FrameAction(nes_idle_action(), "chase_cooldown"), cooldown - 1
-    target = min(enemies, key=lambda obj: abs(int(obj.x) - snap.link_x) + abs(int(obj.y) - snap.link_y))
-    dx = int(target.x) - int(snap.link_x)
-    dy = int(target.y) - int(snap.link_y)
-    if abs(dx) <= 8 and abs(dy) <= 8:
-        return FrameAction(nes_action("UP", "A"), "chase_overlap_slash"), 10
-    for direction in ("UP", "DOWN", "LEFT", "RIGHT"):
-        if in_sword_hitbox(snap.link_x, snap.link_y, direction, target.x, target.y, reach=24, half_width=16):
-            return FrameAction(nes_action(direction, "A"), "chase_slash"), 10
-    if abs(dx) >= abs(dy):
-        return FrameAction(nes_action("RIGHT" if dx > 0 else "LEFT"), "chase_x"), 0
-    return FrameAction(nes_action("DOWN" if dy > 0 else "UP"), "chase_y"), 0
 
 
 def room03_invuln_on_push_column(snap: ZeldaSnapshot) -> bool:
