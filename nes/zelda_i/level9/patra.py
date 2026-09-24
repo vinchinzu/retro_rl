@@ -404,8 +404,9 @@ class PatraAim:
     """Fire only on a predicted eye hit; stand where the lap crosses a lane.
 
     The body-lane stand (``patra_action``) is right while the eyes ring the
-    body: it plays the fight until the lap drifts ``AIM_DRIFT`` off the body
-    (or ``aim_eyes`` or fewer eyes remain), and after the eyes die.
+    body: it plays the fight until the lap drifts ``AIM_DRIFT`` off the body,
+    and after the eyes die. (Aiming at <= 2 eyes on healthy pins was no
+    faster over 54 runs.)
     """
 
     model: PatraEyeModel = field(default_factory=PatraEyeModel)
@@ -418,7 +419,6 @@ class PatraAim:
     last_fire_hit_frame: int | None = None
     arrived: bool = False
     drifted: bool = False
-    aim_eyes: int = 0
     lane_side: str | None = None
     walkable: frozenset[tuple[int, int]] | None = None
 
@@ -499,7 +499,7 @@ class PatraAim:
         eyes = patra_eyes(snap)
         if eyes and not self.drifted and self.model.drift() > AIM_DRIFT:
             self.drifted = True
-        if not eyes or not self.model.ready() or not (self.drifted or len(eyes) <= self.aim_eyes):
+        if not eyes or not self.model.ready() or not self.drifted:
             return self._lane_stand(snap)
         dodge = hazard_dodge_dir(snap, eyes)
         if self.cooldown > 0:
