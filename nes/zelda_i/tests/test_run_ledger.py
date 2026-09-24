@@ -8,6 +8,7 @@ from zelda_i.ram import (
     ADDR_BOMBS,
     ADDR_HEALTH,
     ADDR_HEART_PARTIAL,
+    ADDR_HELP_DROP_COUNT,
     ADDR_KEYS,
     ADDR_LEVEL,
     ADDR_LINK_X,
@@ -16,6 +17,7 @@ from zelda_i.ram import (
     ADDR_ROOM_ITEM_ID,
     ADDR_SCREEN,
     ADDR_UW_FLAGS_L1_6,
+    ADDR_WORLD_KILL_COUNT,
     PLAY_MODE,
     WORLD_FLAG_ITEM,
 )
@@ -115,3 +117,15 @@ def test_boot_ram_before_the_first_play_frame_is_not_damage() -> None:
     _play(env, 1, lambda ram: ram.__setitem__(ADDR_HEALTH, 0x22))
     _play(env, 1, lambda ram: ram.__setitem__(ADDR_MODE, PLAY_MODE))
     assert ledger.report()["damage"] == 0.0
+
+
+def test_ninth_kill_window_is_recorded_once_and_flags_fairy_priority() -> None:
+    env = _Env()
+    ledger = RunLedger()
+    ledger.attach(env)
+    _play(env, 1)
+    _play(env, 3, lambda ram: (ram.__setitem__(ADDR_HELP_DROP_COUNT, 9),
+                              ram.__setitem__(ADDR_WORLD_KILL_COUNT, 15)))
+    windows = ledger.report()["forced_drop_windows"]
+    assert windows == [{"frame": 2, "room": "6:19", "world_kills": 15,
+                        "fairy_preempts_next_kill": True}]

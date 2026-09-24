@@ -84,6 +84,35 @@ def test_buy_climbs_then_right_at_mid_pedestal_y149() -> None:
     assert list(act.action) == list(nes_idle_action())
 
 
+def test_held_bombs_require_a_paid_new_pack() -> None:
+    ctl = make_bomb_shop_controller(restock_farm=False)
+    ctl.phase = CaveShopBuyPhase.BUY
+    ctl._rupees_at_buy = 40
+    held = read_snapshot(_ram(mode=CAVE_MODE, x=BOMB_BUY_X, y=BOMB_BUY_Y,
+                              bombs=4, max_bombs=8, rupees=40))
+    ctl._buy_step(held)
+    assert not ctl.success
+    unpaid = read_snapshot(_ram(mode=CAVE_MODE, x=BOMB_BUY_X, y=BOMB_BUY_Y,
+                                bombs=4, max_bombs=8, rupees=20))
+    ctl._buy_step(unpaid)
+    assert not ctl.success
+    paid = read_snapshot(_ram(mode=CAVE_MODE, x=BOMB_BUY_X, y=BOMB_BUY_Y,
+                              bombs=8, max_bombs=8, rupees=20))
+    ctl._buy_step(paid)
+    assert ctl.success
+
+
+def test_bomb_buy_rejects_partial_pack_headroom() -> None:
+    ctl = make_bomb_shop_controller(restock_farm=False)
+    ctl.phase = CaveShopBuyPhase.BUY
+    ctl._rupees_at_buy = 40
+    fullish = read_snapshot(_ram(mode=CAVE_MODE, x=BOMB_BUY_X, y=BOMB_BUY_Y,
+                                 bombs=5, max_bombs=8, rupees=40))
+    ctl._buy_step(fullish)
+    assert not ctl.success
+    assert "shop_headroom_3_need_4" in ctl.notes[-1]
+
+
 def test_farm_skips_when_rupees_already_20() -> None:
     ctl = make_bomb_shop_controller()
     ctl.hop_index = len(ctl.hops)

@@ -167,6 +167,8 @@ class CaveShopBuyController(OverworldPathController):
     price: int = 0
     success_getter: Callable[[ZeldaSnapshot], int] = _default_success_getter
     success_threshold: int = 1
+    min_item_gain: int = 0  # consumable shops: a held item is not a new buy
+    min_headroom: int = 0  # refuse a pack that would waste capacity
     success_addr: int | None = None  # documentation / report() only
     success_note: str = "item_bought"
 
@@ -196,6 +198,7 @@ class CaveShopBuyController(OverworldPathController):
     empty_frames: int = 0
     _rupees_at_buy: int | None = None
     _item_owned_at_start: bool | None = None
+    _item_at_start: int | None = None
     leftover: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
@@ -213,6 +216,7 @@ class CaveShopBuyController(OverworldPathController):
         self.empty_frames = 0
         self._rupees_at_buy = None
         self._item_owned_at_start = None
+        self._item_at_start = None
         self.leftover = None
         self._door_returning = False
         if self.farm is not None:
@@ -232,12 +236,20 @@ class CaveShopBuyController(OverworldPathController):
         )
 
     def _purchase_done(self, snap: ZeldaSnapshot) -> bool:
+        item = int(self.success_getter(snap))
+        if self._item_at_start is None:
+            self._item_at_start = item
         if self._item_owned_at_start is None:
-            self._item_owned_at_start = (
-                self.success_getter(snap) >= self.success_threshold
-            )
-        if self.success_getter(snap) < self.success_threshold:
+            self._item_owned_at_start = item >= self.success_threshold
+        if item < self.success_threshold:
             return False
+        if self.min_item_gain and item < self._item_at_start + self.min_item_gain:
+            return False
+        if self.min_item_gain:
+            return self.price <= 0 or (
+                self._rupees_at_buy is not None
+                and snap.rupees <= self._rupees_at_buy - self.price
+            )
         if self.price <= 0 or self._item_owned_at_start:
             return True
         return (
@@ -359,6 +371,20 @@ class CaveShopBuyController(OverworldPathController):
         self.buy_frames += 1
         if self._purchase_done(snap):
             return self._finish(self.success_note)
+        capacity = int(getattr(snap, "max_bombs", 0))
+        item_base = (
+            self._item_at_start
+            if self._item_at_start is not None
+            else int(self.success_getter(snap))
+        )
+        if (
+            self.min_headroom
+            and capacity
+            and capacity - item_base < self.min_headroom
+        ):
+            return self._fail(
+                f"shop_headroom_{capacity - item_base}_need_{self.min_headroom}"
+            )
         if self.buy_frames > self.buy_budget:
             return self._fail(
                 f"buy_timeout_{snap.link_x}_{snap.link_y}_r{snap.rupees}"
@@ -400,6 +426,8 @@ class CaveShopBuyController(OverworldPathController):
                 "farm_frames": self.farm_frames,
                 "farm": self.farm.report() if self.farm is not None else None,
                 "rupees_at_buy": self._rupees_at_buy,
+                "item_at_start": self._item_at_start,
+                "min_item_gain": self.min_item_gain,
                 "leftover": dict(self.leftover or {}),
             }
         )

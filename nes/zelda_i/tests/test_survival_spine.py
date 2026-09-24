@@ -207,17 +207,9 @@ def test_l1_bow_splice_restores_key_before_backtrack44() -> None:
     assert "backtrack44" in SPINE_L1_KEY_RETOPUP
 
 
-def test_spine_retopup_covers_first_l2_bomb_wall() -> None:
-    """Power-on L2 entry is bombs=0; 0x6f north must get the Survival top-up."""
-    names = [name for name, _, _ in level2_to_boom_stages()]
-    assert "bomb_north_6f" in names
-    assert "bomb_north_6f" in SPINE_BOMB_RETOPUP
-    assert "bomb_north_5f" in SPINE_BOMB_RETOPUP
-    tf_names = [name for name, _, _ in level2_tf_stages()]
-    assert "bomb_north_4f" in tf_names
-    assert "bomb_north_4f" in SPINE_BOMB_RETOPUP
-    assert "bomb_north_1e" in SPINE_BOMB_RETOPUP
-    assert "fight_dodongo" in SPINE_BOMB_RETOPUP
+def test_spine_retopup_l2_bomb_walls_retired() -> None:
+    """Natural 0x4A bomb buy and room drops retire L2 bomb top-ups (rr-doua)."""
+    assert len(SPINE_BOMB_RETOPUP) == 0
 
 
 def test_merge_inventory_assist_appends_writes() -> None:

@@ -33,6 +33,7 @@ from zelda_i.dungeon.engine import (
     RewardSpec,
 )
 from zelda_i.dungeon.ops import ADDR_SELECTED_ITEM, B_ITEM_BOMB
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level2.dungeon import (
     LEVEL_2,
     ROOM_6F_SPEC,
@@ -105,6 +106,7 @@ def make_bomb_north_controller() -> BombWallController:
         wait_blast=BOMB_N_WAIT_BLAST,
         require_bomb_consumed=True,
         wait_hold_face=False,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -126,6 +128,7 @@ def make_boom_bomb_north_controller(
         wait_blast=BOMB_N_WAIT_BLAST,
         require_bomb_consumed=True,
         wait_hold_face=False,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -145,6 +148,7 @@ def make_post_boom_bomb_north_controller() -> BombWallController:
         wait_blast=BOMB_N_WAIT_BLAST,
         require_bomb_consumed=False,
         wait_hold_face=True,
+        select_item=B_SLOT_BOMBS,
     )
 
 
@@ -175,6 +179,9 @@ class Level2BombNorth1eSpineController:
         self.inner = make_bomb_north_1e_controller(
             approach_waypoints=BOMB_1E_SPINE_APPROACH
         )
+
+    def bind_env(self, env: Any) -> None:
+        self.inner.bind_env(env)
 
     @property
     def max_frames(self) -> int:
@@ -246,6 +253,7 @@ def make_bomb_north_1e_controller(
         wait_blast=BOMB_N_WAIT_BLAST,
         require_bomb_consumed=False,
         wait_hold_face=True,
+        select_item=B_SLOT_BOMBS,
         max_frames=12000,
     )
 
@@ -261,6 +269,7 @@ Level2BombNorth1EController = make_bomb_north_1e_controller
 __all__ = [
     "ADDR_SELECTED_ITEM",
     "B_ITEM_BOMB",
+    "B_SLOT_BOMBS",
     "BOMB_N_MAX_FRAMES",
     "BOMB_N_STAND",
     "BOMB_N_STAND_TOL",
