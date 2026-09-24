@@ -188,3 +188,26 @@ def test_restock_buys_only_when_short_and_affordable() -> None:
     for potion, rupees in ((0, 40), (1, 68), (0, 255)):
         ctrl = first(potion=potion, rupees=rupees)
         assert not ctrl.success and not getattr(ctrl, "failed", False), (potion, rupees)
+
+
+def test_restock_keeps_a_reserve_for_the_next_buy() -> None:
+    """Before L7 the wallet also owes the 60R Bait: red only if 60R remain
+    after it, else blue, else nothing (run 29 arrived at 0x64 with 101R)."""
+    from zelda_i.overworld.cave_shop import restock_item
+
+    def snap(potion: int, rupees: int) -> ZeldaSnapshot:
+        return ZeldaSnapshot(
+            mode=PLAY_MODE, level=0, screen=0x64, next_screen=0x64, link_x=112, link_y=93,
+            facing=8, sword=2, bombs=4, rupees=rupees, keys=0, health=0x77, triforce=0x3F,
+            compass=0, dialog_timer=0, colliding_tile=0, room_item_id=0, room_all_dead=0,
+            room_obj_count=0, cur_opened_doors=0, open_doorway_mask=0, objects=(),
+            letter=2, potion=potion,
+        )
+
+    assert restock_item(snap(0, 101), reserve=60) == "blue"
+    assert restock_item(snap(0, 128), reserve=60) == "red"
+    assert restock_item(snap(0, 99), reserve=60) is None
+    assert restock_item(snap(1, 128), reserve=60) == "red"
+    assert restock_item(snap(1, 127), reserve=60) is None
+    assert restock_item(snap(0, 40)) == "blue"
+    assert restock_item(snap(2, 255)) is None

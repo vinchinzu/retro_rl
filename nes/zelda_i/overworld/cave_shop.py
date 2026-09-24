@@ -78,7 +78,8 @@ __all__ = [
     "RED_POTION_PRICE",
     "make_potion_buy_controller",
     "make_potion_restock_controller",
-    "restock_wanted",
+    "potion_restock_stages",
+    "restock_item",
 ]
 
 BUY_BUDGET = 900
@@ -409,15 +410,21 @@ def _potion(snap: ZeldaSnapshot) -> int:
     return int(snap.potion)
 
 
-def restock_wanted(snap: ZeldaSnapshot) -> bool:
-    """A buy adds a drink: none held and 40R, or a blue held and 68R for red.
+def restock_item(snap: ZeldaSnapshot, *, reserve: int = 0) -> str | None:
+    """The potion a restock buys, keeping ``reserve`` rupees, else ``None``.
 
-    A red is full, and a blue bought over a blue is still one drink.
+    A buy must add a drink: a red is full, and a blue over a blue is still
+    one drink, so a held blue only upgrades to red. ``reserve`` is what the
+    route owes next (the 60R Bait before L7).
     """
-    potion, rupees = int(snap.potion), int(snap.rupees)
-    if potion == 0:
-        return rupees >= BLUE_POTION_PRICE
-    return potion == 1 and rupees >= RED_POTION_PRICE
+    potion, spare = int(snap.potion), int(snap.rupees) - int(reserve)
+    if potion >= 2:
+        return None
+    if spare >= RED_POTION_PRICE:
+        return "red"
+    if potion == 0 and spare >= BLUE_POTION_PRICE:
+        return "blue"
+    return None
 
 
 @dataclass
@@ -433,8 +440,10 @@ class PotionShopBuyController(CaveShopBuyController):
     """
 
     item: str = "auto"
-    # Between dungeons: end at once unless ``restock_wanted`` (see there).
+    # Between dungeons: pick with ``restock_item`` (keeping ``reserve``
+    # rupees) on the first frame, or end at once when nothing adds a drink.
     restock: bool = False
+    reserve: int = 0
     keeper: int = POTION_KEEPER
     letter_shows: int = 0
     chosen: str = ""
@@ -472,9 +481,13 @@ class PotionShopBuyController(CaveShopBuyController):
         return self._purchase_done(snap) and self._restore_done
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        if self.restock and self.frames == 0 and not restock_wanted(snap):
-            self.frames += 1
-            return self._finish("potion_restock_nothing_to_buy")
+        if self.restock and self.frames == 0:
+            item = restock_item(snap, reserve=self.reserve)
+            if item is None:
+                self.frames += 1
+                return self._finish("potion_restock_nothing_to_buy")
+            self.item = item
+            self._configure(item)
         return super().step(snap)
 
     def _after_hops(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -635,7 +648,28 @@ def make_potion_buy_controller(
 
 
 def make_potion_restock_controller(
-    *, hops: tuple[ScreenHop, ...]
+    *, hops: tuple[ScreenHop, ...], reserve: int = 0
 ) -> PotionShopBuyController:
     """0x64 buy between dungeons, skipped on its first frame when not wanted."""
-    return make_potion_buy_controller(hops=hops, restock=True)
+    ctl = make_potion_buy_controller(hops=hops, restock=True)
+    ctl.reserve = int(reserve)
+    return ctl
+
+
+def potion_restock_stages(
+    hops: tuple[ScreenHop, ...], tag: str, *, reserve: int = 0
+) -> tuple[tuple[str, Any, int], ...]:
+    """Spine stages for a restock on a walk that crosses 0x64: buy, then exit.
+
+    The walk after them should set ``resume_on_screen``: Link is on 0x64
+    after a buy and still where he started after a skip. ``clear=0`` on the
+    exit: neither case walks anywhere.
+    """
+    from zelda_i.overworld.gather_segments import CaveExitController
+
+    to_shop = hops[: [hop.target for hop in hops].index(POTION_SHOP_SCREEN) + 1]
+    buy = make_potion_restock_controller(hops=to_shop, reserve=reserve)
+    return (
+        (f"potion_restock_{tag}", buy, buy.max_frames),
+        (f"exit_potion_{tag}", CaveExitController(clear=0), 600),
+    )

@@ -143,3 +143,17 @@ def test_gleeok_passage_stays_fail_closed_fight_waits_for_body() -> None:
     assert act.reason == "wait_body"
     assert fight.report()["assumed_0x45"] is False
     assert fight.observed_body_type == 0x45
+
+
+def test_bomb_north_approach_waypoints_are_standable_on_0x4c() -> None:
+    """A waypoint with no lattice node skips the lattice approach for the
+    hand x-first press. (120, 109) put Link's feet on 0x4C's block row: run
+    21 pressed LEFT into it at (176, 109) for 8000 frames and 71 hearts."""
+    from zelda_i.dungeon.tilemap import ow_walkable_nodes
+    from zelda_i.level8.gleeok_entry import BOMB_NORTH_APPROACH_4C
+    from zelda_i.tests.ram_helpers import room_tile_ram
+    from zelda_i.walk.physics import lattice_starts
+
+    nodes = ow_walkable_nodes(room_tile_ram("0x4c", level=8), overworld=False)
+    for wp in BOMB_NORTH_APPROACH_4C:
+        assert any(n in nodes for n in lattice_starts(*wp)), wp

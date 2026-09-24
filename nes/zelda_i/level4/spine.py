@@ -48,6 +48,7 @@ from zelda_i.level4.overworld import (
     POST_L3_PATH_MAX_FRAMES,
     OverworldToLevel4Controller,
 )
+from zelda_i.overworld.cave_shop import potion_restock_stages
 from zelda_i.overworld.settle import PostL3TriforceSettleController
 from zelda_i.overworld.settle import POST_L3_SETTLE_MAX_FRAMES
 from zelda_i.level4.path import (
@@ -169,22 +170,6 @@ def _clear_32_stages():
     )
 
 
-def _potion_restock_stages():
-    from zelda_i.overworld.cave_shop import POTION_SHOP_SCREEN, make_potion_restock_controller
-    from zelda_i.overworld.gather_segments import CaveExitController
-
-    to_shop = LEVEL4_HOPS_FROM_POST_L3[
-        : [hop.target for hop in LEVEL4_HOPS_FROM_POST_L3].index(POTION_SHOP_SCREEN) + 1
-    ]
-    buy = make_potion_restock_controller(hops=to_shop)
-    return (
-        ("potion_restock_l3", buy, buy.max_frames),
-        # clear=0: a skipped restock is still in play on 0x74, and a bought
-        # one comes out on 0x64's mouth; neither walks anywhere.
-        ("exit_potion_l3", CaveExitController(clear=0), 600),
-    )
-
-
 def _stepladder_stages():
     ctl = make_stepladder_controller(clear_first=False)
     return (("level4_stepladder", ctl, ctl.max_frames),)
@@ -220,7 +205,7 @@ def l4_hops(*, topup_bombs, spine_fields) -> tuple[SpineHop, ...]:
                 ),
                 # The L4 walk crosses 0x64's potion shop: restock there
                 # when a drink can be added (a no-op frame otherwise).
-                *_potion_restock_stages(),
+                *potion_restock_stages(LEVEL4_HOPS_FROM_POST_L3, "l3"),
                 (
                     "enter_level4",
                     OverworldToLevel4Controller(require_dungeon=True, resume_on_screen=True),

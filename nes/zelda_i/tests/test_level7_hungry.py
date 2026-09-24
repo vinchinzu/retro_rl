@@ -116,7 +116,7 @@ def test_clean_survival_false_never_writes_addr_food() -> None:
         unwrapped=SimpleNamespace(data=SimpleNamespace(memory=_Mem())),
     )
     stages = level7_entry_chapter_stages(survival=False)
-    bait = stages[3][1]
+    bait = {n: c for n, c, _f in stages}["level7_bait_purchase"]
     assert isinstance(bait, NaturalBaitPurchaseController)
     bait.bind_env(env)
     bait.step(read_snapshot(ram))

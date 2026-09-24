@@ -344,8 +344,10 @@ def test_survival_bait_controller_fails_closed_without_env() -> None:
 def test_natural_bait_stays_fail_closed_and_survival_is_opt_in() -> None:
     clean = level7_entry_chapter_stages()
     survival = level7_entry_chapter_stages(survival=True)
-    assert isinstance(clean[3][1], NaturalBaitPurchaseController)
-    assert isinstance(survival[3][1], SurvivalBaitPurchaseController)
+    assert isinstance(dict((n, c) for n, c, _f in clean)["level7_bait_purchase"], NaturalBaitPurchaseController)
+    assert isinstance(
+        dict((n, c) for n, c, _f in survival)["level7_bait_purchase"], SurvivalBaitPurchaseController
+    )
     # Stage names are identical either way.
     assert [n for n, _c, _f in clean] == [n for n, _c, _f in survival]
 
@@ -359,12 +361,15 @@ def test_l7_hops_survival_swaps_only_the_bait_stage() -> None:
     assert names == [
         "level7_post_l6_overworld",
         "level7_recorder_warp",
+        "potion_restock_l6",
+        "exit_potion_l6",
         "level7_pond_approach",
         "level7_bait_purchase",
         "level7_pond_drain_entry",
     ]
-    assert isinstance(stages[3][1], SurvivalBaitPurchaseController)
-    pond = stages[4][1]
+    by_name = {n: c for n, c, _f in stages}
+    assert isinstance(by_name["level7_bait_purchase"], SurvivalBaitPurchaseController)
+    pond = by_name["level7_pond_drain_entry"]
     assert not isinstance(pond, SurvivalBaitPurchaseController)
     from zelda_i.level7.pond import Level7PondDrainController
 
@@ -581,12 +586,14 @@ def test_bait_shop_chapter_has_no_food_poke() -> None:
     assert names == [
         "level7_post_l6_overworld",
         "level7_recorder_warp",
+        "potion_restock_l6",
+        "exit_potion_l6",
         "level7_shop_approach",
     ]
     assert all(
         not isinstance(ctl, SurvivalBaitPurchaseController) for _n, ctl, _f in stages
     )
-    shop = stages[2][1]
+    shop = {n: c for n, c, _f in stages}["level7_shop_approach"]
     assert shop.hops[-1].target == BAIT_SHOP_SCREEN_HYP
 
 
@@ -606,6 +613,8 @@ def test_l7_hops_use_fail_closed_entry_chapter() -> None:
     assert [name for name, _c, _n in stages] == [
         "level7_post_l6_overworld",
         "level7_recorder_warp",
+        "potion_restock_l6",
+        "exit_potion_l6",
         "level7_pond_approach",
         "level7_bait_purchase",
         "level7_pond_drain_entry",
