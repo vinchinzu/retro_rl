@@ -439,6 +439,8 @@ def cellar_west_to_east_step(snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("DOWN"), "cellar_west_drop")
     if x < 192:
         return FrameAction(nes_action("RIGHT"), "cellar_floor_east")
+    if x > 192:
+        return FrameAction(nes_action("LEFT"), "cellar_align_east_ladder")
     return FrameAction(nes_action("UP"), "cellar_east_climb")
 
 

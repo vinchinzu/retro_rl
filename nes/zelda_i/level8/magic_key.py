@@ -18,6 +18,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.behaviors import projectile_threats
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -42,6 +43,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL_B,
     lattice_goto,
+    room_step,
     stairs_step,
 )
 from zelda_i.dungeon.ids import (
@@ -51,7 +53,7 @@ from zelda_i.dungeon.ids import (
     POLS_VOICE_OBJECT_TYPE,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
-from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, PauseSelectController
+from zelda_i.dungeon.pause_select import B_SLOT_ARROWS, B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level8.cellar import magic_key_cellar_return_step
 from zelda_i.level8.north_column import TYPE_0C, _SWORD_PATROL
 from zelda_i.level6.gohma import (
@@ -560,6 +562,12 @@ _PUSH_NORTH_Y = 93
 _CLEAR_1F_FRAMES = 16_000
 MAGIC_KEY_STAIRS_MAX_FRAMES = 34_000
 _PROX = 5
+# The two Darknuts spawned inside the centre diamond are unreachable by
+# ordinary sword. These perimeter stands hit them through its gaps.
+_INNER_BOMB_STANDS = (
+    ((144, 109), "DOWN"), ((160, 125), "LEFT"), ((144, 165), "UP"),
+    ((80, 141), "RIGHT"), ((144, 165), "UP"),
+)
 
 
 def _clear_1f_spec() -> DungeonRoomSpec:
@@ -616,6 +624,15 @@ class Level8MagicKeyStairsController(HopController):
     _clear: GenericDungeonRoomController | None = field(
         default=None, init=False, repr=False
     )
+    _saw_census: bool = False
+    _no_beam: bool = False
+    _bomb_wait: int = 0
+    _bomb_count: int = 0
+    _bombs_before: int = 0
+    _bomb_select: PauseSelectController = field(
+        default_factory=lambda: PauseSelectController(want=B_SLOT_BOMBS),
+        init=False, repr=False,
+    )
 
     @property
     def stage_id(self) -> str:
@@ -623,6 +640,7 @@ class Level8MagicKeyStairsController(HopController):
 
     def bind_env(self, env: Any) -> None:
         self._env = env
+        self._bomb_select.bind_env(env)
 
     def _mk(self) -> int:
         if self._env is None:
@@ -683,6 +701,38 @@ class Level8MagicKeyStairsController(HopController):
             )
         return None
 
+    def _inner_bomb_policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if not self._live_1f(snap):
+            self.phase = "push"
+            self._note(f"inner_clear_{self._bomb_count}_bombs")
+            return self._push_policy(snap)
+        if self._bomb_wait:
+            if self._bomb_wait == 105 and snap.bombs >= self._bombs_before:
+                self._bomb_wait = 0
+                self._bomb_count -= 1
+                return FrameAction(nes_idle_action(), "bomb_retry_edge")
+            self._bomb_wait -= 1
+            return FrameAction(nes_idle_action(), "inner_bomb_wait")
+        selected = self._bomb_select.drive(snap)
+        if self._bomb_select.failed:
+            return self.mark_fail(self._bomb_select.fail_reason)
+        if selected is not None:
+            return selected
+        if snap.bombs <= 0:
+            return self.mark_fail("inner_bombs_exhausted")
+        goal, face = _INNER_BOMB_STANDS[min(self._bomb_count, 4)]
+        if max(abs(snap.link_x - goal[0]), abs(snap.link_y - goal[1])) > 3:
+            direction = room_step(snap, goal, tol=2)
+            if direction is None:
+                return self.mark_fail("inner_bomb_stand_unreachable")
+            return FrameAction(nes_action(direction), "inner_bomb_approach")
+        if snap.facing != direction_to_facing(face):
+            return FrameAction(nes_action(face), "inner_bomb_face")
+        self._bomb_count += 1
+        self._bombs_before = snap.bombs
+        self._bomb_wait = 105
+        return FrameAction(nes_action("B"), "inner_bomb_place")
+
     # -- per-frame policy -------------------------------------------------
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.mk_before is None:
@@ -693,6 +743,8 @@ class Level8MagicKeyStairsController(HopController):
         # controllable play in 0x1F.
         if self.phase in ("cellar", "return"):
             return self._cellar_policy(snap)
+        if self.phase == "inner_bombs":
+            return self._inner_bomb_policy(snap)
 
         if snap.mode != PLAY_MODE:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
@@ -704,6 +756,16 @@ class Level8MagicKeyStairsController(HopController):
             )
 
         if self.phase == "clear":
+            self._no_beam |= not snap.health_is_full
+            live = self._live_1f(snap)
+            self._saw_census |= len(live) >= 6
+            outer = any(
+                o.slot not in (2, 3) and o.type_id in STAIRS_1F_CENSUS_TYPES
+                for o in snap.objects
+            )
+            if self._no_beam and self._saw_census and len(live) <= 2 and not outer:
+                self.phase = "inner_bombs"
+                return self._inner_bomb_policy(snap)
             if self._clear is None:
                 self._clear = GenericDungeonRoomController(_clear_1f_spec())
                 self._clear.phase = DungeonPhase.FIGHT
