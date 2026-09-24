@@ -85,6 +85,11 @@ from zelda_i.level7.shard import (
 )
 from zelda_i.level7.stairs0d import make_stairs0d_controller
 from zelda_i.overworld.cave_shop import potion_restock_stages
+from zelda_i.level7.dungeon import POST_L7_ARROW_RUPEES
+
+# What the wallet still owes after a pre-L7 potion: the Bait, then L8's
+# arrow shots (the post-L7 handoff floor).
+L7_POTION_RESERVE = BAIT_COST + POST_L7_ARROW_RUPEES
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.stitch import UNMEASURED_HANDOFF, OverworldHandoff
 from zelda_i.ram import (
@@ -441,8 +446,9 @@ def level7_entry_chapter_stages(
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
         ("level7_recorder_warp", warp, warp.max_frames),
-        # The join crosses 0x64's shop: restock, keeping the Bait's 60R.
-        *potion_restock_stages(join_hops, "l6", reserve=BAIT_COST),
+        # The join crosses 0x64's shop: restock, keeping the Bait and L8's
+        # arrow money.
+        *potion_restock_stages(join_hops, "l6", reserve=L7_POTION_RESERVE),
         ("level7_pond_approach", approach, approach.max_frames),
         ("level7_bait_purchase", bait, bait.max_frames),
         ("level7_pond_drain_entry", pond, pond.max_frames),
@@ -475,7 +481,7 @@ def level7_bait_shop_chapter_stages(
     return (
         ("level7_post_l6_overworld", post, post.max_frames),
         ("level7_recorder_warp", warp, warp.max_frames),
-        *potion_restock_stages(join_hops, "l6", reserve=BAIT_COST),
+        *potion_restock_stages(join_hops, "l6", reserve=L7_POTION_RESERVE),
         ("level7_shop_approach", shop, shop.max_frames),
     )
 

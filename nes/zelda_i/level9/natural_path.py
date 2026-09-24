@@ -961,7 +961,11 @@ def make_natural_patra_join_controller() -> NaturalPatraJoinController:
 class NaturalFinalPatraController(_NaturalEndingController):
     """Adapt the proven Patra policy only from the exact natural join state."""
 
-    max_frames: int = 6000
+    # Run 23 (power-on, 0 state loads) reached 0x52 with an orbit whose last
+    # eye swings below the room (y=245): the lane stand wins at ~11,000f
+    # over three offsets, but the old 6000f budget failed it every time.
+    # A faster last-eye kill is bead work; the budget must not end the run.
+    max_frames: int = 14000
     cooldown: int = 0
     start_checked: bool = False
     stand_dy: int = PATRA_STAND_DY

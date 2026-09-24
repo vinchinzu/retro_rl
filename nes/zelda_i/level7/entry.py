@@ -72,7 +72,9 @@ MEASURED_POST_L6_EXIT = OverworldHandoff(
     triforce=POST_L6_TRIFORCE,
     keys=2,
     bombs=7,
-    rupees=42,
+    # No wallet floor: potion restocks spend it (last-heart run 30 left L6
+    # with 29R) and the Bait stage checks its own price.
+    rupees=0,
     heart_containers=11,
     selected_item=2,  # arrows still selected from the Gohma kill
     whistle=1,
