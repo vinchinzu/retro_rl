@@ -44,6 +44,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **blue_ring_full_poweron16 (d8b8235c: L9 join on the engine, Ganon windows, Gleeok turn-node stand, L6 0x09 south row, L7 0x0D ring lure)** | **ok (unlimited_health)** | level9-credits | **251516** | 5983 | 76/169 | 37 | 221 / 515 | 69 / 3 / 177 | 7:0d 6875f | 380.15 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:61=key 9:62=rupee5 |
 | **blue_ring_full_poweron17 (f549259a: + Patra lane stand)** | **ok (unlimited_health)** | level9-credits | **249503** | 6167 | 74/168 | 37 | 173 / 473 | 74 / 3 / 177 | 7:0d 6875f | 337.66 | 1:43=map 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
 | **blue_ring_full_poweron24 (92f1031d: hidden rupee caves, potions; no rupee writes)** | **ok (unlimited_health)** | level9-credits | 283010 | 10127 | 82/184 | 36 | 156 / 484 | 75 / 4 / **0** | 9:52 11407f | 336.4 | 1:44=boomerang 3:5d=rupee5 3:6b=key 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
+| **blue_ring_full_poweron31 (b8cc4ab6: Patra eye aim)** | **ok (unlimited_health)** | level9-credits | **275135** | 8219 | 82/183 | 35 | 149 / 479 | 75 / 4 / **0** | 7:49 4302f | 329.41 | same 25 as run 24 |
 
 Blue Ring power-on 4-9 (2026-09-23, commit 82fd55ac and after): each run
 stopped one stage later; each stall was fixed from its save point with
@@ -71,6 +72,9 @@ from hidden caves. It is 33,507 frames slower than run 17, and a third of
 that is one room: final Patra 0x52 took 11,407 frames because its last eye
 orbited below the room (rr-e59v). Bomb/key/arrow/Food writes remain
 (ledger: keys@1:23, L2-L4 bombs, arrows@6:1c, food@0:42; rr-doua).
+Run 31 (b8cc4ab6) is run 24 with the Patra eye aim (rr-e59v): every room
+before 0x52 replays frame for frame, and 0x52 fell 11,407 -> 3,362 frames
+(flutter there 2,077 -> 0), so the run is 275,135 frames.
 
 ## Stabilization loop after the lattice walkers (2026-09-23)
 

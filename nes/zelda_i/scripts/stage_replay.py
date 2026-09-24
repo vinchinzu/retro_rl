@@ -14,7 +14,8 @@ room alone, in seconds, with the frames that matter printed::
 engine) or a zero-argument controller factory/class. ``--set ADDR=VAL`` is a what-if RAM write at load (a measurement,
 never a route result). ``--idle N`` plays N idle frames first (an RNG offset: score a
 combat change over several). ``--assist`` adds the Survival refill and reports the
-damage it absorbed. ``--window A-B`` prints
+damage it absorbed; ``--last-heart`` the guarded last-heart one (replay a
+last-heart stall with it: the full refill keeps the beam firing). ``--window A-B`` prints
 each frame's pose, press, reason, the pre-filter press, the stepladder and
 the live bodies. ``--save-end`` writes the end state for ``pin_probe.py``.
 Same runner as the spine (``route.chain.run_controller_stage``), no assist.
@@ -32,7 +33,7 @@ from pathlib import Path
 from retro_harness.env import make_env, read_state_bytes, state_path
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless
-from zelda_i.assist import UnlimitedHealthAssist
+from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist
 from zelda_i.dungeon.engine import DungeonRoomSpec, GenericDungeonRoomController
 from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
 from zelda_i.paths import GAME, GAME_DIR
@@ -65,6 +66,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--save-end", default=None, help="write the end state here")
     parser.add_argument(
         "--assist", action="store_true", help="Survival health refill, as the spine plays"
+    )
+    parser.add_argument(
+        "--last-heart", action="store_true",
+        help="the guarded last-heart refill (--engage-hearts 1 --observed-damage-guard)",
     )
     parser.add_argument(
         "--idle", type=int, default=0, help="idle frames first: an RNG offset for combat evals"
@@ -122,7 +127,10 @@ def main(argv: list[str] | None = None) -> int:
     ctl.step = step
     before = read_snapshot(env.get_ram())
     start = time.time()
-    assist = UnlimitedHealthAssist() if args.assist else None
+    assist = (
+        LastHeartAssist(observed_damage_guard=True) if args.last_heart
+        else UnlimitedHealthAssist() if args.assist else None
+    )
     _, result = run_controller_stage(
         env, None, name="replay", controller=ctl, max_frames=frames, assist=assist
     )
@@ -136,6 +144,10 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"damage {sum(result.damage_by_room.values()):.2f}h"
         + (f" (assist hits {assist.report().get('damage_events')})" if assist else "")
+        + (
+            f" refills {assist.report().get('target_refills')}+{assist.report().get('safety_refills')} safety"
+            if args.last_heart else ""
+        )
     )
     print("reasons:", " ".join(f"{r}={n}" for r, n in reasons.most_common(14)))
     report = ctl.report() if hasattr(ctl, "report") else {}

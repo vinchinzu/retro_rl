@@ -28,3 +28,11 @@ def aim_le2():
     ctl = NaturalFinalPatraController()
     ctl.aim.aim_eyes = 2
     return ctl
+
+
+def silver_arrows_measured():
+    """The spine's L9 silver-arrows stage (measured post-L8 handoff), for replays."""
+    from zelda_i.level9.dungeon import MEASURED_POST_L8_HANDOFF
+    from zelda_i.level9.natural_path import make_natural_silver_arrows_controller
+
+    return make_natural_silver_arrows_controller(handoff=MEASURED_POST_L8_HANDOFF)
