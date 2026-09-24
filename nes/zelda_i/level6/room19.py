@@ -23,6 +23,7 @@ from zelda_i.level6.overworld import (
     LEVEL6_MAP_ROOM,
     LEVEL6_ROD_WIZZ_ROOM,
 )
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyWalker
 
@@ -706,11 +707,17 @@ class Level6Room09Controller:
                 snap, FrameAction(nes_action("LEFT"), "north_column")
             )
         if xy[1] >= NORTH_09_SOUTH_Y:
+            # Off the south rows northward, never DOWN (the south door would
+            # spend the key). An idle here held Link at (75, 189) until the
+            # 4000-frame timeout after a knockback (last-heart run 30).
             if self.frames <= 8 or self.frames % 60 == 0:
                 self.notes.append(f"south_f{self.frames}_{xy[0]}_{xy[1]}")
             self.walker.last_dir = None
+            step = room_step(snap, (xy[0], NORTH_09_SOUTH_Y - 16), tol=2)
+            if step == "DOWN":
+                step = "UP"
             return self._emit(
-                snap, FrameAction(nes_idle_action(), "north_south_halt")
+                snap, FrameAction(nes_action(step or "UP"), "north_off_south_rows")
             )
         if snap.link_y <= NORTH_09_BAND_Y:
             self.walker.last_dir = None
