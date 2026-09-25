@@ -51,10 +51,12 @@ left, so every remaining item below is a death point, not a resource.
 | C7 | L5 Triforce (bomb budget first) | – |
 | C8-C11 | L6, L7, L8, L9 + credits | – |
 
-A rung is green once one power-on `--clean` run reaches it. Keep
-`natural_credits_poweron53` green (`--no-pokes`) after each route change:
-**it is red now** (`natural_credits_poweron65`: the reshuffled tape reaches the
-L2 Dodongo with 7 bombs and spends all of them, rr-pm7m).
+A rung is green once one power-on `--clean` run reaches it (C5 also on
+committed HEAD alone: `clean_poweron_h1`, L3 at 126,643f). Keep the zero-poke
+Survival credits run green (`--no-pokes`) after each route change: **it is
+red at L8** (`natural_credits_poweron67`, HEAD edf97dd6: TF `0x7F`, then
+0x3E spends 4 bombs and 0x4C's wall has none, rr-awh6). The L2 Dodongo
+(rr-pm7m) and the pre-L3 restock's hidden letter are fixed.
 
 ### Done this sitting (2026-09-25)
 
@@ -108,9 +110,8 @@ containers): L5 needs ~0-1 refills, **L6 ~10** (0x28 17h, 0x29 10h, 0x38
    (0x30 Vires/bubbles 2.3h, 0x31 1.5, 0x32 1.0, 0x20/0x12 0.75) into the
    Gleeok with 0.7h. Levers: a potion for L4 (money, item 5), the 0x43 pond
    beside the 0x44 bomb stop, then the room fights.
-2. **Dodongo robustness (rr-pm7m).** Survival regression red: 7 bombs spent at
-   0x0E without a kill (pin `NC65_fight_dodongo`). The same fight passes in
-   the Clean tapes; it is RNG-fragile.
+2. **L8 bomb budget (rr-awh6).** The Survival regression now runs to L8 and
+   starves 0x4C after 0x3E's retries.
 3. **L3 small bleeds:** 0x5B north-chain Darknuts (1-4h, not flanked yet, rr-j47p),
    0x5A blade trap on the key-door push (0.75h every run), the 0x0F raft
    passage keese.

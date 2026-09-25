@@ -53,6 +53,8 @@ measurement. Compare a row against the row above it only when the code changed.
 | **clean_poweron64 (gathering G1 + melee, 2026-09-25)** | **raft_0x0f (off: Clean)** | level9-credits | 110963 | 4994 | 58/121 | 12 | 0 / 0 | **0 / 0 / 0** | 1:63 2885f | 30.33 | 1:43=map 1:44=boomerang 3:69=bombs |
 | **clean_poweron69 (L3: pond, potion, flank, traps, Manhandla dodge)** | **level4_triforce_0x08 (off: Clean)** | level9-credits | 150867 | 8229 | 65/139 | 15 | 0 / 0 | **0 / 0 / 0** | 4:20 7149f | 40.87 | 1:43=map 1:44=boomerang 4:13=heart_container |
 | **clean_poweron73 (L3 five-rupee scoop + L4 raft dismount)** | **level4_triforce_0x08 (off: Clean)** | level9-credits | **150867** | **8229** | 65/139 | 15 | 0 / 0 | **0 / 0 / 0** | 4:20 7149f | 40.87 | 1:43=map 1:44=boomerang 4:13=heart_container |
+| clean_poweron_h1 (HEAD edf97dd6 alone) | level4_triforce_0x08 (off: Clean) | level9-credits | 157393 | – | – | – | 0 / 0 | 0 / 0 / 0 | – | – | L3 TF at 126,643f |
+| natural_credits_poweron67 (edf97dd6: Dodongo stand, restock letter) | level8_return_passage_bomb_north_4c (unlimited_health) | level9-credits | 251358 | 9105 | 75/189 | 39 | 106 / 371 | 0 / 0 / 0 | 8:3e 8667f | 211.89 | see report |
 
 `natural_credits_poweron53` is one continuous power-on session: no state
 loads, deaths, or inventory/progression/capacity writes. The L3 0x5D and
