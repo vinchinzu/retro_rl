@@ -27,12 +27,12 @@ from zelda_i.dungeon.engine import (
     RewardSpec,
 )
 from zelda_i.dungeon.door_hop import door_band_goal
-from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B, lattice_goto
+from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B, lattice_goto, room_step
 from zelda_i.dungeon.ids import MANHANDLA_OBJECT_TYPE
 from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.level8.dungeon import LEVEL8
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, room_item_taken, room_item_xy
 from zelda_i.walk.physics import OccupancyWalker, predicted_xy
 
 # Live recon rooms.  0x0C is unregistered in dungeon.ids (0x0B is "darknut");
@@ -40,6 +40,8 @@ from zelda_i.walk.physics import OccupancyWalker, predicted_xy
 TYPE_0C = 0x0C
 STATUE_FIREBALL = 0x55
 SMALL_KEY_ITEM = 0x19
+RUPEES_5_ITEM = 0x0F
+RUPEES_6E_BUDGET = 900
 # Heart-safe 0x5E (hc=3, no refill): occupancy around bodies, rear/flank sword.
 CONTACT_MAN = 14
 SWORD_MAN = 20
@@ -861,6 +863,7 @@ class Level8NorthManhandlaController(_NorthColumnBase):
     spec_id: str = "level8_north_manhandla_bomb"
     max_frames: int = 26_000
     done_reason: str = "arrived_0x5e"
+    _rupee_frames: int = field(default=0, init=False)
 
     def arrived(self, snap: ZeldaSnapshot) -> bool:
         return (
@@ -883,6 +886,17 @@ class Level8NorthManhandlaController(_NorthColumnBase):
             wait = self._spawn_wait(snap, MANHANDLA_SETTLE_FRAMES)
             if wait is not None:
                 return wait
+            if snap.room_item_id == RUPEES_5_ITEM and self._env is not None:
+                ram = self._env.get_ram()
+                if not room_item_taken(ram, snap.level, snap.screen):
+                    self._rupee_frames += 1
+                    if self._rupee_frames > RUPEES_6E_BUDGET:
+                        return self.mark_fail("rupees_6e_timeout")
+                    step = room_step(snap, room_item_xy(ram), tol=0, env=self._env)
+                    return FrameAction(
+                        nes_action(step) if step else nes_idle_action(),
+                        "collect_rupees_6e",
+                    )
             return self._bomb(snap, BombWall6ENorth())
         return self.mark_fail(f"l8_north_unknown_room_0x{snap.screen:02x}")
 

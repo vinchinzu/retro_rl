@@ -78,6 +78,11 @@ ADDR_BRACELET = 0x0665
 ADDR_LETTER = 0x0666
 ADDR_COMPASS = 0x0667
 ADDR_MAP = 0x0668
+# 1 from the frame Link takes a clock drop until he leaves the room: every
+# enemy freezes where it stands (measured 0->1 on the L7 0x59 pickup; the only
+# other byte that moved was $0089). A hand clear that waits for a body to come
+# to Link waits forever (L7 0x0D: two Wallmasters frozen in the wall, 30000f).
+ADDR_CLOCK = 0x066C
 ADDR_RUPEES = 0x066D
 ADDR_KEYS = 0x066E
 ADDR_HEALTH = 0x066F  # HeartValues: hi = containers−1, lo = whole hearts
@@ -175,6 +180,7 @@ class ZeldaSnapshot:
     letter: int = 0  # ADDR_LETTER; 1 once the 0x0E old man's letter is taken
     potion: int = 0  # ADDR_POTION; blue=1 red=2, one step down per drink
     magic_shield: int = 0  # ADDR_MAGIC_SHIELD; blocks fireballs when owned
+    clock: int = 0  # ADDR_CLOCK; nonzero while a taken clock freezes the room
     # Forced-drop kill counters. Link_BeHarmed (collision) zeros all three.
     # Defaults keep older ZeldaSnapshot(...) test constructors working.
     world_kill_count: int = 0  # ADDR_WORLD_KILL_COUNT; 16 → fairy
@@ -353,6 +359,7 @@ def read_snapshot(ram: np.ndarray) -> ZeldaSnapshot:
         submode=read_u8(ram, ADDR_SUBMODE),
         is_updating_mode=read_u8(ram, ADDR_IS_UPDATING_MODE),
         magic_shield=read_u8(ram, ADDR_MAGIC_SHIELD),
+        clock=read_u8(ram, ADDR_CLOCK),
         raft=read_u8(ram, ADDR_RAFT),
         ladder=read_u8(ram, ADDR_LADDER),
         rod=read_u8(ram, ADDR_ROD),

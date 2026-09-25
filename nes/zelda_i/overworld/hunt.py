@@ -774,6 +774,7 @@ class ScreenHunter:
     # through ten closures. The contact facts in particular *must* be worked
     # out once: ``_strike_budget`` charges a slot on every call.
     _arbiter: Arbiter | None = field(default=None, repr=False)
+    _defense: Arbiter | None = field(default=None, repr=False)
     _step_frames: int = field(default=0, repr=False)
     _step_lane: tuple[str, int] | None = field(default=None, repr=False)
     _step_band: tuple[int, int] | None = field(default=None, repr=False)
@@ -832,8 +833,41 @@ class ScreenHunter:
         frame, claimed or not, and ``_strike_budget`` charges a slot on each
         call, so it may be asked only once.
         """
-        if int(snap.level) != 0 or int(snap.mode) != PLAY_MODE or snap.transitioning:
+        if not self._prologue(snap, frames, lane, y_band):
             return None
+        return self.arbiter.decide(snap)
+
+    def defend(self, snap: ZeldaSnapshot, frames: int) -> FrameAction | None:
+        """Only the contact rungs: strike, peel, shield, duck.
+
+        For a hand phase that owns the frame (a statue push, a bomb cell, a
+        flame wait): what it must still yield to, with no chase, heal walk or
+        collect to pull Link off its goal. Call it instead of :meth:`step`,
+        never both on one frame (``_strike_budget`` charges per call).
+        """
+        if not self._prologue(snap, frames, None, None):
+            return None
+        return self.defense_arbiter.decide(snap)
+
+    @property
+    def defense_arbiter(self) -> Arbiter:
+        """:meth:`hunt_rungs` cut to the contact rungs."""
+        if self._defense is None:
+            self._defense = Arbiter(
+                tuple(r for r in self.hunt_rungs() if r.priority <= HUNT_RUNG_DUCK)
+            )
+        return self._defense
+
+    def _prologue(
+        self,
+        snap: ZeldaSnapshot,
+        frames: int,
+        lane: tuple[str, int] | None,
+        y_band: tuple[int, int] | None,
+    ) -> bool:
+        """The per-frame facts every rung reads. False outside overworld play."""
+        if int(snap.level) != 0 or int(snap.mode) != PLAY_MODE or snap.transitioning:
+            return False
         screen = int(snap.screen)
         if screen != self.screen:
             self._enter(screen)
@@ -857,7 +891,7 @@ class ScreenHunter:
             and attackable(close, self._track(close))
             and self._strike_budget(screen, close)
         )
-        return self.arbiter.decide(snap)
+        return True
 
     # --------------------------------------------------- hunt rungs ---
 
@@ -1555,6 +1589,8 @@ class ScreenHunter:
         self._strikeable = False
         if self._arbiter is not None:
             self._arbiter.reset()
+        if self._defense is not None:
+            self._defense.reset()
 
     def screen_table(self) -> list[dict[str, Any]]:
         rows = []

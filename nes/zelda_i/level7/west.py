@@ -461,7 +461,9 @@ class Room59UpController(_WestHop):
             target = nearest_enemy(snap.link_x, snap.link_y, live)
             if target is None:
                 return FrameAction(nes_idle_action(), "goriya_missing")
-            return _goriya_fight(snap, target, frames=self.frames)
+            return _goriya_fight(
+                snap, target, frames=self.frames, env=getattr(self, "_env", None)
+            )
         if not self.saw_goriya:
             return FrameAction(nes_idle_action(), "spawn_wait")
         # ROM lattice to the north door first. The hand phases below press

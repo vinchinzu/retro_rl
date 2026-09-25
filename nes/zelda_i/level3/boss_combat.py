@@ -7,6 +7,7 @@ from typing import Any
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import save_rgb_png
 from zelda_i.door_graph.core import DoorDir
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
@@ -49,6 +50,8 @@ from zelda_i.ram import (
     ZeldaSnapshot,
     read_snapshot,
     read_u8,
+    room_item_taken,
+    room_item_xy,
 )
 
 # 0x5d killables only — ignore 0x2b. Wooden sword splits Zol→Gel; Keese HP=0.
@@ -58,6 +61,8 @@ PREP_CLEAR_TYPES: tuple[int, ...] = (
     GEL_ALT_OBJECT_TYPE,
     KEESE_OBJECT_TYPE,
 )
+PREP_RUPEES_ITEM = 0x0F
+PREP_RUPEES_BUDGET = 900
 UP_APPROACHES: tuple[tuple[int, int], ...] = (
     (120, 93),
     (120, 101),
@@ -158,6 +163,24 @@ def exit_raft_passage(env: Any, assist: Any | None, total: list[int]) -> dict[st
 
 class Level3BossCombatMixin:
     """Prep clear / open_5d_up / Manhandla fight methods."""
+
+    def collect_5d_rupees(
+        self, env: Any, assist: Any | None, total: list[int]
+    ) -> dict[str, Any]:
+        """Take 0x5D's room item before leaving for Manhandla."""
+        for frame in range(PREP_RUPEES_BUDGET):
+            ram = env.get_ram()
+            snap = read_snapshot(ram)
+            if snap.screen != ROOM_L3_BOSS_PREP or snap.mode == 17:
+                return {"ok": False, "reason": "left_prep_room", "frames": frame}
+            if room_item_taken(ram, snap.level, snap.screen):
+                return {"ok": True, "frames": frame, "rupees": snap.rupees}
+            if snap.room_item_id != PREP_RUPEES_ITEM:
+                return {"ok": False, "reason": "rupees_not_visible", "frames": frame}
+            goal = room_item_xy(ram)
+            step = room_step(snap, goal, tol=0, env=env)
+            _tick(env, assist, total, nes_action(step) if step else nes_idle_action())
+        return {"ok": False, "reason": "rupees_timeout", "frames": PREP_RUPEES_BUDGET}
 
     def _arrive_4d(
         self,
@@ -356,6 +379,12 @@ class Level3BossCombatMixin:
             if s.cur_opened_doors & DoorDir.UP:
                 break
             idle(env, assist, total, 30)
+
+        report["rupees_5d"] = self.collect_5d_rupees(env, assist, total)
+        if not report["rupees_5d"]["ok"]:
+            report["error"] = report["rupees_5d"]["reason"]
+            self.gate_5d_report = report
+            return report
 
         self._set_phase("open_up")
         st_base = None if self.continuous_mode else env.em.get_state()

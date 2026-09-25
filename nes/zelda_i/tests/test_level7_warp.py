@@ -247,6 +247,28 @@ def test_warp_refuses_unbound_env_and_leaving_the_overworld() -> None:
     assert act.reason == "warp_left_overworld_L7"
 
 
+def test_warp_walks_out_of_a_dungeon_a_landing_carried_it_into() -> None:
+    """A whirlwind landing on a door screen can carry Link inside (0x24 ->
+    L6 0x22, natural_credits_poweron47): walk the south door, then blow on."""
+    from retro_harness.nes import nes_action
+    from zelda_i.level7.warp import DUNGEON_EXIT_MAX_FRAMES, WarpPhase
+
+    in_dungeon = _ram(level=6, screen=0x79)
+    ctl = make_recorder_warp_controller(
+        target_screen=WARP_ISLAND_SCREEN, launch_screen=WARP_LAUNCH_SCREEN
+    )
+    ctl.bind_env(_env(in_dungeon))
+    ctl.phase = WarpPhase.SETTLE
+    act = ctl.step(read_snapshot(in_dungeon))
+    assert not ctl.failed
+    assert act.reason == "warp_dungeon_exit"
+    assert act.action == nes_action("DOWN")
+    assert ctl.dungeon_exits == 1
+    for _ in range(DUNGEON_EXIT_MAX_FRAMES):
+        act = ctl.step(read_snapshot(in_dungeon))
+    assert ctl.failed and act.reason == "warp_left_overworld_L6"
+
+
 def test_warp_faces_up_when_the_cycle_passed_the_target() -> None:
     """Landing on L3 0x74 while aiming at L4 0x45: the next blow faces UP."""
     ram = _ram()

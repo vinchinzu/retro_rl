@@ -1,20 +1,32 @@
 # Pre-L1 loadout
 
-## Current sitting leftover (2026-09-24)
+## Current sitting leftover (2026-09-24, Clean)
 
-`bait_compose_poweron3` bought Food from play on the second 0x34 visit:
-0x62's payout raised the wallet to 105R, the Bait pedestal debited 60R,
-and the gathered L1 mouth carried Food 1 and 45R. The power-on run used
-`--no-pokes`, had zero state loads and zero inventory writes, and cleared the
-L4 0x12 push-path regression. It stopped after L4 at `arrow_restock_l4` on
-0x4A with 15R against the 80R arrow price. It is a Survival development
-tape, not a Clean or credits result.
+The Survival regression is green again: `natural_credits_poweron53` reached
+credits from power-on with no inventory writes or state loads. The remaining
+program gate is Clean: `clean_poweron45` dies on the 0x17 White Sword walk
+after northeast overworld attrition. The 0x2C red-potion reroute prototype
+spent both charges near the candle shop and still died at 0x28. Next, score
+the northeast defend policy and potion timing over saved RNG offsets, then
+repeat power-on with `--clean`.
 
-Next action: add the L2 Armos income the arrow budget assumes, then repeat
-power-on through the L7 bait stage with no pokes. The pre-L1 Bait buy
-displaces the old 68R red potion, so measure the new potion and health
-inventory after that run. The earlier `lastheart_poweron37` credits result
-remains historical and still needed 7 target plus 16 safety health refills.
+The separate standalone Clean M5 recheck failed 2/2 at L1 `clear33_key`
+(9742f, `0x33_needs_heart`). Its 18909f result remains a historical best;
+the current checkout has no passing Clean regression gate.
+
+`--clean` now really turns the refill off (the `level3/spine.py` argv strip
+is gone). Real Clean power-on dies in this prefix: first on the walk to the
+0x39 pond (24,635f), and with the defend layer on the White Sword walk at
+0x17 (40,564f, `clean_poweron45`, pin `CL45_*`). Link reaches `white` with
+1 of 5 hearts: nothing heals between the pond and 0x0A.
+
+Gather defaults now: walkers `defend` + `evade`, most hand stages `defend`
+(`gather_segments._defended`), `heart_7b` / `heart_47` / `white` bare. 0x34
+wakes only the stairs Armos from (80,125). Measured with no refill from the
+`LH40_*` pins over 6 RNG offsets; the scratch harness is described in
+plan.md.
+
+Next: NE attrition and the 0x0A Lynel (plan.md "Now", items 1-2).
 
 ## Hidden rupees pay the ring (2026-09-24, rr-t49c)
 

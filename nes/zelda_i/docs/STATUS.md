@@ -9,14 +9,74 @@
 | Last verification | 2026-09-14 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | `spine/clean_tip.py` row `l1_tf`. Published chain file: [level1_complete_natural.json](../recordings/level1_complete_natural.json). Isolated chain: [level1_complete_isolated.json](../recordings/level1_complete_isolated.json). |
+| Evidence | Historical `spine/clean_tip.py` row `l1_tf`; [level1_complete_isolated.json](../recordings/level1_complete_isolated.json). Current natural-entry recheck: [level1_complete_natural.json](../recordings/level1_complete_natural.json). |
 | Not the gate | Gathering, Survival dungeon tapes, and any `--rollout` trial. `--through pre-l1` is the open prefix and has no Clean claim. |
 
-The 18909f figure is the clean-tip oracle recorded on 2026-09-14. This doc pass did not re-run the ROM. The older natural JSON is the published chain file. Do not treat its frame total as 18909.
+The 18909f figure is the clean-tip oracle recorded on 2026-09-14. On
+2026-09-24, the current checkout failed `run_level1_complete.py
+--natural-entry --trials 2` twice at `clear33_key`, frame 9742: room 0x33
+cleared, but the controller stopped with `0x33_needs_heart`. The current
+natural JSON records this red recheck. The historical best is not a current
+passing regression gate.
 
 Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
 
-## 2026-09-24 (latest): continuous power-on to credits with ZERO inventory writes
+## 2026-09-24 (latest): `--clean` was silently Survival; first real Clean runs
+
+`level3/spine.py` removed `--clean` from `sys.argv` at import (since
+81836486, 2026-09-10), so every `run_survival_spine.py --clean` run had the
+health refill and pokes on. `clean_poweron40` "reached the credits" in the
+same 289,154 frames and 341h of absorbed damage as the Survival tape. The
+strip is deleted, and a test pins `--clean` through the imports.
+
+With the refill really off, power-on dies in the gathering prefix:
+`clean_poweron42` on the walk to the 0x39 pond (24,635f: seven half-heart
+hits walking waypoints into octoroks and moblins). With the defend layer
+below, `clean_poweron44/45` get past the pond, the 0x2C heart, the NE cluster,
+the letter, the candle and 0x28, then die on the White Sword walk at 0x17
+(40,564f). No heal comes between the pond and 0x0A, and Link arrives there
+with 1 of 5 hearts. The separate M5 recheck above is red.
+
+What changed for Clean (Survival runs use the same code):
+- `ScreenHunter.defend`: strike, peel, shield and duck only. `OverworldPathController(defend=True)`
+  consults it after the threat ladder, ahead of the hop ladder and any hand
+  phase. The gather waypoints sat at the top of the hop ladder and walked
+  Link into bodies with nothing able to veto.
+- Gather walkers run `defend` + `evade` by default. No refill, 7 walks x 6
+  offsets: stages survived 34/42 bare, 41/42 armed. Hand stages use `defend`
+  per the same eval. `heart_7b`, `heart_47` and `white` stay bare.
+- 0x34 (ring and bait): wake only the stairs Armos, from (80,125) facing
+  LEFT, and wait above the statue row. The old hunt climbed x=64 and woke
+  (64,160) on top of Link. Ring visit: 0/8 to 8/8. Bait visit: 5 hits to 0.1.
+- A path in its hop phase that finds itself in a cave walks out
+  (`stray_cave_exit`). A duck onto 0x56's open stairs held `ring` 17,716f.
+- L7: `$066C` is the clock (`snap.clock`). 0x59 goriyas froze 12 px off
+  Link's line: strike width 8 plus a lattice chase to `sword_stand`. 0x0D:
+  wait out a clock drop, because a taken clock stops the Wallmaster ring.
+- L2 Dodongo (`tf_spine.Level2DodongoController`): two swallowed bombs kill
+  it, or one sword cut while it is stunned by a blast beside its head
+  (ObjState 2). After a swallow (state 1) it stands still ~97 frames and no
+  side takes a cut, so the fight now drops the next bomb at its mouth during
+  that window, strikes a stun, and never reselects bombs or declares
+  "out of bombs" on an empty bag while the Dodongo is stunned or hurt.
+  14/14 saved pins pass; before, runs 46 and 48 spent all 7 bombs and timed out.
+- 0x0A White Sword (rr-lkqf): the climb waits at the corridor foot until the
+  Lynel is on the bottom band, stepping back to 0x1A to re-roll it when it
+  comes near. The top-band walks hold while a Lynel sword shot (0x57) is about
+  to cross the lane ahead: its beam flies across the lake. From the last-heart
+  pins with no refill: `white` 1/6 to 4-5/6, `back_1a` 6/6 with 2 hearts
+  lost to 0.
+- L7 Recorder warp: a whirlwind landing on a door screen can carry Link
+  into that dungeon (0x24 → L6 at 0x22). The warp now walks back out the south
+  door and blows again, instead of failing the stage.
+- Post-L8 walk, 0x38 north: ROM lattice to the x=112..136 cut first, as on
+  0x17. A knock off x=120 after the bridge latch pressed UP into rock for
+  10,387 frames.
+- 0x47 burn: after a defend step the bomb cell re-walks to the exact stand
+  (`_on_defended`). `heart_47` stays bare, because the Zora duck ended with
+  the fireball landing on the flame press.
+
+## 2026-09-24: continuous power-on to credits with ZERO inventory writes
 
 `natural_credits_poweron39` (rr-ps7) achieved the first continuous power-on run
 from boot through credits with zero inventory pokes or assist writes of any kind:

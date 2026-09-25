@@ -2,7 +2,7 @@
 
 Verifies the cave policy and controller for buying Bait at 0x34 for 60R:
 - Screen: 0x34 (Armos special shop: Key 80 left, Blue Ring 250 middle, Bait 60 right)
-- Cave entrance: left-column Armos at (64,125), approached at y=189, reversed at y=100
+- Cave entrance: the (64,128) Armos, pushed LEFT from (80,125); wait at (80,109)
 - Cave interior: spawn (112,213), stairs UP to y=165, lateral RIGHT to x=152, touch UP
 - Pedestal contact at (152,157) flips ADDR_FOOD 0->1 and debits 60R naturally
 - Acceptance criteria (rr-8t4.5):
@@ -24,8 +24,6 @@ from zelda_i.level7.entry import (
     BAIT_CAVE_X,
     BAIT_CAVE_Y,
     BAIT_COST,
-    BAIT_DOOR_APPROACH_Y,
-    BAIT_DOOR_REVERSE_Y,
     BAIT_DOOR_X,
     BAIT_MAX_FRAMES,
     BAIT_SHOP_SCREEN,
@@ -37,7 +35,14 @@ from zelda_i.level7.entry import (
     make_bait_purchase_controller,
 )
 from zelda_i.level7.hops import l7_hops, level7_entry_chapter_stages
-from zelda_i.overworld.cave_shop import CaveShopBuyPhase
+from zelda_i.dungeon import tilemap as tm
+from zelda_i.overworld.cave_shop import (
+    SHOP_34_ARMOS_STAND,
+    SHOP_34_ARMOS_TILE,
+    SHOP_34_ARMOS_WAIT,
+    STAIRS_TILE,
+    CaveShopBuyPhase,
+)
 from zelda_i.ram import (
     ADDR_FOOD,
     ADDR_RUPEES,
@@ -46,7 +51,7 @@ from zelda_i.ram import (
     read_snapshot,
     read_u8,
 )
-from zelda_i.tests.ram_helpers import make_ram
+from zelda_i.tests.ram_helpers import make_ram, room_tile_ram
 
 _DEFAULTS = {
     "mode": PLAY_MODE,
@@ -85,8 +90,6 @@ def test_bait_constants_and_plan_geometry() -> None:
     assert BAIT_CAVE_X == 64
     assert BAIT_CAVE_Y == 125
     assert BAIT_DOOR_X == 64
-    assert BAIT_DOOR_APPROACH_Y == 189
-    assert BAIT_DOOR_REVERSE_Y == 100
     assert BAIT_BUY_X == 152
     assert BAIT_BUY_Y == 165
     assert BAIT_BUY_BUDGET == 1500
@@ -186,33 +189,47 @@ def test_level7_bait_stage_accepts_food_carried_from_gathering() -> None:
     assert ram[ADDR_RUPEES] == 0
 
 
-def test_natural_bait_door_hunt_outside_0x34() -> None:
-    """Navigation outside 0x34: aligns, pushes Armos, reverses onto stairs."""
+def _shop_34(revealed: bool = False, **fields: int):
+    """The captured 0x34 map (six statues) under a snapshot's fields."""
+    ram = room_tile_ram("0x34", level=0)
+    ram[:0x800] = _ram(**fields)
+    if revealed:
+        ax, ay = SHOP_34_ARMOS_TILE
+        col, row = ax // tm.TILE_PX, (ay - tm.PLAYFIELD_TOP_Y) // tm.TILE_PX
+        ram[tm.WRAM_RAM_OFFSET + tm.ADDR_ROOM_TILE_MAP - tm.WRAM_BASE + col * tm.TILE_ROWS + row] = STAIRS_TILE
+    return ram, SimpleNamespace(get_ram=lambda: ram)
+
+
+def test_natural_bait_armos_door_outside_0x34() -> None:
+    """Wake only the stairs Armos from its east side, then step on the stairs.
+
+    The old hunt climbed x=64 from y=189 and woke the (64,160) statue on top
+    of Link first: 4-6 hits per visit with no refill.
+    """
     ctl = make_bait_purchase_controller()
     ctl.hop_index = len(ctl.hops)
     ctl.phase = CaveShopBuyPhase.DOOR
 
-    # 1. Approach row: Link is south of door_approach_y (189), x unaligned
-    approach = read_snapshot(_ram(mode=PLAY_MODE, x=132, y=200))
-    act = ctl._simple_door_hunt(approach)
-    assert act.reason.startswith("door_approach_row")
+    # 1. From the bottom of the screen: walk the lattice, not up x=64.
+    ram, env = _shop_34(x=128, y=189)
+    ctl.bind_env(env)
+    act = ctl._simple_door_hunt(read_snapshot(ram))
+    assert act.reason.startswith("armos_stand")
 
-    # 2. Door alignment: Link is at door_approach_y (189), x=132 > door_x=64
-    align = read_snapshot(_ram(mode=PLAY_MODE, x=132, y=189))
-    act = ctl._simple_door_hunt(align)
-    assert act.reason.startswith("door_ax")
+    # 2. On the stand: push LEFT into the statue.
+    ram, env = _shop_34(x=SHOP_34_ARMOS_STAND[0], y=SHOP_34_ARMOS_STAND[1])
+    ctl.bind_env(env)
+    act = ctl._simple_door_hunt(read_snapshot(ram))
+    assert act.reason == "armos_touch"
+    assert act.action == nes_action("LEFT")
 
-    # 3. Touch Armos: Link is at door_x=64, pushes UP past statue
-    push = read_snapshot(_ram(mode=PLAY_MODE, x=64, y=120))
-    act = ctl._simple_door_hunt(push)
-    assert act.reason.startswith("door_hunt")
+    # 3. Stairs showing, no Armos near them: walk onto (64,125).
+    ram, env = _shop_34(revealed=True, x=SHOP_34_ARMOS_WAIT[0], y=SHOP_34_ARMOS_WAIT[1])
+    ctl.bind_env(env)
+    act = ctl._simple_door_hunt(read_snapshot(ram))
+    assert act.reason == "armos_stairs"
 
-    # 4. Reversal: Link pushed past door_reverse_y (100) -> turns DOWN onto exposed stairs
-    reverse = read_snapshot(_ram(mode=PLAY_MODE, x=64, y=95))
-    act = ctl._simple_door_hunt(reverse)
-    assert act.reason.startswith("door_exposed_stairs")
-
-    # 5. In cave: transitions to BUY phase
+    # 4. In cave: transitions to BUY phase
     cave = read_snapshot(_ram(mode=CAVE_MODE, screen=0x34, x=112, y=213))
     act = ctl._simple_door_hunt(cave)
     assert ctl.phase is CaveShopBuyPhase.BUY

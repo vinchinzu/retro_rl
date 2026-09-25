@@ -29,8 +29,8 @@ L9_THROUGH = tuple(hop.through for hop in _l9_rows())
 L9_STOPS = {hop.through: hop.stop for hop in _l9_rows()}
 
 
-# rr-ps7.5: Level 9 bomb top-ups retired. Link buys 4 bombs for 20R at 0x4A
-# on the post-L8 walk to Spectacle Rock. Zero RAM writes at chapter gates.
+# rr-ps7.5: Level 9 bomb top-ups retired. Link buys two 4-bomb packs at
+# 0x4A, funded by 0x67's 30R cave between purchases. Zero RAM writes.
 SPINE_L9_RETOPUP: frozenset[str] = frozenset()
 
 

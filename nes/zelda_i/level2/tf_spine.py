@@ -18,6 +18,9 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import direction_to_facing
+from zelda_i.dungeon.behaviors import face_toward
+from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.overworld.hunt import sword_stand
 from zelda_i.dungeon.engine import (
     DungeonPhase,
     GenericDungeonRoomController,
@@ -31,6 +34,10 @@ from zelda_i.level2.bomb_path import (
 from zelda_i.level2.boss_combat import (
     DODONGO_FIGHT_MAX_FRAMES,
     DODONGO_TYPE,
+    FACE_E,
+    FACE_N,
+    FACE_S,
+    FACE_W,
     goto_action,
     in_front_of_mouth,
     mouth_path_clear,
@@ -51,7 +58,7 @@ from zelda_i.level2.enter_1e import ENTER_1E_MAX_FRAMES, Level2Enter1eController
 from zelda_i.level2.puzzles import DOOR_UP, LEVEL2_TRIFORCE_BIT
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level2.spine import Level2RoomWalkController
-from zelda_i.ram import ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
+from zelda_i.ram import ADDR_OBJ_STATE, ADDR_SELECTED_ITEM, PLAY_MODE, ZeldaSnapshot, read_u8
 
 # Isolated complete used --poke-bombs 16. Same budget, documented.
 SPINE_TF_BOMB_POKE = 16
@@ -328,6 +335,48 @@ class DodongoPhase(Enum):
     FAILED = auto()
 
 
+# ObjState 1: swallowed a bomb. It stands still ~97 frames; a second
+# swallow kills it (LH40/LH43/BlueRingFull14 pins).
+DODONGO_BLOATED = 1
+# The Dodongo ObjState the sword can cut: 2, stunned by a blast beside the
+# head. Measured on three pins: in 1 (swallowed a bomb) no side takes a cut,
+# and in 0 (walking) none does either.
+DODONGO_STUNNED = frozenset({2})
+# Link's bomb slots and the ObjStates of a bomb on the floor (fuse, flash,
+# blast). A swallowed bomb leaves none, so the strike need not wait out the
+# post-placement retreat: that retreat spent 45 of a 97-frame bloat
+# (natural_credits_poweron48).
+BOMB_SLOTS = (0x10, 0x11)
+# How far Link may drift off a reached mouth stand before walking it again.
+DODONGO_STAND_SLACK = 8
+BOMB_ARMED_STATES = range(18, 21)
+# Floor a stun stand is clamped into (x0, x1, y0, y1).
+DODONGO_STAND_BOX = (32, 208, 93, 189)
+
+
+def mouth_stand(dodo: Any) -> tuple[tuple[int, int], str] | None:
+    """Where Link stands to drop a bomb against the mouth, and his facing.
+
+    The body is 16x16 facing N/S and 32x16 facing E/W (it turns at x=192
+    against the x=224 wall); a bomb lands 16 px ahead of Link. None when
+    that stand is off the floor (the mouth is at a wall).
+    """
+    x, y, f = int(dodo.x), int(dodo.y), int(dodo.facing)
+    if f & FACE_N:
+        spot = ((x, y - 32), "DOWN")
+    elif f & FACE_S:
+        spot = ((x, y + 30), "UP")
+    elif f & FACE_W:
+        spot = ((x - 32, y), "RIGHT")
+    elif f & FACE_E:
+        spot = ((x + 48, y), "LEFT")
+    else:
+        return None
+    (sx, sy), _ = spot
+    x0, x1, y0, y1 = DODONGO_STAND_BOX
+    return spot if x0 <= sx <= x1 and y0 <= sy <= y1 else None
+
+
 @dataclass
 class Level2DodongoController:
     """Bomb-in-mouth Dodongo. Do not occupancy-grade the moving boss."""
@@ -356,6 +405,8 @@ class Level2DodongoController:
     select_item: int | None = B_SLOT_BOMBS
     _env: Any = field(default=None, init=False, repr=False)
     _select: PauseSelectController | None = field(default=None, init=False, repr=False)
+    _at_mouth: bool = field(default=False, init=False, repr=False)
+    _full_hp: int = field(default=0, init=False, repr=False)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -369,6 +420,12 @@ class Level2DodongoController:
 
     def _stand(self, reason: str) -> FrameAction:
         return FrameAction(nes_idle_action(), reason)
+
+    def _bomb_armed(self) -> bool:
+        if self._env is None:
+            return False
+        ram = self._env.get_ram()
+        return any(int(ram[ADDR_OBJ_STATE + slot]) in BOMB_ARMED_STATES for slot in BOMB_SLOTS)
 
     def _living(self, snap: ZeldaSnapshot) -> list[Any]:
         return [
@@ -402,11 +459,26 @@ class Level2DodongoController:
                 return self._stand("settle_0e")
             self.phase = DodongoPhase.FIGHT
 
+        # Before the B-item select: with the bag empty the ROM moves B off
+        # bombs and the select answered "done" for 12300 frames.
+        live = self._living(snap)
+        self._full_hp = max([self._full_hp] + [int(o.hp) for o in live])
+        if (
+            snap.bombs <= 0
+            and self.place_cd <= 0
+            and live
+            and not any(int(o.state) in DODONGO_STUNNED for o in live)
+            # A cut one dies ~19 frames later with state back at 0 (S48 pin:
+            # hp 240->208, then this check fired one frame before the kill).
+            and all(int(o.hp) >= self._full_hp for o in live)
+        ):
+            return self._fail("out_of_bombs")
         if (
             self.select_item is not None
             and self._env is not None
             and snap.mode == PLAY_MODE
             and not snap.transitioning
+            and snap.bombs > 0  # empty bag: nothing to select, the pause cycled forever
         ):
             curr = int(read_u8(self._env.get_ram(), ADDR_SELECTED_ITEM))
             if curr != int(self.select_item):
@@ -438,6 +510,55 @@ class Level2DodongoController:
             return FrameAction(nes_action(wander, "A"), "dodo_search")
 
         self._track_face(living)
+        bloated = [o for o in living if int(o.state) == DODONGO_BLOATED]
+        if not bloated:
+            self._at_mouth = False
+        if bloated and snap.bombs > 0 and not self._bomb_armed():
+            # Two swallowed bombs kill it, and it stands still through the
+            # ~97-frame bloat (state 1): set the next bomb in front of the
+            # mouth now. It swallows it on resuming, or the blast stuns it
+            # for the sword. The three green pins all did exactly this; the
+            # red ones walked off and came back after it moved.
+            d = min(bloated, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y))
+            spot = mouth_stand(d)
+            if spot is not None:
+                (sx, sy), face = spot
+                # Latched once reached: the turn press walks Link a couple of
+                # px toward the body, and re-walking the off-lattice stand
+                # swapped UP/DOWN every frame through the bloat (S48 pin).
+                off = max(abs(int(snap.link_x) - sx), abs(int(snap.link_y) - sy))
+                if off > DODONGO_STAND_SLACK:
+                    self._at_mouth = False
+                if not self._at_mouth:
+                    step = room_step(snap, (sx, sy), tol=4, env=self._env)
+                    if step is not None:
+                        return FrameAction(nes_action(step), "dodo_bloat_walk")
+                    self._at_mouth = True
+                if int(snap.facing) != direction_to_facing(face):
+                    return FrameAction(nes_action(face), "dodo_bloat_face")
+                self.place_face = face
+                self.place_cd = 95
+                self.bombs_used += 1
+                return FrameAction(nes_action(face, "B"), "dodo_bloat_place")
+        stunned = [o for o in living if int(o.state) in DODONGO_STUNNED]
+        if stunned and not self._bomb_armed():
+            # Stunned, the sword finishes it: one white-sword cut from a stun
+            # pin, dead 19 frames later. Placing on through the stun spent 7
+            # bombs and timed out (natural_credits_poweron46).
+            self.place_cd = 0
+            d = min(stunned, key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y))
+            stand = sword_stand(
+                int(snap.link_x), int(snap.link_y), d, DODONGO_STAND_BOX, avoid_muzzle=True
+            )
+            # tol 4: a stand 20 px off the body is rarely a lattice node
+            # (y=136 beside a body at 156); the nearest node is <= 4 px away.
+            step = room_step(snap, stand, tol=4, env=self._env)
+            if step is not None:
+                return FrameAction(nes_action(step), "dodo_stun_walk")
+            face = face_toward(int(snap.link_x), int(snap.link_y), int(d.x), int(d.y))
+            if self.frames % 8 < 4:
+                return FrameAction(nes_action(face, "A"), "dodo_stun_slash")
+            return FrameAction(nes_action(face), "dodo_stun_face")
         if self.place_cd > 0:
             self.place_cd -= 1
             if self.place_cd > 50:
@@ -476,6 +597,8 @@ class Level2DodongoController:
         path_ok = mouth_path_clear(d)
         stable = self.stable_n.get(d.slot, 0) >= self.stable_face_frames
         if snap.bombs <= 0:
+            if int(d.hp) < self._full_hp:
+                return self._stand("dodo_hurt_wait")
             return self._fail("out_of_bombs")
         if dist < self.contact and not (at_mouth and front):
             dx, dy = d.x - snap.link_x, d.y - snap.link_y
