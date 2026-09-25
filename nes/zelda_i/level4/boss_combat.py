@@ -55,6 +55,7 @@ from zelda_i.level4.dungeon import (
 from zelda_i.level4.occupancy import room_13_grid
 from zelda_i.walk.physics import OccupancyWalker
 from zelda_i.dungeon.hop_controller import lattice_goto
+from zelda_i.dungeon.pause_select import drink_if_low
 from zelda_i.ram import (
     ADDR_ROOM_ITEM_ID,
     ADDR_TRIFORCE,
@@ -285,6 +286,7 @@ class Level4GleeokFightController:
         )
 
         for frame in range(self.max_frames):
+            drink_if_low(env, assist, total)
             snap = read_snapshot(env.get_ram())
             ram = env.get_ram()
             self.frames = total[0]

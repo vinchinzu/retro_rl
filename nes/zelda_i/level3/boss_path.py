@@ -33,11 +33,10 @@ from zelda_i.dungeon.ops import (
     poke_bombs,
     room_fields,
 )
-from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController, drink_if_low
 from zelda_i.dungeon.tilemap import has_room_tile_map
 from zelda_i.level3.boss_combat import (
     BOMB_NORTH_STANDS,
-    drink_if_low,
     Level3BossCombatMixin,
     PREP_CLEAR_TYPES,
     UP_APPROACHES,

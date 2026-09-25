@@ -51,7 +51,6 @@ from zelda_i.level4.overworld import (
     OverworldToLevel4Controller,
 )
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_PRICE, bomb_restock_stages
-from zelda_i.overworld.arrow_shop import ARROW_SHOP_PRICE
 from zelda_i.overworld.cave_shop import potion_restock_stages
 from zelda_i.overworld.settle import PostL3TriforceSettleController
 from zelda_i.overworld.settle import POST_L3_SETTLE_MAX_FRAMES
@@ -204,12 +203,11 @@ def l4_hops(*, spine_fields) -> tuple[SpineHop, ...]:
                     PostL3TriforceSettleController(),
                     POST_L3_SETTLE_MAX_FRAMES,
                 ),
-                # The L4 walk crosses 0x64's potion shop. Preserve the
-                # L4 bomb pack and L5 arrow buy before an optional potion.
+                # The L4 walk crosses 0x64's potion shop. Clean L4 bleeds
+                # ~7h into the Gleeok (clean_poweron73), so the potion comes
+                # before the arrows: keep only the L4 bomb pack.
                 *potion_restock_stages(
-                    LEVEL4_HOPS_FROM_POST_L3,
-                    "l3",
-                    reserve=BOMB_SHOP_PRICE + ARROW_SHOP_PRICE,
+                    LEVEL4_HOPS_FROM_POST_L3, "l3", reserve=BOMB_SHOP_PRICE
                 ),
                 # Then 0x44's bombs when short of L4's four walls (rr-doua).
                 *bomb_restock_stages(

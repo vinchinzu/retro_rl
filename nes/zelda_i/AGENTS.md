@@ -1,7 +1,7 @@
 # Agent Instructions — zelda_i
 
-NES Legend of Zelda. Clean power-on reaches the L3 Triforce
-(`clean_poweron69`); the Clean frontier is Level 4 (`docs/plan.md` ladder).
+NES Legend of Zelda. Clean power-on reaches the L4 Triforce
+(`clean_poweron74`); the Clean frontier is money for L5 (`docs/plan.md` ladder).
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/PRE_L1.md`.
 Session: `.grok/skills/zelda-session/SKILL.md`.
 Tracker: `bd ready -l zelda_i -l spine`. Living residual: `docs/PRE_L1.md`.
@@ -88,7 +88,8 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - A bomb or burn cell off the turn lattice (0x48's x=188) is reached by a straight press along the shared row (`_nudge_dir`); `room_step` alone flips around it.
 - A potion drink can leave B on the potion. Burn/bomb cells reselect their `b_item` before pressing; a B press on the potion slot drinks it.
 - Darknut rooms opt into `CombatTuning.flank_shielded`: stand 16 px off a side the shield is not on, commit to the pick (`FLANK_COMMIT_FRAMES`); a per-frame re-pick flipped 2 px for 28000 frames.
-- The L3 boss suffix steps the env itself (no `run_controller_stage`): potions are drunk by `boss_combat.drink_if_low` in `_tick` / `_drive_hop`, and `--save-points` writes `<prefix>_level3_manhandla` for `scratch/mh_eval.py`.
+- Boss loops that step the env themselves (L3 suffix `_tick` / `_drive_hop`, L4 Gleeok) sit outside `run_controller_stage`'s potion guard: call `dungeon.pause_select.drink_if_low` every frame. `--save-points` writes `<prefix>_level3_manhandla` for `scratch/mh_eval.py`.
+- Offset pins (`scratch/offset_pins.py`) must sit after any settle that waits for a game event: idle frames before the L3 TF settle came out as one tape shifted by a frame.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

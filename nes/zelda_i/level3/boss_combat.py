@@ -10,7 +10,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import save_rgb_png
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.dungeon.hop_controller import room_step
-from zelda_i.dungeon.pause_select import DRINK_BUDGET, DRINK_WAIT_BUDGET, DrinkPhase, PotionDrinkGuard
+from zelda_i.dungeon.pause_select import drink_if_low
 from zelda_i.dungeon.tracking import ObjectTracker
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -96,37 +96,6 @@ def _tick(env: Any, assist: Any | None, total: list[int], action: Any) -> None:
     total[0] += 1
     if assist is not None:
         assist.apply_env(env, frame=total[0])
-
-
-@dataclass
-class _Idle:
-    def step(self, snap: ZeldaSnapshot) -> Any:
-        return FrameAction(nes_idle_action(), "boss_path")
-
-
-def drink_if_low(env: Any, assist: Any | None, total: list[int]) -> bool:
-    """Drink a carried potion at the last heart, the way every spine stage does.
-
-    The boss suffix steps the env itself, outside ``run_controller_stage``'s
-    ``PotionDrinkGuard``, so a Link bought a potion before L3 and died to
-    Manhandla with it in the bag (Clean offsets, 2026-09-25). Runs the guard
-    to the end of the drink and the B restore, then hands the frame back.
-    """
-    snap = read_snapshot(env.get_ram())
-    if int(snap.potion) <= 0 or int(snap.whole_hearts) > 1 or int(snap.mode) != PLAY_MODE:
-        return False
-    guard = PotionDrinkGuard(inner=_Idle())
-    guard.bind_env(env)
-    for _ in range(DRINK_WAIT_BUDGET + DRINK_BUDGET + 200):
-        owned = guard.frames
-        action = guard.step(read_snapshot(env.get_ram()))
-        if guard.frames == owned and guard.phase is DrinkPhase.IDLE:
-            break
-        env.step(action.action)
-        total[0] += 1
-        if assist is not None:
-            assist.apply_env(env, frame=total[0])
-    return guard.drinks > 0
 
 
 def prep_5d_still_killable(snap: ZeldaSnapshot) -> list:
