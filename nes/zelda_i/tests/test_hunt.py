@@ -406,7 +406,15 @@ def test_the_swing_faces_the_body_at_every_pad_in_reach() -> None:
     """
     hunter = ScreenHunter()
     foe = _foe(x=160, y=141)
-    for pad in range(MIN_DODGE_BODY - 6, SWORD_REACH + 1):
+    # At the blade's near end the turn plus the blade's 4 frames would let a
+    # body touch first (``_swing_pays``): that pad peels, it does not press.
+    hunter.reset()
+    near = hunter.step(
+        _snap(link_x=160 - (MIN_DODGE_BODY - 6), facing=FACING_WEST, objects=(foe,)), 1
+    )
+    assert near is not None and near.reason == "hunt_78_peel", near
+    assert "A" not in pressed_nes_buttons(list(near.action))
+    for pad in range(MIN_DODGE_BODY - 5, SWORD_REACH + 1):
         hunter.reset()
         turn = hunter.step(
             _snap(link_x=160 - pad, facing=FACING_WEST, objects=(foe,)), 1

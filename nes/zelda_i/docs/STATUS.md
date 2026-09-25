@@ -5,21 +5,44 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Clean power-on to Level 1 Triforce, triforce `0x01`, 18909f, 2/2 natural-entry |
-| Last verification | 2026-09-14 |
+| Best verified result | Clean power-on through the **Level 2 Triforce** on the gathered route: triforce `0x03`, L1 Triforce at 76,580f, L2 at 97,609f, one continuous run, 0 state loads, 0 writes |
+| Last verification | 2026-09-25 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | Historical `spine/clean_tip.py` row `l1_tf`; [level1_complete_isolated.json](../recordings/level1_complete_isolated.json). Current natural-entry recheck: [level1_complete_natural.json](../recordings/level1_complete_natural.json). |
-| Not the gate | Gathering, Survival dungeon tapes, and any `--rollout` trial. `--through pre-l1` is the open prefix and has no Clean claim. |
+| Evidence | [clean_poweron64.json](../recordings/clean_poweron64.json) (`run_survival_spine.py --clean --through level9-credits`); it dies in L3 at 110,963f. |
+| Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
 
-The 18909f figure is the clean-tip oracle recorded on 2026-09-14. On
-2026-09-24, the current checkout failed `run_level1_complete.py
---natural-entry --trials 2` twice at `clear33_key`, frame 9742: room 0x33
-cleared, but the controller stopped with `0x33_needs_heart`. The current
-natural JSON records this red recheck. The historical best is not a current
-passing regression gate.
+The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone
+recheck (`run_level1_complete.py --natural-entry`) is red at L1 0x33
+(`0x33_needs_heart`, 2026-09-24); the gathered route above replaces it.
 
-Re-measure with `scripts/run_level1_complete.py --natural-entry` and no health refill. Do not overwrite the oracle from a gathering or Survival run.
+## 2026-09-25: Clean power-on through L2 (gathering fixed)
+
+`clean_poweron64` went power-on → gathering → L1 Triforce → L2 Triforce with
+no health refill, no state load and no RAM write, then died in L3's 0x69
+Darknut room (110,963f). The day before, Clean died at 40,801f on the White
+Sword walk (`clean_poweron60`, same tape as CL45).
+
+What changed (details in [plan.md](plan.md), "Done this sitting"):
+- 0x2C's take-any gives the red potion; 0x47's container comes before the
+  White Sword, so Link still has the five it needs.
+- Overworld melee: a lattice-simulated peel (`common.body_escape`), swings
+  only when the blade lands before contact (`ScreenHunter._swing_pays`), and
+  the lattice shot escape for the hunter's Zora duck. Post-pond gathering
+  over 12 RNG offsets: 0/12 → 11/12 reach the L1 mouth.
+- Six stalls the new hit census exposed (0x48 cell flutter, 0x2D stairs
+  lane, 0x28 stray cave, 0x7F help-drop bomb, potion guard B item, burn
+  cells' B item).
+- L3 0x59/0x69 Darknuts are struck from a non-shield side
+  (`flank_shielded`): from the L3 entry pin, 7/8 offsets now reach the boss
+  path (was 1/8); the boss suffix fails 8/8 (low hearts or `bombs=0`).
+
+Last-heart death map on d1c42958 (`lasth_poweron60`): L1, L2 and L4 need no
+refill; the gathering needed 2 (both fixed above); L3 needs 3.
+
+The zero-poke Survival regression (`natural_credits_poweron65`, this code
+minus the L3 flank) is red at the L2 Dodongo: the reshuffled tape spends all
+7 bombs without a kill. Open.
 
 ## 2026-09-24 (latest): `--clean` was silently Survival; first real Clean runs
 
@@ -166,7 +189,8 @@ Last-heart refill (`--engage-hearts 1`, refills = deaths prevented): power-on
 
 ## What is open
 
-`spine/clean_tip.py` `next_open()` is `pre_l1`. Route and the one live tape are in [PRE_L1.md](PRE_L1.md). One flagged rollout trial bought bombs. The default walk is not accepted.
+Clean frontier: Level 3 (ladder rung C5 in [plan.md](plan.md)). The boss
+suffix fails from the L3 entry pin on 8/8 offsets (low hearts, spent bombs).
 
 ## What is not written here
 

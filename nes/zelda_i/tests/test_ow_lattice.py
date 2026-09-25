@@ -16,7 +16,7 @@ from zelda_i.dungeon.tilemap import (
     WRAM_RAM_OFFSET,
     ow_walkable_nodes,
 )
-from zelda_i.overworld.common import _sim_walk, shot_escape
+from zelda_i.overworld.common import _sim_walk, body_escape, shot_escape
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import POND_EDGE_Y, PondFairyController
 from zelda_i.overworld.path import OverworldPathController
@@ -137,6 +137,27 @@ def test_shot_escape_does_not_run_along_a_diagonal_shot() -> None:
         112, 125, [(129, 152, -1.5, -0.6, 4)], BOX, nodes=nodes
     )
     assert needed and direction != "LEFT"
+
+
+def test_body_escape_never_walks_into_a_closing_body() -> None:
+    # A leever 16 px east on Link's row, walking west at 1 px/f.
+    direction = body_escape(120, 141, [(136.0, 141.0, -1.0, 0.0, 0.25)], BOX)
+    assert direction not in (None, "RIGHT")
+
+
+def test_body_escape_takes_the_open_side_when_the_way_back_is_rock() -> None:
+    # Body closing from the north; the column below Link is rock.
+    nodes = frozenset(n for n in _all_nodes() if not (n[0] == 120 and n[1] > 141))
+    direction = body_escape(
+        120, 141, [(120.0, 125.0, 0.0, 1.0, 0.25)], BOX, nodes=nodes
+    )
+    assert direction in ("LEFT", "RIGHT")
+
+
+def test_body_escape_does_not_leave_the_box() -> None:
+    # On the top edge of the box with a body closing from below: UP scrolls.
+    direction = body_escape(120, 62, [(120.0, 78.0, 0.0, -1.0, 0.25)], BOX)
+    assert direction in ("LEFT", "RIGHT")
 
 
 def test_shot_escape_leaves_the_frame_when_nothing_can_be_hit() -> None:

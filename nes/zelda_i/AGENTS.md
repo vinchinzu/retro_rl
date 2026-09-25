@@ -1,7 +1,7 @@
 # Agent Instructions — zelda_i
 
-NES Legend of Zelda. Clean gate is M5: power-on to the Level 1 Triforce.
-The next open row is the gathering prefix, `pre_l1`, not Level 2.
+NES Legend of Zelda. Clean power-on reaches the L2 Triforce
+(`clean_poweron64`); the Clean frontier is Level 3 (`docs/plan.md` ladder).
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/PRE_L1.md`.
 Session: `.grok/skills/zelda-session/SKILL.md`.
 Tracker: `bd ready -l zelda_i -l spine`. Living residual: `docs/PRE_L1.md`.
@@ -43,6 +43,8 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 --obse
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through gather --no-video --trials 1
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-gather --no-video --trials 1   # legacy wooden-sword prefix
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through pre-l1 --no-video --trials 1
+uv run python nes/zelda_i/scratch/eval_gather_clean.py --state CL61_walk_2c --start walk_2c --stop walk_37 --offset 3   # Clean gather stages from a pin, one RNG offset; hits by cause
+uv run python nes/zelda_i/scratch/offset_pins.py CL64_enter_level3 L3o enter_level3 8   # L3o<n>_enter_level3 for --resume per offset
 uv run python nes/zelda_i/scripts/clean_tip.py
 uv run python -m zelda_i.overworld.gather_segments pin     # power-on pre-l1 → PreL1BombLeave
 uv run python -m zelda_i.overworld.gather_segments chain   # → 0x37, 6 HC + White Sword + Blue Ring; chain:<stage> resumes
@@ -81,6 +83,11 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - `--clean` was stripped from `sys.argv` by a `level3/spine.py` import until 2026-09-24: every earlier `--clean` spine tape is Survival. A module must never edit `sys.argv`.
 - `defend=True` on an `OverworldPathController` runs `ScreenHunter.defend` (strike/peel/shield/duck) ahead of the hop ladder and every hand phase. A subclass that latches a pose (a bomb cell) must drop the latch in `_on_defended`: a 2 px duck left 0x47's flame stand latched and the tree stayed shut.
 - A clock drop sets `$066C` (`snap.clock`) until Link leaves the room. Goriyas freeze where they stand and L7 0x0D's Wallmaster ring stops spawning. When a hand clear times out on bodies that do not move, check the clock first.
+- Every stage report has `hits` (DamageLog): cause, action, and a 24-frame trail per hit. Read it before tuning: the 2026-09-25 "close peel" hits were swings pinned 13 frames, not the peel.
+- The hunter's peel is `common.body_escape` (every input flown on the lattice), its swing waits for `_swing_pays` (blade out on frames 4-11 of the 13-frame pin), its Zora duck is `shot_escape`. A candidate that leaves the hunt box is not a candidate: a peel off 0x63's edge scrolled to 0x53 and lost the hop.
+- A bomb or burn cell off the turn lattice (0x48's x=188) is reached by a straight press along the shared row (`_nudge_dir`); `room_step` alone flips around it.
+- A potion drink can leave B on the potion. Burn/bomb cells reselect their `b_item` before pressing; a B press on the potion slot drinks it.
+- Darknut rooms opt into `CombatTuning.flank_shielded`: stand 16 px off a side the shield is not on, commit to the pick (`FLANK_COMMIT_FRAMES`); a per-frame re-pick flipped 2 px for 28000 frames.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

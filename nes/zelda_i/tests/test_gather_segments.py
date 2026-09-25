@@ -382,6 +382,26 @@ def test_candle_lateral_row_is_below_the_key_pedestal() -> None:
     assert ctrl.buy_x == 152
 
 
+def test_cave_exit_is_done_when_link_is_not_in_a_cave() -> None:
+    # A help-drop bomb ends the coast walk on 0x7F: no 0x6F cave to leave.
+    from zelda_i.overworld.gather_segments import CaveExitController
+
+    ctrl = CaveExitController()
+    act = ctrl.step(_snap(mode=PLAY_MODE, screen=0x7F, link_x=96, link_y=141))
+    assert ctrl.success is True and act.action == nes_action()
+
+
+def test_cell_nudge_presses_along_the_shared_row() -> None:
+    # 0x48's burn stand x=188 is off the turn lattice: the nudge walks the
+    # row toward it instead of flipping around the nearest column.
+    from zelda_i.overworld.gather_segments import _nudge_dir
+
+    assert _nudge_dir(_snap(link_x=184, link_y=93), (188, 93)) == "RIGHT"
+    assert _nudge_dir(_snap(link_x=185, link_y=93), (188, 93)) == "RIGHT"
+    assert _nudge_dir(_snap(link_x=80, link_y=91), (80, 85)) == "UP"
+    assert _nudge_dir(_snap(link_x=72, link_y=93), (80, 85)) is None
+
+
 def test_cave_exit_lines_up_then_clears_the_mouth() -> None:
     from zelda_i.overworld.gather_segments import CAVE_EXIT_CLEAR, CaveExitController
 
@@ -402,11 +422,11 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
     names = [name for name, _ in chain_stages()]
     assert names == [
         "exit_6f", "walk_7c", "heart_7b", "exit_7b", "walk_pond", "pond_39",
-        "walk_2c", "heart_2c", "exit_2c", "rupees_2d", "exit_2d",
+        "walk_2c", "potion_2c", "exit_2c", "rupees_2d", "exit_2d",
         "ne_100", "exit_0f", "letter", "exit_0e", "candle",
         "exit_0c", "select_candle", "walk_28", "rupees_28", "exit_28",
-        "white", "back_1a", "walk_48",
-        "rupees_48", "exit_48", "heart_47", "exit_47",
+        "walk_48", "rupees_48", "exit_48", "heart_47", "exit_47",
+        "walk_white", "white", "back_1a", "walk_back_48",
         "rupees_5b", "exit_5b", "rupees_6b", "exit_6b", "rupees_56", "exit_56",
         "ring", "exit_ring", "rupees_62", "exit_62", "bait", "exit_bait",
         "ring_return", "walk_pond_l1", "pond_39_l1", "walk_37",

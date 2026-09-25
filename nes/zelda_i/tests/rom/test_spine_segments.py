@@ -111,7 +111,8 @@ def test_live_power_on_gathered_level1_triforce_no_l1_assist() -> None:
     assert run.success, run.report()
     assert int(snap.triforce) & 0x01
     assert int(snap.sword) == 2
-    assert int(snap.heart_containers) == 7  # 6 gathered + Aquamentus
+    # 5 gathered (0x2C's take-any is the potion since 2026-09-25) + Aquamentus.
+    assert int(snap.heart_containers) == 6
     assert run.report()["gather"]["engage_hearts"] == 1
     assert int(snap.ring) == 1
     writes = (run.report().get("inventory_assist") or {}).get("writes") or []

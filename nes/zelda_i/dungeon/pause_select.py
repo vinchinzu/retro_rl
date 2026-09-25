@@ -399,7 +399,11 @@ class PotionDrinkGuard:
             if not window:
                 self._wait += 1
                 return self.inner.step(snap)
-            self._prior = int(read_u8(ram, ADDR_SELECTED_ITEM))
+            # The item from before the *first* try. An aborted try leaves
+            # the potion selected; re-reading it then made the restore a
+            # no-op, and 0x5B's burn press drank the last charge (CL63).
+            if self._prior is None:
+                self._prior = int(read_u8(ram, ADDR_SELECTED_ITEM))
             self._select = self._selector(B_SLOT_POTION)
             self._set(DrinkPhase.SELECT, "potion_select")
         if self.phase is DrinkPhase.SELECT:
@@ -447,6 +451,7 @@ class PotionDrinkGuard:
             prior = self._prior
             selected = int(read_u8(ram, ADDR_SELECTED_ITEM))
             if prior is None or prior == selected or not b_slot_owned(ram, prior):
+                self._prior = None
                 self._set(DrinkPhase.IDLE, "potion_done")
                 return self.inner.step(snap)
             self._select = self._selector(prior)
@@ -467,6 +472,7 @@ class PotionDrinkGuard:
                 return self._own(act)
             self.restores += 1
             self._drops = 0
+            self._prior = None
             self._set(DrinkPhase.IDLE, "potion_done")
             return self.inner.step(snap)
         if self.phase is DrinkPhase.CLOSE:
