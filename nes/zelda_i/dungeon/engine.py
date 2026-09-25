@@ -246,6 +246,7 @@ class CombatTuning:
     # with a live south U-turn (L1 0x23) widen it; the default is the
     # common inland box.
     avoid_wall_bounds: tuple[int, int, int, int] = (56, 200, 109, 173)
+    west_mouth_down_to: int = 149
     inland_dash: int = 0  # forced entry-dir steps after room is playable
     split_y: int | None = None  # same-side patrol vertices (0x23 water)
     occupancy_patrol: bool = False  # 1px predict; miss → block + BFS
@@ -283,6 +284,7 @@ class RewardSpec:
     target: tuple[int, int] | None = None
     waypoints: tuple[tuple[int, int], ...] = ()
     settle_all_dead: int = CLEAR_SETTLE_ALL_DEAD
+    sweep_room_item: bool = True
     y_first: bool = True
     # Wallmaster key is on the floor from entry; do not wait for all-dead.
     reward_while_live: bool = False
@@ -953,8 +955,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
         self._leaving_wall = True
         if x < lo_x:
             # Tunnel x<24 only accepts RIGHT. At the mouth (x≈32) the
-            # door row y≈141 blocks eastbound movement — step off it first.
-            if x >= 24 and 133 <= y <= 149:
+            # L6 0x19 needs DOWN through y=160, then RIGHT slides onto its
+            # y=165 lattice row; other rooms use the ordinary door band.
+            if x >= 24 and 133 <= y <= tuning.west_mouth_down_to:
                 direction = "DOWN"
             else:
                 direction = "RIGHT"
@@ -1070,6 +1073,16 @@ class GenericDungeonRoomController(EntryRouteWalker):
             bodies = _occupancy_bodies(snap, None)
             bodies.discard(xy)
             self.walker.observe(xy, transient_occupants=bodies)
+        # An engulfing Like-Like pins Link in place. A directional evasion
+        # from the same pixel can repeat forever while the sword can free him.
+        if self.spec.combat.contact_backstep and any(
+            int(o.type_id) == _ids.LIKE_LIKE_OBJECT_TYPE
+            and chebyshev(*xy, int(o.x), int(o.y)) <= MELEE_ENGULF_PX
+            for o in live
+        ):
+            engulf = self._contact(snap, live)
+            if engulf is not None:
+                return engulf
         # Reactive first. Every position rule below — the off-wall step, the
         # entry dash, the patrol — is blind to what is inbound, so running one
         # ahead of the evader silences it for that frame. That is how L1 0x23
@@ -1987,7 +2000,10 @@ class GenericDungeonRoomController(EntryRouteWalker):
         Survival top-ups paid for them instead (rr-qb6w). Taken is the room's
         world-flag item bit, not a guess from Link's pose.
         """
-        if int(snap.room_item_id) not in SWEEP_ROOM_ITEMS:
+        if (
+            not self.spec.reward.sweep_room_item
+            or int(snap.room_item_id) not in SWEEP_ROOM_ITEMS
+        ):
             return None
         if self._room_item_frames >= ROOM_ITEM_SWEEP_FRAMES:
             return None

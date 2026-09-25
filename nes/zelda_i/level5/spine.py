@@ -51,7 +51,9 @@ from zelda_i.level5.overworld import (
     RUPEES_67_BACK_HOPS,
     RUPEES_67_HOPS,
     RUPEES_67_PAY,
+    RUPEES_67_RETURN_FRAMES,
     RUPEES_67_SCREEN,
+    RUPEES_67_WALK_FRAMES,
     make_post_l4_level5_controller,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
@@ -62,7 +64,7 @@ from zelda_i.overworld.gather_segments import (
     make_secret_rupee_controller,
 )
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_SCREEN, bomb_restock_stages
-from zelda_i.ram import ZeldaSnapshot, ow_secret_taken, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, ow_secret_taken, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, fight_stage, play_ready
 
 __all__ = [
@@ -102,16 +104,40 @@ class _WalkToRupees67(_Rupees67Skip, HopWalkController):
     hops: tuple = RUPEES_67_HOPS
     resume_on_screen: bool = True
 
-    def _extra_hop_action(self, snap: ZeldaSnapshot, hop) -> FrameAction | None:
-        if (snap.level == 0 and snap.screen == 0x55 and hop.target == 0x65
-                and 100 <= snap.link_x <= 152 and snap.link_y < 141):
+    def _raft_hold(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Step off the 0x55 raft before defend can turn Link back to 0x45.
+
+        ``defend`` runs ahead of the hop ladder. A peel on the raft column
+        boards it, and the east hop then presses RIGHT while the raft rides
+        north (c8_l5_from_l4pin: 28k frames of ``unstick_lattice`` on 0x45).
+        """
+        if snap.level != 0 or self.hop_index >= len(self.hops):
+            return None
+        hop = self.hops[self.hop_index]
+        if snap.screen == 0x45 and hop.target == 0x56 and snap.mode in (PLAY_MODE, 6, 7):
+            self.hop_index = 0
+            if "raft_returned" not in self.notes:
+                self.notes.append("raft_returned")
+            return FrameAction(nes_action("DOWN"), "raft_south")
+        if (snap.screen == 0x55 and hop.target == 0x56 and snap.link_y < 141
+                and 100 <= snap.link_x <= 152):
             return FrameAction(nes_action("DOWN"), "raft_dismount")
+        return None
+
+    def _before_play(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        return self._raft_hold(snap)
+
+    def _extra_hop_action(self, snap: ZeldaSnapshot, hop) -> FrameAction | None:
+        held = self._raft_hold(snap)
+        if held is not None:
+            return held
         return super()._extra_hop_action(snap, hop)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.frames == 0:
             why = self._skip_reason(snap)
-            if why is None and snap.screen not in (0x45, 0x55, 0x65, 0x66, 0x67):
+            on_route = {0x45, *(hop.target for hop in self.hops)}
+            if why is None and snap.screen not in on_route:
                 why = "off_route"
             if why:
                 self.frames += 1
@@ -152,9 +178,9 @@ class _ReturnFromRupees67(HopWalkController):
 
 
 def rupees_67_stages() -> tuple[tuple[str, Any, int], ...]:
-    """0x45 → 0x67's 30R rock → 0x55 after the L5 restock checks."""
+    """0x45 or 0x4A → 0x67's 30R rock → 0x4A, after the L5 bomb check."""
     return (
-        ("walk_67", _WalkToRupees67(max_frames=8000), 8000),
+        ("walk_67", _WalkToRupees67(max_frames=RUPEES_67_WALK_FRAMES), RUPEES_67_WALK_FRAMES),
         ("select_bombs_67", _SelectBombs67(), 600),
         (
             "rupees_67",
@@ -164,7 +190,11 @@ def rupees_67_stages() -> tuple[tuple[str, Any, int], ...]:
             5000,
         ),
         ("exit_cave_67", CaveExitController(clear=16), 600),
-        ("return_55", _ReturnFromRupees67(max_frames=8000), 8000),
+        (
+            "return_4a",
+            _ReturnFromRupees67(max_frames=RUPEES_67_RETURN_FRAMES),
+            RUPEES_67_RETURN_FRAMES,
+        ),
     )
 
 L5_THROUGH: tuple[str, ...] = (

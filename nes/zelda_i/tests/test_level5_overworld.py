@@ -63,6 +63,20 @@ def test_post_l4_settle_idles_fanfare_then_island() -> None:
     assert not post_l4_overworld_ready(read_snapshot(_l4_ow_ram(raft=0)))
 
 
+def test_walk_67_steps_off_the_raft_before_defend() -> None:
+    walk = rupees_67_stages()[0][1]
+    walk.frames = 1
+    walk.hop_index = 1
+    dock = read_snapshot(_l4_ow_ram(screen=0x55))
+    act = walk.step(dock)
+    assert act.reason == "raft_dismount"
+    assert list(act.action) == list(nes_action("DOWN"))
+    island = read_snapshot(_l4_ow_ram(screen=0x45))
+    act = walk.step(island)
+    assert act.reason == "raft_south"
+    assert walk.hop_index == 0
+
+
 def test_post_l4_level5_walk_dismounts_raft() -> None:
     assert POST_L4_TO_LEVEL5_HOPS[1].align_y == 141
     ctl = make_post_l4_level5_controller()
@@ -100,20 +114,27 @@ def test_level5_entry_stop_requires_l4_inventory() -> None:
 
 
 def test_rupees_67_detour_rejoins_l5_walk_after_restock_checks() -> None:
+    from zelda_i.level9.hops import L9_RUPEES_67_HOPS, L9_RUPEES_67_RETURN_HOPS
+
     route = (0x45, *(hop.target for hop in RUPEES_67_HOPS))
-    assert route == (0x45, 0x55, 0x65, 0x66, 0x67)
-    assert tuple(hop.target for hop in RUPEES_67_BACK_HOPS) == (0x66, 0x65, 0x55)
+    assert route == (
+        0x45, 0x55, 0x56, 0x57, 0x58, 0x59, 0x49, 0x4A,
+        0x49, 0x59, 0x58, 0x68, 0x78, 0x77, 0x67,
+    )
+    assert RUPEES_67_HOPS[-len(L9_RUPEES_67_HOPS):] == L9_RUPEES_67_HOPS
+    assert RUPEES_67_BACK_HOPS == L9_RUPEES_67_RETURN_HOPS
+    assert tuple(hop.target for hop in RUPEES_67_BACK_HOPS)[-1] == 0x4A
     for a, b in zip(route, route[1:]):
         assert b in neighbor_screens(a).values()
     names = [name for name, _, _ in l5_hops()[0].stages]
     assert names.index("bomb_restock_l4") < names.index("walk_67")
-    assert names.index("return_55") < names.index("enter_level5")
+    assert names.index("return_4a") < names.index("enter_level5")
 
 
 @pytest.mark.parametrize(
     ("bombs", "rupees", "taken", "screen"),
     [(0, 24, False, 0x45), (3, 24, True, 0x45),
-     (3, 240, False, 0x45), (3, 100, False, 0x4A)],
+     (3, 240, False, 0x45), (3, 100, False, 0x10)],
 )
 def test_rupees_67_stages_skip_without_cave_pay(
     bombs: int, rupees: int, taken: bool, screen: int
@@ -127,7 +148,7 @@ def test_rupees_67_stages_skip_without_cave_pay(
     snap = read_snapshot(ram)
     stages = rupees_67_stages()
     assert [name for name, _, _ in stages] == [
-        "walk_67", "select_bombs_67", "rupees_67", "exit_cave_67", "return_55"
+        "walk_67", "select_bombs_67", "rupees_67", "exit_cave_67", "return_4a"
     ]
     for _, ctl, _ in stages:
         if hasattr(ctl, "bind_env"):

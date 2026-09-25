@@ -90,6 +90,10 @@ def _occ(
     *,
     occupancy_bounds: tuple[int, int, int, int] = _OCC_BOUNDS,
     occupancy_blocked: tuple[tuple[int, int], ...] = (),
+    contact_backstep: int = 0,
+    evade: bool = False,
+    avoid_wall_bounds: tuple[int, int, int, int] = (56, 200, 109, 173),
+    west_mouth_down_to: int = 149,
 ) -> CombatTuning:
     return CombatTuning(
         patrol=patrol,
@@ -104,6 +108,10 @@ def _occ(
         occupancy_blocked=occupancy_blocked,
         inland_dash=24,
         avoid_walls=True,
+        avoid_wall_bounds=avoid_wall_bounds,
+        west_mouth_down_to=west_mouth_down_to,
+        contact_backstep=contact_backstep,
+        evade=evade,
     )
 
 
@@ -213,6 +221,7 @@ ROOM_78_SPEC = DungeonRoomSpec(
         engage_attack_period=6,
         engage_attack_hold=3,
         inland_dash=24,
+        evade=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=0x03,
@@ -355,7 +364,10 @@ ROOM_38_SPEC = DungeonRoomSpec(
     ),
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=_occ(_ROOM_38_PATROL),
+    # Clean power-on 81 died here in 525f on engage contacts. Peel
+    # (contact_backstep) survives the bodies; evade ducks the 0x58 beams
+    # that then killed the peel (c8_l6_from_38, shot from 3px).
+    combat=_occ(_ROOM_38_PATROL, contact_backstep=16, evade=True),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=0x03,
     exit_routes=(
@@ -395,8 +407,21 @@ ROOM_28_SPEC = DungeonRoomSpec(
     enemy_types=(WIZZROBE_ORANGE_TYPE,),
     expected_enemy_count=2,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=_occ(_ROOM_28_PATROL),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
+    combat=_occ(
+        _ROOM_28_PATROL,
+        contact_backstep=16,
+        evade=False,
+        # The diamond row at y=181 is walkable. Forcing UP from (135,181)
+        # hits a block and holds Link in the eastbound beam lane.
+        avoid_wall_bounds=(56, 200, 109, 189),
+    ),
+    # The 5R room item sits across live blue Wizzrobe bodies after the two
+    # orange targets die; the spine has enough rupees without this pickup.
+    reward=RewardSpec(
+        kind=RewardKind.CLEAR_ONLY,
+        settle_all_dead=0,
+        sweep_room_item=False,
+    ),
     room_item_id=0x03,
     exit_routes=(
         DoorRoute("UP", ((120, 141), (120, 93))),
@@ -437,7 +462,7 @@ ROOM_19_SPEC = DungeonRoomSpec(
     ),
     expected_enemy_count=4,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=_occ(_ROOM_19_PATROL),
+    combat=_occ(_ROOM_19_PATROL, west_mouth_down_to=160),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=0x17,
     exit_routes=(
