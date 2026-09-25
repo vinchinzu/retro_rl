@@ -1,4 +1,4 @@
-# Status — Donkey Kong Country
+# Status: Donkey Kong Country
 
 | Field | Value |
 |-------|-------|

@@ -1,4 +1,4 @@
-# Status — Hal's Hole in One Golf (SNES)
+# Status: Hal's Hole in One Golf (SNES)
 
 ## Program gate
 

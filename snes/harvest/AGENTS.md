@@ -1,84 +1,62 @@
-# Harvest Agent Notes
+# Harvest agent notes
 
-Package `harvest` (disk: `snes/harvest/`; nested import root). Repo-wide rules:
+Package `harvest` (disk: `snes/harvest/`; nested import root). Repo rules:
 [root AGENTS.md](../../AGENTS.md). Session loop:
 `.grok/skills/harvest-session/SKILL.md`. Tracker:
-`bd ready -l harvest -l spine`.
-
-## Immediate goal
-
-Full spring from the `Y1_D3_Morning` pin **reaches Summer D1** ($250 →
-$5160, 28 days, no phase failures) — `run20`, evidence and defect log in
+`bd ready -l harvest -l spine`. One living residual:
 [docs/tasks/rr-20w-run16-defects.md](docs/tasks/rr-20w-run16-defects.md).
-Next: `rr-w7t9` (the one remaining day-level loss), `rr-4zvl` (animal-shop
-nav), a third ring site, then power-on.
-Do not promote [STATUS.md](docs/STATUS.md) from a fixture or pin — the above
-starts from a pin, so it is **not** a STATUS result.
 
 ## Commands
 
 ```bash
 bd ready -l harvest -l spine
 
+# Farm-clear and pocket: live planner until D2FarmStatus.is_complete.
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on \
   --stop-after-d2-clear --save-end-state Y1_D2_PowerOn_FarmClear \
   --out recordings/power_on_d2_farm_clear.json
 
-HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-  --state Y1_Inside_House --ship --out recordings/mountain_grape_ship.json
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_After_Buy_Potato --stop-after-d2-clear \
+  --out recordings/d2_pocket_farm_clear.json
+
+# Grape, then shop (BUY_SEEDS), stop after the D2 5pm ship.
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --state Y1_Inside_House --stop-after-d2-shipping \
+  --out recordings/d2_grape_shop.json
+
+# Grape only (named mountain_berry sequence; ship is on).
+HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+  --day-plan mountain_berry --state Y1_Inside_House \
+  --out recordings/mountain_grape_ship.json
 
 uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand
 uv run python -m harvest.scripts.interact_scan search grape
-
-HEADLESS=1 uv run python -m harvest.scripts.buy_seeds_probe \
-  --state Y1_Inside_House --out recordings/buy_seeds_d2_probe.json
-
-HEADLESS=1 uv run python -m harvest.scripts.pocket_clear_probe \
-  --state Y1_After_Buy_Potato --out recordings/pocket_clear_probe.json
-
-uv run python -m harvest.scripts.d2_leftover_probe --headed --section fences \
-  --state Y1_D2_After_Bushes
-HEADLESS=1 uv run python -m harvest.scripts.d2_leftover_probe \
-  --section stones --chunk sw --state Y1_D2_After_Stones \
-  --out recordings/d2_leftover_stones_sw.json
 ```
 
-`HEADLESS=1`; no MP4. Glance is `harvest.clock_glance`. Parked CLIs:
-[docs/plan.md](docs/plan.md) § CLI catalog. Natural entry is power-on.
-Do not start D2 from `Y1_D2_Morning_After_D1`.
-
-## Layout
-
-| Path | Role |
-|------|------|
-| `harvest/core/`, `maps/`, `planner/`, `runtime/`, `tasks/` | Package (`harvest.*`) |
-| `custom_integrations/HarvestMoon-Snes/` | Save states |
-| `docs/STATUS.md`, `plan.md`, `FARM_CLEAR_D2.md`, `INTERACT.md` | Specs |
-
-Register ROMs only via `harvest.runtime.retro_setup.register_harvest_integration`.
-Nested import: workspace is `snes/harvest/`; package is `harvest.*` (disk
-`snes/harvest/harvest/`). Soft max ~1000 LOC: merge into the **Composer**
-or delete ([CODING_STANDARDS.md](../../CODING_STANDARDS.md)). Module map
-in plan.md.
+`HEADLESS=1`. No MP4. Glance is `harvest.clock_glance`. Natural entry is
+power-on. Nested import: workspace `snes/harvest/`, package `harvest.*`.
 
 ## Traps
 
-- Viewport BFS is ~16×14 tiles; hop targets ≤7 tiles or `densify_waypoints`.
-- WEED `0x03` is not travel-walkable. Never BFS onto debris/push. Clear from
-  a neighbor stand. D2 sections are `rr-20w.2.*`.
-- Interact: scan an existing tape / UnlinkedText before recording.
-- 5pm farm ShippingScene: pulse A (press/release). Do not hold A.
-- Do not start D2 from `Y1_D2_Morning_After_D1` — grape return-to-bin seals
-  at the house fence (rr-oqri).
-- **The clock does not advance indoors.** A log whose `[RUN]` lines repeat one
-  time for thousands of frames is the farmer standing inside a building, not a
-  hang and not a stale read. Check `tilemap` (0x15 house / 0x26 shed) before
-  debugging the task that looks stuck.
+- Viewport BFS is about 16 by 14 tiles. Keep hop targets to 7 tiles, or call
+  `densify_waypoints`.
+- WEED `0x03` is not travel-walkable. Do not BFS onto debris or push tiles.
+  Clear from a neighbor stand.
+- Do not record a walk a search can already close. Scan an existing tape
+  before a new interact recording.
+- A shop menu, or a CrossMap return to the origin map, is not a completed
+  buy. Require the shop tilemap and a wallet or stock change.
+- 5pm farm ShippingScene: pulse A. Do not hold A.
+- Do not start D2 from `Y1_D2_Morning_After_D1`. Grape return-to-bin
+  seals at the house fence (rr-oqri).
+- The clock does not advance indoors. A stuck `[RUN]` time means tilemap `0x15` or `0x26`, not a hang.
+- Do not write a pin or fixture result into `docs/STATUS.md`.
+  `Y1_D3_Morning` spring runs stay in the living residual.
 
 ## Pointers
 
 [docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
 [docs/FARM_CLEAR_D2.md](docs/FARM_CLEAR_D2.md) ·
-[docs/INTERACT.md](docs/INTERACT.md)
-
-Skills: `harvest-session` · `harvest-route` · `harvest-interact` · `harvest-shop`
+[docs/INTERACT.md](docs/INTERACT.md).
+Skills: `harvest-session`, `harvest-route`, `harvest-interact`, `harvest-shop`.

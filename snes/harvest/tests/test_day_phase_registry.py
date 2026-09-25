@@ -15,7 +15,6 @@ from harvest.planner.day_phase_registry import (
 from harvest.planner.day_phase_catalog import HOT_SPRING_STAMINA_PHASE
 from harvest.planner.day_phase_types import PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS
 from harvest.planner.day_plan_orchestrator import DayPlanTask
-from harvest.planner.day_task_factory import DayTaskFactory
 from retro_harness import WorldState
 
 
@@ -53,17 +52,17 @@ class DayPhaseRegistryTests(unittest.TestCase):
     def test_factory_delegates_to_registry(self) -> None:
         spec = PhaseSpec("RETURN_HOME", PhaseKind.RETURN_HOME)
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        task = DayTaskFactory().make_task(spec, world)
+        task = build_phase_task(TaskBuildContext(), spec, world)
         self.assertEqual(task.__class__.__name__, "ReturnHomeTask")
 
-    def test_day_plan_reuses_factory_context_for_all_phases_in_one_day(self) -> None:
+    def test_day_plan_reuses_world_context_for_all_phases_in_one_day(self) -> None:
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
         plan = DayPlanTask(phase_sequence=[])
         plan.reset(world)
-        first_factory = plan._task_factory
+        first_context = plan._world_context
 
         with patch(
-            "harvest.planner.day_task_factory.build_phase_task",
+            "harvest.planner.day_plan_orchestrator.build_phase_task",
             return_value=None,
         ) as build:
             plan._make_task(PhaseSpec("FIRST", PhaseKind.NAV), world)
@@ -72,15 +71,15 @@ class DayPhaseRegistryTests(unittest.TestCase):
         contexts = [call.args[0].world_context for call in build.call_args_list]
         self.assertEqual(len(contexts), 2)
         self.assertIs(contexts[0], contexts[1])
-        self.assertIs(plan._task_factory, first_factory)
+        self.assertIs(plan._world_context, first_context)
 
         plan.reset(world)
-        self.assertIsNot(plan._task_factory, first_factory)
+        self.assertIsNot(plan._world_context, first_context)
 
     def test_ready_to_go_home_builder(self) -> None:
         spec = PhaseSpec("READY_TO_GO_HOME", PhaseKind.READY_TO_GO_HOME)
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        task = DayTaskFactory().make_task(spec, world)
+        task = build_phase_task(TaskBuildContext(), spec, world)
         self.assertEqual(task.__class__.__name__, "ReadyToGoHomeTask")
         result = task.step(world)
         self.assertEqual(result.status.name, "SUCCESS")
@@ -90,11 +89,13 @@ class DayPhaseRegistryTests(unittest.TestCase):
         from harvest.tasks.crop_planter import CropWaterTask
 
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        establish = DayTaskFactory().make_task(
+        establish = build_phase_task(
+            TaskBuildContext(),
             PhaseSpec("CROP_ESTABLISH", PhaseKind.CROP, {"work_mode": "establish"}),
             world,
         )
-        water = DayTaskFactory().make_task(
+        water = build_phase_task(
+            TaskBuildContext(),
             PhaseSpec("CROP_WATER", PhaseKind.CROP, {"work_mode": "water"}),
             world,
         )
@@ -108,8 +109,8 @@ class DayPhaseRegistryTests(unittest.TestCase):
         from harvest.tasks.crop_planter import CropWaterTask
 
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        establish = DayTaskFactory().make_task(CROP_ESTABLISH_PHASE, world)
-        water = DayTaskFactory().make_task(CROP_WATER_PHASE, world)
+        establish = build_phase_task(TaskBuildContext(), CROP_ESTABLISH_PHASE, world)
+        water = build_phase_task(TaskBuildContext(), CROP_WATER_PHASE, world)
 
         self.assertEqual(establish.name, "pocket_plant_plot")
         self.assertIsInstance(water, CropWaterTask)
@@ -125,8 +126,9 @@ class DayPhaseRegistryTests(unittest.TestCase):
         from harvest.tasks.crop_skills import PLOT_RING_SIZE
 
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        pocket = DayTaskFactory().make_task(pocket_water_phase(), world)
-        catalog = DayTaskFactory().make_task(
+        pocket = build_phase_task(TaskBuildContext(), pocket_water_phase(), world)
+        catalog = build_phase_task(
+            TaskBuildContext(),
             PhaseSpec("CROP_WATER", PhaseKind.CROP, {"work_mode": "water"}),
             world,
         )
@@ -141,7 +143,8 @@ class DayPhaseRegistryTests(unittest.TestCase):
 
     def test_hot_spring_builder(self) -> None:
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        task = DayTaskFactory().make_task(
+        task = build_phase_task(
+            TaskBuildContext(),
             PhaseSpec("HOT_SPRING_STAMINA", PhaseKind.HOT_SPRING, {"min_stamina": 50}),
             world,
         )
@@ -150,7 +153,7 @@ class DayPhaseRegistryTests(unittest.TestCase):
 
     def test_hot_spring_catalog_fills_to_max(self) -> None:
         world = WorldState(frame=0, ram=np.zeros(0x24000, dtype=np.uint8), info={}, obs=None)
-        task = DayTaskFactory().make_task(HOT_SPRING_STAMINA_PHASE, world)
+        task = build_phase_task(TaskBuildContext(), HOT_SPRING_STAMINA_PHASE, world)
         self.assertEqual(task.__class__.__name__, "HotSpringStaminaTask")
         self.assertIsNone(task.min_stamina)
         self.assertTrue(task.return_to_farm)

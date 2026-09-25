@@ -258,13 +258,15 @@ class CoopChoresTaskNavTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task._phase, "ship_verify")
-        self.assertGreater(len(task._action_queue), 0)
+        self.assertGreater(len(task._action_queue), 6)
+        # coop_press_ship_skill: face down, settle, then A (not a local press).
         first = task._action_queue[0]
         self.assertEqual(int(first[5]), 1)  # face down into the egg bin
         self.assertEqual(int(first[4]), 0)
-        second = task._action_queue[1]
-        self.assertEqual(int(second[8]), 1)  # press A without walking
-        self.assertEqual(int(second[5]), 0)
+        self.assertEqual(int(task._action_queue[1][5]), 1)
+        press = task._action_queue[6]
+        self.assertEqual(int(press[8]), 1)  # press A without walking
+        self.assertEqual(int(press[5]), 0)
 
     def test_navigation_routes_around_live_chicken_object(self):
         ram = make_coop_ram(adults=1, egg_available=False, player_tile=(2, 7))

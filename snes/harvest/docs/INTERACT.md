@@ -9,12 +9,10 @@ object class → Gotz talk → ban A → ignore a tape that already had `held=0x
 1. **Scan an existing tape**, do not re-record it.
    ```bash
    uv run python -m harvest.scripts.interact_scan tape mountain_grape_stand
-   # no trace? replay once:
-   HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-     --mode replay --task get_berry
    # Natural Spring D2 pick, keep, return, and verified farm-bin drop:
-   HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-     --state Y1_Inside_House --ship
+   HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+     --day-plan mountain_berry --state Y1_Inside_House \
+     --out recordings/mountain_grape_ship.json
    ```
    First `held_item` change **is** the pick. Read the ±80 frames of buttons
    (A / Down). That is the protocol.
@@ -38,7 +36,7 @@ object class → Gotz talk → ban A → ignore a tape that already had `held=0x
 | 0→forage | 2 | Eat / Don't eat | `forage_keep_menu` | Down, A. Wait lock=1 |
 | 0→forage | 1 | (anim) | pickup anim | wait for the box; do not succeed yet |
 | stays 0 | 2 | NPC `0x02xx` in face tile | `npc_talk` | fail closed. Do not mash-learn |
-| stays 0 | 1 | — | miss | you walked off the item (face-walk is movement) |
+| stays 0 | 1 | - | miss | you walked off the item (face-walk is movement) |
 
 Green = item still held **and** `input_lock=1` **and** the ground sprite is
 gone (or keep-menu closed). "Reached stand" is not a pick. First held tick
@@ -50,7 +48,7 @@ during A is not "kept."
 - Ban A after one Gotz talk.
 - Call a box "untrusted" without `dialog_text_id` + UnlinkedText.
 - Record house→item to "feel" a pick you can scan.
-- Hold a face direction to "face" — that **walks**. On-tile A only.
+- Hold a face direction to "face" - that **walks**. On-tile A only.
 
 Nav corridor (cliff, carpenter gap) is the one thing worth a short tape, and
 only after MultNav BFS from the live land tile fails.

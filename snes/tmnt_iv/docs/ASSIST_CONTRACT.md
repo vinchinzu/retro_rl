@@ -1,11 +1,9 @@
-# Assist Contract — TMNT IV
+# Assist contract: TMNT IV
 
-Runtime observation: **Bronze** (game-specific read-only RAM permitted).  
-Intervention class: **Resource-assisted + Protection-assisted** (whole-run).  
-Clean track (Stage 1 done; rest in progress): **Clean** = both assists at 0.
-
-See **`docs/CLEAN_PLAYBOOK.md`** for permanent play rules when removing
-assists stage-by-stage.
+Runtime observation: **Bronze** (game-specific read-only RAM permitted).
+Intervention class: **Resource-assisted + Protection-assisted** (whole-run).
+Clean means both assists at 0. Stage 1 pizza-only is verified. Later stages
+are not. Play traps live in `AGENTS.md`.
 
 ## Allowed writes (production low-assist)
 
@@ -34,8 +32,7 @@ picked up with controller input. Collecting pizza is **not** an assist.
 
 Stage 1 Clean suite is verified pizza-only
 (`scripts/probe_clean.py --stage 1 --suite`). Later stages keep emergency
-until their own heal=none multi-entry suite is green; then drop assists
-for that stage / whole run per playbook order.
+HP until their own heal=none multi-entry suite is green.
 
 ## Reporting
 
@@ -52,8 +49,8 @@ Clean is a **parallel** privilege-reduction workstream; it does not replace
 this assisted contract or the primary M8 continuous hard clear.
 
 Artifact isolation: Clean runs use `*_clean` stems and must never
-overwrite assisted `tmnt_iv_full_hard_*` baselines. Play lessons:
-[CLEAN_PLAYBOOK.md](CLEAN_PLAYBOOK.md). Ready work: `bd ready -l tmnt_iv`.
+overwrite assisted `tmnt_iv_full_hard_*` baselines. Ready work:
+`bd ready -l tmnt_iv`.
 
 Hard constraints:
 

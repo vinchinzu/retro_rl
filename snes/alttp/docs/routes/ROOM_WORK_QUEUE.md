@@ -1,9 +1,9 @@
-# ALTTP — Room / Save-State Work Queue
+# ALTTP room work queue
 
-Sanctuary-path practice queue for `Zelda3-Snes` save states.
-Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).
-Tip exit **0x50 east → 0x01** is natural_entry. Ranked for next work: **B1 stairs after 0x01 chain → Zelda cell → follower → escort**.
-Internal 0x55 key/shutter path is **alternate practice**, not primary.
+Practice queue only. The 2026-08-08 ranks below are not the continuous tip.
+Continuous tip is still room `0x50`. `discover_b1_stairs` on `CastleRoom50` is a stale focus: the F1 well is already a graph hop and is not continuous. Open spine leftover is `docs/tasks/residual.md`. Do not treat a rank as a clear. Regenerate with `export_work_queue.py`; this banner is hand-written and the tables under it are the last export.
+
+Internal 0x55 key/shutter path is alternate practice, not primary.
 
 Generated: `2026-08-08T03:17:09.323835+00:00`
 Catalog: `alttp_sanctuary_work_queue` schema 1
@@ -116,13 +116,12 @@ Verified milestones (docs): title_to_castle_grounds, castle_to_fighter_sword, se
 
 ## Notes
 
-- Continuous tip is **NW chamber room 0x50** after `castle_dungeon_prefix` (courtyard pocket → main door → 0x60 → 0x50).
-- Tip exit **0x50 east → 0x01** is graph natural_entry (2026-08-02 exhaustive probe: only physical forward exit from tip).
-- Secret-entrance clear (stairs → outdoor pocket) is already continuous; do **not** treat `Castle_55` internal exit as the top blocker.
-- Primary next work: B1 stairs after 0x01 chain → Zelda cell → follower → escort → Sanctuary.
-- Internal 0x55 key/shutter path is **alternate practice** only.
-- `FighterSword` is a **dev checkpoint** after uncle sword; natural sword claim needs `--natural` on `castle_to_sword`.
-- Acceptance for rescue: `has_zelda_follower` (`$F3CC == 1`).
-- Sanctuary: room `0x12` / OW screen `0x13` — not claimed.
+These notes correct the 2026-08-08 export. The ranked table above is unchanged.
 
-Units are Zelda3-Snes save states on the boot → fighter sword → secret-entrance clear → courtyard pocket → main hall → NW chamber room 0x50 → 0x01 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; tip exit east→0x01 is natural_entry. Next work is B1 stairs after the 0x01 chain → Zelda cell → follower → escort. Internal 0x55 key/shutter is alternate practice only. Sanctuary not claimed.
+- Continuous tip is room `0x50` after `castle_dungeon_prefix`. East to `0x01` is natural_entry, not a new tip.
+- Do not treat `discover_b1_stairs` as open discovery. The well hop is already on the graph and is not continuous. Open leftover: `docs/tasks/residual.md`.
+- Secret-entrance clear is already continuous. Do not treat `Castle_55` as the top blocker.
+- The `0x55` key and shutter path is alternate practice only.
+- `FighterSword` is a dev checkpoint. A natural sword claim needs `--natural`.
+- Rescue acceptance is `$F3CC == 1` on a walked chain. Sanctuary room `0x12` is not claimed.
+- Ranks are save-state practice. They are not continuous clears.

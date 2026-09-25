@@ -1,7 +1,7 @@
-# Agent Instructions — sm_rando
+# Agent Instructions: sm_rando
 
 **Super Metroid Randomizer** (single-game). Simpler solver ground than SMZ3.
-Reuse `super_metroid` skills — do **not** fork that tree.
+Reuse `super_metroid` skills. Do **not** fork that tree.
 
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/RANDOMIZER.md`.
 
@@ -46,8 +46,8 @@ uv run python -c "from sm_rando.seed import ensure_demo_seed; print(ensure_demo_
   randomizer evidence.
 - SMZ3 is harder; prove multi-seed patterns here first when possible.
 
-## Immediate goal
+## Now
 
-Multi-seed early tip S/T dry-run is published (fixture seeds, vanilla substrate).
-Next: patched generator ROMs + live multi-seed morph tip; do not claim shuffled
-seed-robustness until those land.
+Future work is `docs/plan.md`. The integration ROM is still vanilla. Do not
+claim shuffled-seed robustness from the fixture dry-run or the Landing BC
+candidate.

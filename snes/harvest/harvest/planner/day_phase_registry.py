@@ -428,11 +428,10 @@ def _build_harvest(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -
 
 def _build_clear_field(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Task:
+) -> Optional[Task]:
     if spec.phase == "D2_FARM_CLEAR":
-        from harvest.planner.d2_work import D2FarmClearTactic
-
-        return D2FarmClearTactic.from_spec(ctx, spec)
+        # Marker only. DayPlanTask splices the next live child.
+        return None
     bounds = spec.params.get("farm_bounds")
     if bounds is not None:
         bounds = tuple(int(v) for v in bounds)

@@ -107,7 +107,6 @@ from harvest.planner.day_plan import (
     state_has_chickens,
     state_has_cows,
 )
-from harvest.planner.day_task_factory import DayTaskFactory
 from harvest.planner.day_plan_decision import DayPlanDecision, DeferredPlan, PlanningFacts
 from harvest.planner.world_probe import WorldProbe
 from harvest.tasks.crop_planter import is_rainy_weather as crop_task_is_rainy_weather

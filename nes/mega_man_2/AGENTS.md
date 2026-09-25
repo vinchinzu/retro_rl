@@ -1,15 +1,7 @@
-# Agent Instructions — mega_man_2
+# Mega Man 2 agent notes
 
-Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3).
-
-## Identity
-
-| Field | Value |
-|-------|-------|
-| Status | Air s4 clear; post-s4 cloud RED; Heat Yoku room cam≥9 (rr-k1ea PARTIAL) |
-| Integration | `MegaMan2-Nes` |
-| Shared ROM zip | `roms/Nintendo/NES/Mega Man II.zip` |
-| Local ROM | `mega_man_2/roms/` (via `scripts/setup_rom.py`) |
+NES Mega Man 2. Gate: `docs/STATUS.md`. Future work: `docs/plan.md`.
+RAM: `docs/ram_map.md`.
 
 ## Commands
 
@@ -17,64 +9,32 @@ Scripted NES completion agent for **Mega Man 2** (platforming track; maturity M3
 uv run python nes/mega_man_2/scripts/setup_rom.py
 uv run python nes/mega_man_2/scripts/boot_probe.py
 uv run python nes/mega_man_2/scripts/boot_heat_probe.py
-uv run python nes/mega_man_2/scripts/run_air_segment.py --trials 3
-uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirLanded --trials 3
-uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --target-screen 3 --trials 3
 uv run python nes/mega_man_2/scripts/run_air_segment.py --state AirScreen2 --target-screen 4 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen1 --target-screen 2 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen2 --target-screen 3 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen3 --target-screen 4 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen4 --target-screen 5 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen5Ground --target-screen 7 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen7Mid --target-screen 8 --trials 3
-uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --yoku-land --trials 3
 uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --target-screen 9 --trials 3
+uv run python nes/mega_man_2/scripts/run_heat_segment.py --state HeatScreen8 --yoku-land --trials 3
 uv run pytest nes/mega_man_2/tests -q
 ```
 
-## Next milestone
+## Traps
 
-**Heat Yoku room cam≥9 → E/F/G + boss door + Item-1** (rr-k1ea / rr-809
-PARTIAL): dual-green cam≥8 from `HeatScreen7Mid` (~587f) and **Yoku room →
-cam≥9** from `HeatScreen8` (wait no-ceiling → catch upper → D → left
-ladder scroll). Upper B is a ceiling while first is solid — jump-from-below
-bonks. Residual: section E columns / F lava Yoku / G Sniper → boss → Item-1.
-Doc: `docs/HEAT_ITEM1_PATH.md`. Cloud solid still RED; do not re-grid.
-Use `HeatScreen5Ground` (not mid-air `HeatScreen5`). Low alcove sx152 trap.
+- `AirScreen1` is mid-air. Use `AirLanded` for a grounded screen-1 start.
+- `AirScreen2` needs `AirManPolicy(start="screen2")`.
+- `AirScreen3` and `AirScreen4` are mid-air snaps. Grounded work after
+  screen 3 starts at `AirFanPlatform` (solid progress about 937 to 984).
+- Jump needs an A rising edge after load. Holding A from frame 1 does not jump.
+- Lightning Lord types are `$0400` `0x3D` (rider) and `0x3E` (body). Pulse B
+  (period 3 to 8). Hold-B under-fires. The body stays after the rider dies.
+- Empty-cloud stand is not cleared. Do not re-grid goblin solid, feet
+  alignment, screen-align, or a zero-mask global solid.
+- `HeatScreen5` can load in the air. Use `HeatScreen5Ground`.
+- Screen 7 low alcove around sx 152 is a trap. Screen 8 upper Yoku bonks
+  if you jump into it while it is already solid. Wait until it is not a ceiling.
+- Stage select `$002A`: Wily 0, Air 2, Heat 8. Password lands on Wily.
+  LEFT selects Heat. UP selects Air.
+- Item-1 is `$009B` bit `$01`, from a Heat clear. Weapons and items were
+  still 0 on the camera-9 Heat report.
+- No mid-run RAM writes.
 
-Air post-s4 context: LL spawns mapset4 (`0x3D`/`0x3E`); rider kill Clean; empty
-cloud object-solid never arms. Gap ~296px. FCEUX stick pin protocol in
-HEAT_ITEM1_PATH (external).
+## Pointers
 
-## Norms
-
-- Prefer nearest local docs (`docs/STATUS.md`, `docs/plan.md`) over root notes.
-- Keep RAM maps, save states, and policies inside this game directory.
-- NES actions use `retro_harness.nes` (9-button fceumm layout).
-- Line length 88; type hints; `uv run pytest` for tests.
-- `AirScreen1` alone is mid-air over a pit — use `AirLanded` for grounded scr1.
-- `AirScreen2` uses `AirManPolicy(start="screen2")` (not level1/landed recipes).
-- `AirScreen3` / `AirScreen4` are mid-air clear snaps — use `AirFanPlatform` for
-  grounded post-s3 iteration (solid **prog 937–984**). Pink head type36 =
-  damage enemy (not landable); platforms are tiles.
-- `AirLeftPlatform` = short left ledge (prog~902–905). Ladder bar ≠ feet=2.
-- Jump needs A rising edge after load; continuous A from frame 1 does not jump.
-- Do not save type36-overlap or left-ledge hops as past-island checkpoints.
-- LL watch: `$0400` types **0x3D/0x3E** (not 35/36). Goblin is **0x40**.
-- Kill LL rider with **pulsed B** (period 3–8); hold-B under-fires. Body `0x3E`
-  stays after `0x3D` dies (type 6 death anim ~12f). Stand may not set `tile_feet==1`.
-- Empty-cloud residual: not X, not feet_dy=0, not screen-align alone. Body AI
-  never arms appear (`LDA #$90` only in appear-block AI). Zero-mask force =
-  global solid (path OK). No Air-first Clean alt (Item-1 needs Heat).
-- Stage select `$002A`: Wily=0, Air=2, Heat=8. Password→select at Wily;
-  `LEFT`→Heat, `UP`→Air. Items `$009B` bit `$01` = Item-1 (Heat clear).
-- Heat boot: `boot_to_heat_man_script` / `boot_heat_probe.py` → `Heat1`.
-  Heat multi-phase: `HeatManPolicy(start=early|…|screen5|screen7|screen8)`
-  via `run_heat_segment.py` (auto from state name). Pins `HeatScreen1`–`8`,
-  `HeatScreen5Ground`, `HeatScreen7Mid`, `HeatLadder`, `HeatScreen8Yoku`.
-  screen5 needs `tile_feet` (A-edge hops). screen7 = high-path; screen8 =
-  Yoku room → cam≥9 (`--target-screen 9`; `--yoku-land` still first stand).
-  Death: `tile_feet==3` or lives drop. s7 low alcove sx152 trap; s8 upper
-  Yoku bonks from below while solid — wait no-ceiling phase, catch appearing
-  B. No re-spam without new route hypothesis.
+`docs/STATUS.md` · `docs/plan.md` · `docs/ram_map.md`

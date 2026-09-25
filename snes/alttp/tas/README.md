@@ -7,7 +7,7 @@ Catalog: [`catalog.py`](catalog.py) (TASVideos
 [userfiles](https://tasvideos.org/UserFiles/Game/191)).
 
 This tree only vendors inputs. Castle / sewers / sanctuary cuts are
-**stubs** — listed so a later sitting can measure windows. They do not
+**stubs**: listed so a later sitting can measure windows. They do not
 play, and exporting them is refused.
 
 GitHub had no extra machine-readable any% `.bk2` / `.lsmv` / `.smv`
@@ -28,8 +28,8 @@ Unwrapped SHA-256 is in `catalog.py`. Files are gitignored; re-fetch.
 
 GEG / glitched / NMG / full-inventory are **JP 1.0**
 (`SHA1 E7E852F0…`). WIP and Tompa are **USA**
-(`SHA1 6D4F10A8…`, workspace ROM). This game’s opening spine is USA —
-do not treat JP glitch movies as sanctuary-route oracles.
+(`SHA1 6D4F10A8…`, workspace ROM). This game's opening spine is USA.
+Do not treat JP glitch movies as sanctuary-route oracles.
 
 Skipped (not movies): RAM watch `.wch`, `minimap.lua`, `maptracker.lua`.
 
@@ -41,7 +41,7 @@ Env SNES-12 (stable-retro / `retro_harness.controls.SNES_BUTTON_NAMES`):
 
 | Format | Spec | P1 field |
 |--------|------|----------|
-| LSMV | [lsnes LSMV](https://tasvideos.org/EmulatorResources/Lsnes/LSMV) | `F.\|BYsSudlrAXLR` — same order as env. #3898M uses `ygamepad16` (16-char P1 + extra ports); parser keeps the first 12. |
+| LSMV | [lsnes LSMV](https://tasvideos.org/EmulatorResources/Lsnes/LSMV) | `F.\|BYsSudlrAXLR`: same order as env. #3898M uses `ygamepad16` (16-char P1 + extra ports); parser keeps the first 12. |
 | BK2 | [BizHawk BK2](https://tasvideos.org/Bizhawk/BK2Format) | `Input Log.txt` + `LogKey`. Observed ALttP LogKey: `#Reset\|Power\|#P1 Up\|Down\|Left\|Right\|Select\|Start\|Y\|B\|X\|A\|L\|R\|`. Parser maps LogKey → env. |
 | SMV | Snes9x binary `SMV\x1a` | 12-bit words in BizHawk SmvImport order `Right Left Down Up Start Select Y B R L X A`, then mapped to env. |
 

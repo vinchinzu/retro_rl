@@ -1,4 +1,4 @@
-# Hal's Hole in One Golf — Agent Notes
+# Agent notes: Hal's Hole in One Golf
 
 Package `hals_golf` (disk: `snes/hals_golf/`; nested import root). Repo-wide
 rules: [root AGENTS.md](../../AGENTS.md).
@@ -46,11 +46,11 @@ the workspace on `sys.path`.
   `StrokePlayMission.on_autopilot_resume` then restarts the current shot.
 - F5 disk QuickSave; F7/F8 load.
 - Keep clears on `DeterministicRoutePolicy`; HIO exploration is `search-hio`
-  only — do not wire it into the mission clear path.
+  only. Do not wire it into the mission clear path.
 - Pro overlays in `tasks/routes/pro.py` stay empty until calibrated.
 - Aim byte `0x10B1` is **not** the round total (see STATUS RAM table).
 
 ## Pointers
 
-[docs/STATUS.md](docs/STATUS.md) · [docs/metal_stroke.md](docs/metal_stroke.md) ·
-[README.md](README.md)
+[docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
+[docs/metal_stroke.md](docs/metal_stroke.md) · [README.md](README.md)

@@ -53,7 +53,7 @@ _STAGE1_ATTACK_GAP = 2
 # - AlleycatPackSpace LEFT on ≥2 near: worse (5349f / 88, earlier death)
 # Residual: post-pizza 0x5E pile-ons (2×24 dmg) at progress ~21126–21464.
 # Pack overrides live in tactics/alleycat.py (REACH to the 0x5E window at
-# HP 80; CKPT still dies on a left-clump 24). See docs/tasks/rr-t4s2-residual.md.
+# HP 80; CKPT still dies on a left-clump 24).
 _ALLEY_Y_TOLERANCE = 6
 _ALLEY_ATTACK_RANGE = 65
 _ALLEY_MIN_RANGE = 0

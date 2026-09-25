@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Any
+
+from retro_harness.input_script import FrameAction
 from zelda_i.dungeon.engine import DungeonPhase
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, B_SLOT_CANDLE, PauseSelectController
 from zelda_i.level4.dungeon import (
     LEVEL4,
     LEVEL4_MAP_BIT,
@@ -48,12 +53,24 @@ from zelda_i.level4.overworld import (
     LEVEL4_HOPS_VIA_SHOP_E5,
     LEVEL4_ENTRY_ROOM,
     POST_L3_PATH_MAX_FRAMES,
-    RUPEES_71_MAX_FRAMES,
     OverworldToLevel4Controller,
-    Rupees71Detour,
+    RUPEES_71_BACK_HOPS,
+    RUPEES_71_HOPS,
+    RUPEES_71_PAY,
+    RUPEES_71_SCREEN,
+    RUPEES_51_BACK_HOPS,
+    RUPEES_51_HOPS,
+    RUPEES_51_PAY,
+    RUPEES_51_SCREEN,
 )
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_PRICE, bomb_restock_stages
 from zelda_i.overworld.cave_shop import potion_restock_stages
+from zelda_i.overworld.gather_segments import (
+    BombWallController,
+    CaveExitController,
+    HopWalkController,
+    make_secret_rupee_controller,
+)
 from zelda_i.overworld.settle import PostL3TriforceSettleController
 from zelda_i.overworld.settle import POST_L3_SETTLE_MAX_FRAMES
 from zelda_i.level4.path import (
@@ -72,7 +89,7 @@ from zelda_i.level4.stepladder import (
 )
 from zelda_i.level4.north30 import make_north_30_controller
 from zelda_i.level4.west31 import level4_west31_stages
-from zelda_i.ram import PASSAGE_MODE, ZeldaSnapshot
+from zelda_i.ram import PASSAGE_MODE, ZeldaSnapshot, ow_secret_taken
 from zelda_i.spine.hops import SpineHop, attach_hops, ready
 
 L4_STOPS: dict[str, str] = {
@@ -190,6 +207,162 @@ def _ok(**kw):
     return ready(level=LEVEL4, **kw)
 
 
+class _Rupees71Skip:
+    """First-frame guard for the cave stages; each stage remains spine-owned."""
+
+    def _skip_reason(
+        self, snap: ZeldaSnapshot, *, require_screen: bool = False
+    ) -> str | None:
+        if require_screen and snap.screen != RUPEES_71_SCREEN:
+            return "off_71"
+        if int(snap.bombs) < 1:
+            return "no_bomb"
+        if int(snap.rupees) + RUPEES_71_PAY > 255:
+            return "wallet_full"
+        if self._env is not None and ow_secret_taken(self._env.get_ram(), RUPEES_71_SCREEN):
+            return "taken"
+        return None
+
+
+@dataclass
+class _WalkToRupees71(_Rupees71Skip, HopWalkController):
+    hops: tuple = RUPEES_71_HOPS
+    resume_on_screen: bool = True
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap)):
+            self.frames += 1
+            return self._finish(f"skip_71_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _SelectBombs71(_Rupees71Skip, PauseSelectController):
+    want: int = B_SLOT_BOMBS
+    name: str = "bombs"
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap, require_screen=True)):
+            self.frames += 1
+            return self._finish(f"skip_71_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _TakeRupees71(_Rupees71Skip, BombWallController):
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap, require_screen=True)):
+            self.frames += 1
+            return self._finish(f"skip_71_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _ReturnFromRupees71(HopWalkController):
+    hops: tuple = RUPEES_71_BACK_HOPS
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and snap.screen != RUPEES_71_SCREEN:
+            self.frames += 1
+            return self._finish("no_rupees_71_detour")
+        return super().step(snap)
+
+
+def rupees_71_stages() -> tuple[tuple[str, Any, int], ...]:
+    """0x74 -> 0x71's 30R cave -> 0x73, with a first-frame skip when short."""
+    return (
+        ("walk_71", _WalkToRupees71(max_frames=6000), 6000),
+        ("select_bombs_71", _SelectBombs71(), 600),
+        (
+            "rupees_71",
+            make_secret_rupee_controller(
+                RUPEES_71_SCREEN, controller_type=_TakeRupees71
+            ),
+            5000,
+        ),
+        ("exit_cave_71", CaveExitController(clear=16), 600),
+        ("return_73", _ReturnFromRupees71(max_frames=6000), 6000),
+    )
+
+
+class _Rupees51Skip:
+    """Skip an already opened tree or a payout the wallet cannot hold."""
+
+    def _skip_reason(
+        self, snap: ZeldaSnapshot, *, require_screen: bool = False
+    ) -> str | None:
+        if require_screen and snap.screen != RUPEES_51_SCREEN:
+            return "off_51"
+        if int(snap.candle) < 1:
+            return "no_candle"
+        if int(snap.rupees) + RUPEES_51_PAY > 255:
+            return "wallet_full"
+        if self._env is not None and ow_secret_taken(self._env.get_ram(), RUPEES_51_SCREEN):
+            return "taken"
+        return None
+
+
+@dataclass
+class _WalkToRupees51(_Rupees51Skip, HopWalkController):
+    hops: tuple = RUPEES_51_HOPS
+    resume_on_screen: bool = True
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap)):
+            self.frames += 1
+            return self._finish(f"skip_51_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _SelectCandle51(_Rupees51Skip, PauseSelectController):
+    want: int = B_SLOT_CANDLE
+    name: str = "candle"
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap, require_screen=True)):
+            self.frames += 1
+            return self._finish(f"skip_51_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _TakeRupees51(_Rupees51Skip, BombWallController):
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap, require_screen=True)):
+            self.frames += 1
+            return self._finish(f"skip_51_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _ReturnFromRupees51(HopWalkController):
+    hops: tuple = RUPEES_51_BACK_HOPS
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and snap.screen != RUPEES_51_SCREEN:
+            self.frames += 1
+            return self._finish("no_rupees_51_detour")
+        return super().step(snap)
+
+
+def rupees_51_stages() -> tuple[tuple[str, Any, int], ...]:
+    """0x73 → 0x51's 10R tree → 0x63, before the L4 shop stops."""
+    return (
+        ("walk_51", _WalkToRupees51(max_frames=8000), 8000),
+        ("select_candle_51", _SelectCandle51(), 600),
+        (
+            "rupees_51",
+            make_secret_rupee_controller(
+                RUPEES_51_SCREEN, controller_type=_TakeRupees51
+            ),
+            5000,
+        ),
+        ("exit_cave_51", CaveExitController(clear=0), 600),
+        ("return_63", _ReturnFromRupees51(max_frames=8000), 8000),
+    )
+
+
 def l4_hops(*, spine_fields) -> tuple[SpineHop, ...]:
     def set_entry(env, run, snap):
         if run.success:
@@ -208,7 +381,8 @@ def l4_hops(*, spine_fields) -> tuple[SpineHop, ...]:
                 # The L4 walk crosses 0x64's potion shop. Clean L4 bleeds
                 # ~7h into the Gleeok (clean_poweron73), so the potion comes
                 # before the arrows: keep only the L4 bomb pack.
-                ("rupees_71_l3", Rupees71Detour(), RUPEES_71_MAX_FRAMES),
+                *rupees_71_stages(),
+                *rupees_51_stages(),
                 *potion_restock_stages(
                     LEVEL4_HOPS_FROM_POST_L3,
                     "l3",

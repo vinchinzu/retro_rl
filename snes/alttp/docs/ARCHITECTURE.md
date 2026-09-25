@@ -1,16 +1,16 @@
-# Architecture — A Link to the Past (`alttp/`)
+# Architecture: A Link to the Past (`alttp/`)
 
 Agent-facing map of **where code lives** and **which contracts are source of
 truth**. Aligns with root `AGENTS.md`, local `AGENTS.md`, and `STATUS.md`.
 
 ## Goals
 
-1. **Clean package boundaries** — opening route vs gauntlet vs romhack.
-2. **Truthful continuous claim** — only natural-entry / continuous edges.
-3. **Multi-truth anchors** — RAM + map/Yaze + visual; route ≠ approach ≠ trigger.
-4. **Graph + Segment contracts** — escape graph drives plans; scripts adapt to
+1. **Clean package boundaries**: opening route vs gauntlet vs romhack.
+2. **Truthful continuous claim**: state-load greens are not continuous.
+3. **Multi-truth anchors**: RAM + map/Yaze + visual; route ≠ approach ≠ trigger.
+4. **Graph + Segment contracts**: escape graph drives plans; scripts adapt to
    Segment; work queue prioritizes continuous-spine blockers.
-5. **Efficient observation** — sparse/selective RAM (`AlttpSnapshot`), not full
+5. **Efficient observation**: sparse/selective RAM (`AlttpSnapshot`), not full
    bank dumps on hot loops.
 
 ## Layer map
@@ -79,25 +79,24 @@ Import continuous trunk as ``alttp.opening_route.*`` (no root re-export shims).
 | Multi-truth anchors + tip node | `opening_route.anchors` (`resolve_continuous_tip_node`) |
 | Measured room geometry | `maps/room_XX.json` via `room_map.load_room_map` |
 | Approach/trigger windows | `anchors.py` (door approach derived from map; no copy) |
-| z3 / Yaze labels | Association only — **not** screen coordinates |
+| z3 / Yaze labels | Association only: **not** screen coordinates |
 | Save-state practice order | `opening_route.work_queue` + `work_queue_data.yaml` → `docs/routes/ROOM_WORK_QUEUE.md` |
 
-### Continuous tip (2026-08-01)
+### Continuous tip
 
-Verified continuous spine:
+Verified continuous spine stops at room `0x50`:
 
 `castle_grounds` → `room_55_uncle` → `room_55_sword` → `room_55_south` →
 `courtyard_secret_pocket` → `room_61` (main hall) → `room_60` → `room_50`
 (NW chamber)
 
-`full_tip.run_to_verified_tip` owns the one-environment power-on composition;
-`castle_dungeon_prefix` owns its measured west/north room-edge suffix.
-
-Next planned hop: **after 0x50 → Zelda cell → escort → Sanctuary**
-(map seeds for 0x01/51/52/62 and B1 0x71–0x82 under `maps/`).
+`full_tip.run_to_verified_tip` owns the one-environment power-on composition.
+`castle_dungeon_prefix` owns the west/north suffix of that same tip.
+`room_50_east_to_0x01` is natural_entry, not continuous. Later hops are not
+this tip. Planner owns `docs/STATUS.md`. Do not claim a new continuous tip.
 
 Alternate internal key/shutter path remains on the graph (`path: internal_key`)
-for practice only — **not** the default Sanctuary plan and **not** work-queue
+for practice only: **not** the default Sanctuary plan and **not** work-queue
 primary blockers.
 
 ### Segment contract
@@ -148,14 +147,15 @@ Promote to `retro_harness.adventure` only after a second game adopts them.
 |-----|------|
 | `docs/STATUS.md` | Verified facts + maturity gate |
 | `docs/plan.md` | Future work |
-| `docs/TRIGGER_HANDOFF.md` | Remaining trigger/hitbox problems |
-| `docs/routes/ROOM_WORK_QUEUE.md` | Save-state practice queue (tip = room 0x61) |
+| `docs/TRIGGER_HANDOFF.md` | Trigger and hitbox notes. Open work is the living residual. |
+| `docs/routes/ROOM_WORK_QUEUE.md` | Save-state practice queue. Not the continuous tip (room `0x50`). |
 | `docs/ram_map.md` | WRAM field notes |
-| `docs/Z3_JSON_DATA.md` | Optional local z3 refs |
+| `docs/Z3_JSON_DATA.md` | Committed JSON dump plus gitignored refs pin |
+| `docs/tasks/residual.md` | The one living residual |
 
 ### Extension recipe (next continuous hop)
 
-Prefer **room engine** for B1 doors (low agent context) — `docs/ROOM_ENGINE.md`:
+Prefer the room engine for B1 doors (low agent context). See `docs/ROOM_ENGINE.md`.
 
 1. Measure → write `maps/room_XX.json` (points + doors + path). Do not invent.
 2. `scripts/room_engine.py show|run` until isolated green.
@@ -165,4 +165,4 @@ Prefer **room engine** for B1 doors (low agent context) — `docs/ROOM_ENGINE.md
    with the first-dungeon prefix; keep a thin aggregate only when a multi-room
    acceptance needs spine registration.
 5. Anchors for approach/trigger windows; geometry stays in JSON.
-6. STATUS facts; never claim Zelda until `$F3CC == 1` on real RAM.
+6. Planner owns STATUS. No Zelda claim without `$F3CC == 1` on a walked chain. A pin is not that claim.

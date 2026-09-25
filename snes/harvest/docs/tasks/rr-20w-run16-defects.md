@@ -1,4 +1,4 @@
-# rr-20w — full-spring D3→D30: run16 baseline + fix pass
+# rr-20w - full-spring D3→D30: run16 baseline + fix pass
 
 Session 2026-09-11. Evidence: `logs/spring_d3_30/run16_full_spring.log`
 (`run_to_day2 --state Y1_D3_Morning --end-of-spring`, HEAD as of `181e846b`).
@@ -11,12 +11,12 @@ session's nav work on its own.
 
 Each entry names the run13 defect it closes, the mechanism, and the test.
 
-### 1. Silent watering drop (run13 §4) — `crop_water_ops.py`
+### 1. Silent watering drop (run13 §4) - `crop_water_ops.py`
 
 `_reorder_remaining_water_steps` rebuilt the remaining-step list from
 `_best_water_variant`, and `continue`d past any target whose stands were
 unreachable *at the instant the reorder ran*. The target was gone for the
-rest of the day, with no log and no counter — run13 D3 declared `steps=8`
+rest of the day, with no log and no counter - run13 D3 declared `steps=8`
 and reported `WATER DONE: 7/7 watered`, because the list had shrunk under
 it. (12,28) then stayed at `0x58` while its siblings matured to `0x60/0x61`
 and was correctly not harvested.
@@ -25,7 +25,7 @@ Unreachable-now steps are now **deferred to the tail** with their original
 stand/face, counted in `_water_steps_deferred`, and logged. WATER DONE
 prints `deferrals=N` so a shrunken plan can never again read as complete.
 
-Test: `tests/test_crop_water_reorder.py` (5) — including that a deferred
+Test: `tests/test_crop_water_reorder.py` (5) - including that a deferred
 target is retried once it becomes reachable.
 
 **ROM A/B, same `Y1_D3_Morning` pin, D3 second plot:**
@@ -36,7 +36,7 @@ target is retried once it becomes reachable.
 | run17 | fixed | `WATER DONE: 8/8 watered deferrals=6` | `watered=16` |
 
 run17 logs `WATER defer 1 tile(s) ... [(12, 28)]` six times, from six
-different poses — the exact tile run13 §4 named — and waters it on the
+different poses - the exact tile run13 §4 named - and waters it on the
 seventh. Under the baseline that same tile is gone from the plan after the
 first reorder, which is why run16's own harvest reads
 `harvested=7 ... harvested=1` (the west ring short one cell, picked alone
@@ -46,10 +46,10 @@ later) while its second ring reads `harvested=8`.
 
 It sat in `FARM_NO_GO_TILES` (shipping-bin ditch) *and*
 `FARM_POND_ACCESS_STAGING_TILES`. `find_path` never returned it, so this was
-dead weight rather than a live bug, but it read like a usable stand — which
+dead weight rather than a live bug, but it read like a usable stand - which
 is how the (12,28) diagnosis went sideways. Removed from staging.
 
-### 3. `select_carry_0x07` (run13 §2) — tool-lock phase gate
+### 3. `select_carry_0x07` (run13 §2) - tool-lock phase gate
 
 Not a carry-swap bug. On run13 D10 `BUY_SEEDS_WINDOW` blew its cutoff, no bag
 was bought, and `CROP_ESTABLISH` then **hoed the entire ring** before
@@ -64,13 +64,13 @@ phases that can still earn.
 Two exemptions, both found by watching the gate misbehave rather than by
 reading it:
 
-- `ENSURE_*` kinds (`ACQUIRE_TOOL_KINDS`) — their `required_tools` is a
+- `ENSURE_*` kinds (`ACQUIRE_TOOL_KINDS`) - their `required_tools` is a
   postcondition, so a missing tag is the reason to run. The first version of
   this gate skipped `ENSURE_CROP_SEEDS` itself; a side run caught it live
   (`Phase ENSURE_CROP_SEEDS tool lock: no_work:missing_tool:seed`).
 - **Tools, as opposed to the seed bag** (`_UNFETCHABLE_TOOL_TAGS`). A missing
   watering can already routes to `EnsureCarryToolTask` via
-  `_make_recovery_task` — it goes and gets the can. Gating it would have
+  `_make_recovery_task` - it goes and gets the can. Gating it would have
   replaced a fetch with a skip, which is strictly worse; run16 hits exactly
   that path once (`CROP_WATER FAILURE: watering can not in carry pair`). A
   bag is different: it needs a shop trip behind its own window, so a missing
@@ -82,7 +82,7 @@ crop work.
 
 Test: `tests/test_day_plan_tool_lock.py` (6).
 
-### 4. `CLEAR_FIELD` burns whole days indoors (run13 §6) — root cause found
+### 4. `CLEAR_FIELD` burns whole days indoors (run13 §6) - root cause found
 
 run13 §6 called this "something in CLEAR_FIELD's idle/failure exit path
 re-enters the house" and marked it unaudited. The run12 D8 log shows the
@@ -100,7 +100,7 @@ actual sequence, and the speculation was close but the mechanism is simpler:
 
 The clearer walked in through the farmhouse door chasing that NW weed. **The
 SNES clock does not advance indoors**, which is why 3300 frames pass at a
-literal 06:00 — the freeze is the tell, not a hang. It then scanned
+literal 06:00 - the freeze is the tell, not a hang. It then scanned
 `targets=0` for its whole 3500 f budget, and every later farm phase map-locked
 on `0x15`. Two near-zero-productivity days (D8, D9).
 
@@ -118,13 +118,13 @@ Two fixes, both live:
   lose the day.
 
 Not fixed: **why** the clearer's path went through the door. That needs a
-live tile dump at the stall and an offline `find_path` replay — the bail
+live tile dump at the stall and an offline `find_path` replay - the bail
 stops the loss either way.
 
 ### 5. One shop trip per harvest day, not one per ring (optimizer top lever)
 
-`rr-20w-spring-optimizer.md` ranks the two runtime caps —
-`max_bags_per_day = 1` and `grape_max_per_day = 1` — as worth **+38 %**
+The 2026-09-10 optimizer note ranked the two runtime caps,
+`max_bags_per_day = 1` and `grape_max_per_day = 1`, as worth **+38 %**
 (~+3 200 G/spring), ahead of new ring sites. The grape half landed in
 `edeef59a`. This is the bag half.
 
@@ -138,7 +138,7 @@ one ring; the other idled until the next day's trip.
   later stop condition. `_bags_target()` clamps to the wallet read at
   `reset()`, so it can never overspend; `_bags_done()` reads whichever of
   stock/wallet has posted (they disagree mid-dialogue).
-- `farm_pond.pocket_plant_targets(ram)` — the plural of
+- `farm_pond.pocket_plant_targets(ram)` - the plural of
   `pocket_plant_target`, which now delegates to it (one source of truth).
   Answers "how many bags does the farm want today".
 - `_shop_bag_count` sets `bags = waiting rings − bags already in stock`,
@@ -149,7 +149,7 @@ one ring; the other idled until the next day's trip.
 
 Tests: `tests/test_two_bag_replant.py` (12).
 
-**ROM status: the 2-bag purchase is NOT yet ROM-proven** — see Non-claims.
+**ROM status: the 2-bag purchase is NOT yet ROM-proven** - see Non-claims.
 `buy_seeds_probe --bags N` exists to prove it.
 
 ### 6. Success triggered the cow-purchase day, and it killed the run
@@ -167,7 +167,7 @@ Tests: `tests/test_two_bag_replant.py` (12).
 ```
 
 None of those phases declared a `failure_policy`, so every one of them was
-**required** — a failure aborts the day before `DYNAMIC_OUTDOOR_PLAN` is ever
+**required** - a failure aborts the day before `DYNAMIC_OUTDOOR_PLAN` is ever
 reached. D26 and D27 both earned nothing, and D28 died in `return_home`
 (`exit_to_farm ... pixel_stuck pos=(598,248)`). The run ended two days short
 of Summer with the crop engine still working perfectly.
@@ -176,14 +176,14 @@ This is a "success is punished" bug: the better the economy gets, the sooner
 it fires. `livestock_econ.py` is an explicit stub whose inputs are
 deliberately `None`, so this path was never meant to be load-bearing.
 
-Fix: `OPTIONAL_COW_PURCHASE_PHASES` — the purchase leg **and** the barn tail
+Fix: `OPTIONAL_COW_PURCHASE_PHASES` - the purchase leg **and** the barn tail
 (skipping only the purchase would leave required chores for a cow that was
 never bought, and the day would die one phase later instead). Buying a cow is
 discretionary; the farm work behind it is not. A failure now defers the whole
 route and falls through to the day's actual income work.
 
 Note this also changed what `test_day_plan_aborts_required_missing_task`
-demonstrates — it used `ENTER_BARN` as its example of a required phase. It
+demonstrates - it used `ENTER_BARN` as its example of a required phase. It
 now uses `CROP_WATER`, so the assertion is unchanged and still meaningful.
 
 ### 7. A failed BFS was re-run every frame (found by fixing #1)
@@ -191,7 +191,7 @@ now uses `CROP_WATER`, so the assertion is unchanged and still meaningful.
 The watering fix exposed this. Fully watering both rings leaves more crop
 tiles; crop tiles are not travel-walkable; so `NAV_CROP`'s `(15,29)` goal goes
 from awkward to sealed. `NavTask.step` re-searched from scratch on any frame
-where the navigator's path was empty — a full failed `find_path` **plus** a
+where the navigator's path was empty - a full failed `find_path` **plus** a
 `find_frontier_path`, after which the path is still empty, so the next frame
 pays for both again, up to the 9 000 f phase timeout.
 
@@ -205,7 +205,7 @@ identifies (median 154 f, max 6 611 f).
 
 **Method note, worth more than the fix:** at 66 f/s a 2 000-frame progress
 interval takes 30 s+, so the log looks frozen. An earlier run was killed on
-that misreading before the frame rate was actually measured — `utime` was
+that misreading before the frame rate was actually measured - `utime` was
 advancing the whole time. Measure `f=` against wall-clock before concluding a
 run is stuck; a frozen *game clock* means indoors (see Traps), a frozen
 *frame counter* means measure the rate first.
@@ -214,8 +214,8 @@ run is stuck; a frozen *game clock* means indoors (see Traps), a frozen
 
 ### NAV_CROP is now the top money leak (was run13 §3's "CROP_WATER variance")
 
-run13 §3 correctly identified the *mechanism* — a fixed-order phase list with
-no time-budget arbitration, so whatever runs slow eats everything behind it —
+run13 §3 correctly identified the *mechanism* - a fixed-order phase list with
+no time-budget arbitration, so whatever runs slow eats everything behind it -
 but attributed the slowness to CROP_WATER. With the grape and watering
 defects closed, run16 isolates the actual consumer: **NAV_CROP**.
 
@@ -238,14 +238,14 @@ crop cycle stopped.
 
 Calibrating the cost model against run16 + run13
 (`spring_plan --calibrate`) shows the shape is **bimodal, not a general
-slowdown** — which changes what the fix should be:
+slowdown** - which changes what the fix should be:
 
 | phase | n | min | median | max |
 |-------|---|-----|--------|-----|
 | NAV_CROP | 47 | 43 | **154** | **6611** |
 | CROP_WATER | 30 | 364 | 2194 | 13625 |
 
-A typical NAV_CROP costs 154 f. Its worst case costs 6 611 f — about half a
+A typical NAV_CROP costs 154 f. Its worst case costs 6 611 f - about half a
 day, against a measured day of 12 814 f (n=37). So the target is the tail
 (replan / timeout / route selection on the bad draw), not nav speed in
 general. Same shape for CROP_WATER.
@@ -254,7 +254,7 @@ Two details worth keeping:
 
 - The push-block path is **not** itself a loop: `note_push_facing` →
   `block_push_facing` adds the tile to `temp_blocked` and clears `self.path`,
-  so each block does force a replan. The cost is elsewhere — long stretches
+  so each block does force a replan. The cost is elsewhere - long stretches
   with no `[NAVIGATOR]` output at all between the two block clusters.
 - The two clusters are on **opposite sides of the farm**: `(8,25)/(7,26)`
   (the farmhouse-door neighbours run13 §4b already flagged) and `(28,26-28)`.
@@ -263,7 +263,7 @@ Two details worth keeping:
 
 **Push-block hotspots are stable across runs.** Counting
 `Push-facing block tile=` over three independent D3→D30 logs gives the same
-ranked list, which makes these cheap to fix *and* cheap to regression-test —
+ranked list, which makes these cheap to fix *and* cheap to regression-test -
 the property run13 §1 valued in the grape pins:
 
 | tile | run16 | run17 | run13 | rough area |
@@ -279,18 +279,18 @@ the property run13 §1 valued in the grape pins:
 (run17 counts are lower only because it was still mid-run when this was
 taken; the *ranking* is what matches.)
 
-A second cluster — `(27,26) (28,26) (28,27) (28,28) (28,29) (27,29)` — recurs
+A second cluster - `(27,26) (28,26) (28,27) (28,28) (28,29) (27,29)` - recurs
 verbatim in both run16 D22 and run17 D6, east of the well body that
 `FARM_NO_GO_TILES` already covers at x=15-17.
 
-Whether any of these *cause* the NAV_CROP tail is **unverified** — they are
+Whether any of these *cause* the NAV_CROP tail is **unverified** - they are
 co-located in the logs, nothing more. Do not add them to `FARM_NO_GO_TILES`
 on that basis alone: the house-door band in particular is on the route home,
 and sealing it would trade one failure for a worse one.
 
 Next step is the method already proven on this lane: dump the live tile grid
 at the stall and replay `find_path` offline, which separates bad tiles from a
-stuck walk policy. That needs a pin at the stall — note that minting one by
+stuck walk policy. That needs a pin at the stall - note that minting one by
 running the campaign to a mid-spring day is itself unreliable right now
 (a `--until-day 8` mint wedged in NAV_CROP on D6 this session, same class).
 Related bead: `rr-20w.2.4`.
@@ -301,16 +301,16 @@ The arbitration gap itself is unchanged and deliberately not patched here.
 Reordering was considered and rejected: berries are ~300 G/day of same-day
 cash, while a skipped watering day stalls growth on every tile and compounds,
 so the two are close enough in value that reordering on a guess is not
-obviously positive. §3's own warning applies — which phase gets starved keeps
+obviously positive. §3's own warning applies - which phase gets starved keeps
 moving as other bugs are fixed, so the fix is arbitration, not a new fixed
 order.
 - **Only two ring sites exist** (`POCKET_PLANT_CENTERS` = (13,28), (19,28)),
   so bag count saturates at 2. A third nav-executable ring needs proven
-  hoe/water/harvest stands — still the next money lever after this.
+  hoe/water/harvest stands - still the next money lever after this.
 - Second-grape pick miss at `GRAPE_STAND_PX`.
 - Why the clearer routes through the farmhouse door (§4 above).
 
-## run20 — Spring FINISHED
+## run20 - Spring FINISHED
 
 ```bash
 HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
@@ -337,7 +337,7 @@ Phase successes: `EXIT_TO_FARM` 29, `NAV_CROP` 31, `CROP_WATER` 20,
 `CROP_ESTABLISH` 8, `HARVEST_ROUTE` 7, `MOUNTAIN_BERRY` 15, `BUY_SEEDS` 5.
 
 **On the money number:** run20 ends $260 *below* run16's terminal wallet,
-which is not a regression — run16 never reached Summer, and the comparison
+which is not a regression - run16 never reached Summer, and the comparison
 is "finished the season" against "died on D28". run20 also spends more: five
 `BUY_SEEDS` trips, three of them 2 bags (`0->2`, at D10, D17 and D25), so
 $600 of the difference is seed stock converted into rings that were still
@@ -374,7 +374,7 @@ and AGENTS.md requires power-on for that.
 
 349 405 frames / 1 014 s wall. The D22→D28 and +36 % money improvement is the
 *previous* session's nav-route work paying off, measured here for the first
-time — none of this session's fixes are in run16. The three deterministic
+time - none of this session's fixes are in run16. The three deterministic
 `soft_solid pin` failures run13 §1 catalogued do not occur at all.
 
 ## Non-claims

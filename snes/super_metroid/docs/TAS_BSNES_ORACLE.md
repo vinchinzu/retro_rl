@@ -246,4 +246,6 @@ uv run python -m super_metroid.tas.extract_hops \
 
 ## Session prompt
 
-See [`docs/tasks/NEXT_SESSION_TAS_ORACLE.md`](tasks/NEXT_SESSION_TAS_ORACLE.md).
+The dated copy-paste prompt is gone. Native lsnes path:
+[`tasks/LSNES_100_PLAN.md`](tasks/LSNES_100_PLAN.md). Do not STATUS from
+oracle dumps.

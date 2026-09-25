@@ -1,4 +1,4 @@
-# Trigger / Hitbox Handoff — ALTTP Opening Route
+# Trigger / Hitbox Handoff: ALTTP Opening Route
 
 Remaining **trigger** (exact interaction) problems so they are not re-discovered
 as “route discovery” failures. Route = area; approach = local pocket; trigger =
@@ -8,7 +8,7 @@ See also: `opening_route/anchors.py`, `docs/STATUS.md`.
 
 ## Solved (do not re-probe randomly)
 
-### Secret bush hole (entrance 0x7D) — **trigger solved**
+### Secret bush hole (entrance 0x7D): **trigger solved**
 
 | Field | Value |
 |-------|--------|
@@ -24,7 +24,7 @@ See also: `opening_route/anchors.py`, `docs/STATUS.md`.
 Failure modes already known: position drift on natural chain → use
 `BUSH_LIFT_CANDIDATES` fallbacks; do not restart full map search.
 
-### Uncle fighter sword — **interaction solved**
+### Uncle fighter sword: **interaction solved**
 
 | Field | Value |
 |-------|--------|
@@ -33,7 +33,7 @@ Failure modes already known: position drift on natural chain → use
 | Post | hold-up-item `$5D==21` → ~95 frames LEFT to dismiss |
 | Provenance | `castle_to_sword` |
 
-### Secret-entrance stairs exit — **trigger solved**
+### Secret-entrance stairs exit: **trigger solved**
 
 | Field | Value |
 |-------|--------|
@@ -44,7 +44,7 @@ Failure modes already known: position drift on natural chain → use
 | Soft-lock | off-center deep south `y≥2960` stays indoors |
 | Provenance | `secret_entrance_clear.exit_secret_entrance_stairs` 2026-07-30 |
 
-### Courtyard hedge pocket → main castle door — **trigger solved**
+### Courtyard hedge pocket → main castle door: **trigger solved**
 
 | Field | Value |
 |-------|--------|
@@ -60,76 +60,38 @@ Failure modes already known: position drift on natural chain → use
 Failure modes: UP at pocket re-enters secret stairs; west-only from gardens is
 blocked by water until south corridor is reached; soldiers on approach path.
 
-## Open (active blockers)
+## On the continuous prefix (not open)
 
-### Main hall room 0x61 — **west edge measured**
+`main_hall_west_to_0x60` and `room_60_north_to_0x50` are continuous inside
+`castle_dungeon_prefix`. The 2026-07-31 `CastleMain` / `CastleRoom60` runs
+were the first isolated measurements. They are not a second tip.
 
-| Field | Value |
-|-------|--------|
-| Tier | route + approach + trigger (main hall only) |
-| Anchors | `HyruleCastle_MainHall`, `…_WestDoorApproach`, `…_WestDoorTrigger` |
-| Entry | `CastleMain` ~(760, 3520); 3 hostiles on carpet |
-| Map | `maps/room_61.json`; side corridor **y≈3320** |
-| West edge | approach ~(520, 3320), hold LEFT → room `0x60` landing ~(511, 3320) |
-| East edge | approach ~(960, 3320), hold RIGHT → room `0x62` |
-| South edge | approach ~(760, 3496), hold DOWN → outdoors ~(2040, 1740) screen `0x1B` |
-| Tools | `room_sense` + `room_engine` |
-| Script | `scripts/room_engine.py run room_61 --edge west_to_0x60` |
-| Graph | `main_hall_west_to_0x60` verification=`isolated` |
-| Provenance | headless 2026-07-31 from `CastleMain` |
+`room_50_east_to_0x01` is natural_entry (2026-08-02), not continuous. After a
+clear, the only forward exit from `0x50` is east to `0x01`. South returns to
+`0x60`. No B1 stairs in `0x50`. Map door `east_to_0x01`, approach near
+(480, 2680), hold RIGHT.
 
-### Room 0x60 north → 0x50 — **isolated** (Zelda still open)
+## Open
 
-| Field | Value |
-|-------|--------|
-| Tier | route + approach + trigger (0x60 only) |
-| Anchors | `HyruleCastle_MainWest_0x60`, `HyruleCastle_NW_0x50` |
-| Map | `maps/room_60.json` |
-| Path | west landing → (400,3320) → (376,3200) → (376,3130) UP |
-| North edge | approach ~(376, 3130), hold UP → room `0x50` landing ~(376, 3088) |
-| East edge | approach ~(500, 3320), RIGHT → `0x61` |
-| South edge | x≈376 south → outdoors west courtyard ~(1832, 1540) |
-| Script | `scripts/room_engine.py run room_60 --edge north_to_0x50 --state CastleRoom60` |
-| Graph | `room_60_north_to_0x50` verification=`isolated` |
+The F1 well is not an undiscovered stair. Graph hop `room_01_down_to_0x72`
+is natural_entry (hold UP on the north wall). Reverse `room_72_north_to_0x01`
+stays isolated. Neither hop is the continuous tip.
 
-### Room 0x50 east → 0x01 — **natural_entry** (2026-08-02)
+`room_01_to_zelda_cell` stays planned. The open red is `0x81` `west_to_0x80`:
+a small key did not open the gold jail door on a state load. Big-key bytes
+were 0 and were not tried. Detail is `docs/tasks/residual.md`. Do not
+STATUS-promote that red. `$F3CC == 1` on `CastleZeldaFollower` is the pin as
+loaded, not a rescue.
 
-| Field | Value |
-|-------|--------|
-| Tier | approach + trigger (tip exit) |
-| Map | `maps/room_50.json` door `east_to_0x01` |
-| Approach | ~(480, 2680), hold RIGHT → room `0x01` landing ~(499–560, 120) |
-| Exhaustive probe | After clear: grid + cardinal rays + west-wall holds — **only** east→`0x01` and south→`0x60`. No B1 stairs in 0x50. |
-| Natural entry | From real 0x50 predecessor (`CastleRoom60` north + clear; also `natural_room_50_east.json`) |
-| Graph | `room_50_east_to_0x01` verification=`natural_entry` |
-| Script | `scripts/room_engine.py run room_50 --edge east_to_0x01 --state CastleRoom50` |
-
-### After 0x01 → Zelda cell — **planned** (B1 stairs open)
-
-Measured exploration chain (state/predecessor, not continuous tip):
-`0x01` east→`0x52` → clear guards → south→`0x62` → west→`0x61`. Dense scan
-found **no stairs** in 0x01/0x52/0x62. B1 seed `maps/room_70.json` from
-`CastleB2Landing` (room 0x70; UP→0x71 / west UP→0x80) — F1 stair entry still
-unmeasured. Graph hop `room_01_to_zelda_cell` remains `planned`.
-
-Continuous tip remains **NW chamber room 0x50**; next physical hop is east
-`0x01` (natural_entry). Work queue primary: promote `0x01` chain / find B1
-stairs, then Zelda B1 states. Internal key/shutter path in/near `0x55` is
-**alternate** only.
-
-Acceptance for full rescue: `$F3CC == 1`. Do not claim from room id alone.
-
-### Escort Lamp + sewers → Sanctuary — **planned**
-
-Segment scaffold: `escort_to_sanctuary`. Mantle checks lamp + follower.
-Natural boot already collects house lamp. Sanctuary room base `0x12` / OW
-screen `0x13` — confirm on ROM before claims.
+Escort (`escort_to_sanctuary`) stays planned. Mantle checks lamp plus follower.
+Sanctuary room base `0x12` / overworld screen `0x13` is not verified.
+The internal key and shutter path in `0x55` is alternate practice only.
 
 ## Multi-truth checklist (any new hop)
 
 - [ ] RAM predicate (room/screen + inventory + position window)
 - [ ] Map/Yaze association if applicable (entrance id / hole tile)
-- [ ] Screenshot artifact path under `recordings/`
+- [ ] RAM glance leftover (room, module, submodule, xy, sword, `$F3CC`, keys). Not an MP4.
 - [ ] Named anchor in `opening_route/anchors.py` (semantic id)
 - [ ] Graph edge verification: `planned` → `isolated` → `natural_entry` → `continuous`
 - [ ] Segment registered only when entry/exit contracts are honest

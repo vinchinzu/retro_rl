@@ -1,68 +1,50 @@
-# Agent Instructions — alttp_rando
+# Agent instructions: alttp_rando
 
-**ALTTP Randomizer** (single-game). Simpler solver ground than SMZ3.
-Reuse `alttp` skills — do **not** fork that tree.
-
+Single-game ALTTP randomizer. Reuse `alttp` skills. Do not fork that tree.
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/RANDOMIZER.md`.
 
-## ROM trap (critical)
+## ROM trap
 
-Use **Japanese 1.0 only**:
-
-| ROM | Path | Role |
-|-----|------|------|
-| JP 1.0 | `roms/zelda3_jp.sfc` | **this package** + SMZ3 (xxh32 `0x8AC8FD15`) |
-| USA | `roms/zelda3.sfc` | `alttp/` only — **never** wire as primary here |
-
-Internal title must be `ZELDANODENSETSU`, not `THE LEGEND OF ZELDA`.
+Japanese 1.0 only: `roms/zelda3_jp.sfc` (xxh32 `0x8AC8FD15`, internal title
+`ZELDANODENSETSU`). USA `roms/zelda3.sfc` belongs to `alttp/` only. Do not
+symlink it into this integration.
 
 ## Commands
 
 ```bash
-# Wire JP ROM into ALTTPRando-Snes
 uv run python -m alttp_rando.scripts.setup_rom
-
-# Headless FirstPlay.state (first controllable frame)
 SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.make_boot
-SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.make_boot --force
-
-# Play + record from FirstPlay (auto-boot if missing)
 ./play
-# or:
-uv run python -m alttp_rando.scripts.play
 uv run python -m alttp_rando.scripts.play --no-record
-uv run python -m alttp_rando.scripts.play --rebuild-boot
-uv run python -m alttp_rando.scripts.play --vanilla   # USA alttp skills
+uv run python -m alttp_rando.scripts.play --vanilla
+
+SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle
+SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle_session
+uv run python -m alttp_rando.scripts.run_opening_tip_campaign --mode dry --publish-docs
 
 uv run pytest snes/alttp_rando/tests -q
-uv run python -c "from alttp_rando.seed import ensure_test_seed; ensure_test_seed()"
-
-# FirstPlay → uncle (natural-entry edge; writes report + evidence)
-SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle
-
-# SolverSession house→uncle (replan + audited traces; vanilla FirstPlay)
-SDL_VIDEODRIVER=dummy uv run python -m alttp_rando.scripts.run_house_to_uncle_session
-
-# Multi-seed opening tip S/T dry-run (fixture seeds; publishes docs report)
-uv run python -m alttp_rando.scripts.run_opening_tip_campaign --mode dry --publish-docs
-uv run pytest snes/alttp_rando/tests/test_alttp_rando_opening_tip_campaign.py -q
 ```
 
-F5 in `./play` saves into `custom_integrations/ALTTPRando-Snes/`.
-Recordings → `recordings/` (MP4 + JSON).
+`./play` runs from this package directory. F5 saves into
+`custom_integrations/ALTTPRando-Snes/`.
+`make_boot --force` rebuilds `FirstPlay.state`.
+
+## Layout
+
+| Path | Role |
+|------|------|
+| `scripts/setup_rom.py` | Wire the JP ROM. Refuses the USA dump. |
+| `scripts/make_boot.py` | Headless `FirstPlay.state` |
+| `seeds/` | Fixture packages (`demo_seed`, `fixture_1337` to `fixture_1339`). Not shuffled ROMs. |
+| `recordings/` | JSON evidence. An MP4 from `./play` is not leave proof. |
 
 ## Traps
 
-- Do not symlink USA `zelda3.sfc` into this integration.
-- `FirstPlay` is post-intro control (Link's House), not name select.
-- Seed ROM / ALTTPR patch integration still open; demo uses JP vanilla.
-- Opening S/T dry-run is **substrate=vanilla** / **seed_source=fixture** —
-  not shuffled-seed robustness until a generator/patch is wired.
-- SolverSession house→uncle is vanilla FirstPlay substrate, not shuffled S/T.
-- `house_to_uncle` is natural_entry; remaining early-graph edges stay planned
-  until skills bind them.
-
-## Immediate goal
-
-M1 boot ✓. `house_to_uncle` natural_entry ✓. Multi-seed opening S/T dry-run ✓
-(fixture 3/3 claimable). Next: ALTTPR patch fixture + next graph edges.
+- `FirstPlay` is Link's House after the intro, not name select.
+- `house_to_uncle` is natural_entry on vanilla JP FirstPlay. It is not a shuffled-seed clear.
+- The opening S/T dry-run is substrate=vanilla and seed_source=fixture. It is not shuffled robustness.
+- A patched ALTTPR ROM is still open. Demo seeds are JP vanilla fixtures.
+- Leave proof is the JSON report (room, module, sword), not an MP4.
+- Ladder matches vanilla `alttp`: planned, then isolated, then natural_entry, then continuous. A state load is not continuous.
+- `run_house_to_uncle_session` replans on vanilla FirstPlay. It is not shuffled S/T.
+- Early-graph edges past `house_to_uncle` stay planned until a skill binds them.

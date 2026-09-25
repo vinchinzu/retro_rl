@@ -197,27 +197,32 @@ class MultiDayPlannerTask(Task):
 
     def _continue_d2_clear(self, world: WorldState) -> TaskResult | None:
         """Keep --stop-after-d2-clear from idling after an unfinished day plan."""
-        from harvest.planner.d2_work import D2FarmClearTactic, observe_d2_farm
+        from harvest.planner.day_plan_orchestrator import DayPlanTask
+        from harvest.planner.d2_work import observe_d2_farm
 
-        if isinstance(self._current_task, D2FarmClearTactic):
-            return None
+        current = self._current_task
+        if isinstance(current, DayPlanTask):
+            planned = current.phases
+            if len(planned) == 1 and planned[0].phase == "D2_FARM_CLEAR":
+                return None
         status = observe_d2_farm(world.ram, self._last_day_phase_results)
         if not status.farm_map_loaded or status.is_complete:
             return None
         self._activate("plan_day", self._build_d2_clear_task(), world)
-        assert self._current_task is not None
-        return self._current_task.step(world)
+        plan = self._current_task
+        assert isinstance(plan, DayPlanTask)
+        plan._phase_results.extend(dict(row) for row in self._last_day_phase_results)
+        return plan.step(world)
 
     def _build_d2_clear_task(self):
-        from harvest.planner.d2_work import D2FarmClearTactic, d2_farm_clear_phase
-        from harvest.planner.day_phase_registry import TaskBuildContext
+        from harvest.planner.day_plan_orchestrator import DayPlanTask
+        from harvest.planner.d2_work import d2_farm_clear_phase
 
-        tactic = D2FarmClearTactic.from_spec(
-            TaskBuildContext(policy=self.policy),
-            d2_farm_clear_phase(),
+        return DayPlanTask(
+            tasks_dir=self.tasks_dir,
+            phase_sequence=[d2_farm_clear_phase()],
+            policy=self.policy,
         )
-        tactic.set_evidence(self._last_day_phase_results)
-        return tactic
 
     def _build_farm_shipping_wait_task(self) -> FarmShippingWaitTask:
         return FarmShippingWaitTask(

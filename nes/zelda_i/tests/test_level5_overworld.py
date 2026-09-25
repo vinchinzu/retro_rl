@@ -1,15 +1,21 @@
 import numpy as np
+import pytest
+from types import SimpleNamespace
 
 from zelda_i.level5.overworld import (
     POST_L4_TO_LEVEL5_HOPS,
+    RUPEES_67_BACK_HOPS,
+    RUPEES_67_HOPS,
     PostL4SettlePhase,
     PostL4TriforceSettleController,
     make_post_l4_level5_controller,
     post_l4_overworld_ready,
 )
 from retro_harness.nes import nes_action
-from zelda_i.level5.spine import level5_entry_success
+from zelda_i.level5.spine import l5_hops, level5_entry_success, rupees_67_stages
+from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import (
+    ADDR_BOMBS,
     ADDR_LADDER,
     ADDR_HEALTH,
     ADDR_LEVEL,
@@ -17,9 +23,12 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_RAFT,
+    ADDR_RUPEES,
     ADDR_SCREEN,
     ADDR_TRIFORCE,
+    ADDR_WORLD_FLAGS,
     PLAY_MODE,
+    WORLD_FLAG_ITEM,
     read_snapshot,
 )
 
@@ -88,3 +97,41 @@ def test_level5_entry_stop_requires_l4_inventory() -> None:
     ram[ADDR_TRIFORCE] = 0x0F
     ram[ADDR_SCREEN] = 0x66
     assert not level5_entry_success(read_snapshot(ram))
+
+
+def test_rupees_67_detour_rejoins_l5_walk_after_restock_checks() -> None:
+    route = (0x45, *(hop.target for hop in RUPEES_67_HOPS))
+    assert route == (0x45, 0x55, 0x65, 0x66, 0x67)
+    assert tuple(hop.target for hop in RUPEES_67_BACK_HOPS) == (0x66, 0x65, 0x55)
+    for a, b in zip(route, route[1:]):
+        assert b in neighbor_screens(a).values()
+    names = [name for name, _, _ in l5_hops()[0].stages]
+    assert names.index("bomb_restock_l4") < names.index("walk_67")
+    assert names.index("return_55") < names.index("enter_level5")
+
+
+@pytest.mark.parametrize(
+    ("bombs", "rupees", "taken", "screen"),
+    [(0, 24, False, 0x45), (3, 24, True, 0x45),
+     (3, 240, False, 0x45), (3, 100, False, 0x4A)],
+)
+def test_rupees_67_stages_skip_without_cave_pay(
+    bombs: int, rupees: int, taken: bool, screen: int
+) -> None:
+    ram = _l4_ow_ram(screen=screen)
+    ram[ADDR_BOMBS] = bombs
+    ram[ADDR_RUPEES] = rupees
+    if taken:
+        ram[ADDR_WORLD_FLAGS + 0x67] = WORLD_FLAG_ITEM
+    env = SimpleNamespace(get_ram=lambda: ram)
+    snap = read_snapshot(ram)
+    stages = rupees_67_stages()
+    assert [name for name, _, _ in stages] == [
+        "walk_67", "select_bombs_67", "rupees_67", "exit_cave_67", "return_55"
+    ]
+    for _, ctl, _ in stages:
+        if hasattr(ctl, "bind_env"):
+            ctl.bind_env(env)
+        ctl.step(snap)
+        assert ctl.success
+        assert ctl.frames == 1

@@ -1,50 +1,17 @@
-# ALTTP Rando — Plan
+# ALTTP rando plan
 
-## North star
+Future work only. Verified facts stay in `docs/STATUS.md`.
 
-Clear **S of T** ALTTP randomizer seeds within budget with a reactive solver.
-Single-game first — then transfer item-logic + discovery patterns to SMZ3.
+## Next
 
-## Why before SMZ3
+1. Wire an ALTTPR or other patched seed onto the same FirstPlay path. Until that exists, do not call the fixture dry-run shuffled-seed robustness.
+2. Bind the next early-graph edges (`uncle_to_yard` and after) only when a vanilla skill clears them from the real predecessor. `house_to_uncle` stays natural_entry, not a new continuous tip.
+3. Run a live multi-seed opening only after a generator or patch is wired. Without the JP ROM the live path stays fail-closed.
+4. After a real shuffled early tip exists, extend the same harness toward sanctuary and Eastern, then toward SMZ3. Do not start that transfer on vanilla fixtures.
 
-| | ALTTP rando | SMZ3 |
-|--|-------------|------|
-| Worlds | ALTTP only | SM + ALTTP + portals |
-| Logic | ALTTPR item pool | Combined |
-| Skills | `alttp` only | both trees |
-| Failure modes | dungeon/OW softlocks | + portal settle |
+## Non-goals
 
-## Phases
-
-1. **Scaffold (M0)** — package, seed schema, coarse logic graph, play spine. *(done)*
-2. **Boot (M1)** — JP 1.0 power-on → `FirstPlay` controllable Link. *(done)*
-3. **Logic grounding** — expand graph from play + public ALTTPR logic notes.
-4. **Skill bind** — edges → vanilla opening / dungeon skills from FirstPlay.
-   (`house_to_uncle` natural_entry done 2026-08-09; next edges planned.)
-5. **Seed-robust early tip** — multi-seed house→uncle S/T dry-run done
-   2026-08-09 (`opening_tip_campaign`; fixture substrate). Next: live
-   shuffled/patched seeds + sanctuary/Eastern tips.
-6. **Extend toward SMZ3** — shared L4 + seed-robust harness.
-
-## Play spine
-
-```bash
-./play
-uv run python -m alttp_rando.scripts.play
-uv run python -m alttp_rando.scripts.play --vanilla   # USA alttp skills
-# After seed ROM: --seed test_seed
-```
-
-Sessions write `recordings/play_*.json` / `spine_alttp_rando_*.json` (+ MP4).
-
-## Reuse policy
-
-- Import from `alttp` and `retro_harness.adventure`.
-- Do not copy room policies into this tree.
-- Align capability tokens with shared L4 solver (`rr-gbd`).
-
-## Out of scope (for now)
-
-- Entrance / door randomizer (start with item rando)
-- Multiworld
-- Full ALTTPR glitch logic
+- Entrance or door randomizer (item randomizer first).
+- Multiworld.
+- Full ALTTPR glitch logic.
+- Forking `snes/alttp/` room policies into this tree.

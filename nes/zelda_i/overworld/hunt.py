@@ -314,6 +314,67 @@ def swing_pays(
     return landed is not None
 
 
+def contact_choice(
+    snap: ZeldaSnapshot,
+    body: ZeldaObject,
+    bodies: tuple[ZeldaObject, ...],
+    tracks: tuple[TrackedObject, ...],
+    box: tuple[int, int, int, int],
+    *,
+    nodes: frozenset[tuple[int, int]] | None = None,
+    peel_inside: int = MIN_DODGE_BODY,
+    can_strike: bool = True,
+    force_peel: bool = False,
+) -> tuple[str, str | None] | None:
+    """Choose one contact response for a hunter or a dungeon room.
+
+    The blade must land before any nearby body reaches Link. Otherwise a
+    threatening body gets a lattice-simulated peel. A distant body leaves
+    the frame to the caller's chase or shot evader.
+    """
+    lx, ly = int(snap.link_x), int(snap.link_y)
+    bx, by = int(body.x), int(body.y)
+    held = _held_face(snap)
+    face = face_toward(lx, ly, bx, by)
+    if held is not None and blade_lands(lx, ly, held, bx, by):
+        face = held
+    near = tuple(
+        obj for obj in bodies
+        if not dormant_body(obj)
+        and chebyshev(lx, ly, int(obj.x), int(obj.y)) <= PEEL_RADIUS
+    )
+    if not near:
+        return None
+    by_slot = {int(track.slot): track for track in tracks}
+    rows = []
+    for obj in near:
+        track = by_slot.get(int(obj.slot))
+        vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
+        jitter = BODY_JITTER_PX.get(kind_for_type(int(obj.type_id)).value, BODY_JITTER_DEFAULT)
+        rows.append((int(obj.slot) == int(body.slot), float(obj.x), float(obj.y), vx, vy, jitter))
+    if can_strike and blade_lands(lx, ly, face, bx, by) and swing_pays(
+        lx, ly, held, bx, by, rows
+    ):
+        return ("strike", face)
+    pad = chebyshev(lx, ly, bx, by)
+    threatened = force_peel or pad <= peel_inside or any(
+        max(abs(x + vx * k - lx), abs(y + vy * k - ly)) - jitter * k < SHOT_HIT_PX
+        for _, x, y, vx, vy, jitter in rows
+        for k in range(SWING_PIN_FRAMES + SWING_TURN_FRAMES + 1)
+    )
+    if not threatened:
+        return None
+    dx, dy = bx - lx, by - ly
+    away = ("LEFT" if dx > 0 else "RIGHT", "UP" if dy > 0 else "DOWN")
+    if abs(dy) > abs(dx):
+        away = away[::-1]
+    direction = body_escape(
+        lx, ly, [(x, y, vx, vy, jitter) for _, x, y, vx, vy, jitter in rows],
+        box, nodes=nodes, prefer=away,
+    )
+    return ("peel", direction)
+
+
 def link_busy(snap: ZeldaSnapshot) -> bool:
     """True while Link's own slot is mid-animation (sword out, knockback)."""
     first = snap.objects[0] if snap.objects else None
@@ -996,13 +1057,13 @@ class ScreenHunter:
         if self._close is None:
             return None
         screen = int(snap.screen)
-        if self._contact:
-            return self._peel(snap, self._close, f"hunt_{screen:02x}")
-        if self._pad <= MIN_DODGE_BODY:
+        choice = self._contact_choice(snap, self._close, can_strike=False)
+        if choice is not None and choice[0] == "peel":
+            suffix = "" if self._contact else "_close"
             # Inside the pad but inside the blade too. ``Link_BeHarmed`` is
             # already happening here and a press only adds 13 frames of
             # standing still to it, so the answer is the step out.
-            return self._peel(snap, self._close, f"hunt_{screen:02x}_close")
+            return self._peel(choice[1], f"hunt_{screen:02x}{suffix}")
         return None
 
     def _rung_shield(self, snap: ZeldaSnapshot) -> FrameAction | None:
@@ -1320,41 +1381,20 @@ class ScreenHunter:
         velocity, widened by its jitter; the target may touch Link only
         after the blade has met it (a cut knocks it back).
         """
-        lx, ly = int(snap.link_x), int(snap.link_y)
-        rows = []
-        for obj in live_enemies(snap):
-            if dormant_body(obj) or chebyshev(lx, ly, int(obj.x), int(obj.y)) > PEEL_RADIUS:
-                continue
-            track = self._track(obj)
-            vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
-            jitter = BODY_JITTER_PX.get(kind_for_type(int(obj.type_id)).value, BODY_JITTER_DEFAULT)
-            rows.append((int(obj.slot) == int(body.slot), float(obj.x), float(obj.y), vx, vy, jitter))
-        return swing_pays(lx, ly, _held_face(snap), int(body.x), int(body.y), rows)
+        choice = self._contact_choice(snap, body, can_strike=True)
+        return choice is not None and choice[0] == "strike"
 
-    def _peel(self, snap: ZeldaSnapshot, body: ZeldaObject, reason: str) -> FrameAction | None:
-        """Walk the input that keeps every near body off Link longest.
-
-        ``common.body_escape`` on the lattice, against each live body inside
-        ``PEEL_RADIUS`` with its tracked velocity. The bigger-axis "away" is
-        only the tie-break.
-        """
-        lx, ly = int(snap.link_x), int(snap.link_y)
-        dx, dy = int(body.x) - lx, int(body.y) - ly
-        away = ("LEFT" if dx > 0 else "RIGHT", "UP" if dy > 0 else "DOWN")
-        if abs(dy) > abs(dx):
-            away = away[::-1]
-        rows = []
-        for obj in live_enemies(snap):
-            if dormant_body(obj) or chebyshev(lx, ly, int(obj.x), int(obj.y)) > PEEL_RADIUS:
-                continue
-            track = self._track(obj)
-            vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
-            jitter = BODY_JITTER_PX.get(kind_for_type(int(obj.type_id)).value, BODY_JITTER_DEFAULT)
-            rows.append((float(obj.x), float(obj.y), vx, vy, jitter))
-        if not rows:
-            rows.append((float(body.x), float(body.y), 0.0, 0.0, BODY_JITTER_DEFAULT))
+    def _contact_choice(
+        self, snap: ZeldaSnapshot, body: ZeldaObject, *, can_strike: bool,
+    ) -> tuple[str, str | None] | None:
         nodes = self.nodes_fn(snap) if self.nodes_fn is not None else None
-        direction = body_escape(lx, ly, rows, self.box, nodes=nodes, prefer=away)
+        return contact_choice(
+            snap, body, tuple(live_enemies(snap)), self._tracked, self.box,
+            nodes=nodes, can_strike=can_strike,
+        )
+
+    def _peel(self, direction: str | None, reason: str) -> FrameAction:
+        """Apply the shared contact policy's lattice peel verdict."""
         self.census.peel_frames += 1
         self._freeze_occ()
         if direction is None:

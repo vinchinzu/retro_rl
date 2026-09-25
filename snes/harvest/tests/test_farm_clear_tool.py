@@ -21,14 +21,13 @@ from harvest.core.tile_catalog import (
     DebrisType,
     Tool,
 )
-from harvest.tasks.farm_clear_tool import (
+from harvest.tasks.farm_clearer import (
     MAX_OBSERVE_EXTRA,
     MAX_STAND_MISSES,
     POST_SWING_OBSERVE_FRAMES,
-    handle_tool_clear,
-    tool_clear_is_planted,
+    FarmClearer,
+    Target,
 )
-from harvest.tasks.farm_clearer import FarmClearer, Target
 from harvest.tasks.nav import Point, make_action
 
 ADDR_TOOL_HITS = field_spec("tool_hit_counter").address
@@ -93,10 +92,10 @@ class PlantedSwingTests(unittest.TestCase):
     def test_first_swing_faces_then_y_only(self) -> None:
         ram = _make_ram()
         clearer = _ready_clearer(ram)
-        nxt = handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        nxt = clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         self.assertIsNone(nxt)
         self.assertTrue(clearer._tool_faced)
-        self.assertTrue(tool_clear_is_planted(clearer))
+        self.assertTrue(clearer.tool_clear_is_planted())
         self.assertTrue(_has_dpad(clearer.action_queue[0]))
         y_frames = [a for a in clearer.action_queue if int(a[1]) == 1]
         self.assertGreaterEqual(len(y_frames), 20)
@@ -106,10 +105,10 @@ class PlantedSwingTests(unittest.TestCase):
     def test_later_swings_never_touch_dpad(self) -> None:
         ram = _make_ram(hits=2)
         clearer = _ready_clearer(ram)
-        handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         clearer.action_queue.clear()
         ram[ADDR_TOOL_HITS] = 2
-        nxt = handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        nxt = clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         self.assertIsNone(nxt)
         self.assertTrue(clearer.action_queue)
         self.assertFalse(any(_has_dpad(a) for a in clearer.action_queue))
@@ -121,11 +120,11 @@ class PlantedSwingTests(unittest.TestCase):
     def test_late_ram_hit_is_credited_not_a_miss(self) -> None:
         ram = _make_ram(stamina=63, hits=0)
         clearer = _ready_clearer(ram)
-        handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         clearer.action_queue.clear()
         ram[ADDR_TOOL_HITS] = 1
         ram[ADDR_STAMINA] = 61
-        nxt = handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        nxt = clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         self.assertIsNone(nxt)
         self.assertEqual(clearer.target_hits, 1)
         self.assertEqual(clearer._tool_misses, 0)
@@ -134,11 +133,11 @@ class PlantedSwingTests(unittest.TestCase):
     def test_stamina_drop_counts_when_counter_is_one_frame_late(self) -> None:
         ram = _make_ram(stamina=63, hits=0)
         clearer = _ready_clearer(ram)
-        handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         clearer.action_queue.clear()
         ram[ADDR_TOOL_HITS] = 0
         ram[ADDR_STAMINA] = 61
-        nxt = handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        nxt = clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         self.assertIsNone(nxt)
         self.assertGreaterEqual(clearer.target_hits, 1)
         self.assertEqual(clearer._tool_misses, 0)
@@ -146,10 +145,10 @@ class PlantedSwingTests(unittest.TestCase):
     def test_genuine_miss_stays_on_the_same_stand(self) -> None:
         ram = _make_ram(stamina=63, hits=0)
         clearer = _ready_clearer(ram)
-        handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         clearer.action_queue.clear()
         clearer._tool_observe_extra = MAX_OBSERVE_EXTRA
-        nxt = handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        nxt = clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         self.assertIsNone(nxt)
         self.assertEqual(clearer._tool_misses, 1)
         self.assertEqual(clearer.approach_tile, (9, 11))
@@ -165,7 +164,7 @@ class PlantedSwingTests(unittest.TestCase):
         clearer._tool_last_stam = 65
         clearer._tool_observe_extra = MAX_OBSERVE_EXTRA
         clearer._tool_misses = MAX_STAND_MISSES - 1
-        nxt = handle_tool_clear(clearer, ram, player=(9, 11), target=(10, 10))
+        nxt = clearer.handle_tool_clear(ram, player=(9, 11), target=(10, 10))
         self.assertEqual(nxt, "navigating")
         self.assertIn(((10, 10), (9, 11)), clearer.failed_approaches)
         self.assertNotEqual(clearer.approach_tile, (9, 11))

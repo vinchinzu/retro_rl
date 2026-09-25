@@ -197,11 +197,6 @@ def save_overlay(env: object, name: str, title: str) -> Path:
     return path
 
 
-def wait_control(env: object, *, max_frames: int = 720) -> dict[str, Any]:
-    sc = settle_control(env, max_frames=max_frames)
-    return {"ok": sc.ok, "reason": sc.reason, "frames": sc.frames, "glance": glance(env)}
-
-
 def try_assign_offsets(env: object) -> list[dict[str, Any]]:
     """Read-after-write for 0xF359 vs 0x7EF359. Restores the original byte."""
     orig = read_u8(env, EQUIP_SWORD)
@@ -226,41 +221,6 @@ def try_assign_offsets(env: object) -> list[dict[str, Any]]:
         poke_u8(env, EQUIP_SWORD, orig)
         step_frames(env, no_action(), 1)
     return trials
-
-
-def trigger_entrance(env: object, entrance_id: int) -> dict[str, Any]:
-    """Ask the game to load a building entrance (module 0x0F). Real room-load."""
-    before = glance(env)
-    poke_u16(env, 0x010E, entrance_id)
-    poke_u8(env, MODULE, 0x0F)
-    poke_u8(env, SUBMODULE, 0x00)
-    step_frames(env, no_action(), 2)
-    frames = 2
-    snap = snapshot_env(env)
-    idle = 0
-    prev = (snap.game_mode, snap.submodule, snap.room_base_id, snap.indoors)
-    while frames < 900:
-        step_frames(env, no_action(), 4)
-        frames += 4
-        snap = snapshot_env(env)
-        cur = (snap.game_mode, snap.submodule, snap.room_base_id, snap.indoors)
-        if cur == prev:
-            idle += 1
-        else:
-            idle = 0
-            prev = cur
-        if snap.has_control and snap.indoors and snap.game_mode == 0x07:
-            break
-        if idle >= 80:
-            break
-    sc = settle_control(env, max_frames=480)
-    return {
-        "entrance_id": entrance_id,
-        "before": before,
-        "frames": frames + sc.frames,
-        "settle": {"ok": sc.ok, "reason": sc.reason},
-        "after": glance(env),
-    }
 
 
 def wait_mode(env: object, *, max_frames: int = 720) -> int:
@@ -888,6 +848,552 @@ def phase_west(env: object) -> dict[str, Any]:
     }
 
 
+def phase_stairs(env: object) -> dict[str, Any]:
+    """From pyramid south, go east then north up the pyramid stairs."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "dw_6c_north.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    start = glance(env)
+    blob = env.em.get_state()  # type: ignore[attr-defined]
+    tries: list[dict[str, Any]] = []
+    g = start
+    for dx, dy, diag in (
+        (2464, 2520, False),
+        (2464, 2512, False),
+        (2472, 2520, False),
+        (2456, 2520, False),
+        (2464, 2504, True),
+        (2472, 2504, True),
+        (2448, 2512, True),
+        (2480, 2512, True),
+        (2432, 2504, True),
+    ):
+        env.em.set_state(blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        move_to(env, Waypoint(2408, 2480, tolerance=6, label="face"), max_frames=300)
+        move_to(env, Waypoint(dx, dy, tolerance=5, label=f"s{dx}_{dy}"), max_frames=400)
+        if diag:
+            rec = slash_hold(env, "UP", "RIGHT", max_frames=500)
+        else:
+            rec = hold_dir(env, "UP", max_frames=500)
+        settle_control(env, max_frames=180)
+        gg = glance(env)
+        save_overlay(env, f"climb_{dx}_{dy}.png", f"{dx},{dy} {gg['screen_hex']} {gg['xy']}")
+        tries.append({
+            "want": [dx, dy], "diag": diag, "hold": rec,
+            "screen": gg["screen_hex"], "xy": gg["xy"], "y": gg["y"],
+        })
+        if gg["y"] < 2000 or gg["xy"] != [gg["xy"][0], gg["xy"][1]] and gg["y"] < 2400:
+            g = gg
+            break
+        g = gg
+    return {"start": start, "tries": tries, "glance": g}
+
+
+def slash_hold(env: object, *buttons: str, max_frames: int = 400) -> dict[str, Any]:
+    start = snapshot_env(env)
+    rec: dict[str, Any] = {
+        "dir": "+".join(buttons),
+        "fromXy": [start.link_x, start.link_y],
+        "fromScreen": f"0x{start.screen_id:02X}",
+        "frames": 0,
+    }
+    prev = (start.link_x, start.link_y, start.screen_id, start.indoors)
+    stuck = 0
+    frames = 0
+    while frames < max_frames:
+        step_frames(env, action_for(*buttons, "B"), 6)
+        step_frames(env, action_for(*buttons), 4)
+        frames += 10
+        snap = snapshot_env(env)
+        cur = (snap.link_x, snap.link_y, snap.screen_id, snap.indoors)
+        if snap.indoors != start.indoors or snap.screen_id != start.screen_id:
+            rec.update({
+                "frames": frames,
+                "toScreen": f"0x{snap.screen_id:02X}",
+                "toRoom": f"0x{snap.room_base_id:02X}",
+                "toXy": [snap.link_x, snap.link_y],
+                "outdoors": not snap.indoors,
+            })
+            return rec
+        if cur[:2] == prev[:2]:
+            stuck += 1
+        else:
+            stuck = 0
+            prev = cur
+        if stuck >= 8:
+            rec["stuck"] = True
+            rec["frames"] = frames
+            rec["endXy"] = [snap.link_x, snap.link_y]
+            rec["endScreen"] = f"0x{snap.screen_id:02X}"
+            return rec
+    rec["timeout"] = True
+    rec["frames"] = frames
+    rec["endXy"] = [snapshot_env(env).link_x, snapshot_env(env).link_y]
+    rec["endScreen"] = f"0x{snapshot_env(env).screen_id:02X}"
+    return rec
+
+
+def _pin_skull_if_real(env: object, g: dict[str, Any]) -> str | None:
+    """Pin only a controllable Skull Woods lobby load (not pinball, not boss hut)."""
+    if not (g["indoors"] and g["module"] == 0x07 and g["has_control"] and g["submodule"] == 0):
+        return None
+    if g["room"] in (0x29, 0x39, 0x59, 0x68):
+        return None
+    if g["room"] != HYPOTHESIS_ROOM:
+        return None
+    GAME_SPEC.save_state(env, STATE_NAME)
+    return STATE_NAME
+
+
+def phase_to40(env: object) -> dict[str, Any]:
+    """From pyramid south, drop to 0x6C ground, west at mid-Y, march toward 0x40."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "dw_6c_north.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    start = glance(env)
+    save_overlay(env, "to40_start.png", f"start {start['screen_hex']} {start['xy']}")
+    log: list[dict[str, Any]] = [{"step": "start", "glance": {
+        "screen_hex": start["screen_hex"], "xy": start["xy"],
+    }}]
+
+    hold_dir(env, "DOWN", max_frames=200)
+    g = glance(env)
+    save_overlay(env, "to40_down.png", f"down {g['screen_hex']} {g['xy']}")
+    log.append({"step": "down", "screen": g["screen_hex"], "xy": g["xy"]})
+
+    south = move_to(env, Waypoint(2394, 2704, tolerance=10, label="mid_6c"), max_frames=900)
+    g = glance(env)
+    save_overlay(env, "to40_mid6c.png", f"mid6c {g['screen_hex']} {g['xy']}")
+    log.append({"step": "mid6c", "ok": south.ok, "xy": g["xy"], "screen": g["screen_hex"]})
+
+    west = slash_hold(env, "LEFT", max_frames=800)
+    sc = settle_control(env, max_frames=240)
+    g = glance(env)
+    save_overlay(env, "to40_west.png", f"west {g['screen_hex']} {g['xy']}")
+    log.append({"step": "west", "hold": west, "screen": g["screen_hex"], "xy": g["xy"]})
+    write_state_bytes(OUT_DIR / "to40_mid.state", env.em.get_state())  # type: ignore[attr-defined]
+
+    blob = env.em.get_state()  # type: ignore[attr-defined]
+    probes: dict[str, Any] = {}
+    for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+        env.em.set_state(blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        rec = slash_hold(env, d, max_frames=500)
+        gg = glance(env)
+        save_overlay(env, f"to40_{d.lower()}.png", f"{d} {gg['screen_hex']} {gg['xy']}")
+        probes[d] = {"hold": rec, "screen": gg["screen_hex"], "xy": gg["xy"], "indoors": gg["indoors"]}
+    env.em.set_state(blob)  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+
+    # Prefer north then west toward 0x40.
+    march: list[dict[str, Any]] = []
+    for i, d in enumerate(("UP", "UP", "LEFT", "UP", "LEFT", "UP", "LEFT", "UP")):
+        rec = slash_hold(env, d, max_frames=700)
+        sc = settle_control(env, max_frames=180)
+        gg = glance(env)
+        save_overlay(env, f"to40_m{i}_{d.lower()}.png", f"m{i} {d} {gg['screen_hex']} {gg['xy']}")
+        march.append({"i": i, "dir": d, "hold": rec, "screen": gg["screen_hex"], "xy": gg["xy"],
+                      "indoors": gg["indoors"], "room_hex": gg["room_hex"]})
+        if gg["indoors"]:
+            break
+        if gg["screen"] == OW_SCREEN:
+            break
+        if rec.get("stuck") and d == "UP":
+            rec2 = slash_hold(env, "LEFT", max_frames=400)
+            march[-1]["detour_left"] = rec2
+    g = glance(env)
+    saved = None
+    entered = None
+    if g["screen"] == OW_SCREEN and not g["indoors"]:
+        move_to(env, Waypoint(744, 640, tolerance=12, label="skull_door"), max_frames=1200)
+        save_overlay(env, "to40_door.png", f"door {glance(env)['xy']}")
+        entered = slash_hold(env, "UP", max_frames=480)
+        settle_control(env, max_frames=480)
+        g = glance(env)
+        save_overlay(env, "to40_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    elif g["indoors"]:
+        save_overlay(env, "to40_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    return {
+        "start": start,
+        "log": log,
+        "probes": probes,
+        "march": march,
+        "entered": entered,
+        "saved": saved,
+        "glance": g,
+    }
+
+
+def phase_summit(env: object) -> dict[str, Any]:
+    """Repro pyramid-top from to40_mid, jump west, march to 0x40, enter 0x29."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "to40_mid.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    start = glance(env)
+    save_overlay(env, "sum_start.png", f"mid {start['screen_hex']} {start['xy']}")
+    move_to(env, Waypoint(2383, 2696, tolerance=2, label="nudge"), max_frames=200)
+    left = slash_hold(env, "LEFT", max_frames=800)
+    settle_control(env, max_frames=480)
+    g = glance(env)
+    save_overlay(env, "sum_top.png", f"top {g['screen_hex']} {g['xy']} in={g['indoors']}")
+    write_state_bytes(OUT_DIR / "dw_pyr_top.state", env.em.get_state())  # type: ignore[attr-defined]
+    top_blob = env.em.get_state()  # type: ignore[attr-defined]
+    probes: dict[str, Any] = {}
+    for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+        env.em.set_state(top_blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        rec = hold_dir(env, d, max_frames=500)
+        settle_control(env, max_frames=300)
+        gg = glance(env)
+        save_overlay(env, f"sum_{d.lower()}.png", f"{d} {gg['screen_hex']} {gg['xy']} in={gg['indoors']}")
+        probes[d] = {
+            "hold": rec,
+            "screen": gg["screen_hex"],
+            "xy": gg["xy"],
+            "indoors": gg["indoors"],
+            "room_hex": gg["room_hex"],
+            "module_hex": gg["module_hex"],
+        }
+    # Jump west off the summit (vanilla drop toward village / 0x5A).
+    env.em.set_state(top_blob)  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    jump = hold_dir(env, "LEFT", max_frames=600)
+    settle_control(env, max_frames=480)
+    g = glance(env)
+    save_overlay(env, "sum_jump_w.png", f"jumpW {g['screen_hex']} {g['xy']} in={g['indoors']}")
+    march: list[dict[str, Any]] = []
+    saved = None
+    for i, d in enumerate(("LEFT", "LEFT", "UP", "LEFT", "UP", "UP", "LEFT", "UP", "UP", "LEFT")):
+        rec = slash_hold(env, d, max_frames=700)
+        settle_control(env, max_frames=200)
+        gg = glance(env)
+        save_overlay(env, f"sum_m{i}_{d.lower()}.png", f"m{i} {d} {gg['screen_hex']} {gg['xy']}")
+        march.append({
+            "i": i, "dir": d, "hold": rec, "screen": gg["screen_hex"],
+            "xy": gg["xy"], "indoors": gg["indoors"], "room_hex": gg["room_hex"],
+        })
+        if gg["indoors"] or gg["screen"] == OW_SCREEN:
+            g = gg
+            break
+        g = gg
+    entered = None
+    if g["screen"] == OW_SCREEN and not g["indoors"]:
+        move_to(env, Waypoint(744, 640, tolerance=12, label="skull_door"), max_frames=1500)
+        save_overlay(env, "sum_door.png", f"door {glance(env)['screen_hex']} {glance(env)['xy']}")
+        entered = hold_dir(env, "UP", max_frames=480)
+        settle_control(env, max_frames=480)
+        g = glance(env)
+        save_overlay(env, "sum_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    elif g["indoors"]:
+        save_overlay(env, "sum_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    return {
+        "start": start,
+        "left_to_top": left,
+        "top": {"screen": g["screen_hex"] if False else None},
+        "probes": probes,
+        "jump": jump,
+        "march": march,
+        "entered": entered,
+        "saved": saved,
+        "glance": g,
+    }
+
+
+def phase_die(env: object) -> dict[str, Any]:
+    """Die on 0x6C and continue; $F3C8=3 should respawn at the pyramid (real OW load)."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "dw_6c_north.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    start = glance(env)
+    poke_u8(env, 0xF36D, 0)
+    # Need a hit: walk down to 0x6C pikits.
+    hold_dir(env, "DOWN", max_frames=80)
+    move_to(env, Waypoint(2394, 2704, tolerance=12, label="pikit"), max_frames=600)
+    frames = 0
+    modes: list[list[int]] = []
+    while frames < 900:
+        snap = snapshot_env(env)
+        modes.append([frames, snap.game_mode, snap.submodule, snap.link_x, snap.link_y, int(snap.has_control)])
+        if snap.game_mode == 0x12:
+            break
+        # Walk into sprites; B may bounce us into them.
+        step_frames(env, action_for("RIGHT", "B"), 8)
+        step_frames(env, action_for("LEFT"), 8)
+        frames += 16
+    save_overlay(env, "die_death.png", f"death mod={snapshot_env(env).game_mode:#x}")
+    # Mash A/B/Start through game over → continue.
+    for _ in range(120):
+        step_frames(env, action_for("A"), 4)
+        step_frames(env, action_for("START"), 2)
+        step_frames(env, no_action(), 4)
+        frames += 10
+        snap = snapshot_env(env)
+        if snap.has_control and snap.game_mode in (0x07, 0x09):
+            break
+    settle_control(env, max_frames=480)
+    g = glance(env)
+    save_overlay(env, "die_spawn.png", f"spawn {g['screen_hex']} {g['xy']} mod={g['module_hex']}")
+    write_state_bytes(OUT_DIR / "dw_pyr_spawn.state", env.em.get_state())  # type: ignore[attr-defined]
+    blob = env.em.get_state()  # type: ignore[attr-defined]
+    probes: dict[str, Any] = {}
+    for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+        env.em.set_state(blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        rec = hold_dir(env, d, max_frames=500)
+        settle_control(env, max_frames=240)
+        gg = glance(env)
+        save_overlay(env, f"diesp_{d.lower()}.png", f"{d} {gg['screen_hex']} {gg['xy']}")
+        probes[d] = {
+            "hold": {k: rec.get(k) for k in ("stuck", "frames", "endXy", "toScreen", "toXy")},
+            "screen": gg["screen_hex"],
+            "xy": gg["xy"],
+            "indoors": gg["indoors"],
+        }
+    env.em.set_state(blob)  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    # From spawn, try west then north toward 0x40.
+    march: list[dict[str, Any]] = []
+    saved = None
+    for i, d in enumerate(("LEFT", "LEFT", "DOWN", "LEFT", "UP", "LEFT", "UP", "UP", "LEFT", "UP")):
+        rec = slash_hold(env, d, max_frames=600)
+        settle_control(env, max_frames=200)
+        gg = glance(env)
+        save_overlay(env, f"die_m{i}_{d.lower()}.png", f"m{i} {d} {gg['screen_hex']} {gg['xy']}")
+        march.append({
+            "i": i, "dir": d, "screen": gg["screen_hex"], "xy": gg["xy"],
+            "indoors": gg["indoors"], "room_hex": gg["room_hex"], "hold": rec,
+        })
+        if gg["indoors"] or gg["screen"] == OW_SCREEN:
+            g = gg
+            break
+        g = gg
+    entered = None
+    if g.get("screen") == OW_SCREEN and not g["indoors"]:
+        move_to(env, Waypoint(744, 640, tolerance=12, label="skull_door"), max_frames=1500)
+        save_overlay(env, "die_door.png", f"door {glance(env)['xy']}")
+        entered = hold_dir(env, "UP", max_frames=500)
+        settle_control(env, max_frames=480)
+        g = glance(env)
+        save_overlay(env, "die_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    elif g.get("indoors"):
+        save_overlay(env, "die_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    return {
+        "start": start,
+        "death_frames": frames,
+        "modes": modes[-12:],
+        "probes": probes,
+        "march": march,
+        "entered": entered,
+        "saved": saved,
+        "glance": g,
+    }
+
+
+def phase_off(env: object) -> dict[str, Any]:
+    """From pyramid-top continue spawn, walk down the stairs, then toward 0x40."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "dw_pyr_spawn.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    start = glance(env)
+    save_overlay(env, "off_start.png", f"top {start['screen_hex']} {start['xy']}")
+    down = hold_dir(env, "DOWN", max_frames=1400)
+    settle_control(env, max_frames=240)
+    g = glance(env)
+    save_overlay(env, "off_down.png", f"down {g['screen_hex']} {g['xy']}")
+    write_state_bytes(OUT_DIR / "dw_pyr_foot.state", env.em.get_state())  # type: ignore[attr-defined]
+    blob = env.em.get_state()  # type: ignore[attr-defined]
+    probes: dict[str, Any] = {}
+    for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+        env.em.set_state(blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        rec = hold_dir(env, d, max_frames=500)
+        settle_control(env, max_frames=200)
+        gg = glance(env)
+        save_overlay(env, f"off_{d.lower()}.png", f"{d} {gg['screen_hex']} {gg['xy']}")
+        probes[d] = {
+            "hold": {k: rec.get(k) for k in ("stuck", "frames", "endXy", "toScreen", "toXy")},
+            "screen": gg["screen_hex"], "xy": gg["xy"], "indoors": gg["indoors"],
+        }
+    env.em.set_state(blob)  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    march: list[dict[str, Any]] = []
+    saved = None
+    g = glance(env)
+    for i, d in enumerate(("LEFT", "LEFT", "UP", "LEFT", "UP", "UP", "LEFT", "UP", "LEFT", "UP")):
+        rec = hold_dir(env, d, max_frames=700)
+        settle_control(env, max_frames=180)
+        gg = glance(env)
+        save_overlay(env, f"off_m{i}_{d.lower()}.png", f"m{i} {d} {gg['screen_hex']} {gg['xy']}")
+        march.append({
+            "i": i, "dir": d, "screen": gg["screen_hex"], "xy": gg["xy"],
+            "indoors": gg["indoors"], "room_hex": gg["room_hex"], "hold": rec,
+        })
+        if gg["indoors"] or gg["screen"] == OW_SCREEN:
+            g = gg
+            break
+        g = gg
+    entered = None
+    if g["screen"] == OW_SCREEN and not g["indoors"]:
+        move_to(env, Waypoint(744, 640, tolerance=12, label="skull_door"), max_frames=1500)
+        save_overlay(env, "off_door.png", f"door {glance(env)['screen_hex']} {glance(env)['xy']}")
+        entered = hold_dir(env, "UP", max_frames=500)
+        settle_control(env, max_frames=480)
+        g = glance(env)
+        save_overlay(env, "off_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    elif g["indoors"]:
+        save_overlay(env, "off_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    return {
+        "start": start,
+        "down": down,
+        "probes": probes,
+        "march": march,
+        "entered": entered,
+        "saved": saved,
+        "glance": g,
+    }
+
+
+def phase_village(env: object) -> dict[str, Any]:
+    """West side of pyramid → north along the fence → village / 0x40."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "dw_pyr_spawn.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    hold_dir(env, "DOWN", max_frames=700)
+    settle_control(env, max_frames=180)
+    save_overlay(env, "vil_landing.png", f"land {glance(env)['xy']}")
+    hold_dir(env, "LEFT", max_frames=500)
+    settle_control(env, max_frames=180)
+    g = glance(env)
+    save_overlay(env, "vil_west.png", f"west {g['screen_hex']} {g['xy']}")
+    write_state_bytes(OUT_DIR / "dw_pyr_wside.state", env.em.get_state())  # type: ignore[attr-defined]
+    # Off the west cliff, hug the fence, go north.
+    move_to(env, Waypoint(g["x"] + 24, g["y"], tolerance=6, label="off_cliff"), max_frames=300)
+    north = hold_dir(env, "UP", max_frames=1000)
+    settle_control(env, max_frames=200)
+    g = glance(env)
+    save_overlay(env, "vil_north.png", f"north {g['screen_hex']} {g['xy']}")
+    blob = env.em.get_state()  # type: ignore[attr-defined]
+    probes: dict[str, Any] = {}
+    for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+        env.em.set_state(blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        rec = hold_dir(env, d, max_frames=500)
+        settle_control(env, max_frames=180)
+        gg = glance(env)
+        save_overlay(env, f"vil_{d.lower()}.png", f"{d} {gg['screen_hex']} {gg['xy']}")
+        probes[d] = {
+            "hold": {k: rec.get(k) for k in ("stuck", "frames", "endXy", "toScreen", "toXy")},
+            "screen": gg["screen_hex"], "xy": gg["xy"],
+        }
+    env.em.set_state(blob)  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    march: list[dict[str, Any]] = []
+    saved = None
+    g = glance(env)
+    for i, d in enumerate(("LEFT", "UP", "LEFT", "UP", "LEFT", "UP", "UP", "LEFT", "UP", "LEFT")):
+        rec = hold_dir(env, d, max_frames=700)
+        settle_control(env, max_frames=180)
+        gg = glance(env)
+        save_overlay(env, f"vil_m{i}_{d.lower()}.png", f"m{i} {d} {gg['screen_hex']} {gg['xy']}")
+        march.append({
+            "i": i, "dir": d, "screen": gg["screen_hex"], "xy": gg["xy"],
+            "indoors": gg["indoors"], "room_hex": gg["room_hex"], "hold": rec,
+        })
+        if gg["indoors"] or gg["screen"] == OW_SCREEN:
+            g = gg
+            break
+        g = gg
+    entered = None
+    if g["screen"] == OW_SCREEN and not g["indoors"]:
+        move_to(env, Waypoint(744, 640, tolerance=12, label="skull_door"), max_frames=1500)
+        save_overlay(env, "vil_door.png", f"door {glance(env)['screen_hex']} {glance(env)['xy']}")
+        entered = hold_dir(env, "UP", max_frames=500)
+        settle_control(env, max_frames=480)
+        g = glance(env)
+        save_overlay(env, "vil_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    elif g["indoors"]:
+        save_overlay(env, "vil_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    return {
+        "north": north, "probes": probes, "march": march,
+        "entered": entered, "saved": saved, "glance": g,
+    }
+
+
+def phase_ledge(env: object) -> dict[str, Any]:
+    """From pyramid-west interior chamber (1872, 1992), take the wooden stairs / door."""
+    env.em.set_state(read_state_bytes(OUT_DIR / "dw_pyr_wside.state"))  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    settle_control(env)
+    snap = glance(env)
+    move_to(env, Waypoint(snap["x"] + 24, snap["y"], tolerance=6, label="offc"), max_frames=240)
+    hold_dir(env, "UP", max_frames=1000)
+    settle_control(env, max_frames=120)
+    save_overlay(env, "ledge_mid.png", f"mid {glance(env)['screen_hex']} {glance(env)['xy']}")
+    hold_dir(env, "LEFT", max_frames=250)
+    settle_control(env, max_frames=180)
+    g0 = glance(env)
+    save_overlay(env, "ledge_start.png", f"ch {g0['screen_hex']} {g0['xy']}")
+    write_state_bytes(OUT_DIR / "dw_pyr_chamber.state", env.em.get_state())  # type: ignore[attr-defined]
+    blob = env.em.get_state()  # type: ignore[attr-defined]
+    probes: dict[str, Any] = {}
+    for d in ("UP", "DOWN", "LEFT", "RIGHT"):
+        env.em.set_state(blob)  # type: ignore[attr-defined]
+        step_frames(env, no_action(), 1)
+        rec = hold_dir(env, d, max_frames=500)
+        settle_control(env, max_frames=240)
+        gg = glance(env)
+        save_overlay(env, f"ledge_{d.lower()}.png", f"{d} {gg['screen_hex']} {gg['xy']} in={gg['indoors']}")
+        probes[d] = {
+            "hold": rec,
+            "screen": gg["screen_hex"], "xy": gg["xy"],
+            "indoors": gg["indoors"], "room_hex": gg["room_hex"],
+            "module_hex": gg["module_hex"],
+        }
+    # Wooden stairs are north of the chamber.
+    env.em.set_state(blob)  # type: ignore[attr-defined]
+    step_frames(env, no_action(), 1)
+    up = hold_dir(env, "UP", max_frames=700)
+    settle_control(env, max_frames=240)
+    g = glance(env)
+    save_overlay(env, "ledge_stairs.png", f"stairs {g['screen_hex']} {g['xy']} in={g['indoors']}")
+    saved = _pin_skull_if_real(env, g)
+    march: list[dict[str, Any]] = []
+    if not saved and not g["indoors"]:
+        for i, d in enumerate(("LEFT", "UP", "LEFT", "UP", "LEFT", "UP", "UP", "LEFT")):
+            rec = hold_dir(env, d, max_frames=600)
+            settle_control(env, max_frames=180)
+            gg = glance(env)
+            save_overlay(env, f"ledge_m{i}_{d.lower()}.png", f"m{i} {d} {gg['screen_hex']} {gg['xy']}")
+            march.append({
+                "i": i, "dir": d, "screen": gg["screen_hex"], "xy": gg["xy"],
+                "indoors": gg["indoors"], "room_hex": gg["room_hex"], "hold": rec,
+            })
+            if gg["indoors"] or gg["screen"] == OW_SCREEN:
+                g = gg
+                break
+            g = gg
+        if g["screen"] == OW_SCREEN and not g["indoors"]:
+            move_to(env, Waypoint(744, 640, tolerance=12, label="skull_door"), max_frames=1500)
+            save_overlay(env, "ledge_door.png", f"door {glance(env)['xy']}")
+            hold_dir(env, "UP", max_frames=500)
+            settle_control(env, max_frames=480)
+            g = glance(env)
+            save_overlay(env, "ledge_inside.png", f"in {g['room_hex']} {g['xy']} in={g['indoors']}")
+        saved = _pin_skull_if_real(env, g)
+    return {"chamber": g0, "probes": probes, "up": up, "march": march, "saved": saved, "glance": g}
+
+
 def phase_spawn(env: object) -> dict[str, Any]:
     """Poke kit + $F3C8=3, module 0x08 reload; overlay says where we landed."""
     poke_info = phase_poke(env)
@@ -959,7 +1465,10 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--phase",
-        choices=("poke", "enter", "map", "hop", "spawn", "walk", "pyramid", "shop", "dash", "west"),
+        choices=(
+            "poke", "enter", "map", "hop", "spawn", "walk", "pyramid",
+            "shop", "dash", "west", "stairs", "to40", "summit", "die", "off", "village", "ledge",
+        ),
         default="enter",
     )
     parser.add_argument("--state", default=SOURCE_STATE)
@@ -988,6 +1497,20 @@ def main() -> int:
             payload = phase_dash(env)
         elif args.phase == "west":
             payload = phase_west(env)
+        elif args.phase == "stairs":
+            payload = phase_stairs(env)
+        elif args.phase == "to40":
+            payload = phase_to40(env)
+        elif args.phase == "summit":
+            payload = phase_summit(env)
+        elif args.phase == "die":
+            payload = phase_die(env)
+        elif args.phase == "off":
+            payload = phase_off(env)
+        elif args.phase == "village":
+            payload = phase_village(env)
+        elif args.phase == "ledge":
+            payload = phase_ledge(env)
         elif args.phase == "map":
             payload = phase_map(env)
         else:

@@ -1,4 +1,4 @@
-# ALTTP — RAM map
+# ALTTP RAM map
 
 stable-retro `get_ram()`:
 

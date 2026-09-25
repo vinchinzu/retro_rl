@@ -107,7 +107,7 @@ from harvest.planner.day_plan import (
     state_has_chickens,
     state_has_cows,
 )
-from harvest.planner.day_task_factory import DayTaskFactory
+from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.day_plan_decision import DayPlanDecision, DeferredPlan, PlanningFacts
 from harvest.planner.world_probe import WorldProbe
 from harvest.tasks.crop_planter import is_rainy_weather as crop_task_is_rainy_weather
@@ -242,19 +242,19 @@ class DayPlanSequenceCoopTests(unittest.TestCase):
         self.assertTrue(all(phase.failure_policy == "required" for phase in phases))
 
     def test_chicken_sale_phase_factory_builds_subtasks(self) -> None:
-        factory = DayTaskFactory()
+        ctx = TaskBuildContext()
         world = make_world(0x00)
         phases = PHASE_SEQUENCES["sell_chicken_test"]
 
-        self.assertIsInstance(factory.make_task(phases[0], world), MultiMapNavTask)
-        self.assertIsInstance(factory.make_task(phases[2], world), CoopPickupChickenTask)
-        self.assertIsInstance(factory.make_task(phases[4], world), DropCarriedChickenTask)
-        self.assertIsInstance(factory.make_task(phases[5], world), MultiMapNavTask)
-        self.assertIsInstance(factory.make_task(phases[6], world), ChickenSaleRequestTask)
-        self.assertIsInstance(factory.make_task(phases[8], world), MultiMapNavTask)
-        self.assertIsInstance(factory.make_task(phases[9], world), ChickenSaleEventTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[0], world), MultiMapNavTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[2], world), CoopPickupChickenTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[4], world), DropCarriedChickenTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[5], world), MultiMapNavTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[6], world), ChickenSaleRequestTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[8], world), MultiMapNavTask)
+        self.assertIsInstance(build_phase_task(ctx, phases[9], world), ChickenSaleEventTask)
 
-        batch_event = factory.make_task(PHASE_SEQUENCES["sell_three_chickens_batch_test"][-1], world)
+        batch_event = build_phase_task(ctx, PHASE_SEQUENCES["sell_three_chickens_batch_test"][-1], world)
         self.assertIsInstance(batch_event, ChickenSaleEventTask)
         self.assertEqual(batch_event.target_sales, 3)
 

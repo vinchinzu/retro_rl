@@ -4,12 +4,10 @@ Current scope follows recorded barn chores: milk ready cows and ship milk in
 the barn bin, talk to and brush each cow when tools are available, then place
 fodder in the trough.
 
-Extracted arms (rr-y80y):
-  - ``cow_geometry`` — pure barn geometry
-  - ``cow_care`` — pixel-lane action builders
-  - ``cow_target`` / ``cow_nav_ops`` — target/nav/brush mixins
-  - ``cow_milk_ops`` / ``cow_feed_ops`` — milk/feed phase mixins
-  Talk/care-slot handoff lives here with the composer.
+Phase arms (rr-y80y) are plain functions, not mixins:
+  - ``cow_geometry`` / ``cow_care`` — layout and pixel-lane builders
+  - ``cow_target`` / ``cow_nav_ops`` / ``cow_milk_ops`` / ``cow_feed_ops``
+  Talk/care-slot handoff lives here. ``step`` calls those functions.
 """
 
 from __future__ import annotations
@@ -65,8 +63,8 @@ from harvest.tasks.nav import Navigator, Pathfinder, make_action
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 # CowPhase is a str Enum so legacy comparisons and test assignments like
-# task._phase = "talk_nav" keep working. Remaining mixins import these names
-# from this module, so they are defined before those imports.
+# task._phase = "talk_nav" keep working. Phase-function modules import these
+# names from this module, so they are defined before those imports.
 
 
 class CowPhase(str, Enum):
@@ -138,20 +136,8 @@ PIXEL_NAV_STALL_FRAMES = 120
 MAX_PIXEL_NAV_STALLS = 2
 MAX_EXIT_PREP_FRAMES = 480
 
-from harvest.tasks.cow_feed_ops import CowFeedMixin
-from harvest.tasks.cow_milk_ops import CowMilkMixin
-from harvest.tasks.cow_nav_ops import CowNavMixin
-from harvest.tasks.cow_target import CowTargetMixin
-
-
 @dataclass
-class CowChoresTask(
-    CowTargetMixin,
-    CowNavMixin,
-    CowMilkMixin,
-    CowFeedMixin,
-    Task,
-):
+class CowChoresTask(Task):
     """Talk to and feed cows inside the barn."""
 
     name: str = "cow_chores"
@@ -615,3 +601,14 @@ class CowChoresTask(
             return self._after_talk(world.ram)
         action = self._dialog_pulse_action() if self._interaction_started else make_action()
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+
+
+from harvest.tasks.cow_feed_ops import bind_task_methods as _bind_cow_feed
+from harvest.tasks.cow_milk_ops import bind_task_methods as _bind_cow_milk
+from harvest.tasks.cow_nav_ops import bind_task_methods as _bind_cow_nav
+from harvest.tasks.cow_target import bind_task_methods as _bind_cow_target
+
+_bind_cow_target(CowChoresTask)
+_bind_cow_nav(CowChoresTask)
+_bind_cow_milk(CowChoresTask)
+_bind_cow_feed(CowChoresTask)

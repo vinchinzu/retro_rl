@@ -141,10 +141,10 @@ class PurchaseCloseTests(unittest.TestCase):
 
     def test_day_plan_factory_builds_buy_seeds_task(self) -> None:
         """rr-zmss: D2 BUY_SEEDS must be nav+RAM, not CrossMap origin-return."""
-        from harvest.planner.day_task_factory import DayTaskFactory
+        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 
         world = make_world(0x00)
-        task = DayTaskFactory().make_task(BUY_SEEDS_PHASE, world)
+        task = build_phase_task(TaskBuildContext(), BUY_SEEDS_PHASE, world)
         self.assertIsInstance(task, BuySeedsTask)
         self.assertNotIsInstance(task, CrossMapRecordedTask)
 

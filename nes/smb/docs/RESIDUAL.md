@@ -1,19 +1,18 @@
-# Residual observation — Super Mario Bros. (NES)
+# Residual observation
 
-Same practical lattice as Super Metroid `R(τ)`, applied to the simplest
-platformer already in the repo. The approximate stepper is a **search** model,
-not ground truth. Emulator replay is authoritative.
+Same lattice idea as Super Metroid `R(τ)`, on SMB. The stepper is a search
+model. Emulator replay is ground truth. This is not a route-clear claim.
 
 ## Observation map
 
 | Name | RAM | Width | Lattice | Notes |
 |------|-----|-------|---------|-------|
 | `x` | `$006D+$0086` | u16 | Oπ | absolute pixel X |
-| `y` | `$00CE` | u8 | Oπ | pixel Y; 1-1 floor ≈ 176 |
-| `pose` | `$000E` | u8 | Oπ | `0x08` controllable; stays `0x08` in air |
+| `y` | `$00CE` | u8 | Oπ | pixel Y; 1-1 floor about 176 |
+| `pose` | `$000E` | u8 | Oπ | `0x08` controllable, including in the air |
 | `room` | `$075F/$0760/$0750` | packed | Oπ | `(world<<16)\|(level<<8)\|area` |
-| `sub_x` | `$0400` | u8 | Oσ | X **position** subpixel |
-| `sub_y` | `$0416` | u8 | Oσ | Y **position** subpixel |
+| `sub_x` | `$0400` | u8 | Oσ | X position subpixel |
+| `sub_y` | `$0416` | u8 | Oσ | Y position subpixel |
 | `enemy0_active` | `$000F` | u8 | Oσ+ | slot 0 flag |
 | `enemy0_type` | `$0016` | u8 | Oσ+ | slot 0 type |
 | `energy` | `$075A` | u8 | O† | lives |
@@ -29,31 +28,15 @@ not ground truth. Emulator replay is authoritative.
 | `vertical_force_down` | `$070A` | u8 | stepper | fall gravity |
 | `jump_origin_y` | `$0708` | u8 | stepper | A-release height gate |
 
-`R(τ) = (fd_σ+, fd_σ, fd_π, fd_†)`. `None` means that level held for the horizon.
+`R(τ) = (fd_σ+, fd_σ, fd_π, fd_†)`. `None` means that level held for the
+horizon. Oπ holds: keep as a search model, not a route clear. Oσ broke and
+Oπ holds: check the emulator. Room change or O†: reject. `$0009` diverge:
+tag lag.
 
-Planner: Oπ holds → keep as search model (not route-clear). Oσ broke / Oπ holds
-→ emu spot-check. Room or O† → hard-reject. `$0009` diverge → tag `lag`.
+## Measure
 
-## First measurement
-
-Short Level1_1 tapes in `smb.residual_harness.SEGMENTS`:
-
-| Segment | Input | Why |
-|---------|-------|-----|
-| `idle` | 24 none | control: physics should hold |
-| `walk` | 24 RIGHT | grounded accel + subpixel |
-| `jump` | 4 A + 20 idle | takeoff / gravity (lands at f25) |
-| `run_jump` | 30 RIGHT+B+A | air control + run accel |
-| `jump_to_land` | 4 A + 28 idle | standing jump through land + settle |
-| `run_jump_to_land` | 60 RIGHT+B+A | run-jump through land |
-| `run_then_jump` | 16 RIGHT+B + 4 A + 16 RIGHT+B | takeoff-frame air X |
-| `run24_then_jump` | 24 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 2 |
-| `run32_then_jump` | 32 RIGHT+B + 4 A + 16 RIGHT+B | InitJS \|vx\| band 4 |
-| `walk_then_idle` | 16 RIGHT + 16 idle | brake `$98` |
-| `run_then_idle` | 32 RIGHT+B + 16 idle | RunningSpeed → brake `$D0` |
-| `walk_left` | 24 LEFT | LEFT first-kick `$FED0` |
-| `run_then_jump_long` | 16+4+40 RIGHT+B(+A) | air walk-max keeps `xf` |
-| `land_then_rejump` | 4 A + 21 idle + 4 A + 16 idle | InitJS zeros leftover `$0416` |
+Short Level1_1 tapes live in `smb.residual_harness.SEGMENTS` (idle, walk,
+jump, run-jump, land, brake, LEFT, rejump).
 
 ```bash
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
@@ -61,130 +44,29 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 uv run pytest nes/smb/tests/test_residual.py -q
 ```
 
-First live Level1_1 pass (2026-08-13, fceumm `Level1_1.state`):
+Documented end state of that stepper (first live pass 2026-08-13, later
+fixes in the same note, not re-run here):
 
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| idle | 25 | `(—, —, —, —)` | — | — |
-| walk | 25 | `(—, —, —, —)` | — | — |
-| jump | 25 | `(5, 5, 7, —)` | subpixels | collision (A-release gravity) |
-| run_jump | 31 | `(2, 2, 6, —)` | subpixels | collision (ground accel used in air) |
-
-Walk holds Oπ and Oσ for the whole 24-input tape (x 40→51, xs=14). A longer
-RIGHT hold still matches pixels/subpixels out to 80f; at 120f only Oσ+ breaks
-(`enemy0` spawn, fdσ+=96) — the physics residual still holds. Jump first
-broke `$0416` at f5 (`sub_y` 48 vs 64) then pixels at f7. Run-jump used
-grounded run accel in air.
-
-After `rr-ep6l` (A-release `ImposeGravity` + air walk tables unless `|vx|≥0x19`):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| idle | 25 | `(—, —, —, —)` | — | — |
-| walk | 25 | `(—, —, —, —)` | — | — |
-| jump | 25 | `(—, —, —, —)` | — | — |
-| run_jump | 31 | `(—, —, —, —)` | — | — |
-
-Gravity-only (before air X) already moved jump to a full hold; run-jump stayed
-`(2, 2, 6, —)` on `$0400` until air X used walk `$98`/`$18`. Grounded walk,
-grounded run (30f), and a short walk-jump also hold.
-
-After `rr-phwv` (land keeps `$0416` / leftover `$0709`; do not snap `sub_y` to 0):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| idle | 25 | `(—, —, —, —)` | — | — |
-| walk | 25 | `(—, —, —, —)` | — | — |
-| jump | 25 | `(—, —, —, —)` | — | — |
-| run_jump | 31 | `(—, —, —, —)` | — | — |
-| jump_to_land | 33 | `(—, —, —, —)` | — | — |
-| run_jump_to_land | 61 | `(—, —, —, —)` | — | — |
-
-Landing snaps pixel Y and zeros `velocity_y` / `$0433`. ImposeGravity leftover
-`$0416` stays (`128` on the standing 4-A land, `64` on the 60f run-jump) and
-`$0709` stays at `0x70`. Land-then-walk / land-then-run / land-then-rejump
-also hold. Short tapes still land before f25 / f53, so they never saw this.
-
-After `rr-kez8` (takeoff-frame air X: leave-ground uses walk `$98` unless
-`|vx|≥0x19`):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| idle | 25 | `(—, —, —, —)` | — | — |
-| walk | 25 | `(—, —, —, —)` | — | — |
-| jump | 25 | `(—, —, —, —)` | — | — |
-| run_jump | 31 | `(—, —, —, —)` | — | — |
-| jump_to_land | 33 | `(—, —, —, —)` | — | — |
-| run_jump_to_land | 61 | `(—, —, —, —)` | — | — |
-| run_then_jump | 37 | `(—, —, —, —)` | — | — |
-
-16f RIGHT+B then A: takeoff `xf` 140→36 (walk `$98`), not 140→112 (run `$E4`).
-Walk-then-jump and a skid-jump (RIGHT+B then LEFT+A) also hold.
-
-After `rr-8ptm` (smbdis `InitJS` jump tables from `|vx|` at takeoff):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| idle | 25 | `(—, —, —, —)` | — | — |
-| walk | 25 | `(—, —, —, —)` | — | — |
-| jump | 25 | `(—, —, —, —)` | — | — |
-| run_jump | 31 | `(—, —, —, —)` | — | — |
-| jump_to_land | 33 | `(—, —, —, —)` | — | — |
-| run_jump_to_land | 61 | `(—, —, —, —)` | — | — |
-| run_then_jump | 37 | `(—, —, —, —)` | — | — |
-| run24_then_jump | 45 | `(—, —, —, —)` | — | — |
-| run32_then_jump | 53 | `(—, —, —, —)` | — | — |
-
-Land bands (smbdis `JumpMForceData` / `FallMForceData` / `PlayerYSpdData`):
-`|vx|<9` → `$20/$70/-4`; `<$10` same; `<$19` → `$1E/$60/-4`; `<$1C` and
-`≥$1C` → `$28/$90/-5`. 24f run takeoff `|vx|=21` uses `$1E` (not `$20`);
-32f run `|vx|=28` uses `vy=-5`. Swim indices 5–6 not modeled.
-
-After `rr-is5b` (smbdis `FrictionData` / `GetPlayerAnimSpeed` RunningSpeed):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| walk_then_idle | 33 | `(—, —, —, —)` | — | — |
-| run_then_idle | 49 | `(—, —, —, —)` | — | — |
-
-No L/R uses `$98` unless `RunningSpeed` (latched on ground when `|vx|≥$1C`,
-one frame later) or `|vx|≥$21` (then `$D0`). Walk-then-idle was the
-fdσ=19 leftover; run-then-idle needs the latch (first idle `$98`, next `$D0`).
-
-After `rr-8pvn` (smbdis `ImposeFriction` 16-bit subtract; LEFT is not `-$0130`):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| walk_left | 25 | `(—, —, —, —)` | — | — |
-
-At rest `Player_MovingDir=0` ≠ facing, so the adder doubles (`$98<<1=$0130`).
-RIGHT adds → `$0130`. LEFT subtracts → `$FED0` (`vx=-2`, `xf=$D0`), then
-walk `$98`. Sign-magnitude `-$0130` was `vx=-1` / `xf=$30` (fdσ=1).
-
-After `rr-pwdj` (clamp snaps `vx` only; leftover `$0705` stays):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| run_then_jump_long | 61 | `(—, —, —, —)` | — | — |
-
-Air walk-max `$18` at f32 keeps `xf=12` (then 164, 60, …). Wiping `xf` to 0
-held pixels until land; fdσ=42 on the 16+4+40 tape.
-
-After `rr-cjxz` (Observation is lattice-only; `step` takes `PlayerPhysics` +
-`World`; `land_then_rejump` proves InitJS zeros `$0416`):
-
-| Segment | Horizon | `R(τ)=(fdσ+, fdσ, fdπ, fd†)` | First field | Cause |
-|---------|--------:|------------------------------|-------------|-------|
-| land_then_rejump | 46 | `(—, —, —, —)` | — | — |
-
-Standing 4-A lands at f25 with `$0416=128`. Next A-edge wipes it to 0
-(emu takeoff `sub_y=0`, same as a rest jump). Keeping leftover broke fdσ=26.
-`R(τ)` compare lives in `retro_harness.residual`; SMB/SM pass a `LatticeSpec`.
+- A-release uses `ImposeGravity`. Air X uses the walk tables unless
+  `|vx| >= 0x19`.
+- Landing keeps leftover `$0416` and `$0709`. Do not snap `sub_y` to 0.
+  The next jump's InitJS wipes `$0416`.
+- Takeoff-frame air X uses walk `$98` unless `|vx| >= 0x19`.
+- InitJS jump bands follow `|vx|` at takeoff (`JumpMForceData` /
+  `FallMForceData` / `PlayerYSpdData`). Swim indices are not modeled.
+- No Left/Right uses `$98` unless `RunningSpeed` is latched or
+  `|vx| >= $21` (then `$D0`).
+- LEFT from rest subtracts to `$FED0`, not a sign-magnitude `-$0130`.
+- Air walk-max keeps `x_force`. Clamping snaps `vx` only.
 
 ## Modules
 
-- `smb.observation` — RAM → `Observation` (lattice) / `PlayerPhysics` / `World`
-- `smb.approx.step` — pure `player, action, world → player`
-- `smb.residual` — `SMB_LATTICE` + `compute_residual_profile`
-- `retro_harness.residual` — shared `ResidualProfile` / lattice scan
-- `smb.residual_harness` — stepper + fceumm + `R(τ)`
+- `smb.observation`: RAM to `Observation`, `PlayerPhysics`, `World`
+- `smb.approx.step`: `player, action, world` to `player`
+- `smb.residual`: `SMB_LATTICE` and `compute_residual_profile`
+- `retro_harness.residual`: shared profile and lattice scan
+- `smb.residual_harness`: stepper, fceumm, and `R(τ)`
+
+## Next
+
+Collision as a `World` query. Not a route gate.

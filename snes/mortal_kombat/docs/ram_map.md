@@ -16,20 +16,20 @@ Read-only WRAM via `get_ram()`. HUD bytes: `data.json` + GameHacking.org USA
 | p2_health | 1211 | `0x04BB` | Max **161** |
 | p1_rounds | 6510 | `0x196E` | |
 | p1_character | 6514 | `0x1972` | Liu Kang = **3** |
-| p1_x / p1_y (v3 obs) | 218 / 219 | `0x00DA` / `0x00DB` | Object-stride guess. **Animation noise** — overnight v3 zips were trained on these bytes; do not retarget obs without retraining |
+| p1_x / p1_y (v3 obs) | 218 / 219 | `0x00DA` / `0x00DB` | Object-stride guess. **Animation noise.** Overnight v3 zips were trained on these bytes; do not retarget obs without retraining |
 | p2_x / p2_y (v3 obs) | 372 / 373 | `0x0174` / `0x0175` | Same, P2. P2 Y sticks ~24 |
 | p1_x / p1_y (pose) | 6502 / 6504 | `0x1966` / `0x1968` | Live screen pose. Start ~68/144. Used by scripted policy |
 | p2_x / p2_y (pose) | 783 / 815 | `0x030F` / `0x032F` | P2 X starts ~180 then walks in. Y standing ~144 |
 | p1_state | 274 | `0x0112` | Object +`0x38`; often 0 |
 | p2_state | 430 | `0x01AE` | Same field on P2; stays 0 for courtyard Kano knives |
-| knife_x | 6966 | `0x1B36` | Sprite X. Equals P2 pose X until Kano's knife leaves; then walks toward P1 (visible pin idle: 180 through f=250, split 259, 139/98/74 into Liu Kang at f=273). Duck only when the sprite is *between* the bodies — stale 180 while Kano walks in is not a knife. Jump the opener *before* this split (296 start-pose frames from leftover first-ready); y drops 20-30f after the tap. Standing y is 144 — y=143 is still air; walking then crosses. Air HK on y-drop is 25 dmg same-side (~151/183) from the pin probe |
+| knife_x | 6966 | `0x1B36` | Sprite X. Duck only when it sits between the bodies. A stale 180 while Kano walks in is not a knife. |
 
 High WRAM sprite tables `0x7688` / `0x7788` (Hacc) are optional if `get_ram()`
-is long enough — not required for v3 obs.
+is long enough, and not required for v3 obs.
 
 Hitboxes in `ram.py` are **derived** AABBs from X/Y + facing (hurt 28×80
 stand / 28×48 crouch; attack 40×24 when state ≠ 0). Policies see overlap /
-in-range bits plus raw state bytes — not pixels.
+in-range bits plus raw state bytes, not pixels.
 
 v3 observation is 20 floats (`snapshot_features`). Incompatible with v1
 (9-dim) and v2 (13-dim) MLP zips.
@@ -48,7 +48,7 @@ Round / match notes:
   play. Natural Endurance 1 is Kano (id 1) on the courtyard; isolated
   `Endurance1_LiuKang` is Sub-Zero. First fight-ready after VS can be a
   black fade; identify on a visible frame. Fight 7 pin leftover is
-  `hp=59/0 rounds=2-0` — mix oracles must not treat that as a Kano KO.
+  `hp=59/0 rounds=2-0`. Mix oracles must not treat that as a Kano KO.
 - For scripted replay scoring, count health transitions `>0 → 0` for each
   fighter. These settle before the delayed HUD round bytes and avoid the noisy
   P2 byte producing a false loss at the final KO.

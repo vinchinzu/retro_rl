@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from zelda_i.dungeon.hop_controller import mouth_step
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
 
@@ -33,7 +33,6 @@ from zelda_i.ram import (
     ADDR_RAFT,
     PLAY_MODE,
     ZeldaSnapshot,
-    ow_secret_taken,
     read_snapshot,
     read_u8,
 )
@@ -118,97 +117,22 @@ RUPEES_71_BACK_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x72, "RIGHT", align_y=141),
     ScreenHop(0x73, "RIGHT", align_y=141),
 )
-RUPEES_71_MAX_FRAMES = 12000
-
-
-def _part_done(ctl: Any) -> tuple[bool, bool]:
-    """(done, failed) for one detour part (``success`` / ``failed`` / FAILED phase)."""
-    if getattr(ctl, "success", False):
-        return True, False
-    phase = getattr(ctl, "phase", None)
-    name = getattr(phase, "name", phase)
-    failed = bool(getattr(ctl, "failed", False)) or (
-        isinstance(name, str) and name.upper() == "FAILED"
-    )
-    return failed, failed
-
-
-@dataclass
-class Rupees71Detour:
-    """0x74 -> 0x71's 30R cave -> 0x73, as one stage so a skip is one frame.
-
-    Skipped on its first frame with no bomb, the cave already taken, or no
-    room in the wallet for the pay. Ends on 0x73: the potion restock after
-    it resumes there.
-    """
-
-    max_frames: int = RUPEES_71_MAX_FRAMES
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-    _parts: list[tuple[str, Any]] = field(default_factory=list, repr=False)
-    _env: Any = field(default=None, repr=False)
-
-    def bind_env(self, env: Any) -> None:
-        self._env = env
-
-    def _plan(self) -> list[tuple[str, Any]]:
-        from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
-        from zelda_i.overworld.gather_segments import (
-            CaveExitController,
-            HopWalkController,
-            make_secret_rupee_controller,
-        )
-
-        return [
-            ("walk_71", HopWalkController(hops=RUPEES_71_HOPS, max_frames=6000)),
-            ("select_bombs_71", PauseSelectController(want=B_SLOT_BOMBS, name="bombs")),
-            ("rupees_71", make_secret_rupee_controller(RUPEES_71_SCREEN)),
-            ("exit_cave_71", CaveExitController(clear=16)),
-            ("return_73", HopWalkController(hops=RUPEES_71_BACK_HOPS, max_frames=6000)),
-        ]
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        if self.frames == 0:
-            self.frames += 1
-            ram = self._env.get_ram() if self._env is not None else None
-            if int(snap.bombs) < 1:
-                return self._skip("no_bomb")
-            if ram is not None and ow_secret_taken(ram, RUPEES_71_SCREEN):
-                return self._skip("taken")
-            if int(snap.rupees) + RUPEES_71_PAY > 255:
-                return self._skip("wallet_full")
-            self._parts = self._plan()
-            for _, ctl in self._parts:
-                if hasattr(ctl, "bind_env") and self._env is not None:
-                    ctl.bind_env(self._env)
-        else:
-            self.frames += 1
-        while self._parts:
-            name, ctl = self._parts[0]
-            done, failed = _part_done(ctl)
-            if failed:
-                self.failed = True
-                self.notes.append(f"{name}_failed")
-                return FrameAction(nes_idle_action(), f"{name}_failed")
-            if done:
-                self.notes.append(name)
-                self._parts.pop(0)
-                continue
-            return ctl.step(snap)
-        self.success = True
-        return FrameAction(nes_idle_action(), "done")
-
-    def _skip(self, why: str) -> FrameAction:
-        self.success = True
-        self.notes.append(f"skip_71_{why}")
-        return FrameAction(nes_idle_action(), "done")
-
-    def report(self) -> dict[str, Any]:
-        return {"success": self.success, "frames": self.frames, "notes": list(self.notes)}
-
-
+# The unclaimed 10R tree is north-west of 0x63, on the same mainland side
+# of the raft as the L4 potion and bomb shops. The return rejoins that walk
+# at 0x63; those shop controllers resume from the current screen.
+RUPEES_51_SCREEN = 0x51
+RUPEES_51_PAY = 10
+RUPEES_51_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x63, "UP", align_x=128),
+    ScreenHop(0x53, "UP", align_x=120),
+    ScreenHop(0x52, "LEFT", align_y=141),
+    ScreenHop(RUPEES_51_SCREEN, "LEFT", align_y=141),
+)
+RUPEES_51_BACK_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x52, "RIGHT", align_y=141),
+    ScreenHop(0x53, "RIGHT", align_y=141),
+    ScreenHop(0x63, "DOWN", align_x=128),
+)
 # Legacy name kept for planning_report / docs (was start→dock placeholder).
 LEVEL4_DOCK_HOPS: tuple[ScreenHop, ...] = LEVEL4_HOPS_FROM_POST_L3
 

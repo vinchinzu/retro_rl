@@ -2,13 +2,13 @@
 
 Autonomous daily-life bot for Harvest Moon (SNES) using stable-retro.
 Handles farm clearing, crop planting/watering/harvesting, chicken coop
-chores, berry collection, and shop trips — all driven by a dynamic day
+chores, berry collection, and shop trips, all driven by a dynamic day
 planner that inspects the save state and assembles tasks by priority.
 
-## Quick Start
+## Quick start
 
 ```bash
-# Install dependencies (requires uv — all commands use `uv run`)
+# Install dependencies (requires uv; all commands use `uv run`)
 uv sync
 
 # Autoplay from latest save (dynamic day plan)
@@ -27,7 +27,7 @@ uv run python -m harvest.runtime.harvest_bot play --state latest --record coop_c
 HEADLESS=1 ./run_bot.sh play --autoplay --state latest
 ```
 
-## Map Editor
+## Map editor
 
 ```bash
 # Open the exact-pixel map editor on a snapshot
@@ -53,7 +53,7 @@ synthesized.
 
 See [docs/editor_layers.md](docs/editor_layers.md) for the current overlay model and commands.
 
-## Reference Map Tools
+## Reference map tools
 
 ```bash
 # Export the town reference image as PNG
@@ -75,16 +75,16 @@ uv run python -m harvest.maps.extract_tiles --compare-reference town --compare-s
 | P | Mark current tile as no-go |
 | ESC | Exit |
 
-## Day Plan System
+## Day plan system
 
 `build_day_phases()` in `harvest/planner/day_plan_phases.py` inspects the save state and assembles
 the day's task list dynamically.  Priority order:
 
 1. **Exit building** (always)
-2. **Chicken coop** — feed adults, collect egg, incubate or ship (`harvest/tasks/coop_task.py`)
+2. **Chicken coop**: feed adults, collect egg, incubate or ship (`harvest/tasks/coop_task.py`)
 3. **Harvest** ripe crops → ship to bin (`harvest/tasks/harvest_task.py`)
-4. **Water** crops — ensure watering can from shed, BFS to field (`harvest/tasks/crop_planter.py`)
-5. **Berry run** — walk to mountain, pick berries, ship (if before 15:00)
+4. **Water** crops: ensure watering can from shed, BFS to field (`harvest/tasks/crop_planter.py`)
+5. **Berry run**: walk to mountain, pick berries, ship (if before 15:00)
 
 Named sequences (`--day-plan day1`, `sunday`, `harvest`, etc.) still work as
 manual overrides.
@@ -96,9 +96,10 @@ manual overrides.
 - Plan (future work): [docs/plan.md](docs/plan.md)
 - Planning stack (skills, contracts, advisor): [docs/PLANNING_STACK.md](docs/PLANNING_STACK.md)
 - RAM map: [docs/ram_map.md](docs/ram_map.md)
-- Morning fixture probe: `uv run python -m harvest.scripts.boot_probe`
-- Clean power-on bootstrap (title → new diary → Spring D1):
-  `HEADLESS=1 uv run python -m harvest.scripts.boot_probe --power-on`
+- Farm-clear, shop, grape, and pocket from a pin:
+  `HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House`
+- Clean power-on through Spring D2 farm clear:
+  `HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --stop-after-d2-clear`
 - Overnight target: `HEADLESS=1 uv run python -m harvest.scripts.run_to_day2`
 
 Day sequences: `--day-plan day1` or `--day-plan boot_to_day2` (macros + town explore
@@ -123,13 +124,13 @@ harvest/tasks/farm_clearer.py    - FarmClearer + TileScanner (re-exports nav)
 harvest/maps/map_config.py       - Walkable tiles, map registry, named routes
 harvest/core/harvest_state.py    - HarvestStateDocument (persistent tile layer)
 harvest/runtime/rom_tools.py     - Save state parsing, VRAM/ROM inspection
-harvest/scripts/    - boot_probe, run_to_day2
+harvest/scripts/    - run_to_day2, interact_scan, spring_plan
 tasks/              - Recorded action sequences (JSON + end states)
 custom_integrations/  # stable-retro game data + save states
 tests/              - tests
 ```
 
-## RAM Discovery
+## RAM discovery
 
 When adding new features, diff save states to find RAM addresses:
 
@@ -141,25 +142,13 @@ ram = s.ram
 ```
 
 Key RAM regions:
-- `0x0900–0x09FF` — inventory, tools, items
-- `0x11F00–0x12000` — farm stats (money, hay, chicken count, time, etc.)
-- `0xC200–0xC400` — livestock slots (chickens at 0xC286, cows at 0xC1C6)
+- `0x0900-0x09FF`: inventory, tools, items
+- `0x11F00-0x12000`: farm stats (money, hay, chicken count, time, etc.)
+- `0xC200-0xC400`: livestock slots (chickens at 0xC286, cows at 0xC1C6)
 
 ## Configuration
 
 Environment variables:
-- `HEADLESS=1` — run without display
-- `SKIP_HAMMER=1` — skip startup task to get hammer from shed
-- `NO_GO_TILES="x,y;x,y"` — mark tiles as impassable
-
-## Controls
-
-| Key/Button | Action |
-|------------|--------|
-| L+R+SELECT | Toggle Human/Bot mode (hot-swap) |
-| TAB | Fast forward |
-| `[` / `]` | Speed down/up |
-| F5 | Save recording when `--record`, otherwise save state |
-| F9 | Load last save |
-| P | Mark current tile as no-go |
-| ESC | Exit |
+- `HEADLESS=1`: run without display
+- `SKIP_HAMMER=1`: skip startup task to get hammer from shed
+- `NO_GO_TILES="x,y;x,y"`: mark tiles as impassable

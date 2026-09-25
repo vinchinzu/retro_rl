@@ -1,8 +1,8 @@
-# External Tools And References
+# External tools and references
 
 Fetched on 2026-04-29.
 
-## Local Clones
+## Local clones
 
 | Path | Repository | Commit | Date | Role |
 | --- | --- | --- | --- | --- |
@@ -26,7 +26,7 @@ git -C SMW/tools/external/AddMusicKFF pull --ff-only
 
 Then update this table.
 
-## Non-Cloned Required Tools
+## Tools not cloned
 
 ### Lunar Magic
 
@@ -44,12 +44,12 @@ distributed through SMW Central rather than maintained as a normal source clone
 in this workspace. Use it through a local ignored install and keep block source
 under `SMW/mods/` once that tree exists.
 
-### UberASM Tool
+### UberASM tool
 
 Use for level, overworld, game-mode, status bar, and global ASM snippets. It
 belongs in the patch/mod pipeline, not the autoplay baseline.
 
-## Why These Sources
+## Why these sources
 
 - Data Crystal identifies SMWDisX and `snesrev/smw` as the relevant public
   disassembly/reimplementation projects and lists Lunar Magic, GPS, PIXI, and
@@ -61,9 +61,9 @@ belongs in the patch/mod pipeline, not the autoplay baseline.
 - SMW Editor is not yet usable as a replacement for Lunar Magic, but its Rust
   code and symbols are useful for designing our editor model.
 
-## Build Notes
+## Build notes
 
-### C Port
+### C port
 
 ```bash
 cd SMW/refs/smw-port

@@ -33,8 +33,8 @@ Composite best-known per-hole stitch (singles; H4 still 2 offline):
 
 ## Priority (worst first)
 
-1. **H4** — Title clear scored 6; single-hole metal still 2
-2. **H10** — 7 is playable but still +3
+1. **H4.** Title clear scored 6; single-hole metal still 2.
+2. **H10.** 7 is playable but still +3.
 3. Re-record after H4/H10 improve: `./record_metal_clear.sh`
 
 ## Provenance map (stroke ← live search)
@@ -58,7 +58,7 @@ Composite best-known per-hole stitch (singles; H4 still 2 offline):
 | 18 | Post-H17 MetalTee18 `42/-5` + `44/-5` (`MetalH18_fw169`) | High |
 
 **Timeline note:** metal tees rewrite under `--tee-state-prefix`. After an H17
-eagle, `MetalTee18` rejects the older `44/0` opener — always re-search the
+eagle, `MetalTee18` rejects the older `44/0` opener. Always re-search the
 live tee after upstream birdies/eagles.
 
 ## Calibration workflow
@@ -75,13 +75,13 @@ HEADLESS=1 ./run_bot.sh search-hio \
 ```
 
 Always record **end lie** when promoting a tee winner. Straight `42/0`
-driver often **fails to move** on metal stroke tees (H12/H15) — prefer a
+driver often **fails to move** on metal stroke tees (H12/H15). Prefer a
 verified aim/club from `search-hio` before trusting Amateur power.
 
 ## Memory rules
 
-1. **Code tables win** — never rely on agent transcripts as the only record.
+1. **Code tables win.** Never rely on agent transcripts as the only record.
 2. **Named `Metal*` save states** are replay evidence, not planner input.
 3. **VS HAL metal** is a prior only; always verify on stroke `MetalTeeN`.
 4. Leave-shaped REST bands use `requires_vs_hal=None` (or False for stroke-only).
-5. Empty overlay = intentional Amateur fallback — do not invent Pro numbers.
+5. Empty overlay means an intentional Amateur fallback. Do not invent Pro numbers.

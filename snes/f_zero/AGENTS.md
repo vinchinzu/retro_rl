@@ -1,6 +1,6 @@
-# Agent Instructions — f_zero
+# Agent instructions: f_zero
 
-Scripted SNES completion agent for **F-Zero** (continuous control track; maturity M2, M3 in progress).
+Scripted SNES completion agent for **F-Zero** (continuous control track; maturity M2).
 
 ## Identity
 
@@ -32,15 +32,15 @@ natural-entry from boot rather than `MuteCity.state`.
 
 ## Scripts
 
-- `scripts/boot_probe.py` — reset → Grand Prix/Blue Falcon/beginner/Mute City
-- `scripts/ram_probe.py` — acceleration and LEFT/RIGHT differential probe
-- `scripts/run_mute_city_lap.py` — centerline + recovery from `MuteCity.state`
-- `scripts/setup_rom.py` — extract/link the shared ROM
+- `scripts/boot_probe.py`: reset to Grand Prix, Blue Falcon, beginner, Mute City
+- `scripts/ram_probe.py`: acceleration and LEFT/RIGHT differential probe
+- `scripts/run_mute_city_lap.py`: centerline and recovery from `MuteCity.state`
+- `scripts/setup_rom.py`: extract or link the shared ROM
 
 ## RAM quick ref
 
 Raw speed `0x0002` (calibrate only after countdown), lateral `0x007F`, camera
-Y `0x00A6`. Finish-line: HUD `0x00B8` bit 4 (`X laps left`) rising edge — not
+Y `0x00A6`. Finish-line: HUD `0x00B8` bit 4 (`X laps left`) rising edge, not
 a sticky lap counter. Crash-out: `0x00C3` bit 6 exploded / bit 7 lost, or
 signed power `0x00C9` `< 0`. Heading Angle8 `0x0BD1` vs checkpoint facing
 `0x00C5`. Rank remains open.

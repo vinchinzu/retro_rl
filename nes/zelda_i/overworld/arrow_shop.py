@@ -80,6 +80,32 @@ SHOP_F3_CAVE_Y = 77
 SHOP_F3_APPROACH_Y = 93
 
 
+@dataclass(frozen=True)
+class _ShopDoor:
+    cave_x: int
+    cave_y: int
+    mouth_approach_y: int | None
+    north_gap_x: int | None
+    north_gap_y_hi: int
+    max_frames: int
+
+
+_SHOP_DOORS = {
+    ARROW_SHOP_SCREEN: _ShopDoor(
+        ARROW_SHOP_CAVE_X, ARROW_SHOP_CAVE_Y, None, ARROW_SHOP_CAVE_X,
+        ARROW_SHOP_NORTH_GAP_Y_HI, ARROW_SHOP_MAX_FRAMES,
+    ),
+    SHOP_E5_SCREEN: _ShopDoor(
+        SHOP_E5_CAVE_X, SHOP_E5_CAVE_Y, SHOP_E5_APPROACH_Y, None,
+        NORTH_GAP_Y_HI, SHOP_E5_MAX_FRAMES,
+    ),
+    SHOP_F3_SCREEN: _ShopDoor(
+        SHOP_F3_CAVE_X, SHOP_F3_CAVE_Y, SHOP_F3_APPROACH_Y, None,
+        NORTH_GAP_Y_HI, SHOP_E5_MAX_FRAMES,
+    ),
+}
+
+
 def _arrows_value(snap: ZeldaSnapshot) -> int:
     return int(snap.arrows)
 
@@ -218,35 +244,11 @@ def make_arrow_restock_controller(
     if screen is None:
         screen = (
             hops[-1].target
-            if hops and hops[-1].target in (ARROW_SHOP_SCREEN, SHOP_E5_SCREEN)
+            if hops and hops[-1].target in _SHOP_DOORS
             else SHOP_E5_SCREEN
         )
-
-    if screen == SHOP_E5_SCREEN:
-        cave_x = SHOP_E5_CAVE_X
-        cave_y = SHOP_E5_CAVE_Y
-        door_x = SHOP_E5_CAVE_X
-        mouth_approach_y: int | None = SHOP_E5_APPROACH_Y
-        north_gap_x: int | None = None
-        north_gap_y_hi: int = NORTH_GAP_Y_HI
-        max_frames = SHOP_E5_MAX_FRAMES
-    elif screen == SHOP_F3_SCREEN:
-        cave_x = SHOP_F3_CAVE_X
-        cave_y = SHOP_F3_CAVE_Y
-        door_x = SHOP_F3_CAVE_X
-        mouth_approach_y = SHOP_F3_APPROACH_Y
-        north_gap_x = None
-        north_gap_y_hi = NORTH_GAP_Y_HI
-        max_frames = SHOP_E5_MAX_FRAMES
-    elif screen == ARROW_SHOP_SCREEN:
-        cave_x = ARROW_SHOP_CAVE_X
-        cave_y = ARROW_SHOP_CAVE_Y
-        door_x = ARROW_SHOP_CAVE_X
-        mouth_approach_y = None
-        north_gap_x = ARROW_SHOP_CAVE_X
-        north_gap_y_hi = ARROW_SHOP_NORTH_GAP_Y_HI
-        max_frames = ARROW_SHOP_MAX_FRAMES
-    else:
+    door = _SHOP_DOORS.get(screen)
+    if door is None:
         raise ValueError(f"unsupported arrow shop screen: 0x{screen:02X}")
 
     return ArrowRestockController(
@@ -255,22 +257,22 @@ def make_arrow_restock_controller(
         want=int(want),
         skip_short=bool(skip_short),
         enter_cave=True,
-        door_x=door_x,
+        door_x=door.cave_x,
         door_dir="UP",
         door_screen=screen,
         farm_below_hearts=0,
         max_farm_attempts=0,
         require_sword=True,
-        max_frames=max_frames,
+        max_frames=door.max_frames,
         swing_period=SWORD_SWING_PERIOD,
         swing_hold=SWORD_SWING_HOLD,
         stuck_threshold=STUCK_THRESHOLD,
         shop_screen=screen,
-        cave_x=cave_x,
-        cave_y=cave_y,
-        mouth_approach_y=mouth_approach_y,
-        north_gap_x=north_gap_x,
-        north_gap_y_hi=north_gap_y_hi,
+        cave_x=door.cave_x,
+        cave_y=door.cave_y,
+        mouth_approach_y=door.mouth_approach_y,
+        north_gap_x=door.north_gap_x,
+        north_gap_y_hi=door.north_gap_y_hi,
         buy_x=ARROW_BUY_X,
         buy_y=ARROW_BUY_Y,
         price=ARROW_SHOP_PRICE,

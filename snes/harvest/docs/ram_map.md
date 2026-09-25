@@ -1,4 +1,4 @@
-# RAM Map — Harvest Moon (SNES)
+# RAM Map - Harvest Moon (SNES)
 
 Authoritative field metadata: `harvest/core/ram_catalog.py` (`SCALAR_FIELDS`).
 Save-state RAM is direct WRAM; live `env.get_ram()` may be offset by `+0x4000`

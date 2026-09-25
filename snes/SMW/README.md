@@ -1,10 +1,10 @@
-# Super Mario World RL / Editor Workspace
+# Super Mario World
 
 SMW is the Super Mario World workspace for emulator autoplay, speedrun
 optimization, RAM/ROM decomposition, ROM-hacking tools, and the eventual
 native C-port/modding track.
 
-## Quick Start
+## Quick start
 
 Commands below assume the monorepo root as the working directory. If you are
 already inside `SMW/`, use `./play_speedrun.sh` for the launcher.
@@ -37,7 +37,7 @@ ln -sf ../../roms/smw.sfc SMW/custom_integrations/SuperMarioWorld-Snes-v0/rom.sf
 The stable-retro integration expects SHA1
 `6b47bb75d16514b6a476aa0c73a683a2a4c18765` for the standard USA ROM.
 
-## Fresh-Game Speedrun Recording
+## Fresh-game speedrun recording
 
 Use the launcher when you want to play from a clean boot rather than from a
 published level state:
@@ -71,7 +71,7 @@ Useful controls:
 - `F9`/`F10`: cycle local states; `F11`: load selected state.
 - `R`: reset to the fresh start; `TAB`: turbo; `[`/`]`: speed; `ESC`: stop and save.
 
-## Test Fixtures
+## Test fixtures
 
 ```bash
 # Build a checksum-valid 96-exit SRAM fixture.
@@ -101,7 +101,7 @@ SMW/
   roms/                                        local ROMs, ignored
 ```
 
-## Current Priority
+## Current priority
 
 1. Establish emulator autoplay on stable-retro states.
 2. Build a RAM-backed segment verifier and route manifest.

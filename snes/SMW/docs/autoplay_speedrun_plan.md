@@ -1,6 +1,6 @@
-# Autoplay And Speedrun Plan
+# Autoplay and speedrun plan
 
-## Bronze Target
+## Bronze target
 
 Make one stable-retro SMW state reproducible end to end:
 
@@ -15,7 +15,7 @@ The local USA ROM is installed at `snes/SMW/roms/smw.sfc` with SHA1
 `6b47bb75d16514b6a476aa0c73a683a2a4c18765`. BizHawk replay status and TAS
 source roles are tracked in [STATUS.md](STATUS.md).
 
-## Phase 1 - Autoplay Foundation
+## Phase 1: autoplay foundation
 
 - [x] Create `SMW/` workspace.
 - [x] Add custom stable-retro integration metadata and expanded RAM fields.
@@ -27,7 +27,7 @@ source roles are tracked in [STATUS.md](STATUS.md).
 - [ ] Hillclimb from the recording.
 - [ ] Promote best action file into a route manifest.
 
-## Phase 2 - Segment Contract
+## Phase 2: segment contract
 
 Each segment needs:
 
@@ -56,7 +56,7 @@ Minimum trace fields:
 - `p_meter`
 - `on_ground`
 
-## Phase 3 - Chained 11-Exit Route
+## Phase 3: chained 11-exit route
 
 The first speedrun route is the normal 11-exit route, not credits warp/ACE.
 Draft manifest: [../routes/11_exit_seed.json](../routes/11_exit_seed.json).
@@ -77,7 +77,7 @@ Missing route anchors expected early:
 - Star World 1 through Star World 5
 - Front Door / Bowser
 
-## Phase 4 - Speedrun Tightening
+## Phase 4: speedrun tightening
 
 Once the route completes:
 
@@ -87,7 +87,7 @@ Once the route completes:
 - Add route alternatives for no-cape/no-starworld practice.
 - Record boss-room and keyhole-specific subsegments.
 
-## Phase 5 - Canonical Reuse
+## Phase 5: canonical reuse
 
 Promote shared mechanics back into `retro_harness.platformer` only after SMW proves
 the shape:

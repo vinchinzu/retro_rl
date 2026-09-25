@@ -57,7 +57,7 @@ fceumm WRAM; Mega Man is index 0. Parallel arrays of 32 slots.
 
 | Addr | Name | Notes |
 |------|------|-------|
-| `$0400+i` | Object type (`aobject_pointer`) | Behavior/ID (see DECODE.md) |
+| `$0400+i` | Object type (`aobject_pointer`) | Behavior/ID (LL and goblin IDs below) |
 | `$0420+i` | Flags | bit7 exist, bit6 right, bit5 invis, bit4 appearing_block |
 | `$0440+i` | Object screen | Matches `zscreen_id` when on-camera |
 | `$0460+i` | Object X | Screen-relative |

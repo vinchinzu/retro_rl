@@ -1,17 +1,7 @@
-# Agent Instructions — smb3
+# SMB3 agent notes
 
-Scripted NES completion agent for **Super Mario Bros. 3** (platforming track; maturity M3 segment).
-
-## Identity
-
-| Field | Value |
-|-------|-------|
-| Status | World 1-1 clear verified |
-| Integration | `SuperMarioBros3-Nes` |
-| Shared ROM zip | `roms/Nintendo/NES/Super Mario Bros. 3.zip` |
-| Local ROM | `smb3/roms/` (via `scripts/setup_rom.py`) |
-| 1-1 policy | `smb3/policies/level1_1.json` |
-| 1-2 policy | `smb3/policies/level1_2.json` |
+NES Super Mario Bros. 3. Gate: `docs/STATUS.md`. Future work: `docs/plan.md`.
+RAM: `docs/ram_map.md`.
 
 ## Commands
 
@@ -25,22 +15,20 @@ uv run python nes/smb3/scripts/run_level1.py --level 1-2 --from-state Level1_2
 uv run pytest nes/smb3/tests -q
 ```
 
+The 1-2 command exists. `docs/STATUS.md` still records only the World 1-1
+clear. Do not treat a 1-2 run as verified unless that gate moves.
+
 ## Traps
 
-- Boot map pose is **not** on the enterable 1-1 node: need RIGHT then UP, then A.
-- AfterLevel1 is not immediately controllable: wait Map_Operation `$0D` (~114f).
-- 1-1 → 1-2 is **two** RIGHT hops (T-junction tile, then 1-2 panel `$04`).
-- 1-1/1-2 policies are frame-synced to natural entry; desyncs if map walk or
-  level-load settle frames change (re-hillclimb from natural entry).
-- NES actions use `retro_harness.nes` (9-button fceumm layout): B=run, A=jump.
-- Progress uses `x_page (0x75) * 256 + hpos (0x90)` only while `x_page < 0x18`.
+- The boot map pose is not the enterable 1-1 node. Walk RIGHT, then UP, then A.
+- `AfterLevel1` is not controllable immediately. Wait for Map_Operation `$0D`.
+- 1-1 to 1-2 is two RIGHT hops: a T-junction tile, then the 1-2 panel `$04`.
+- 1-1 and 1-2 policies are frame-synced to natural entry. A map-walk or
+  level-load settle change desyncs them.
+- NES actions use `retro_harness.nes` (9-button fceumm). B runs, A jumps.
+- Progress is `x_page` (`$75`) times 256 plus `hpos` (`$90`), and only while
+  `x_page < $18`.
 
-## Next milestone
+## Pointers
 
-World 1-3 natural-entry from AfterLevel2.
-
-## Norms
-
-- Prefer nearest local docs (`docs/STATUS.md`, `docs/plan.md`) over root notes.
-- Keep RAM maps, save states, and policies inside this game directory.
-- Line length 88; type hints; `uv run pytest` for tests.
+`docs/STATUS.md` · `docs/plan.md` · `docs/ram_map.md`

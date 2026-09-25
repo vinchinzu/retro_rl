@@ -1,4 +1,4 @@
-# ALTTP — z3-json-data integration
+# ALTTP z3-json-data
 
 Local access to [vg-json-data/z3-json-data](https://github.com/vg-json-data/z3-json-data)
 region/connection/item/enemy JSON. The committed dump is JSON only: no
@@ -20,7 +20,10 @@ uv run python alttp/scripts/setup_z3_json_data.py
 | US / JP | Logic labels + vanilla castle **room base ids** match for the opening route; measured `maps/room_XX.json` geometry is execution authority for both |
 
 Options: `--force` re-clone, `--revision SHA` override pin, `--dest PATH`
-override location. Normal `import alttp.z3_json_data` **never** downloads.
+override location. The loader prefers the gitignored refs checkout when
+that directory exists, otherwise the committed dump. Normal
+`import alttp.z3_json_data` never downloads. Do not commit the refs
+checkout. Do not delete the committed dump.
 
 ## Provenance
 
@@ -49,7 +52,7 @@ Python:
 ```python
 from alttp.z3_json_data import Z3JsonData
 
-data = Z3JsonData.load()  # raises if not fetched
+data = Z3JsonData.load()  # raises if neither refs nor the dump is present
 house = data.room("Links House")
 for conn in data.connections_for_room(house):
     print(conn.origin, "->", conn.destination)

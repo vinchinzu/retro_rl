@@ -51,6 +51,7 @@ from zelda_i.dungeon.tilemap import (
 from zelda_i.beam import beam_aim, beam_ready
 from zelda_i.dungeon.threat import MIN_DODGE_BODY, EvadeDecision, ReactiveEvader
 from zelda_i.dungeon.tracking import ObjectTracker, TrackedObject
+from zelda_i.overworld.hunt import blade_lands, contact_choice, link_busy
 from zelda_i.ram import (
     ADDR_LADDER,
     PLAY_MODE,
@@ -239,7 +240,7 @@ class CombatTuning:
     patrol_attack_hold: int = 2
     attack_phase: int = 0
     tolerance: int = 6
-    contact_backstep: int = 0  # manhattan peel before swing (rr-gjey)
+    contact_backstep: int = 0  # minimum contact peel pad, in pixels
     avoid_walls: bool = False  # inland first; Wallmasters grab door tiles
     # Playable box for ``avoid_walls`` as (x_lo, x_hi, y_lo, y_hi). Rooms
     # with a live south U-turn (L1 0x23) widen it; the default is the
@@ -261,10 +262,6 @@ class CombatTuning:
     # Darknuts: strike only from a side their shield is not on
     # (``GenericDungeonRoomController._flank_strike``).
     flank_shielded: bool = False
-    # The overworld hunt's contact rungs ahead of the evader: swing only when
-    # the blade lands before any body reaches Link, else peel on the lattice
-    # (``GenericDungeonRoomController._melee``).
-    melee: bool = False
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -535,9 +532,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _box_frames: int = field(default=0, init=False, repr=False)
     _beam_pressed: bool = field(default=False, init=False, repr=False)
-    _melee_pressed: bool = field(default=False, init=False, repr=False)
-    _melee_turn: int = field(default=0, init=False, repr=False)
-    _melee_peel_until: int = field(default=0, init=False, repr=False)
+    _contact_pressed: bool = field(default=False, init=False, repr=False)
+    _contact_turn: int = field(default=0, init=False, repr=False)
+    _contact_peel_until: int = field(default=0, init=False, repr=False)
     beam_presses: int = field(default=0, init=False)
     # Cached scoop-heart unreachable verdict (goal cell -> hold-until frame).
     # See ``_scoop_heart_occupancy``.
@@ -887,15 +884,21 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 direction = "RIGHT" if dx >= 0 else "LEFT"
             else:
                 direction = "DOWN" if dy >= 0 else "UP"
+        elif direction == "LEFT" and snap.link_x <= 32 and target.x > snap.link_x:
+            direction = "RIGHT"
+        elif direction == "RIGHT" and snap.link_x >= 208 and target.x < snap.link_x:
+            direction = "LEFT"
+        elif direction == "UP" and snap.link_y <= 93 and target.y > snap.link_y:
+            direction = "DOWN"
+        elif direction == "DOWN" and snap.link_y >= 189 and target.y < snap.link_y:
+            direction = "UP"
         tuning = self.spec.combat
+        contact = self._contact(snap, (target,), allow_peel=False)
+        if contact is not None:
+            return contact
         nx, ny = self._wall_step(int(snap.link_x), int(snap.link_y), direction)
         hold_inland = tuning.avoid_walls and self._on_avoid_wall(nx, ny)
-        authorized = should_swing_at(
-            snap.link_x, snap.link_y, direction, (target,)
-        )
-        if authorized:
-            self.swings_authorized += 1
-        if hold_inland or authorized:
+        if hold_inland:
             return self._swing(
                 direction,
                 "combat_engage",
@@ -1067,10 +1070,6 @@ class GenericDungeonRoomController(EntryRouteWalker):
             bodies = _occupancy_bodies(snap, None)
             bodies.discard(xy)
             self.walker.observe(xy, transient_occupants=bodies)
-        if self.spec.combat.melee:
-            act = self._melee(snap, live)
-            if act is not None:
-                return act
         # Reactive first. Every position rule below — the off-wall step, the
         # entry dash, the patrol — is blind to what is inbound, so running one
         # ahead of the evader silences it for that frame. That is how L1 0x23
@@ -1097,6 +1096,10 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 # mouth, where a Wallmaster is always inside ``trigger_ttc``
                 # and no sidestep clears the tunnel, so the grab lands.
                 pass
+        if self.spec.combat.contact_backstep:
+            contact = self._contact(snap, live)
+            if contact is not None:
+                return contact
         # The entry dash *is* an off-wall move, and a stronger one: it knows
         # which way the room was entered. Running the generic off-wall rule
         # first would consume every frame of it (0x45 enters at x=16, which
@@ -1154,24 +1157,6 @@ class GenericDungeonRoomController(EntryRouteWalker):
             if occupancy:
                 self.walker.last_dir = away
             return FrameAction(nes_action(away), "combat_evade_body")
-        back = self.spec.combat.contact_backstep
-        # 2/6 peel so we still slash; always-backstep starves kill (rr-gjey).
-        if back > 0 and distance < back and (self.combat_frames % 6) < 2:
-            dx = target.x - snap.link_x
-            dy = target.y - snap.link_y
-            if abs(dx) >= abs(dy):
-                away = "LEFT" if dx > 0 else "RIGHT"
-            else:
-                away = "UP" if dy > 0 else "DOWN"
-            chase = "RIGHT" if dx >= 0 else "LEFT"
-            if abs(dy) > abs(dx):
-                chase = "DOWN" if dy >= 0 else "UP"
-            if should_swing_at(snap.link_x, snap.link_y, chase, (target,)):
-                self.swings_authorized += 1
-            if occupancy:
-                self.walker.last_dir = away
-            self.backstep_frames += 1
-            return FrameAction(nes_action(away), "combat_backstep")
         if occupancy:
             # extra_blocked skips target cell; bodies still grade it.
             extra = _occupancy_bodies(snap, target)
@@ -1223,129 +1208,105 @@ class GenericDungeonRoomController(EntryRouteWalker):
                 return FrameAction(nes_action(step), "combat_hunt_lattice")
         return self._patrol(snap)
 
-    def _melee(self, snap: ZeldaSnapshot, live: tuple[ZeldaObject, ...]) -> FrameAction | None:
-        """Strike when the blade lands first, else peel: the hunt's contact rungs.
-
-        L5 Clean (12 offsets from the entry, 2026-09-25): 0/12, 7.5-12.5h in
-        four rooms, nearly all Gibdo and Pols Voice contact during
-        ``combat_engage``. The chase swings whenever the target is in the
-        hitbox, and a press pins Link 13 frames with the blade out only on
-        frames 4-11 (``overworld.hunt.swing_pays``). Declines (``None``) when
-        no body is near enough to matter, so the chase and the evader keep
-        the frame.
-        """
+    def _contact(
+        self,
+        snap: ZeldaSnapshot,
+        live: tuple[ZeldaObject, ...],
+        *,
+        allow_peel: bool = True,
+    ) -> FrameAction | None:
+        """Strike when the blade lands first, else peel: the shared contact rungs."""
         if self.spec.combat.flank_shielded:
             # Darknut rooms: the flank stand is 16 px off a body by design.
             return None
-        from zelda_i.overworld.common import body_escape
-        from zelda_i.overworld.hunt import (
-            PEEL_RADIUS,
-            blade_lands,
-            link_busy,
-            swing_pays,
-        )
+        from zelda_i.overworld.hunt import contact_choice
 
         lx, ly = int(snap.link_x), int(snap.link_y)
-        tracks = {int(t.slot): t for t in self.tracked}
-        near = []
         # The room's own bodies (Keese live by type at hp 0) plus any other
         # typed threat; never the stepladder, raft or a boulder spawner.
         pool = {int(o.slot): o for o in _combat.live_enemies(snap)}
         pool.update({int(o.slot): o for o in live})
-        for obj in pool.values():
-            if (
-                _combat.dormant_body(obj)
-                or is_projectile(obj)
-                or int(obj.type_id) in _combat.NON_COMBATANT_TYPES
-            ):
-                continue
-            if chebyshev(lx, ly, int(obj.x), int(obj.y)) > PEEL_RADIUS:
-                continue
-            near.append(obj)
+        near = tuple(
+            o for o in pool.values()
+            if not _combat.dormant_body(o)
+            and not is_projectile(o)
+            and int(o.type_id) not in _combat.NON_COMBATANT_TYPES
+            and chebyshev(lx, ly, int(o.x), int(o.y)) <= 48
+        )
         if not near:
-            self._melee_pressed = False
+            self._contact_pressed = False
+            self._contact_turn = 0
+            self._contact_peel_until = 0
             return None
         close = min(near, key=lambda o: chebyshev(lx, ly, int(o.x), int(o.y)))
-        pad = chebyshev(lx, ly, int(close.x), int(close.y))
-        try:
-            held = _combat.facing_to_direction(int(snap.facing))
-        except ValueError:
-            held = None
-        bx, by = int(close.x), int(close.y)
-        faces = {face_toward(lx, ly, bx, by)} | ({held} if held else set())
-        contact = any(blade_lands(lx, ly, f, bx, by) for f in faces)
         legal = (
             close in live
             and fight_target(lx, ly, (close,)) is not None
             and int(close.type_id) not in SHIELDED_TYPES
         )
-        rows = [self._melee_row(o, tracks) for o in near]
-        if pad <= MELEE_ENGULF_PX and legal:
-            # Swallowed (a Like Like on Link's own cell): no input moves him,
-            # the sword is the way out. 0x32 peeled 24000 frames in one.
-            if self._melee_pressed or link_busy(snap):
-                self._melee_pressed = False
-                return FrameAction(nes_idle_action(), "combat_melee_engulf_release")
-            self._melee_pressed = True
-            self.swings += 1
-            return FrameAction(nes_action("A"), "combat_melee_engulf_strike")
-        if contact and legal:
-            if link_busy(snap):
-                self._melee_pressed = False
-                self._melee_turn = 0
-                return FrameAction(nes_idle_action(), "combat_melee_recover")
-            if self._melee_pressed:
-                self._melee_pressed = False
-                return FrameAction(nes_idle_action(), "combat_melee_release")
-            flagged = [(int(o.slot) == int(close.slot), *row) for o, row in zip(near, rows)]
-            if swing_pays(lx, ly, held, bx, by, flagged):
-                face = face_toward(lx, ly, bx, by)
-                if held is not None and blade_lands(lx, ly, held, bx, by):
-                    face = held
-                if self.spec.combat.occupancy_patrol:
-                    self.walker.last_dir = None
-                if held != face and self._melee_turn < MELEE_TURN_CAP:
-                    self._melee_turn += 1
-                    return FrameAction(nes_action(face), "combat_melee_turn")
-                self._melee_turn = 0
-                self._melee_pressed = True
-                self.swings += 1
-                self.swings_authorized += 1
-                return FrameAction(nes_action(face, "A"), "combat_melee_strike")
-        committed = self.combat_frames < self._melee_peel_until
-        if (
-            not committed
-            and pad > MIN_DODGE_BODY
-            and not _body_reaches(lx, ly, rows, MELEE_THREAT_FRAMES)
-        ):
-            # Out of reach of the blade or walking away: the chase closes.
-            return None
-        if not committed:
-            # Hold the peel a few frames: the chase stepping straight back
-            # in flipped 0x77 (48,146)<->(48,148) for 17000 frames.
-            self._melee_peel_until = self.combat_frames + MELEE_PEEL_COMMIT
-        # A body inside the pad, or one that reaches Link before a swing
-        # would be over: step off it.
-        dx, dy = bx - lx, by - ly
-        away = ("LEFT" if dx > 0 else "RIGHT", "UP" if dy > 0 else "DOWN")
-        if abs(dy) > abs(dx):
-            away = away[::-1]
-        box = self.spec.combat.occupancy_bounds or DEFAULT_BOUNDS
-        direction = body_escape(
-            lx, ly, rows, box, nodes=self._lattice_nodes(snap), prefer=away,
+        try:
+            held = _combat.facing_to_direction(int(snap.facing))
+        except ValueError:
+            held = None
+        face = face_toward(lx, ly, int(close.x), int(close.y))
+        in_blade = blade_lands(lx, ly, face, int(close.x), int(close.y)) or (
+            held is not None and blade_lands(lx, ly, held, int(close.x), int(close.y))
         )
+        if (
+            legal and int(close.type_id) == _ids.LIKE_LIKE_OBJECT_TYPE
+            and chebyshev(lx, ly, int(close.x), int(close.y)) <= MELEE_ENGULF_PX
+        ):
+            if self._contact_pressed or link_busy(snap):
+                self._contact_pressed = False
+                return FrameAction(nes_idle_action(), "combat_contact_engulf_recover")
+            self._contact_pressed = True
+            self.swings += 1
+            return FrameAction(nes_action("A"), "combat_contact_engulf_strike")
+        if legal and in_blade and link_busy(snap):
+            self._contact_pressed = False
+            self._contact_turn = 0
+            return FrameAction(nes_idle_action(), "combat_contact_recover")
+        if self._contact_pressed:
+            self._contact_pressed = False
+            if legal and in_blade:
+                return FrameAction(nes_idle_action(), "combat_contact_release")
+        box = self.spec.combat.occupancy_bounds or DEFAULT_BOUNDS
+        choice = contact_choice(
+            snap, close, near, self.tracked, box,
+            nodes=self._lattice_nodes(snap),
+            peel_inside=max(MIN_DODGE_BODY, self.spec.combat.contact_backstep),
+            can_strike=legal,
+            force_peel=allow_peel and self.combat_frames < self._contact_peel_until,
+        )
+        if choice is None:
+            self._contact_turn = 0
+            return None
+        kind, direction = choice
+        if kind == "peel":
+            if not allow_peel:
+                return None
+            self._contact_turn = 0
+            if self.combat_frames >= self._contact_peel_until:
+                self._contact_peel_until = self.combat_frames + 8
+            if self.spec.combat.occupancy_patrol:
+                self.walker.last_dir = direction
+            self.backstep_frames += 1
+            return FrameAction(
+                nes_action(direction) if direction else nes_idle_action(),
+                "combat_contact_peel" if direction else "combat_contact_peel_stand",
+            )
+        if held != direction and self._contact_turn < 4:
+            self._contact_turn += 1
+            if self.spec.combat.occupancy_patrol:
+                self.walker.last_dir = direction
+            return FrameAction(nes_action(direction), "combat_contact_turn")
+        self._contact_turn = 0
+        self._contact_pressed = True
+        self.swings += 1
+        self.swings_authorized += 1
         if self.spec.combat.occupancy_patrol:
-            self.walker.last_dir = direction
-        if direction is None:
-            return FrameAction(nes_idle_action(), "combat_melee_peel_stand")
-        return FrameAction(nes_action(direction), "combat_melee_peel")
-
-    @staticmethod
-    def _melee_row(obj: ZeldaObject, tracks: dict) -> tuple[float, float, float, float, float]:
-        track = tracks.get(int(obj.slot))
-        vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
-        jitter = MELEE_JITTER.get(int(obj.type_id) & 0xFF, MELEE_JITTER_DEFAULT)
-        return (float(obj.x), float(obj.y), vx, vy, jitter)
+            self.walker.last_dir = None
+        return FrameAction(nes_action(direction, "A"), "combat_contact_strike")
 
     def _all_still(self, live) -> tuple | None:
         """All live bodies, once *every* one has held still ``STATIC_ENEMY_FRAMES``."""

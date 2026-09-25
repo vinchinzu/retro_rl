@@ -57,11 +57,7 @@ def _cmd_tape(name: str) -> dict:
         return {
             "mode": "tape",
             "task": path.name,
-            "error": "no RAM trace — replay once, do not re-record",
-            "replay": (
-                "HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe "
-                f"--mode replay --task {path.stem}"
-            ),
+            "error": "no RAM trace — do not re-record",
         }
     change = first_held_change(trace)
     if change is None:

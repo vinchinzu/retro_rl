@@ -53,7 +53,7 @@ from harvest.planner.day_plan import (
     make_action,
 )
 from harvest.core.ram_catalog import live_wram_base
-from harvest.planner.day_task_factory import DayTaskFactory
+from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.world_probe import WorldProbe
 from harvest.core.tile_catalog import (
     ADDR_MAP,
@@ -276,14 +276,17 @@ class DayPlanSequenceCropTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
         names = [phase.phase for phase in plan._schedule.active]
-        self.assertEqual(names[:2], ["BUY_SEEDS", "D2_FARM_CLEAR"])
+        # Buy splices the marker; the same step replaces it with one live child.
+        self.assertEqual(names[0], "BUY_SEEDS")
+        self.assertEqual(names[1], "ENSURE_CROP_SEEDS")
+        self.assertEqual(names[2], "D2_FARM_CLEAR")
         self.assertNotIn("CLEAR_FIELD", names)
         self.assertEqual(names.count("CLEAR_STONES"), 0)
         self.assertEqual(names.count("CLEAR_ROCKS"), 0)
         self.assertEqual(names.count("CLEAR_STUMPS"), 0)
         farm = next(p for p in plan._schedule.active if p.phase == "D2_FARM_CLEAR")
         self.assertEqual(farm.failure_policy, "required")
-        self.assertEqual(plan.phase_text, "D2_FARM_CLEAR")
+        self.assertEqual(plan.phase_text, "ENSURE_CROP_SEEDS")
         from harvest.planner.d2_work import d2_post_shop_work_phases
         from harvest.planner.day_phase_types import PhaseKind
 
@@ -366,7 +369,11 @@ class DayPlanSequenceCropTests(unittest.TestCase):
             "harvest.planner.day_phase_registry.crop_nav_target_px",
             return_value=(72, 296),
         ):
-            task = DayTaskFactory(state_name="latest").make_task(spec, make_transition_world(0x00))
+            task = build_phase_task(
+                TaskBuildContext(state_name="latest"),
+                spec,
+                make_transition_world(0x00),
+            )
 
         self.assertIsInstance(task, NavTask)
         self.assertEqual((task.target_px.x, task.target_px.y), (72, 296))
