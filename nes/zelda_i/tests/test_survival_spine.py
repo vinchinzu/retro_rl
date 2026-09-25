@@ -370,6 +370,15 @@ def test_validate_l5_endpoint_requires_continuous_session() -> None:
             "assist": {"progression_writes": 0, "capacity_writes": 0},
         }
     )
+    validate_l5_endpoint(
+        {
+            "ok": True,
+            "continuous_emulator_session": True,
+            "seamed": False,
+            "final": {"level": 5, "room": 0x14, "triforce": 0x1C},
+            "assist": None,
+        }
+    )
 
 
 def test_spine_run_unmeasured_set_state_is_unknown() -> None:

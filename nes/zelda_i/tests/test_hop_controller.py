@@ -13,6 +13,7 @@ from zelda_i.dungeon.hop_controller import (
     LADDER_STILL_FRAMES,
     HopController,
     LadderEscape,
+    LatticeDoorWalker,
     ladder_release,
 )
 from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
@@ -158,3 +159,21 @@ def test_escape_leaves_a_crossing_and_a_standing_policy_alone() -> None:
     for _ in range(3 * LADDER_STILL_FRAMES):
         assert list(esc.filter(stuck, idle, env=env).action) == list(nes_idle_action())
     assert esc.escapes == 0
+
+
+def test_lattice_door_walker_latches_ladder_release_step_until_off_ladder() -> None:
+    env = room_tile_env("0x19", level=6)
+    walker = LatticeDoorWalker()
+    snap = _ladder_snap(152, 173, ladder=(152, 176, 0x08))
+    act = walker.action(env, snap, "LEFT", "exit")
+    assert _pressed(act) == "DOWN"
+    assert walker.ladder_step == "DOWN"
+
+    snap_mid = _ladder_snap(152, 175, ladder=(152, 176, 0x08))
+    act_mid = walker.action(env, snap_mid, "LEFT", "exit")
+    assert _pressed(act_mid) == "DOWN"
+
+    snap_off = _ladder_snap(144, 189, ladder=None)
+    act_off = walker.action(env, snap_off, "LEFT", "exit")
+    assert walker.ladder_step is None
+

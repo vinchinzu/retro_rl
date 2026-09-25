@@ -841,7 +841,7 @@ class Level3BossCombatMixin:
             if bomb_cd > 0:
                 bomb_cd -= 1
 
-            if dist < 42 and bomb_cd <= 0 and snap.bombs > 0:
+            if dist < 42 and bomb_cd <= 0 and snap.bombs > self.manhandla_bomb_reserve:
                 ensure_bomb(env)
                 if dist > 16:
                     action = nes_action(approach)

@@ -351,6 +351,9 @@ ROOM_40_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_from_tilemap=True,
+        occupancy_bounds=(32, 216, 77, 205),
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,

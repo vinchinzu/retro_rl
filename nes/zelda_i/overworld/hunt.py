@@ -279,6 +279,41 @@ def blade_lands(link_x: int, link_y: int, face: str, body_x: int, body_y: int) -
     )
 
 
+def swing_pays(
+    lx: int,
+    ly: int,
+    held: str | None,
+    body_x: int,
+    body_y: int,
+    rows: list[tuple[bool, float, float, float, float, float]],
+) -> bool:
+    """A press now lands on the target before any body reaches Link.
+
+    ``rows`` are the near bodies as ``(is_target, x, y, vx, vy, jitter)``.
+    The press pins Link :data:`SWING_PIN_FRAMES` (plus a turn when ``held``
+    is not the face) and the blade is out only on frames
+    :data:`BLADE_OUT_FIRST`..:data:`BLADE_OUT_LAST`. Each body is flown along
+    its velocity, widened by its jitter; the target may touch Link only
+    after the blade has met it (a cut knocks it back).
+    """
+    face = face_toward(lx, ly, body_x, body_y)
+    if held is not None and blade_lands(lx, ly, held, body_x, body_y):
+        face = held
+    turn = 0 if held == face else SWING_TURN_FRAMES
+    landed = None
+    for k in range(turn + SWING_PIN_FRAMES + 1):
+        for target, bx, by, vx, vy, jitter in rows:
+            px, py = bx + vx * k, by + vy * k
+            if target and landed is None and turn + BLADE_OUT_FIRST <= k <= turn + BLADE_OUT_LAST:
+                if blade_lands(lx, ly, face, round(px), round(py)):
+                    landed = k
+            if target and landed is not None:
+                continue
+            if max(abs(px - lx), abs(py - ly)) - jitter * k < SHOT_HIT_PX:
+                return False
+    return landed is not None
+
+
 def link_busy(snap: ZeldaSnapshot) -> bool:
     """True while Link's own slot is mid-animation (sword out, knockback)."""
     first = snap.objects[0] if snap.objects else None
@@ -1286,12 +1321,6 @@ class ScreenHunter:
         after the blade has met it (a cut knocks it back).
         """
         lx, ly = int(snap.link_x), int(snap.link_y)
-        bx0, by0 = int(body.x), int(body.y)
-        held = _held_face(snap)
-        face = face_toward(lx, ly, bx0, by0)
-        if held is not None and blade_lands(lx, ly, held, bx0, by0):
-            face = held
-        turn = 0 if held == face else SWING_TURN_FRAMES
         rows = []
         for obj in live_enemies(snap):
             if dormant_body(obj) or chebyshev(lx, ly, int(obj.x), int(obj.y)) > PEEL_RADIUS:
@@ -1300,18 +1329,7 @@ class ScreenHunter:
             vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
             jitter = BODY_JITTER_PX.get(kind_for_type(int(obj.type_id)).value, BODY_JITTER_DEFAULT)
             rows.append((int(obj.slot) == int(body.slot), float(obj.x), float(obj.y), vx, vy, jitter))
-        landed = None
-        for k in range(turn + SWING_PIN_FRAMES + 1):
-            for target, bx, by, vx, vy, jitter in rows:
-                px, py = bx + vx * k, by + vy * k
-                if target and landed is None and turn + BLADE_OUT_FIRST <= k <= turn + BLADE_OUT_LAST:
-                    if blade_lands(lx, ly, face, round(px), round(py)):
-                        landed = k
-                if target and landed is not None:
-                    continue
-                if max(abs(px - lx), abs(py - ly)) - jitter * k < SHOT_HIT_PX:
-                    return False
-        return landed is not None
+        return swing_pays(lx, ly, _held_face(snap), int(body.x), int(body.y), rows)
 
     def _peel(self, snap: ZeldaSnapshot, body: ZeldaObject, reason: str) -> FrameAction | None:
         """Walk the input that keeps every near body off Link longest.

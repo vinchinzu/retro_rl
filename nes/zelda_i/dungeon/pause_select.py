@@ -8,8 +8,9 @@ controller never emits B (the parent blows/places after ``success``).
 Snapshot has no ``selected_item``; read ``ADDR_SELECTED_ITEM`` after
 ``bind_env``.
 
-``PotionDrinkGuard`` wraps any stage controller: at the last heart with a
-potion owned it takes the frame, pause-selects the potion, presses B, waits
+``PotionDrinkGuard`` wraps any stage controller: with a potion owned, at
+the last heart or when the worst hit on screen would kill (``potion_due``),
+it takes the frame, pause-selects the potion, presses B, waits
 out the refill and puts the previous B item back. Measured 2026-09-23 on
 0x64: the potion is B slot 7 (the letter slot 15), ``$065E`` steps down on
 the B frame (red 2 -> blue 1 -> 0), ``$E0`` holds 2 while the hearts fill
@@ -23,8 +24,11 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
+from retro_harness.controls import NES_BUTTON_NAME_TO_INDEX
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import CAVE_TRIGGER_TYPE, FLOOR_DROP_TYPES, NON_COMBATANT_TYPES
+from zelda_i.dungeon.species import species_of
 from zelda_i.ram import (
     ADDR_ARROWS,
     ADDR_BOOMERANG,
@@ -36,6 +40,7 @@ from zelda_i.ram import (
     ADDR_WORLD_PAUSED,
     PLAY_MODE,
     ZeldaSnapshot,
+    hearts_held,
     read_snapshot,
     read_u8,
 )
@@ -273,6 +278,57 @@ def potion_drink_window(snap: ZeldaSnapshot, *, paused: int, menu: int) -> bool:
     )
 
 
+def lethal_hit_hearts(snap: ZeldaSnapshot) -> float:
+    """Hearts the worst hit on screen would take, after the ring.
+
+    ``ObjTypeToDamagePoints`` (``dungeon.species``) for every typed slot that
+    is not a floor drop, a cave trigger or a prop -- bodies and their shots
+    alike, since both run ``HarmLink``. ``Link_BeHarmed`` halves the amount
+    once per ring level (blue 1, red 2). A slot that just died still counts:
+    it only drinks a few frames early.
+    """
+    worst = 0.0
+    for obj in snap.objects:
+        type_id = int(obj.type_id) & 0xFF
+        if (
+            obj.slot < 1
+            or type_id in (0, 0xFF, CAVE_TRIGGER_TYPE)
+            or type_id in FLOOR_DROP_TYPES
+            or type_id in NON_COMBATANT_TYPES
+        ):
+            continue
+        worst = max(worst, species_of(type_id).contact_hearts)
+    return worst / (2 ** min(max(int(snap.ring), 0), 2))
+
+
+def potion_due(snap: ZeldaSnapshot, drink_at_whole_hearts: int = 1) -> bool:
+    """A carried potion should go down now: the next hit could be the last.
+
+    The last heart (``drink_at_whole_hearts``) is the floor. Above it, a hit
+    that costs more than Link holds kills him with a potion in the bag: a
+    blue Wizzrobe's magic takes two hearts through the blue ring, and the
+    old rule waited for one.
+    """
+    if int(snap.potion) <= 0 or int(snap.mode) == DEATH_MODE:
+        return False
+    if int(snap.whole_hearts) <= int(drink_at_whole_hearts):
+        return True
+    return hearts_held(snap) <= lethal_hit_hearts(snap)
+
+
+_A = NES_BUTTON_NAME_TO_INDEX["A"]
+_B = NES_BUTTON_NAME_TO_INDEX["B"]
+
+
+def _hands_off(act: FrameAction) -> FrameAction:
+    """``act`` without A or B: a swing or a bomb pins Link past the window."""
+    if not (act.action[_A] or act.action[_B]):
+        return act
+    buttons = list(act.action)
+    buttons[_A] = buttons[_B] = 0
+    return FrameAction(buttons, f"{act.reason}_drink_due")
+
+
 # Frames a due refill waits for a drink window before the assist writes it.
 DRINK_WAIT_BUDGET = 90
 # Longest refill: 16 hearts x 43 frames plus the lead-in.
@@ -298,11 +354,12 @@ class DrinkPhase(Enum):
 
 @dataclass
 class PotionDrinkGuard:
-    """Drink a real potion at the last heart; otherwise ``inner`` plays.
+    """Drink a real potion before the hit that kills; otherwise ``inner`` plays.
 
-    No potion, or more than ``drink_at_whole_hearts``, and every frame is
-    ``inner.step`` untouched. With a potion at the last heart it waits for
-    :func:`potion_drink_window` (``inner`` keeps playing meanwhile), then
+    No potion, or no :func:`potion_due` (more than ``drink_at_whole_hearts``
+    and more than the worst hit on screen), and every frame is ``inner.step``
+    untouched. Once due it waits for :func:`potion_drink_window` (``inner``
+    keeps steering meanwhile, without A or B), then
     owns the frames: select the potion, B, the refill, the old B item back.
     ``inner`` is not stepped while the guard owns a frame; the world is
     frozen for almost all of them (menu or refill).
@@ -337,11 +394,7 @@ class PotionDrinkGuard:
         self._env = env
 
     def _wants(self, snap: ZeldaSnapshot) -> bool:
-        return (
-            int(snap.potion) > 0
-            and int(snap.mode) != DEATH_MODE
-            and int(snap.whole_hearts) <= int(self.drink_at_whole_hearts)
-        )
+        return potion_due(snap, self.drink_at_whole_hearts)
 
     def holds_refill(self, snap: ZeldaSnapshot) -> bool:
         if self._env is None:
@@ -398,8 +451,10 @@ class PotionDrinkGuard:
                 menu=read_u8(ram, ADDR_MENU_STATE),
             )
             if not window:
+                # ``inner`` still steers (a dodge is worth having), but a new
+                # swing would hold Link busy 13 more frames on a lethal hit.
                 self._wait += 1
-                return self.inner.step(snap)
+                return _hands_off(self.inner.step(snap))
             # The item from before the *first* try. An aborted try leaves
             # the potion selected; re-reading it then made the restore a
             # no-op, and 0x5B's burn press drank the last charge (CL63).
@@ -502,7 +557,7 @@ class _Idle:
 
 
 def drink_if_low(env: Any, assist: Any | None, total: list[int]) -> bool:
-    """Drink a carried potion at the last heart, the way every spine stage does.
+    """Drink a carried potion when :func:`potion_due`, the way every spine stage does.
 
     Boss loops step the env themselves, outside ``run_controller_stage``'s
     ``PotionDrinkGuard``: Link died to Manhandla (L3) and the Gleeok (L4)
@@ -510,7 +565,7 @@ def drink_if_low(env: Any, assist: Any | None, total: list[int]) -> bool:
     the end of the drink and the B restore, then hands the frame back.
     """
     snap = read_snapshot(env.get_ram())
-    if int(snap.potion) <= 0 or int(snap.whole_hearts) > 1 or int(snap.mode) != PLAY_MODE:
+    if int(snap.mode) != PLAY_MODE or not potion_due(snap):
         return False
     guard = PotionDrinkGuard(inner=_Idle())
     guard.bind_env(env)
@@ -547,5 +602,7 @@ __all__ = [
     "b_slot_owned",
     "drink_if_low",
     "pause_dropped",
+    "lethal_hit_hearts",
     "potion_drink_window",
+    "potion_due",
 ]

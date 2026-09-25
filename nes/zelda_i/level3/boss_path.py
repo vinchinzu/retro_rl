@@ -648,6 +648,8 @@ class Level3BossPathController(Level3BossCombatMixin):
     path_log: list[dict] = field(default_factory=list)
     max_frames: int = BOSS_PATH_MAX_FRAMES
     poke_bombs: int | None = None  # RECON opt-in; durable default off
+    # Bombs Manhandla may not spend: Link leaves them for the next walls.
+    manhandla_bomb_reserve: int = 0
     tag: str = "l3_to_boss"
     continuous_mode: bool = False  # one-way policy: never restore emulator state
     # Outcome flags

@@ -422,6 +422,9 @@ def walk_axis(
 
 
 def _step(env, assist, total: list[int], action) -> None:
+    from zelda_i.dungeon.pause_select import drink_if_low
+
+    drink_if_low(env, assist, total)
     env.step(action)
     total[0] += 1
     if assist is not None:

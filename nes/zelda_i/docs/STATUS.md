@@ -5,16 +5,35 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Clean power-on through the **Level 4 Triforce** on the gathered route: triforce `0x0F`, L1 at 76,579f, L2 at 97,634f, L3 at 126,566f, L4 at 152,416f, one continuous run, 0 state loads, 0 writes |
+| Best verified result | Clean power-on through the **Level 5 Triforce** on the gathered route: triforce `0x1F`, L1 at 76,579f, L2 at 97,634f, L3 at 126,566f, L4 at 152,416f, L5 at 190,444f, one continuous run, 0 state loads, 0 writes |
 | Last verification | 2026-09-25 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | [clean_poweron74.json](../recordings/clean_poweron74.json) (`run_survival_spine.py --clean --through level9-credits`); it stops at the post-L4 0x4A arrow shop with 15R against 80R (155,195f). Earlier today: [clean_poweron69.json](../recordings/clean_poweron69.json) through L3. |
+| Evidence | [clean_poweron76.json](../recordings/clean_poweron76.json) (`run_survival_spine.py --clean --through level5`); 190,444 frames continuous power-on, 0 state loads, 0 writes. Earlier today: [clean_poweron74.json](../recordings/clean_poweron74.json) through L4. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
 
 The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone
 recheck (`run_level1_complete.py --natural-entry`) is red at L1 0x33
 (`0x33_needs_heart`, 2026-09-24); the gathered route above replaces it.
+
+## 2026-09-25: Clean power-on through L5 (Level 5 Triforce)
+
+`clean_poweron76`: power-on → Level 5 Triforce (190,444f), no refill, no load, no
+write, zero deaths, mode 18 in 0x14 with all 5 shards (TF `0x1F` / 31). Two fixes:
+
+1. **Level 4 Room 0x40 west corridor:** `ROOM_40_SPEC.combat` occupancy bounds
+   expanded from default `xmin=40` to `(32, 216, 77, 205)` with `occupancy_patrol=True`
+   and `occupancy_from_tilemap=True`, preventing Link from pathfinding into a solid column
+   when enemies spawn at x=32.
+2. **Level 5 Room 0x26 stepladder latch:** When Link cleared Gibdos in 0x26 near
+   the water moat, the ladder deployed at (200, 176) heading UP. `LatticeDoorWalker`
+   in `dungeon/hop_controller.py` now latches the ladder release direction (`DOWN` onto
+   the south corridor) until Link is completely off the ladder (`deployed_ladder` is None),
+   preventing the 184<->185 oscillation.
+
+Link traversed 0x26 west, cleared Pols Voice in 0x25, spent 1 key to enter 0x24,
+whistle-shrank and killed Digdogger, took the heart container, and claimed the
+Level 5 Triforce shard.
 
 ## 2026-09-25 (evening): Clean power-on through L4
 

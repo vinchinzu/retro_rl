@@ -54,6 +54,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **clean_poweron69 (L3: pond, potion, flank, traps, Manhandla dodge)** | **level4_triforce_0x08 (off: Clean)** | level9-credits | 150867 | 8229 | 65/139 | 15 | 0 / 0 | **0 / 0 / 0** | 4:20 7149f | 40.87 | 1:43=map 1:44=boomerang 4:13=heart_container |
 | **clean_poweron73 (L3 five-rupee scoop + L4 raft dismount)** | **level4_triforce_0x08 (off: Clean)** | level9-credits | **150867** | **8229** | 65/139 | 15 | 0 / 0 | **0 / 0 / 0** | 4:20 7149f | 40.87 | 1:43=map 1:44=boomerang 4:13=heart_container |
 | **clean_poweron74 (L4 potion before arrows, Gleeok drinks)** | **arrow_restock_l4 (off: Clean), L4 TF 0x0F** | level9-credits | **155195** | 10027 | 60/130 | 15 | 0 / 0 | **0 / 0 / 0** | 4:20 4794f | 40.91 | 1:43=map 1:44=boomerang |
+| **clean_poweron76 (L5 0x26 ladder step-off latch, Digdogger)** | **ok (off: Clean), L5 TF 0x1F** | level5 | **190444** | 11115 | 72/148 | 16 | 0 / 0 | **0 / 0 / 0** | 4:20 6938f | 58.5 | 1:43=map 1:44=boomerang 5:26=key 5:27=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 |
 | clean_poweron_h1 (HEAD edf97dd6 alone) | level4_triforce_0x08 (off: Clean) | level9-credits | 157393 | – | – | – | 0 / 0 | 0 / 0 / 0 | – | – | L3 TF at 126,643f |
 | natural_credits_poweron67 (edf97dd6: Dodongo stand, restock letter) | level8_return_passage_bomb_north_4c (unlimited_health) | level9-credits | 251358 | 9105 | 75/189 | 39 | 106 / 371 | 0 / 0 / 0 | 8:3e 8667f | 211.89 | see report |
 

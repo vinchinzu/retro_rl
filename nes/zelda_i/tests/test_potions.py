@@ -7,7 +7,7 @@ held refill writes nothing while an unheld one still refills.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pytest
@@ -23,7 +23,9 @@ from zelda_i.dungeon.pause_select import (
     B_SLOT_POTION,
     PotionDrinkGuard,
     b_slot_owned,
+    lethal_hit_hearts,
     potion_drink_window,
+    potion_due,
 )
 from zelda_i.ram import (
     ADDR_ARROWS,
@@ -119,6 +121,59 @@ def test_a_retry_keeps_the_b_item_from_before_the_first_try() -> None:
     guard._prior = B_SLOT_CANDLE
     guard.step(_snap(potion=2, health=0x50))
     assert guard._prior == B_SLOT_CANDLE
+
+
+def _foe(type_id: int, slot: int = 1) -> ZeldaObject:
+    return ZeldaObject(slot=slot, type_id=type_id, x=80, y=141, facing=0, hp=4, state=0)
+
+
+@pytest.mark.parametrize(
+    ("foes", "ring", "hearts"),
+    [
+        ((), 0, 0.0),
+        ((_foe(0x07),), 0, 0.5),  # octorok
+        ((_foe(0x07), _foe(0x30, slot=2)), 0, 2.0),  # a gibdo is the worst
+        ((_foe(0x30),), 1, 1.0),  # the blue ring halves it
+        ((_foe(0x30),), 2, 0.5),  # the red ring halves it twice
+        ((_foe(0x60), _foe(0x64, slot=11)), 0, 0.0),  # a floor drop, a cave trigger
+    ],
+)
+def test_lethal_hit_is_the_worst_rom_damage_after_the_ring(foes, ring, hearts) -> None:
+    snap = replace(_snap(), objects=(_snap().objects[0], *foes), ring=ring)
+    assert lethal_hit_hearts(snap) == hearts
+
+
+@pytest.mark.parametrize(
+    ("health", "partial", "foe", "due"),
+    [
+        (0x51, 0xFF, 0x07, False),  # two hearts, an octorok: not yet
+        (0x51, 0xFF, 0x30, True),  # two hearts, a gibdo takes two
+        (0x51, 0x40, 0x30, True),  # 1.25 hearts
+        (0x52, 0x40, 0x30, False),  # 2.25 hearts outlast one gibdo hit
+        (0x50, 0xFF, 0x07, True),  # the last heart is still the floor
+    ],
+)
+def test_potion_is_due_before_the_hit_that_kills(health, partial, foe, due) -> None:
+    snap = replace(
+        _snap(health=health), heart_partial=partial, objects=(_snap().objects[0], _foe(foe))
+    )
+    assert potion_due(snap) is due
+    assert potion_due(replace(snap, potion=0)) is False
+
+
+def test_a_due_drink_holds_off_swings_until_the_window() -> None:
+    @dataclass
+    class _Swinger(_Inner):
+        def step(self, snap: ZeldaSnapshot) -> FrameAction:
+            self.steps += 1
+            return FrameAction(nes_action("LEFT", "A"), "swing")
+
+    inner = _Swinger()
+    guard = PotionDrinkGuard(inner=inner)
+    guard.bind_env(_Env())
+    action = guard.step(_snap(potion=2, health=0x50, link_state=0x11))  # mid-swing
+    assert inner.steps == 1
+    assert action.action == nes_action("LEFT")
 
 
 @pytest.mark.parametrize(
