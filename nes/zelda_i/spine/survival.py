@@ -503,6 +503,9 @@ def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
     if ok:
         gate = controller.open_5d_up(env, assist, total)
         ok = bool(gate.get("ok"))
+    if ok and run.save_points:
+        # A pin at 0x4D for the fight alone (no resume: the suffix is one stage).
+        save_state(env, GAME_DIR, GAME, save_point_name(run.save_points, "level3_manhandla"))
     if ok:
         fight = controller.fight_manhandla(env, assist, total, max_frames=16000)
         ok = bool(fight.get("tf04"))

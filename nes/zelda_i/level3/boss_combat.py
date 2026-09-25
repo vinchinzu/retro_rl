@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
+from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.segment_runner import save_rgb_png
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.dungeon.pause_select import DRINK_BUDGET, DRINK_WAIT_BUDGET, DrinkPhase, PotionDrinkGuard
+from zelda_i.dungeon.tracking import ObjectTracker
 from zelda_i.dungeon.engine import (
     AliveRule,
     CombatTuning,
@@ -87,10 +91,42 @@ BOMB_NORTH_STANDS: tuple[tuple[int, int], ...] = (
 
 
 def _tick(env: Any, assist: Any | None, total: list[int], action: Any) -> None:
+    drink_if_low(env, assist, total)
     env.step(action)
     total[0] += 1
     if assist is not None:
         assist.apply_env(env, frame=total[0])
+
+
+@dataclass
+class _Idle:
+    def step(self, snap: ZeldaSnapshot) -> Any:
+        return FrameAction(nes_idle_action(), "boss_path")
+
+
+def drink_if_low(env: Any, assist: Any | None, total: list[int]) -> bool:
+    """Drink a carried potion at the last heart, the way every spine stage does.
+
+    The boss suffix steps the env itself, outside ``run_controller_stage``'s
+    ``PotionDrinkGuard``, so a Link bought a potion before L3 and died to
+    Manhandla with it in the bag (Clean offsets, 2026-09-25). Runs the guard
+    to the end of the drink and the B restore, then hands the frame back.
+    """
+    snap = read_snapshot(env.get_ram())
+    if int(snap.potion) <= 0 or int(snap.whole_hearts) > 1 or int(snap.mode) != PLAY_MODE:
+        return False
+    guard = PotionDrinkGuard(inner=_Idle())
+    guard.bind_env(env)
+    for _ in range(DRINK_WAIT_BUDGET + DRINK_BUDGET + 200):
+        owned = guard.frames
+        action = guard.step(read_snapshot(env.get_ram()))
+        if guard.frames == owned and guard.phase is DrinkPhase.IDLE:
+            break
+        env.step(action.action)
+        total[0] += 1
+        if assist is not None:
+            assist.apply_env(env, frame=total[0])
+    return guard.drinks > 0
 
 
 def prep_5d_still_killable(snap: ZeldaSnapshot) -> list:
@@ -159,6 +195,61 @@ def exit_raft_passage(env: Any, assist: Any | None, total: list[int]) -> dict[st
         "waypoints": wp_log,
         "stairs_push_frames": stairs_i + 1,
     }
+
+
+# Bombs the 0x5D prep clear leaves for Manhandla.
+PREP_BOMB_RESERVE = 2
+# Fireballs the dodge answers: this close, landing within this many frames.
+MANHANDLA_SHOT_RADIUS = 48
+MANHANDLA_SHOT_HORIZON = 16
+# How close a Manhandla hand may come before the fight steps away first.
+MANHANDLA_HAND_CLEAR = 14
+
+
+def _manhandla_dodge(
+    snap: ZeldaSnapshot, ram: Any, tracked: tuple, heads: list
+) -> Any | None:
+    """Step off a fireball's flight or out of a hand's reach, on the lattice.
+
+    The circle-and-swing loop never looked at either: from 0x4D pins, the
+    dead offsets took 2-6 fireball (0x56) hits and 1-3 hand contacts
+    (2026-09-25). ``shot_escape`` flies every input against each closing shot;
+    a hand inside ``MANHANDLA_HAND_CLEAR`` gets ``body_escape``.
+    """
+    from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
+    from zelda_i.dungeon.tracking import HazardClass
+    from zelda_i.overworld.common import body_escape, shot_escape
+    from zelda_i.walk.physics import DEFAULT_BOUNDS
+
+    if not has_room_tile_map(ram):
+        return None
+    nodes = ow_walkable_nodes(ram, overworld=False)
+    lx, ly = int(snap.link_x), int(snap.link_y)
+    shots = [
+        (float(t.x), float(t.y), float(t.vx), float(t.vy), 4)
+        for t in tracked
+        if t.hazard is HazardClass.PROJECTILE
+        and t.moving
+        and t.closing_on(lx, ly)
+        and max(abs(int(t.x) - lx), abs(int(t.y) - ly)) < MANHANDLA_SHOT_RADIUS
+    ]
+    if shots:
+        # Imminent only: with three or four fireballs up, a 48-frame horizon
+        # always found one and the fight never swung (CL66 pin: 470 frames,
+        # every hand still at 64).
+        direction, needed = shot_escape(
+            lx, ly, shots, DEFAULT_BOUNDS, nodes=nodes, bodies=tuple(heads),
+            horizon=MANHANDLA_SHOT_HORIZON,
+        )
+        if needed:
+            return nes_idle_action() if direction is None else nes_action(direction)
+    close = [h for h in heads if max(abs(int(h.x) - lx), abs(int(h.y) - ly)) < MANHANDLA_HAND_CLEAR]
+    if close:
+        vel = {t.slot: (float(t.vx), float(t.vy)) for t in tracked}
+        rows = [(float(h.x), float(h.y), *vel.get(int(h.slot), (0.0, 0.0)), 0.5) for h in heads]
+        direction = body_escape(lx, ly, rows, DEFAULT_BOUNDS, nodes=nodes)
+        return nes_idle_action() if direction is None else nes_action(direction)
+    return None
 
 
 class Level3BossCombatMixin:
@@ -301,7 +392,10 @@ class Level3BossCombatMixin:
 
             if bomb_cd > 0:
                 bomb_cd -= 1
-            if live and bomb_cd <= 0 and snap.bombs > 0 and frame % 70 == 0:
+            # Bombs keep the Zols off Link (without them 0x5D cost 0.7h more a
+            # run over 8 Clean offsets), but two stay for Manhandla: the timer
+            # spent every one and offsets reached 0x4D with 0.
+            if live and bomb_cd <= 0 and snap.bombs > PREP_BOMB_RESERVE and frame % 70 == 0:
                 nearest = min(
                     live,
                     key=lambda o: abs(o.x - snap.link_x) + abs(o.y - snap.link_y),
@@ -513,6 +607,7 @@ class Level3BossCombatMixin:
         last_hps: list[int] | None = None
         dmg_events = 0
         enemy_type = MANHANDLA_OBJECT_TYPE
+        tracker = ObjectTracker()
 
         for frame in range(max_frames):
             snap = read_snapshot(env.get_ram())
@@ -751,6 +846,11 @@ class Level3BossCombatMixin:
                         ("UP", "RIGHT", "DOWN", "LEFT")[frame // 15 % 4], "A"
                     ),
                 )
+                continue
+
+            dodge = _manhandla_dodge(snap, env.get_ram(), tracker.observe(snap), heads)
+            if dodge is not None:
+                _tick(env, assist, total, dodge)
                 continue
 
             nearest = min(

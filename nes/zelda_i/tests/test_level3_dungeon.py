@@ -5,8 +5,10 @@ from __future__ import annotations
 import numpy as np
 
 from retro_harness.nes import nes_action
+from zelda_i.dungeon.ids import BLADE_TRAP_OBJECT_TYPE
 from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
+    ROOM_L3_COMPASS,
     MANHANDLA_OBJECT_TYPE,
     ROOM_5B_SPEC,
     ROOM_L3_BOSS,
@@ -29,6 +31,7 @@ from zelda_i.ram import (
     ADDR_LINK_Y,
     ADDR_MODE,
     ADDR_OBJ_HP,
+    ADDR_OBJ_STATE,
     ADDR_OBJ_TYPE,
     ADDR_RAFT,
     ADDR_SCREEN,
@@ -141,12 +144,44 @@ def test_raft_passage_aligns_before_crossing_pickup_lane() -> None:
     assert raft_passage_step(
         read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=48, y=133, mode=9))
     ).action == nes_action("DOWN")
+    # The west ladder crosses the pickup row; the platform starts at x=112
+    # (5800 frames pressing RIGHT into the wall at (48, 141), Clean offset 3).
+    assert raft_passage_step(
+        read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=48, y=141, mode=9))
+    ).action == nes_action("DOWN")
     assert raft_passage_step(
         read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=176, y=149, mode=9))
     ).action == nes_action("UP")
     assert raft_passage_step(
         read_snapshot(_ram(room=ROOM_L3_RAFT_PASSAGE, x=176, y=141, mode=9))
     ).action == nes_action("LEFT")
+
+
+def _traps(ram: np.ndarray, state: int, top_y: int = 93, bottom_y: int = 189) -> np.ndarray:
+    for slot, y in ((1, top_y), (2, bottom_y)):
+        ram[ADDR_OBJ_TYPE + slot] = BLADE_TRAP_OBJECT_TYPE
+        ram[ADDR_LINK_X + slot] = 32
+        ram[ADDR_LINK_Y + slot] = y
+        ram[ADDR_OBJ_STATE + slot] = state
+    return ram
+
+
+def test_key_door_springs_the_west_traps_then_waits_them_out() -> None:
+    ctrl = Level3RaftPathController()
+    ctrl.phase = "key_to_59"
+    step = lambda ram: ctrl.step(read_snapshot(ram))  # noqa: E731
+    # Home and idle: walk in far enough to spring them.
+    act = step(_traps(_ram(room=ROOM_L3_COMPASS, x=60, y=141, keys=1), 0))
+    assert act.action == nes_action("LEFT") and act.reason == "key_59_trap_bait"
+    # Charging: back out of their column.
+    act = step(_traps(_ram(room=ROOM_L3_COMPASS, x=44, y=141, keys=1), 1))
+    assert act.action == nes_action("RIGHT")
+    # Returning but still on the door row: wait.
+    act = step(_traps(_ram(room=ROOM_L3_COMPASS, x=56, y=141, keys=1), 2, 133, 149))
+    assert act.reason == "key_59_trap_wait"
+    # Returning and clear of the row: go for the door.
+    act = step(_traps(_ram(room=ROOM_L3_COMPASS, x=56, y=141, keys=1), 2, 110, 172))
+    assert act.action == nes_action("LEFT") and act.reason == "key_59_approach"
 
 
 def test_manhandla_live_heads() -> None:

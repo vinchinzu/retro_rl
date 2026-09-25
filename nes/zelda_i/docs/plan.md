@@ -46,8 +46,8 @@ left, so every remaining item below is a death point, not a resource.
 | C2 | Blue Ring, L1 mouth 0x37 | **green** (64) |
 | C3 | L1 Triforce (new M5 on the gathered route) | **green** (64) |
 | C4 | L2 Triforce | **green** (64, TF `0x03`) |
-| C5 | L3 Triforce | red: dies in L3 at 110,963f |
-| C6 | L4 Triforce | – |
+| C5 | L3 Triforce | **green** (`clean_poweron69`, 121,388f) |
+| C6 | L4 Triforce | red: 69 dies at the L4 Gleeok (0x13) with 0.7h, 150,867f |
 | C7 | L5 Triforce (bomb budget first) | – |
 | C8-C11 | L6, L7, L8, L9 + credits | – |
 
@@ -80,20 +80,37 @@ L2 Dodongo with 7 bombs and spends all of them, rr-pm7m).
   (`CombatTuning.flank_shielded`, `_flank_strike`): 8 offsets from the L3
   entry pin, raft reached 1/8 → 7/8; L3 Triforce 0/8 → 0/8 (boss suffix).
 
+### L3 (same sitting, later)
+
+From the L3 entry pin (9 RNG offsets, `L3o<n>_walk_pond_l3`) L3 went
+0/8 → 9/9: the 0x39 pond on the L2→L3 walk, a blue potion at 0x64 when the
+wallet keeps 40R, potion drinks inside the custom boss suffix
+(`boss_combat.drink_if_low`), flank strikes on 0x5B/0x5C/0x69 (0x5C's hand
+controller is gone), the 0x69 respawn cleared by the engine, 0x5A's west
+blade traps sprung and waited out, keese cut in the raft passage, the
+passage ladder fix, two bombs kept for Manhandla, and Manhandla dodging only
+imminent fireballs (16 frames) and hands inside 14 px.
+
+Last-heart map past L4 (`lasth_l5on`, from run 53's L4 Triforce pin, 10-11
+containers): L5 needs ~0-1 refills, **L6 ~10** (0x28 17h, 0x29 10h, 0x38
+9.5h, 0x7A 4.5h). L6 is the next wall after L4.
+
 ### Next, in order
 
-1. **L3 boss suffix (C5, rr-tff2).** From `L3o<n>_enter_level3` (8 offsets,
-   `scratch/offset_pins.py` + a resume per offset) every run now reaches
-   the boss path and fails there: low hearts after the raft (0.5-2.5 left)
-   or `bombs=0` (0x5D's prep clear bombs Zols/Gels on a timer). Keep bombs
-   for Manhandla; heal before L3 (0x39 pond from 0x59 on the entry walk).
+1. **L4 (C6).** Power-on 69 enters L4 at 7.2/8 and bleeds ~0.5-2h a room
+   (0x30 Vires/bubbles 2.3h, 0x31 1.5, 0x32 1.0, 0x20/0x12 0.75) into the
+   Gleeok with 0.7h. Levers: a potion for L4 (money, item 5), the 0x43 pond
+   beside the 0x44 bomb stop, then the room fights.
 2. **Dodongo robustness (rr-pm7m).** Survival regression red: 7 bombs spent at
    0x0E without a kill (pin `NC65_fight_dodongo`). The same fight passes in
    the Clean tapes; it is RNG-fragile.
 3. **L3 small bleeds:** 0x5B north-chain Darknuts (1-4h, not flanked yet, rr-j47p),
    0x5A blade trap on the key-door push (0.75h every run), the 0x0F raft
    passage keese.
-4. Then extend the last-heart death map past L5 (bomb budget first).
+4. **Rupee budget for potions.** The pre-L3 potion leaves the 80R arrows
+   at 0x4A (L4→L5) short on some tapes. Candidates: buy Bait on the L7
+   approach instead of the gathering (60R), room rupee scoops, 0x71's 30R.
+5. **L6** (~10 last-heart refills): Wizzrobe rooms 0x28/0x38, 0x29.
 
 ## The Gathering (route order)
 

@@ -23,7 +23,6 @@ from zelda_i.level3.boss_path import (
     UP_5D_SPEC,
     L3DoorHopController,
     Level3BossPathController,
-    Level3Clear5cController,
     Level3ManhandlaController,
     Level3SpawnClearController,
     level3_boss_suffix_stages,
@@ -467,39 +466,14 @@ def test_clear_5c_east_corridor_is_leave() -> None:
     assert act.reason == "done"
 
 
-def test_spawn_clear_5c_wires_clear5c_controller() -> None:
+def test_spawn_clear_5c_uses_generic_combat() -> None:
+    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=120, y=141, bombs=4)
+    _plant_darknut(ram, slot=1, x=160, y=141, facing=2)
     ctl = Level3SpawnClearController(ROOM_5C_SPEC)
-    assert isinstance(ctl.combat, Level3Clear5cController)
-
-
-def test_clear_5c_spends_bombs_when_available() -> None:
-    """Carried bombs > 4: spend bomb at waist when Darknut approaches."""
-    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=64, y=141, bombs=7)
-    _plant_darknut(ram, slot=1, x=96, y=141, facing=2)
-    ctl = Level3Clear5cController()
     act = ctl.step(read_snapshot(ram))
-    assert act.reason == "place_bomb"
-    assert ctl.bomb_cd > 0
-    assert ctl.retreat_frames > 0
-
-
-def test_clear_5c_conserves_bombs_for_manhandla() -> None:
-    """Carried bombs <= 4: preserve bombs for Manhandla; use sword/flank."""
-    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=64, y=141, bombs=4)
-    _plant_darknut(ram, slot=1, x=96, y=141, facing=2)
-    ctl = Level3Clear5cController()
-    act = ctl.step(read_snapshot(ram))
-    assert "B" not in pressed_nes_buttons(list(act.action))
-
-
-def test_clear_5c_does_not_chase_north_onto_diamonds() -> None:
-    """Link must stay south of waist; do not chase north into y<=109 diamond trap."""
-    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=64, y=141, bombs=4)
-    _plant_darknut(ram, slot=1, x=64, y=93, facing=4)
-    ctl = Level3Clear5cController()
-    act = ctl.step(read_snapshot(ram))
-    assert act.reason in {"stay_south", "patrol_waist", "wait_for_darknut"}
-    assert list(act.action) != list(nes_action("UP"))
+    assert isinstance(ctl.combat, GenericDungeonRoomController)
+    assert ctl.saw_live
+    assert act.action == nes_action("RIGHT")
 
 
 def test_5d_nw_death_corner_peels_off_wall() -> None:
@@ -514,12 +488,4 @@ def test_5d_nw_death_corner_peels_off_wall() -> None:
     assert act.reason == "leave_wall"
     assert list(act.action) != list(nes_action("UP"))
 
-
-def test_clear_5c_avoids_direct_shield_slash() -> None:
-    """Enemy facing Link directly: flank perpendicularly instead of slashing into shield."""
-    ram = _ram(room=ROOM_L3_BOMB_SHORTCUT, x=64, y=141, bombs=4)
-    _plant_darknut(ram, slot=1, x=90, y=141, facing=2)  # facing 2 = LEFT (towards Link)
-    ctl = Level3Clear5cController()
-    act = ctl.step(read_snapshot(ram))
-    assert pressed_nes_buttons(list(act.action)) in (["UP"], ["DOWN"])
 

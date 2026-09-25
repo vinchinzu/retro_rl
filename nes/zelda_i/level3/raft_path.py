@@ -38,7 +38,18 @@ from zelda_i.level3.dungeon import (
     ROOM_L3_WEST_DARKNUTS,
 )
 from zelda_i.dungeon.hop_controller import dungeon_align_then_push
+from zelda_i.dungeon.ids import BLADE_TRAP_OBJECT_TYPE
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+
+# 0x5A's west blade traps: spring them from this x, wait past this x.
+TRAP_BAIT_X = 44
+TRAP_SAFE_X = 56
+# Rows a returning trap must be off the door row before the dash.
+TRAP_ROW_CLEAR = 20
+# 0x0F's raft platform row (y=141) runs x 112..208; west of it is the ladder.
+RAFT_PLATFORM_X_MIN = 104
+# Keese types (blue, red, black) the raft passage cuts.
+KEESE_TYPES = frozenset({0x1B, 0x1C, 0x1D})
 
 # Path timing knobs (not room-table data).
 KEY_DOOR_PUSH_FRAMES = 160  # short push can spend key without room change
@@ -73,6 +84,29 @@ RAFT_PATH_PHASES: tuple[str, ...] = (
 )
 
 
+def _keese_cut(snap: ZeldaSnapshot) -> FrameAction | None:
+    """Swing at a keese already inside the blade; the raft walk ignored them.
+
+    0x0F's passage keese cost about a heart a Clean run (8 offsets,
+    2026-09-25). One press per swing: Link is busy until it ends.
+    """
+    from zelda_i.combat import facing_to_direction
+    from zelda_i.overworld.hunt import blade_lands, link_busy
+
+    if link_busy(snap):
+        return None
+    try:
+        face = facing_to_direction(int(snap.facing))
+    except ValueError:
+        return None
+    for obj in snap.objects[1:]:
+        if int(obj.type_id) in KEESE_TYPES and blade_lands(
+            int(snap.link_x), int(snap.link_y), face, int(obj.x), int(obj.y)
+        ):
+            return FrameAction(nes_action("A"), "passage_keese_cut")
+    return None
+
+
 def raft_passage_step(snap: ZeldaSnapshot) -> FrameAction:
     """One frame of mode-9 0x0f passage geometry to Raft pickup.
 
@@ -93,6 +127,10 @@ def raft_passage_step(snap: ZeldaSnapshot) -> FrameAction:
             nes_idle_action(), f"unexpected_room_0x{snap.screen:02x}"
         )
 
+    cut = _keese_cut(snap)
+    if cut is not None:
+        return cut
+
     at_channel = abs(snap.link_x - RAFT_CHANNEL_X) <= RAFT_CHANNEL_X_TOL
     near_channel = abs(snap.link_x - RAFT_CHANNEL_X) <= 16
     on_south = snap.link_y >= RAFT_SOUTH_Y - RAFT_SOUTH_Y_TOL
@@ -102,7 +140,11 @@ def raft_passage_step(snap: ZeldaSnapshot) -> FrameAction:
 
     # Mid horizontal band (raft corridor): do not re-south — walk to pickup x.
     # Drift off exact channel while walking LEFT is expected (176 → 136).
-    if on_pickup_band and (at_channel or near_channel or snap.link_x <= RAFT_CHANNEL_X):
+    # The west ladder (x=48) crosses the pickup row too, but the platform
+    # starts at x=112: RIGHT from (48, 141) is the wall (5800 frames, Clean
+    # offset 3). Keep climbing down there.
+    on_platform = snap.link_x >= RAFT_PLATFORM_X_MIN
+    if on_pickup_band and on_platform and (at_channel or near_channel or snap.link_x <= RAFT_CHANNEL_X):
         if snap.link_x > RAFT_PICKUP_X + 2:
             return FrameAction(nes_action("LEFT"), "passage_to_raft")
         if snap.link_x < RAFT_PICKUP_X - 6:
@@ -168,6 +210,8 @@ class Level3RaftPathController:
     failed: bool = False
     phase: str = "settle_5b"
     keys_at_key_door: int | None = None
+    # ``_bait_west_traps``: bait -> back -> dash.
+    _trap_phase: str = "bait"
     max_live_59: int = 0
     max_live_69: int = 0
     clear_59: GenericDungeonRoomController = field(
@@ -178,6 +222,39 @@ class Level3RaftPathController:
     )
     notes: list[str] = field(default_factory=list)
     max_frames: int = RAFT_PATH_MAX_FRAMES
+
+    def _bait_west_traps(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Spring 0x5A's west blade traps from x=44, step back, go in on the return.
+
+        The traps sit at (32, 93) and (32, 189) and charge down Link's column
+        into the key-door row; a straight walk to the door met them there on
+        8/8 Clean offsets (0.5-1 heart each). A trap on its way home (state 2)
+        does not charge, and the 24 px across its column take ~16 frames.
+        """
+        west = [
+            o for o in snap.objects
+            if 1 <= o.slot <= 10 and int(o.type_id) == BLADE_TRAP_OBJECT_TYPE and int(o.x) < 64
+        ]
+        if not west or self._trap_phase == "dash":
+            return None
+        states = [int(o.state) for o in west]
+        if self._trap_phase == "bait":
+            if any(state != 0 for state in states):
+                self._trap_phase = "back"
+            elif snap.link_x > TRAP_BAIT_X:
+                return FrameAction(nes_action("LEFT"), "key_59_trap_bait")
+            else:
+                return FrameAction(nes_idle_action(), "key_59_trap_bait_wait")
+        # State 2 starts on the door row and they crawl home: wait till clear.
+        on_row = any(abs(int(o.y) - KEY_DOOR_Y) < TRAP_ROW_CLEAR for o in west)
+        if 1 in states or on_row:
+            if snap.link_x < TRAP_SAFE_X:
+                return FrameAction(nes_action("RIGHT"), "key_59_trap_back")
+            # The room's keese find a standing Link (CL67: the one hit here).
+            return _keese_cut(snap) or FrameAction(nes_idle_action(), "key_59_trap_wait")
+        self._trap_phase = "dash"
+        self.notes.append(f"trap_dash_f{self.phase_frames}")
+        return None
 
     def _set_phase(self, phase: str, note: str = "") -> None:
         if phase != self.phase:
@@ -305,6 +382,9 @@ class Level3RaftPathController:
                 direction = "UP" if snap.link_y > KEY_DOOR_Y else "DOWN"
                 self.push_frames = 0
                 return FrameAction(nes_action(direction), "key_59_align_y")
+            bait = self._bait_west_traps(snap)
+            if bait is not None:
+                return bait
             if snap.link_x > 48:
                 self.push_frames = 0
                 return FrameAction(nes_action("LEFT"), "key_59_approach")
