@@ -5,11 +5,6 @@ The continuous runner attaches these rows, then the carried-bomb boss suffix.
 
 from __future__ import annotations
 
-import sys
-
-if "--clean" in sys.argv:
-    sys.argv.remove("--clean")
-
 from zelda_i.route.chain import PredicateStopController
 from zelda_i.door_graph import (
     L3_DARKNUTS,

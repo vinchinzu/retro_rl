@@ -15,7 +15,8 @@ default 1 = last-heart; 0 is the next rung), Blue Ring and later Bait
 purchases at 0x34, then L1 from the 0x37 door. The ring is paid from hidden rupee caves
 (`SECRET_RUPEE_CAVES`); nothing writes the wallet, and it caps at 255. Ringless L1 and later saves are obsolete on the
 main spine; `--resume` rejects them. Regenerate from power-on.
-Planner owns `docs/STATUS.md`. The 18909f wooden M5 oracle is retired (2026-09-22); do not protect it.
+Planner owns `docs/STATUS.md`. The 18909f wooden M5 result is historical:
+the 2026-09-24 natural-entry recheck fails 2/2 at L1 `clear33_key`.
 Clean re-measure is `run_level1_complete` without `--infinite-life`.
 
 ## Save points
@@ -36,6 +37,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7 --save-
 uv run python nes/zelda_i/scripts/run_metrics.py nes/zelda_i/recordings/<tag>.json   # docs/RUN_METRICS.md row
 uv run python nes/zelda_i/scripts/pin_probe.py <state> --tiles --items --press DOWN:40   # pose, objects, $6530 + lattice, item flags; --fixture writes tests/fixtures
 uv run python nes/zelda_i/scripts/stage_replay.py <state> zelda_i.level6.dungeon:ROOM_29_SPEC --assist --window A-B   # one controller/spec from a save point; --idle N = RNG offset
+uv run python nes/zelda_i/scripts/run_survival_spine.py --clean --through level9-credits --save-points CL1 --no-video --trials 1   # real Clean: no refill, no pokes; dies in the gathering today
 uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 ...        # refill at the last heart only: refills = deaths prevented
 uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 --observed-damage-guard ...  # keep last-heart target; safety refill after larger observed hits
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through gather --no-video --trials 1
@@ -61,6 +63,7 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Do not poke Food, bombs, keys, rupees, the candle, or `$066F`. `--through pre-l1` still forces heart assist off; a short wallet at `bomb_topup` hunts the coast (`overworld/topup.py`). Quote a tape only against the code that produced it. Read `reason_by_screen` before changing a hop.
 - After the ring, 0x62's 100R pays for Bait on a second 0x34 visit. Its payout is still counting when `exit_62` ends; the bait controller checks 60R at the shop. `ring_return` skips heart scoops because a detour into the already-open 0x56 cave strands the walk. The pre-L1 red potion was displaced by Bait; do not assume a carried potion at L1.
 - Secret caves: scan slot 11 on a `BFS_<screen>` pin (0x63 rock, 0x64 tree), sweep stands with a what-if candle write, then add a `SECRET_RUPEE_CAVES` row. A candle flame DOWN from tree_y-27 opens; a cave's exit pose is per screen (0x62 lets Link out west of its bush column). Payouts past 255R are lost.
+- 0x57 has a solid south tree row: reach 0x67's 30R rock from start 0x77 UP, via 0x58/0x68/0x78 on the post-L8 bomb-shop detour. The cave costs one bomb; the second 0x4A pack returns the bag to 7. Run 53 cleared L9 with 5 left.
 - A `@dataclass` copies field defaults into `__init__`. Setting the default on the class later does not change instances.
 - Walls come from `dungeon.tilemap.ow_walkable_nodes`, the ROM collision on the 8 px turn grid, not from a screenshot. The old `measured_walker` samples one pixel and misses Link's width. 0x79 y=165 dead-ends at x=192.
 - Walls, doors, stairs and block pushes go through the ROM lattice helpers in `dungeon/hop_controller.py` (`LatticeDoorWalker`, `lattice_goto`, `block_push_step`, `stairs_step`); hand waypoint policies are fallbacks only.
@@ -75,6 +78,9 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - A second worktree is not isolated: the venv's `retro_rl_paths.pth` imports the main tree's `zelda_i`. Launch with `PYTHONPATH=$W:$W/snes:$W/nes` from the worktree `$W`, or main-tree edits land in the run.
 - The sword shot appears 13 frames after the A press (blade states 1 then 2). A 9-frame A cadence makes it look like 4.
 - An approach waypoint must be a lattice node, or the lattice approach is skipped for a hand press (L8 0x4C (120,109): 8000f). Never hand an unstick rung an idle that waits for `stuck` to fall: idling keeps it rising.
+- `--clean` was stripped from `sys.argv` by a `level3/spine.py` import until 2026-09-24: every earlier `--clean` spine tape is Survival. A module must never edit `sys.argv`.
+- `defend=True` on an `OverworldPathController` runs `ScreenHunter.defend` (strike/peel/shield/duck) ahead of the hop ladder and every hand phase. A subclass that latches a pose (a bomb cell) must drop the latch in `_on_defended`: a 2 px duck left 0x47's flame stand latched and the tree stayed shut.
+- A clock drop sets `$066C` (`snap.clock`) until Link leaves the room. Goriyas freeze where they stand and L7 0x0D's Wallmaster ring stops spawning. When a hand clear times out on bodies that do not move, check the clock first.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

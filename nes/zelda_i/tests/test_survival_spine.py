@@ -401,6 +401,28 @@ def test_run_survival_spine_allows_assist_none() -> None:
         pass
 
 
+def test_spine_script_keeps_clean_flag_through_imports() -> None:
+    """``--clean`` must reach the parser. A level3.spine import used to drop it
+    from ``sys.argv``, so every ``--clean`` spine run until 2026-09-24 was Survival."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    scripts = Path(__file__).resolve().parents[1] / "scripts"
+    probe = (
+        "import sys; sys.path.insert(0, sys.argv.pop(1)); "
+        "import run_survival_spine; "
+        "assert sys.argv[1:] == ['--clean'], sys.argv"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", probe, str(scripts), "--clean"],
+        capture_output=True,
+        text=True,
+        env={**__import__("os").environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
+    assert out.returncode == 0, out.stderr[-2000:]
+
+
 def test_topups_and_run_stages_noop_when_pokes_disallowed() -> None:
     """``--no-pokes`` / ``--clean`` skip every owned-inventory write."""
     import inspect

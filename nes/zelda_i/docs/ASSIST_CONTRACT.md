@@ -61,9 +61,11 @@ Bomb and key top-ups from power-on through L8 were **retired on 2026-09-24**
 (rr-doua), and Level 9 bomb top-ups were **retired on 2026-09-24** (rr-ps7.5).
 Between dungeons the spine buys 20R bomb packs when the carried count is short
 of the next dungeon's walls (`BombRestockController`: 0x4A before L2, 0x44 on
-the L3 → L4 and L7 → L8 walks, and 0x4A on the post-L8 walk to Spectacle Rock),
-room drops cover the rest, and L1 takes 0x72's key so `backtrack44` needs no key
-write. `SPINE_L9_RETOPUP` is empty. Zero bomb count top-ups remain on the spine.
+the L3 → L4 and L7 → L8 walks, and two 0x4A buys on the post-L8 walk to
+Spectacle Rock). The second L9 pack is funded by the natural 30R cave at
+0x67 after the first pack. Room drops cover the rest, and L1 takes 0x72's
+key so `backtrack44` needs no key write. `SPINE_L9_RETOPUP` is empty. Zero
+bomb count top-ups remain on the spine.
 Rupee-count top-ups (L7 Bait 60R, pre-l1 coast pack 20R, gathering Blue
 Ring 250R) were **retired on 2026-09-24**. The gather chain now opens the
 hidden rupee caves on and beside its walk (`SECRET_RUPEE_CAVES` in
@@ -71,8 +73,9 @@ hidden rupee caves on and beside its walk (`SECRET_RUPEE_CAVES` in
 ring; 0x62 after it), which pays the 250R ring and the 60R candle from play.
 The wallet caps at 255, so the order matters. Nothing writes `$066D`; a
 short wallet now fails the buy instead of being topped up.
-**Not Clean.** Strip or replace with farms during the later resource pass; do
-not treat a top-up tape as natural inventory.
+The count top-ups below remain documented as historical development assists.
+The current spine buys these resources in play. Its Survival classification
+comes from the health refill, not an inventory write.
 
 Allowed fields only:
 

@@ -1,77 +1,57 @@
 # Plan — Zelda I
 
-## Now: what is left between Survival credits and Clean credits (2026-09-24)
+## Now: the real Clean frontier is the gathering (2026-09-24, later)
 
-Survival credits are routine now: run 31 (275,135f) had no rupee writes,
-and last-heart run 37 (293,488f) had zero deaths and zero state loads.
-natl8_3 went from power-on to the L8 leave with no bomb or key writes.
-Clean is `run_survival_spine.py --clean`, meaning no refill and no pokes. It
-has not been run past L1.
+`--clean` never reached the spine before today (see STATUS): every "Clean"
+tape was Survival. The inventory gate is done (natural_credits_poweron39:
+zero pokes). The only assist left is the health refill, and with it off
+power-on dies at 40,564f on the White Sword walk (`clean_poweron45`).
 
-These assists are left:
+The refreshed zero-poke Survival baseline is `natural_credits_poweron53`:
+power-on to credits, 310,175f, TF `0xFF`, 14 containers, zero state loads,
+zero inventory/progression/capacity writes. L3 0x5D and L8 0x6E room rupees
+cover the L4 arrows and first post-L8 bomb pack. After that pack, 0x67's
+30R rock cave funds the second. This is still Survival health refill; it
+does not advance the Clean frontier.
 
-| Assist | Where | Replaced by | Bead |
-|---|---|---|---|
-| Health refill | whole run. Run 37: 7 target + 16 safety refills | fewer hits, heart pickups, potions | rr-k3vj, rr-thlc |
-| Bomb count | L9 chapter gates (`SPINE_L9_RETOPUP`) | a 20R pack on the post-L8 walk | rr-ps7.5 |
-| Wooden arrows `$0659` | L6 Gohma `0x1C` | an 80R buy at a `CAVE_SHOP_ARROWS` cave after L1 | rr-ps7.7 |
-| Food `$065D` | `level7_bait_purchase` | 60R bait at `0x34` | rr-8t4.4 / .5 |
+Measure Clean with `run_survival_spine.py --clean --through level9-credits
+--save-points CL<n>`: one run is about 1 minute to the gather death. Fix a
+death from its `CL<n>_<stage>` pin, score the change over RNG offsets (the
+scratch `hits.py` / `arms.sh` pattern: `--idle` offsets, success and hearts
+left), then re-run power-on. Keep the zero-poke Survival run green after each
+change (`--no-pokes`), because every change reshuffles later rooms.
 
-The health refill is the largest gap, but it is not the only one. The other
-three are shop buys, and so is the second potion. Together they cost
-20 + 80 + 60 + 40 = 200R. natl8_3's wallet was 17R at L2 entry, 45R at L3,
-34R at L4 and 38R at the L8 leave, so rupees are now the binding constraint.
-Each buy also moves every later frame, because a timing change in one room
-reshuffles every later room. So land the route buys first and tune combat
-after, or the tuning has to be redone.
+Next, in order:
 
-1. **rr-ps7.5, L9 bombs.** L8 leaves with 0 bombs and 38R. Add a want-gated
-   `BombRestockController` stop on the `0x6D` walk, then empty
-   `SPINE_L9_RETOPUP`. It moves only L9 frames. Watch for the every-frame
-   `bombs<=0` guard that fails while the last bomb burns.
-2. **rr-ps7.6, rupee budget.** Build a per-stage wallet table from natl8_3,
-   then choose income that lands before each buy. Unused sources: caves in
-   `SECRET_RUPEE_CAVES` that the walk skips (`0x67` 30R and `0x71` 30R are
-   bomb rocks near the start, `0x13` 30R is past the river, `0x51` gives
-   10R) plus the Armos caves `0x3D` 30R and `0x4E` 10R, for 140R in all.
-   Another 35R is in the room rupee5 items natl8_3 left behind, and 103 of
-   179 floor drops went unpicked. The wallet caps at 255.
-3. **rr-8t4.5, bait at `0x34`.** `0x34` sells key 80 / Blue Ring 250 /
-   bait 60, and the gather walk already goes there for the ring. Food keeps
-   until L7-B, so the mountain-locked L6 → `0x34` walk (rr-8t4.4) may not
-   be needed. Either stop at `0x34` a second time with 60R, or spend 0x62's
-   post-ring 100R on bait instead of the red potion. Then delete the Food
-   exception from ASSIST_CONTRACT.
-4. **rr-ps7.7, wooden arrows.** The buy can go anywhere between the L1 bow
-   and L6. `0x4A` is the cave where the pre-L2 bomb pack is bought. Set
-   Gohma to `poke_arrows=False` on the default spine, and keep the 1R per
-   shot arrow reserve.
-5. **Inventory-clean gate.** Run `--through level9-credits --no-pokes`
-   with the refill still on, one continuous power-on. Once this is green,
-   health really is the only assist left.
-6. **Re-baseline health.** Run `--engage-hearts 1 --observed-damage-guard
-   --no-pokes` from power-on on HEAD. Run 37 was recorded before rr-doua,
-   and every room after L1 has moved since. Read the damage census per room
-   before tuning anything. Run 37's worst rooms were L5 0x05 (16h), L5 0x64
-   (15h), L9 0x10 (14.5h), L6 0x3A (12.5h) and L9 0x20 (12.5h). Score
-   combat changes on `stage_replay.py --idle` offsets, not on one tape.
-7. **Health levers, cheapest first.**
-   - Pick up heart and fairy drops when below full. natl8_3 missed 53.
-   - Add a second potion stop once rupees exist (rr-thlc). A drink trigger
-     earlier than the last heart stalled L3 0x69, so keep that trigger.
-   - Room combat on whatever the re-baseline ranks worst.
-   Under Clean the true death count is somewhere between the target
-   refills (7) and target + safety (23). Only a `--clean` run gives the
-   exact number.
-8. **Clean attempts.** Run `--clean --through level9-credits` in one
-   session. Each death becomes a room card, fixed from its `Full_<stage>`
-   save point and then re-run from power-on. Promote in STATUS only when
-   deaths = 0, `set_state` = 0 and every write count is 0 (rr-npv).
+1. **Northeast attrition (gathering rung 3).** After the 0x39 pond Link
+   has 4/4. walk_2c spends 2.5h (0x2B blue leevers, 0x4B), and the 0x2C
+   container brings him to 3/5. ne_100 (0x1E tektites) spends 0.5h, the
+   letter (0x1E) 1h and walk_28 (0x0C) 0.5h, so he reaches `white` with 1h.
+   No heal on that stretch. The remaining hits happen inside the defend
+   layer (close peel, slash recovery against tektites and leevers), so melee
+   quality is the lever. Route levers, each a rupee trade: the 0x0D potion
+   shop sits on the 0x0E→0x0C walk (1 bomb + 40R, but the ring then needs
+   0x62's 100R before it, and Bait needs a new 60R source); or White Sword
+   after the ring and the second pond. On 1 heart the 0x28→0x38→0x48 walk
+   also died in 305f (prototype), so reordering alone is not enough. The
+   0x2C take-any left item is a red potion, but the tested early-potion
+   reroute drank both charges near the candle shop and still died at 0x28.
+2. **0x0A Lynel (`white`, rr-lkqf).** Gated now: the climb waits for the
+   Lynel on the bottom band, and the top-band walks hold for its sword shot
+   (`white_sword.py` `_lynel_gate` / `_beam_hold`). `white` went 1/6 → 4-5/6
+   and `back_1a` 6/6 with no hits. Still open: a Lynel that climbs the west
+   lane meets Link on the top band (1 of 6), and the Zora's fireballs hit
+   while he waits at the corridor foot.
+3. **Then L1 onward.** The last-heart baseline on HEAD (`lasth_poweron43`)
+   had 8 gathering refills and 1 more through L4. Run 37 (pre-reshuffle)
+   ranked L5 0x05/0x64, L9 0x10, L6 0x3A and L9 0x20 worst.
 
-Bead housekeeping. rr-k3vj's baseline is met by run 37, so point it at the
-re-baseline in step 6. rr-s9ep (L3 0x5C) did not come back in run 37;
-close it if the re-baseline passes L3. rr-exhy (the legacy `--no-gather`
-prefix) is not on the main path.
+Run 53 is the current continuous Survival regression gate after route edits.
+The separate Clean M5 natural-entry recheck is also red on current code:
+`run_level1_complete.py --natural-entry --trials 2` failed twice at
+`clear33_key` (frame 9742, `0x33_needs_heart`). The 18909f figure remains a
+historical best, not a passing current gate. Investigate room 0x33 after the
+gathering frontier, or sooner if changing the standalone L1 controller.
 
 ## The Gathering (route order)
 
@@ -82,7 +62,7 @@ Zelda Dungeon calls this The Gathering. Order:
 3. Heart at `0x7B` (taken from a `BFS_7C` pin, `GatherHeartL8Leave`), then the heart at `0x2C` (taken from a `BFS_2C` pin, `GatherHeartM3Leave`).
 4. Northeast cluster: 100 rupees `0x0F`, letter `0x0E`, candle `0x0C`, White Sword `0x0A`. Go around Lost Hills `0x1B`. The older 21609-frame chain ended ringless at L1 and is historical evidence only. Next: heal before `exit_6f` so the chain can run with no refill. The `backtrack44` key poke is gone: L1 takes 0x72's key (rr-doua).
 5. Burn heart `0x47` and the 90-rupee shield at `0x46`.
-6. Blue Ring at `0x34` is mandatory before L1, paid by the hidden rupee caves; 0x62's 100R after it buys a red potion at `0x64`. Arrows are rr-ps7.7 and bait is rr-8t4.5; both need the rupee budget (rr-ps7.6).
+6. Blue Ring at `0x34` is mandatory before L1, paid by the hidden rupee caves; 0x62's 100R after it buys Bait at `0x34`. Arrows are bought after L4, and 0x67 funds Level 9's second bomb pack.
 7. Then the Level 1 mouth at `0x37`, and only then a new Clean Level 1 measure.
 
 Do not overwrite the 18909f oracle while this prefix is open.

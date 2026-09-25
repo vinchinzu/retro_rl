@@ -265,6 +265,19 @@ def test_the_hunt_ladder_is_the_old_source_order() -> None:
     ]
 
 
+def test_the_defense_ladder_is_the_contact_rungs_only() -> None:
+    """``ScreenHunter.defend`` is for hand phases that own the frame: nothing
+    below the duck, so no heal walk, collect or chase pulls Link off his goal."""
+    from zelda_i.overworld.hunt import ScreenHunter
+
+    assert _names(ScreenHunter().defense_arbiter) == [
+        "hunt_strike",
+        "hunt_peel",
+        "hunt_shield",
+        "hunt_duck",
+    ]
+
+
 def test_neither_wired_ladder_repeats_a_name() -> None:
     """``Arbiter.__post_init__`` raises on a duplicate, so this is really an
     assertion that both ladders can be built at all — but it also says the

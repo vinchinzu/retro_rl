@@ -68,6 +68,10 @@ FACE_FRAMES = 20
 BLOW_PRESSES = 12
 SETTLE_STABLE_FRAMES = 90
 SETTLE_MAX_FRAMES = 3000
+# A landing on a dungeon's door screen can carry Link in (0x24 -> 0x22 walked
+# into L6, natural_credits_poweron47). Walk back out its south door for at
+# most this many frames, then the landing reads as that door screen.
+DUNGEON_EXIT_MAX_FRAMES = 600
 # Recon needed 8; the cap leaves margin for a no-op blow off a door screen.
 MAX_BLOWS = 12
 # The whirlwind is object $2E while it crosses. $0508 set with no $2E on screen
@@ -139,6 +143,8 @@ class RecorderWarpController:
     _leave_from: int = field(default=0, init=False, repr=False)
     _walk_in: int = field(default=0, init=False, repr=False)
     misses: int = 0
+    dungeon_exits: int = 0
+    _exit_frames: int = 0
     facings: list[str] = field(default_factory=list)
     _cursor: int | None = field(default=None, init=False, repr=False)
     _blow_face: str = field(default=WARP_FACING, init=False, repr=False)
@@ -284,7 +290,14 @@ class RecorderWarpController:
         if self.frames > self.max_frames:
             return self._fail("warp_budget_exhausted")
         if snap.level != 0:
+            if self.phase is WarpPhase.SETTLE and self._exit_frames < DUNGEON_EXIT_MAX_FRAMES:
+                if self._exit_frames == 0:
+                    self.dungeon_exits += 1
+                    self._note(f"warp_carried_into_L{snap.level}")
+                self._exit_frames += 1
+                return FrameAction(nes_action("DOWN"), "warp_dungeon_exit")
             return self._fail(f"warp_left_overworld_L{snap.level}")
+        self._exit_frames = 0
         if snap.mode == CAVE_MODE:
             return self._fail("warp_entered_cave")
         if int(read_u8(self._env.get_ram(), ADDR_WHISTLE)) < 1:

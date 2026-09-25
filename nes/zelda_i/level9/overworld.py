@@ -762,6 +762,12 @@ class Level9PostL8OverworldController(OverworldPathController):
         if snap.screen == 0x38 and hop.target == 0x28:
             if abs(snap.link_x - 48) <= 4 and abs(snap.link_y - 133) <= 4:
                 return self._fail_now("known_blocked_0x38_x48_y133_replan")
+            # ROM lattice first, as on 0x17: the x=112..143 cut is the only
+            # way north, and once the bridge latch set, a knock off x=120
+            # pressed UP into rock for 10387f (natural_credits_47r).
+            step = ow_edge_band_step(None, snap, "UP", 112, 136)
+            if step is not None:
+                return self._swing(step, "38_lattice")
             if not self._cleared_38_bridge:
                 if abs(snap.link_x - 120) > 4:
                     btn = "LEFT" if snap.link_x > 120 else "RIGHT"

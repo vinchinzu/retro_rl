@@ -28,6 +28,7 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import SCREEN_LEVEL7_ENTRY_ROOM
 from zelda_i.combat import nearest_enemy, should_swing_at
+from zelda_i.overworld.hunt import sword_stand
 from zelda_i.door_graph.core import DoorDir
 from zelda_i.dungeon.behaviors import (
     GORIYA_BLUE_TYPE,
@@ -44,6 +45,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     dungeon_align_then_push,
     inland_lattice_step,
+    room_step,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.level7.graph import (
@@ -126,6 +128,9 @@ ROOM_6B_TOP_BAND_Y = 93
 ROOM6B_NORTH_MAX_FRAMES = 3000
 _SWING_PERIOD = 8
 _SWING_HOLD = 4
+# ``combat.SWORD_HALF_WIDTH`` (12) swings at a body the ROM blade misses: a
+# clock-frozen goriya 12 px off Link's line took 4000 slashes on L7 0x59.
+_GORIYA_STRIKE_HALF_WIDTH = 8
 _GORIYA_TYPES = frozenset({GORIYA_BLUE_TYPE, GORIYA_TYPE})
 # Same inland box as dungeon.engine avoid_walls. West door column is x=32.
 _INLAND_X = (56, 200)
@@ -391,12 +396,14 @@ def _goriya_fight(
     frames: int,
     inland_x: tuple[int, int] = _INLAND_X,
     inland_y: tuple[int, int] = _INLAND_Y,
+    env: Any = None,
 ) -> FrameAction:
     hint = engagement_hint(
         EnemyKind.GORIYA, snap, target, projectiles=_projectiles(snap)
     )
     if should_swing_at(
-        snap.link_x, snap.link_y, hint.face, (target,), hint=hint
+        snap.link_x, snap.link_y, hint.face, (target,), hint=hint,
+        half_width=_GORIYA_STRIKE_HALF_WIDTH,
     ):
         if frames % _SWING_PERIOD < _SWING_HOLD:
             return FrameAction(nes_action(hint.face, "A"), "goriya_slash")
@@ -414,7 +421,12 @@ def _goriya_fight(
     )
     if step is not None:
         return FrameAction(nes_action(step), "goriya_chase_lattice")
-    return FrameAction(nes_action(hint.face), "goriya_chase")
+    # The greedy face flips where |dx| ~ |dy|: 0x59 (127,109) with the goriya
+    # at (48,189) pressed DOWN (slid to x=128) then LEFT for 5000f. Walk the
+    # lattice to the cell the blade reaches from, not onto the body.
+    stand = sword_stand(int(snap.link_x), int(snap.link_y), target)
+    step = room_step(snap, stand, tol=4, env=env)
+    return FrameAction(nes_action(step or hint.face), "goriya_chase")
 
 
 def east_route_step(snap: ZeldaSnapshot) -> FrameAction:

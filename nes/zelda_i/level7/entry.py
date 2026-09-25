@@ -27,7 +27,13 @@ from zelda_i.level7.pond import (
     PostLevel6OverworldController,
     make_post_l6_overworld_controller,
 )
-from zelda_i.overworld.cave_shop import CaveShopBuyController, CaveShopBuyPhase
+from zelda_i.overworld.cave_shop import (
+    SHOP_34_ARMOS_STAND,
+    SHOP_34_ARMOS_TILE,
+    SHOP_34_ARMOS_WAIT,
+    CaveShopBuyController,
+    CaveShopBuyPhase,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.stitch import (
     CUMULATIVE_TF,
@@ -49,8 +55,6 @@ BAIT_SHOP_SCREEN = BAIT_SHOP_SCREEN_HYP
 BAIT_CAVE_X = 64
 BAIT_CAVE_Y = 125
 BAIT_DOOR_X = 64
-BAIT_DOOR_APPROACH_Y = 189
-BAIT_DOOR_REVERSE_Y = 100
 BAIT_BUY_X = 152
 BAIT_BUY_Y = 165
 BAIT_BUY_BUDGET = 1500
@@ -149,8 +153,10 @@ class NaturalBaitPurchaseController(CaveShopBuyController):
     cave_x: int = BAIT_CAVE_X
     cave_y: int = BAIT_CAVE_Y
     door_x: int = BAIT_DOOR_X
-    door_approach_y: int = BAIT_DOOR_APPROACH_Y
-    door_reverse_y: int = BAIT_DOOR_REVERSE_Y
+    armos_tile: tuple[int, int] | None = SHOP_34_ARMOS_TILE
+    armos_stand: tuple[int, int] | None = SHOP_34_ARMOS_STAND
+    armos_wait: tuple[int, int] | None = SHOP_34_ARMOS_WAIT
+    defend: bool = True
     buy_x: int = BAIT_BUY_X
     buy_y: int = BAIT_BUY_Y
     price: int = BAIT_COST
@@ -320,8 +326,6 @@ __all__ = [
     "BAIT_CAVE_X",
     "BAIT_CAVE_Y",
     "BAIT_COST",
-    "BAIT_DOOR_APPROACH_Y",
-    "BAIT_DOOR_REVERSE_Y",
     "BAIT_DOOR_X",
     "BAIT_MAX_FRAMES",
     "BAIT_SHOP_SCREEN",

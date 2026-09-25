@@ -46,7 +46,9 @@ from typing import Any, Callable
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.hop_controller import mouth_step
+from zelda_i.dungeon.hop_controller import mouth_step, room_step
+from zelda_i.dungeon.ids import ARMOS_OBJECT_TYPE
+from zelda_i.dungeon.tilemap import has_room_tile_map, tile_at_screen
 from zelda_i.dungeon.pause_select import (
     B_SLOT_LETTER,
     PauseSelectController,
@@ -76,6 +78,9 @@ __all__ = [
     "POTION_SHOP_SCREEN",
     "PotionShopBuyController",
     "RED_POTION_PRICE",
+    "SHOP_34_ARMOS_STAND",
+    "SHOP_34_ARMOS_TILE",
+    "SHOP_34_ARMOS_WAIT",
     "make_potion_buy_controller",
     "make_potion_restock_controller",
     "potion_restock_stages",
@@ -86,6 +91,15 @@ BUY_BUDGET = 900
 CAVE_DIALOG_IDLE = 120
 DOOR_HUNT_TIMEOUT = 1800
 NORTH_GAP_Y_HI = 120
+# The tile a woken Armos leaves on its cell when it hides stairs.
+STAIRS_TILE = 0x70
+# Chebyshev px a woken Armos must be off the stairs before Link steps on.
+ARMOS_CLEAR = 24
+# 0x34 (Blue Ring / Bait / key shop): the stairs statue, the lattice node east
+# of it between the (64,128) and (96,128) statues, and a wait above the row.
+SHOP_34_ARMOS_TILE = (64, 128)
+SHOP_34_ARMOS_STAND = (80, 125)
+SHOP_34_ARMOS_WAIT = (80, 109)
 # A pedestal left of the stairs (x=112) is walked to from the right. UP
 # slides Link to the NEAREST 8 px column, not onward (measured: UP at x=95
 # slid to 96, then LEFT to 95, a tug-of-war beside the 88 blue potion), so
@@ -181,17 +195,20 @@ class CaveShopBuyController(OverworldPathController):
     # (None) disables the check — most shops don't need it.
     north_gap_x: int | None = None
     north_gap_y_hi: int = NORTH_GAP_Y_HI
-    # A south arrival may have a solid west edge; climb to this open row
-    # before aligning with the cave's x column (0x34 Armos shop).
-    door_approach_y: int | None = None
-    # On an Armos shop, pushing UP wakes the statue and carries Link past the
-    # newly exposed stairs. Turn back onto those stairs from above.
-    door_reverse_y: int | None = None
-    _door_returning: bool = False
     # Lattice row under the mouth. Set, ``mouth_step`` routes there from any
     # side and pushes ``door_dir`` (a bomb or potion mouth above a walled
     # south gap); unset keeps the blind align-then-push hunt.
     mouth_approach_y: int | None = None
+    # Armos stairs (0x34). Set, Link walks the lattice to ``armos_stand``
+    # beside the one statue that hides the stairs and pushes ``armos_face``
+    # into it; while a woken Armos is within ``ARMOS_CLEAR`` of the stairs
+    # he waits on ``armos_wait``, then steps on. The door-column hunt climbed
+    # x=64 from the bottom and woke the (64,160) statue on top of Link first:
+    # 4-5 hits per visit with no refill (census, 2026-09-24).
+    armos_tile: tuple[int, int] | None = None
+    armos_stand: tuple[int, int] | None = None
+    armos_face: str = "LEFT"
+    armos_wait: tuple[int, int] | None = None
 
     # Rupee farm — call into it (never poke) when short of ``price``. None
     # means "no farm available": short-of-price fails closed instead.
@@ -222,7 +239,6 @@ class CaveShopBuyController(OverworldPathController):
         self._item_owned_at_start = None
         self._item_at_start = None
         self.leftover = None
-        self._door_returning = False
         if self.farm is not None:
             self.farm.reset()
 
@@ -318,6 +334,8 @@ class CaveShopBuyController(OverworldPathController):
             )
         if snap.screen != self.shop_screen:
             return super()._simple_door_hunt(snap)
+        if self.armos_tile is not None and snap.level == 0 and snap.mode == PLAY_MODE:
+            return self._armos_door(snap)
         if (
             self.mouth_approach_y is not None
             and snap.level == 0
@@ -331,24 +349,6 @@ class CaveShopBuyController(OverworldPathController):
                 env=self._env,
             )
             return self._swing(direction, "cave_mouth")
-        if self.door_reverse_y is not None:
-            if snap.link_y < self.door_reverse_y:
-                self._door_returning = True
-            if self._door_returning:
-                if (
-                    self.door_approach_y is not None
-                    and snap.link_y > self.door_approach_y
-                ):
-                    self._door_returning = False
-                else:
-                    return self._swing("DOWN", "door_exposed_stairs")
-        if (
-            self.door_approach_y is not None
-            and self.door_x is not None
-            and abs(snap.link_x - self.door_x) > 5
-            and snap.link_y > self.door_approach_y
-        ):
-            return self._swing("UP", "door_approach_row")
         if (
             self.north_gap_x is not None
             and snap.link_y < self.north_gap_y_hi
@@ -359,6 +359,37 @@ class CaveShopBuyController(OverworldPathController):
             btn = "LEFT" if snap.link_x > self.door_x else "RIGHT"
             return self._swing(btn, "door_ax")
         return self._swing(self.door_dir, "door_hunt")
+
+    def _armos_door(self, snap: ZeldaSnapshot) -> FrameAction:
+        """Wake only the stairs statue from its side, wait it off, step on.
+
+        Pair with ``defend``: a blue leever surfaces on the stand mid-push.
+        """
+        ax, ay = self.armos_tile
+        ram = self._env.get_ram() if self._env is not None else None
+        if not (
+            ram is not None
+            and has_room_tile_map(ram)
+            and tile_at_screen(ram, ax, ay) == STAIRS_TILE
+        ):
+            step = room_step(snap, self.armos_stand, tol=1, env=self._env)
+            if step is not None:
+                return self._swing(step, "armos_stand")
+            return FrameAction(nes_action(self.armos_face), "armos_touch")
+        awake = [
+            o for o in snap.objects
+            if 1 <= o.slot <= 11 and int(o.type_id) == ARMOS_OBJECT_TYPE
+        ]
+        if any(
+            max(abs(int(o.x) - ax), abs(int(o.y) - ay)) < ARMOS_CLEAR for o in awake
+        ):
+            wait = self.armos_wait or self.armos_stand
+            step = room_step(snap, wait, tol=1, env=self._env)
+            if step is None:
+                return FrameAction(nes_idle_action(), "armos_wait_hold")
+            return self._swing(step, "armos_wait")
+        step = room_step(snap, (ax, ay - 3), tol=0, env=self._env)
+        return FrameAction(nes_action(step or self.armos_face), "armos_stairs")
 
     def _farm_step(self, snap: ZeldaSnapshot) -> FrameAction:
         """Call the generic ``RupeeFarmController`` to close a rupee shortfall.

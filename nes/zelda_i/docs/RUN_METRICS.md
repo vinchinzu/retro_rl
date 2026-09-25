@@ -49,6 +49,15 @@ measurement. Compare a row against the row above it only when the code changed.
 | **lastheart_poweron37 (0x1F inner bombs, 0x75 ladder)** | **ok (guarded_last_heart)** | level9-credits | **293488** | 9472 | 92/170 | 30 | 315 / **23** (7 target, 16 safety) | 91 / 3 / **0** | 7:0d 5039f | 388.33 | 24 rooms; see report |
 | **natl8_3 (rr-doua: no bomb/key writes)** | **ok (unlimited_health)** | level8 | **238187** | 6175 | 76/179 | 53 | 115 / 389 | 0 / 0 / 0 | 0:5f 3506f | 260.25 | 1:43=map 1:44=boomerang 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 |
 | **natural_credits_poweron39 (rr-ps7: zero pokes, natural buys)** | **ok (unlimited_health)** | level9-credits | **289154** | **7478** | 84/187 | 41 | 151 / 493 | **0 / 0 / 0** | 7:1a 5712f | 341.25 | 1:43=map 1:44=boomerang 3:5d=rupee5 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:09=rupee5 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 8:6e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
+| **natural_credits_poweron53 (L3/L8 rupees, 0x67 L9 shop detour)** | **ok (unlimited_health)** | level9-credits | **310175** | 11147 | 95/230 | 57 | 167 / 525 | **0 / 0 / 0** | 7:0d 5376f | 337.42 | 1:43=map 1:44=boomerang 5:26=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:19=map 6:28=rupee5 6:2d=key 7:09=rupee5 7:0c=bombs 7:1b=bombs 7:38=rupee5 7:58=rupee5 7:68=bombs 7:69=bombs 8:2e=map 8:3f=bombs 8:4c=key 8:4e=rupee5 9:15=rupee5 9:16=bombs 9:62=rupee5 |
+
+`natural_credits_poweron53` is one continuous power-on session: no state
+loads, deaths, or inventory/progression/capacity writes. The L3 0x5D and
+L8 0x6E five-rupee room items were collected in play. At L9's post-L8
+shop, Link bought one 20R pack, opened 0x67 for 30R with one bomb, returned
+to 0x4A for the second pack, and reached credits with 5 bombs. The health
+refill remained active (Survival); the real Clean frontier is still the
+gathering White Sword walk.
 
 natural_credits_poweron39 (2026-09-24, rr-ps7): first continuous power-on run
 to credits with zero inventory pokes or writes of any kind: `ok=True`,
@@ -138,6 +147,16 @@ power-on. Frames and flutter count only up to the failure.
 | full_poweron23 | level6_clear_0x29 | 0x1F | - | - | 6:29 | latched ladder crossing heading |
 | full_poweron25 | level6_clear_0x29 | 0x1F | - | - | 6:29 | engine backs off a ladder that goes nowhere |
 | full_poweron26 | level9_natural_silver_arrows | 0xFF | 270230 | 6529 | 9:4f 13993f | passes on later code from the same pose |
+
+## Clean (`--clean`: no refill, no pokes)
+
+Before 2026-09-24 `--clean` was stripped from `sys.argv` on import, so every
+earlier "Clean" spine tape here was Survival. These are the first real ones.
+
+| run | result | frames | note |
+|---|---|---|---|
+| clean_poweron42 | death, `walk_pond` 0x4A | 24635 | Waypoint walk into octoroks/moblins; 7 half-heart hits from 3.5/4. |
+| clean_poweron46 (defend layer, 0x34 Armos door) | death, `white` 0x17 | 40801 | Past the pond, 0x2C, the NE cluster, letter, candle and 0x28; reached `white` on 1/5 hearts. |
 
 ## Last-heart refill (`--engage-hearts 1`)
 

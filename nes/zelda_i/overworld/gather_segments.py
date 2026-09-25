@@ -13,7 +13,12 @@ from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.ops import B_ITEM_CANDLE
 from zelda_i.dungeon.pause_select import PauseSelectController
-from zelda_i.overworld.cave_shop import CaveShopBuyController
+from zelda_i.overworld.cave_shop import (
+    SHOP_34_ARMOS_STAND,
+    SHOP_34_ARMOS_TILE,
+    SHOP_34_ARMOS_WAIT,
+    CaveShopBuyController,
+)
 from zelda_i.overworld.gather_run import (
     PRE_L1_LEAVE,
     pin_pre_l1,
@@ -23,7 +28,7 @@ from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import PondFairyController
 from zelda_i.overworld.locations import SECRET_RUPEE_CAVES
 from zelda_i.overworld.hunt import link_busy
-from zelda_i.overworld.path import OverworldPathController
+from zelda_i.overworld.path import CAVE_EXIT_X, OverworldPathController
 from zelda_i.overworld.white_sword import (
     MIN_HEART_CONTAINERS,
     SCREEN_MAZE_GATE,
@@ -425,6 +430,7 @@ class BombWallController(OverworldPathController):
     _bombs_at_press: int = -1
     _bombed: int = 0
     _on_cell: bool = False
+    _exact_cell: bool = False
     _back_frames: int = 0
     _backs: int = 0
     _regain: bool = False
@@ -491,8 +497,10 @@ class BombWallController(OverworldPathController):
                 self._on_cell = False
             step = None
             if not self._on_cell:
-                step = room_step(snap, (self.bomb_x, self.bomb_y), tol=2, env=self._env)
+                tol = 0 if self._exact_cell else 2
+                step = room_step(snap, (self.bomb_x, self.bomb_y), tol=tol, env=self._env)
                 self._on_cell = step is None
+                self._exact_cell = self._exact_cell and not self._on_cell
             if step is not None:
                 # The last few pixels are a push, not a swing. 0x7B knocked
                 # Link to (144, 85), 3 px past the cell, with a red leever in
@@ -549,6 +557,14 @@ class BombWallController(OverworldPathController):
             if self._regain:
                 return push(step, "regain_cell")
         return push(self.bomb_face, "into_wall")
+
+    def _on_defended(self) -> None:
+        # A duck moved Link 2 px off the 0x47 stand with the cell still
+        # latched; the flame went out from (176,155), inside the walk's 2 px
+        # tolerance, and missed the tree (natural_credits_poweron44/45).
+        # Re-walk to the exact cell first.
+        self._on_cell = False
+        self._exact_cell = True
 
     def _off_the_opening(self, snap: ZeldaSnapshot) -> bool:
         """Past the opening along the face, or off its axis, by a tile's half."""
@@ -711,7 +727,12 @@ class HopWalkController(OverworldPathController):
 
     hops: tuple[ScreenHop, ...] = HEART_WALK_HOPS
     farm_below_hearts: int = 0
-    evade: bool = False
+    # Measured with no refill, 7 gather walks x 6 RNG offsets from the
+    # last-heart pins (2026-09-24): stages survived 34/42 bare, 37/42 with
+    # ``defend``, 41/42 with both; mean hearts left 1.73 / 2.42 / 2.67.
+    # Evade alone (2026-09-22) had not paid: the waypoints outranked it.
+    evade: bool = True
+    defend: bool = True
     max_frames: int = 6000
     waypoints: dict[int, tuple[tuple[int, int], ...]] | None = None
     _way_screen: int = -1
@@ -728,9 +749,6 @@ class HopWalkController(OverworldPathController):
         )
 
 
-# Every one-room cave here has its stairs bottom centre. Link entered the
-# 0x0F cave at (112, 213).
-CAVE_EXIT_X = 112
 CAVE_EXIT_CLEAR = 16
 EXIT_MODE = 10
 
@@ -984,8 +1002,10 @@ def make_ring_controller(hops: tuple[ScreenHop, ...] = RING_HOPS) -> CaveShopBuy
         cave_x=64,
         cave_y=125,
         door_x=64,
-        door_approach_y=189,
-        door_reverse_y=100,
+        armos_tile=SHOP_34_ARMOS_TILE,
+        armos_stand=SHOP_34_ARMOS_STAND,
+        armos_wait=SHOP_34_ARMOS_WAIT,
+        defend=True,
         buy_x=120,
         buy_y=165,
         price=RING_PRICE,
@@ -1004,6 +1024,20 @@ CHAIN_FROM = PRE_L1_LEAVE
 CHAIN_NAME = "GatherChain"
 
 
+def _defended(ctl: Any, *, evade: bool = False) -> Any:
+    """Turn on ``defend`` (and ``evade``) for one gather stage.
+
+    Per stage, from the same no-refill offset eval as ``HopWalkController``:
+    ``heart_7b``, ``heart_47`` and ``white`` stay bare: the red-leever bomb
+    cell lost 5/6 to 3/6 with it; on 0x47 the duck's Zora dodge ends with the
+    fireball landing on the flame press and the tree stays shut
+    (natural_credits_poweron44/45); the 0x0A Lynel is 0-1/6 in every arm.
+    """
+    ctl.defend = True
+    ctl.evade = evade
+    return ctl
+
+
 def chain_stages() -> list[tuple[str, Any]]:
     from zelda_i.level7.entry import make_bait_purchase_controller
 
@@ -1019,37 +1053,37 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("walk_2c", HopWalkController(hops=POND_RETURN_HOPS, waypoints=POND_RETURN_WAYPOINTS)),
         ("heart_2c", make_heart_m3_controller()),
         ("exit_2c", CaveExitController()),
-        ("rupees_2d", make_secret_rupee_controller(0x2D, RUPEES_2D_HOPS)),
+        ("rupees_2d", _defended(make_secret_rupee_controller(0x2D, RUPEES_2D_HOPS))),
         ("exit_2d", CaveExitController()),
-        ("ne_100", NortheastController()),
+        ("ne_100", _defended(NortheastController(), evade=True)),
         ("exit_0f", CaveExitController()),
-        ("letter", letter),
+        ("letter", _defended(letter)),
         ("exit_0e", CaveExitController()),
-        ("candle", make_candle_controller()),
+        ("candle", _defended(make_candle_controller(), evade=True)),
         ("exit_0c", CaveExitController()),
         ("select_candle", PauseSelectController(want=B_ITEM_CANDLE)),
         ("walk_28", HopWalkController(hops=WHITE_TO_28_HOPS, max_frames=8000)),
-        ("rupees_28", make_secret_rupee_controller(0x28)),
+        ("rupees_28", _defended(make_secret_rupee_controller(0x28))),
         ("exit_28", CaveExitController(clear=0)),
         (
             "white",
             GatherWhiteController(hops=WHITE_FROM_28_HOPS, waypoints=WHITE_FROM_28_WAYPOINTS),
         ),
         ("back_1a", WhiteReturnController()),
-        ("walk_48", HopWalkController(hops=BURN_WALK_HOPS, waypoints={})),
-        ("rupees_48", make_burn_48_controller()),
+        ("walk_48", HopWalkController(hops=BURN_WALK_HOPS, waypoints={}, max_frames=8000)),
+        ("rupees_48", _defended(make_burn_48_controller())),
         ("exit_48", CaveExitController(clear=0)),
         ("heart_47", make_burn_47_controller()),
         ("exit_47", CaveExitController(clear=0)),
-        ("rupees_5b", make_secret_rupee_controller(0x5B, RUPEES_5B_HOPS, 8000)),
+        ("rupees_5b", _defended(make_secret_rupee_controller(0x5B, RUPEES_5B_HOPS, 8000))),
         ("exit_5b", CaveExitController(clear=0)),
-        ("rupees_6b", make_secret_rupee_controller(0x6B, RUPEES_6B_HOPS, 4000)),
+        ("rupees_6b", _defended(make_secret_rupee_controller(0x6B, RUPEES_6B_HOPS, 4000))),
         ("exit_6b", CaveExitController(clear=0)),
-        ("rupees_56", make_secret_rupee_controller(0x56, RUPEES_56_HOPS, 10000)),
+        ("rupees_56", _defended(make_secret_rupee_controller(0x56, RUPEES_56_HOPS, 10000))),
         ("exit_56", CaveExitController(clear=0)),
         ("ring", make_ring_controller(RING_FROM_56_HOPS)),
         ("exit_ring", CaveExitController(clear=0)),
-        ("rupees_62", make_secret_rupee_controller(0x62, RUPEES_62_HOPS, 8000)),
+        ("rupees_62", _defended(make_secret_rupee_controller(0x62, RUPEES_62_HOPS, 8000), evade=True)),
         ("exit_62", CaveExitController(clear=0)),
         ("bait", make_bait_purchase_controller(hops=BAIT_FROM_62_HOPS)),
         ("exit_bait", CaveExitController(clear=0)),

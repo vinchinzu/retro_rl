@@ -76,7 +76,7 @@ from zelda_i.overworld.hunt import SHOT_DWELL_SPEED, ScreenHunter, blade_lands, 
 from zelda_i.overworld.locations import restock_for, worth_heart_farm, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.rollout import Rollout, RolloutEvader
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import CAVE_MODE, PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import (
     LATTICE_STEP,
     OPPOSITE,
@@ -88,6 +88,8 @@ from zelda_i.walk.physics import (
     lattice_step,
 )
 
+# Every one-room cave has its stairs bottom centre (0x0F cave: (112, 213)).
+CAVE_EXIT_X = 112
 DEFAULT_SWING_PERIOD = 10
 DEFAULT_SWING_HOLD = 3
 DEFAULT_STUCK_THRESHOLD = 50
@@ -497,6 +499,13 @@ class OverworldPathController:
     # out ends the walk or starts one more fight — so it stays here with
     # ``_wants_post_hop`` / ``_final_hunt`` and off ``ScreenHunter``.
     hunt_destination: bool = False
+    # ``ScreenHunter.defend`` (strike, peel, shield, duck) after the threat
+    # ladder and before the hop ladder or any ``_after_hops`` hand phase. The
+    # gather waypoints sat at the top of the hop ladder and walked Link into
+    # bodies with nothing able to veto (walk_pond, no refill: 7 hits, dead).
+    # A private hunter, so a path with a real one is not charged twice.
+    defend: bool = False
+    _guard: ScreenHunter | None = field(default=None, repr=False)
     escape_commit_frames: int = _STALL_ESCAPE_COMMIT_FRAMES
     stall_escapes: int = 0
     _escape_frames: int = field(default=0, repr=False)
@@ -582,6 +591,7 @@ class OverworldPathController:
         # hunter's bound method).
         self._hop_arbiter = None
         self._hop_arbiter_hunter = None
+        self._guard = None
         self._hop = None
         self._hop_grinding = False
         if self.hunter is not None:
@@ -1875,6 +1885,21 @@ class OverworldPathController:
             rungs.append(Rung("hop_beam", HOP_RUNG_BEAM, self.hunter.take_beam))
         return tuple(rungs)
 
+    def _defend_action(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        if not self.defend:
+            return None
+        if self._guard is None:
+            self._guard = ScreenHunter()
+        self._guard.observe(snap)
+        act = self._guard.defend(snap, self.frames)
+        if act is not None:
+            self._on_defended()
+        return act
+
+    def _on_defended(self) -> None:
+        """A defend frame moved Link: re-check any pose a subclass latched."""
+
+
     @property
     def hop_arbiter(self) -> Arbiter:
         """The hop ladder. Built on first use, rebuilt on a hunter swap."""
@@ -1976,15 +2001,27 @@ class OverworldPathController:
         if rupee is not None:
             return rupee
         hop = self.hops[self.hop_index] if self.hop_index < len(self.hops) else None
+        if hop is not None and snap.level == 0 and snap.mode == CAVE_MODE:
+            # A hop is screen to screen, so a cave mid-hop is a step onto an
+            # already-open stairs tile (0x56's, after a duck: 17716f of
+            # unstick_wait inside it, natural_credits_45r). Walk back out.
+            if abs(int(snap.link_x) - CAVE_EXIT_X) > 1:
+                side = "RIGHT" if int(snap.link_x) < CAVE_EXIT_X else "LEFT"
+                return FrameAction(nes_action(side), "stray_cave_align")
+            return FrameAction(nes_action("DOWN"), "stray_cave_exit")
         threat = self._threat_action(snap, hop)
         if threat is not None:
             return threat
+        guard = self._defend_action(snap)
+        if guard is not None:
+            return guard
         if hop is None:
             return self._after_hops(snap)
         return self._do_hop(snap)
 
 
 __all__ = [
+    "CAVE_EXIT_X",
     "DEFAULT_SWING_PERIOD",
     "DEFAULT_SWING_HOLD",
     "DEFAULT_STUCK_THRESHOLD",

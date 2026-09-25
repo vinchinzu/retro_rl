@@ -63,6 +63,24 @@ CAVE_ITEM_X = 120
 # cave settle; 300 was a blind hold that cost ~265 f of dead air.
 DIALOG_FRAMES = 35
 TOL = 2
+# 0x0A's blue Lynel (96 HP, two hearts a touch without the ring) spawns on
+# the top band at (160,93), on the route, then roams the east lane and the
+# bottom band. Climb from the corridor foot only while it is on the bottom
+# band west of LYNEL_SAFE_X; the lake is then between it and the route to
+# the cave. Nearer than LYNEL_BACKOFF, step back to 0x1A and re-enter (a
+# re-entry respawns it). Wait at most LYNEL_WAIT_MAX frames per entry.
+LYNEL_TYPE = 0x01
+LYNEL_SAFE_Y = 165
+LYNEL_SAFE_X = 176
+LYNEL_BACKOFF = 40
+LYNEL_WAIT_MAX = 900
+CORRIDOR_FOOT_Y = 190
+# Its sword shot crosses the lake: from (176,189) a beam flew up x=176 and
+# met Link walking the top band at x=172, two hearts (back_1a, 6/6 offsets).
+# Hold while a shot's column (walking LEFT/RIGHT) or row (UP/DOWN) is within
+# BEAM_AHEAD px ahead of Link.
+LYNEL_BEAM_TYPE = 0x57
+BEAM_AHEAD = 28
 
 # (direction, cross-axis target, screen expected on arrival)
 OUT_LEGS: tuple[tuple[str, int, int], ...] = (
@@ -116,6 +134,7 @@ class WhiteSwordDetourController:
     notes: list[str] = field(default_factory=list)
     reasons: dict[str, int] = field(default_factory=dict)
     start_checked: bool = False
+    lynel_wait: int = 0
 
     def _set_phase(self, phase: WhiteSwordPhase) -> None:
         self.phase = phase
@@ -157,6 +176,46 @@ class WhiteSwordDetourController:
         if d is not None:
             return self._action(nes_action(d), f"leg_{want:02x}_align")
         return self._action(nes_action(direction), f"leg_{want:02x}_walk")
+
+    def _lynel_gate(
+        self,
+        snap: ZeldaSnapshot,
+        *,
+        back: str = "DOWN",
+        foot=lambda y: y >= CORRIDOR_FOOT_Y,
+    ) -> FrameAction | None:
+        """Hold until the Lynel is on the bottom band; too near, step ``back``.
+
+        Outbound the hold is the corridor foot and ``back`` leaves for 0x1A;
+        on the way home it is the cave mouth and ``back`` re-enters the cave.
+        """
+        if snap.mode != PLAY_MODE or snap.transitioning or not foot(int(snap.link_y)):
+            return None
+        lynels = [o for o in snap.objects if 1 <= o.slot <= 10 and int(o.type_id) == LYNEL_TYPE and o.hp > 0]
+        if not lynels or self.lynel_wait >= LYNEL_WAIT_MAX:
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        if all(int(o.y) >= LYNEL_SAFE_Y and int(o.x) <= LYNEL_SAFE_X for o in lynels):
+            return None
+        self.lynel_wait += 1
+        if any(max(abs(int(o.x) - lx), abs(int(o.y) - ly)) < LYNEL_BACKOFF for o in lynels):
+            return self._action(nes_action(back), "lynel_backoff")
+        return self._action(nes_idle_action(), "lynel_wait")
+
+    def _beam_hold(self, snap: ZeldaSnapshot, direction: str) -> FrameAction | None:
+        """Idle while a Lynel shot is about to cross the lane ahead."""
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        sign = 1 if direction in ("RIGHT", "DOWN") else -1
+        for o in snap.objects:
+            if int(o.type_id) != LYNEL_BEAM_TYPE:
+                continue
+            if direction in ("LEFT", "RIGHT"):
+                ahead = (int(o.x) - lx) * sign
+            else:
+                ahead = (int(o.y) - ly) * sign
+            if -8 <= ahead <= BEAM_AHEAD:
+                return self._action(nes_idle_action(), "lynel_beam_hold")
+        return None
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.success or self.failed:
@@ -214,13 +273,20 @@ class WhiteSwordDetourController:
         # A lake fills the middle of 0x0A; the only north-south lane is the
         # x=208 sand corridor, and the cave mouth is on the top band far west.
         if self.phase is WhiteSwordPhase.CLIMB_0A:
+            if snap.screen == SCREEN_MAZE_GATE and snap.mode == PLAY_MODE and not snap.transitioning:
+                self._set_phase(WhiteSwordPhase.MAZE_NORTH)
+                self.lynel_wait = 0
+                return self._action(nes_idle_action(), "lynel_reroll")
+            gate = self._lynel_gate(snap)
+            if gate is not None:
+                return gate
             if snap.link_y <= TOP_BAND_REACHED_Y:
                 self._set_phase(WhiteSwordPhase.TO_MOUTH)
                 return self._action(nes_idle_action(), "climb_0a_done")
             d = _axis_step(int(snap.link_x), CORRIDOR_X, "LEFT", "RIGHT")
             if d is not None:
                 return self._action(nes_action(d), "climb_0a_align_x")
-            return self._action(nes_action("UP"), "climb_0a_up")
+            return self._beam_hold(snap, "UP") or self._action(nes_action("UP"), "climb_0a_up")
 
         if self.phase is WhiteSwordPhase.TO_MOUTH:
             if snap.in_cave or snap.mode == CAVE_MODE:
@@ -228,7 +294,7 @@ class WhiteSwordDetourController:
                 return self._action(nes_idle_action(), "mouth_entered")
             d = _axis_step(int(snap.link_x), CAVE_MOUTH_X, "LEFT", "RIGHT")
             if d is not None:
-                return self._action(nes_action(d), "to_mouth_west")
+                return self._beam_hold(snap, d) or self._action(nes_action(d), "to_mouth_west")
             self._set_phase(WhiteSwordPhase.ENTER_CAVE)
             return self._action(nes_action("UP"), "to_mouth_enter")
 
@@ -266,12 +332,20 @@ class WhiteSwordDetourController:
         # DOWN walks him into the lake's west shore and stalls at (32,189),
         # so re-cross the top band east before descending the corridor.
         if self.phase is WhiteSwordPhase.RETURN_TOP:
+            if snap.in_cave or snap.mode == CAVE_MODE:
+                self._set_phase(WhiteSwordPhase.EXIT_CAVE)
+                self.lynel_wait = 0
+                return self._action(nes_action("DOWN"), "lynel_reroll_cave")
+            if int(snap.link_x) < CORRIDOR_X - 32:
+                gate = self._lynel_gate(snap, back="UP", foot=lambda y: True)
+                if gate is not None:
+                    return gate
             d = _axis_step(int(snap.link_y), TOP_BAND_Y, "UP", "DOWN")
             if d is not None:
                 return self._action(nes_action(d), "return_top_align_y")
             d = _axis_step(int(snap.link_x), CORRIDOR_X, "LEFT", "RIGHT")
             if d is not None:
-                return self._action(nes_action(d), "return_top_east")
+                return self._beam_hold(snap, d) or self._action(nes_action(d), "return_top_east")
             self._set_phase(WhiteSwordPhase.RETURN_CORRIDOR)
             return self._action(nes_action("DOWN"), "return_top_done")
 

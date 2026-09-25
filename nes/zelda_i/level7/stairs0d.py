@@ -49,6 +49,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy
 from zelda_i.dungeon.behaviors import WALLMASTER_TYPE
 from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.ids import CLOCK_DROP_OBJECT_TYPE, CLOCK_DROP_STATE
 from zelda_i.level7.stairs import NOSE_CELLAR_ROM, TIP_OF_NOSE_ROM
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaObject, ZeldaSnapshot
 
@@ -581,6 +582,16 @@ def room_0d_clear_step(snap: ZeldaSnapshot, ctl: Room0DClearController) -> Frame
         if ctl.frames % _SWING_PERIOD < _SWING_HOLD:
             return FrameAction(nes_action(face, "A"), "clear0d_slash")
         return FrameAction(nes_action(face), "clear0d_face")
+    if any(
+        int(o.type_id) == CLOCK_DROP_OBJECT_TYPE and int(o.state) == CLOCK_DROP_STATE
+        for o in snap.objects
+    ):
+        # A taken clock ($066C) stops the ring spawning until Link leaves the
+        # room: two Wallmasters stayed parked through 517 nudges (30000f,
+        # natural_credits_43r). A dead Wallmaster drops it on the nudge line;
+        # wait at home for it to expire instead of walking over it.
+        ctl._phase = "retreat"
+        ctl._phase_n = 0
     if incoming or ctl._phase == "retreat":
         ctl._phase = "retreat"
         ctl._phase_n += 1
