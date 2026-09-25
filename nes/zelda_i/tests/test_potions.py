@@ -203,6 +203,24 @@ def test_restock_buys_only_when_short_and_affordable() -> None:
         assert not ctrl.success and not getattr(ctrl, "failed", False), (potion, rupees)
 
 
+def test_restock_skips_while_a_charge_hides_the_unshown_letter() -> None:
+    # The potion shares the letter's subscreen slot: with a take-any charge
+    # and the letter never shown there is nothing the shop can be shown.
+    from zelda_i.overworld.cave_shop import restock_item
+
+    def snap(letter: int) -> ZeldaSnapshot:
+        return ZeldaSnapshot(
+            mode=PLAY_MODE, level=0, screen=0x39, next_screen=0x39, link_x=120, link_y=141,
+            facing=8, sword=2, bombs=4, rupees=113, keys=0, health=0x77, triforce=3,
+            compass=0, dialog_timer=0, colliding_tile=0, room_item_id=0, room_all_dead=0,
+            room_obj_count=0, cur_opened_doors=0, open_doorway_mask=0, objects=(),
+            letter=letter, potion=1,
+        )
+
+    assert restock_item(snap(letter=1)) is None
+    assert restock_item(snap(letter=2)) == "red"
+
+
 def test_restock_keeps_a_reserve_for_the_next_buy() -> None:
     """Before L7 the wallet also owes the 60R Bait: red only if 60R remain
     after it, else blue, else nothing (run 29 arrived at 0x64 with 101R)."""
