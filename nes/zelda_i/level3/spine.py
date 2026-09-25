@@ -5,6 +5,12 @@ The continuous runner attaches these rows, then the carried-bomb boss suffix.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from typing import Any
+
+from retro_harness.input_script import FrameAction
+from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.ids import FIVE_RUPEE_DROP_STATE, RUPEE_DROP_OBJECT_TYPE
 from zelda_i.route.chain import PredicateStopController
 from zelda_i.door_graph import (
     L3_DARKNUTS,
@@ -58,11 +64,12 @@ from zelda_i.level3.raft_path import (
     PASSAGE_RAFT_MAX_FRAMES,
     Level3RaftPathController,
 )
-from zelda_i.ram import PASSAGE_MODE
+from zelda_i.ram import PASSAGE_MODE, ZeldaSnapshot
 from zelda_i.spine.hops import SpineHop, ready
 
 WEST_KEY_SPINE_MAX_FRAMES = 8000
 NORTH_CHAIN_SPINE_MAX_FRAMES = 32000  # 0x6b zols + occupancy north + 0x5b Darknuts
+RUPEE_SCOOP_5B_MAX_FRAMES = 240
 COMPASS_SPINE_MAX_FRAMES = LEFT_5B_MAX_FRAMES + 100
 WEST_DARKNUTS_SPINE_MAX_FRAMES = 3000
 SOUTH_DARKNUTS_SPINE_MAX_FRAMES = (
@@ -114,7 +121,59 @@ def _dest_6b_stages():
             Level3NorthChainController(),
             NORTH_CHAIN_SPINE_MAX_FRAMES,
         ),
+        ("rupee_scoop_5b", Level3RupeeScoopController(), RUPEE_SCOOP_5B_MAX_FRAMES),
     )
+
+
+@dataclass
+class Level3RupeeScoopController:
+    """Take a five-rupee Darknut drop before leaving cleared 0x5B.
+
+    The Clean L4 exit arrived with 75R against an 80R arrow price. Its 0x5B
+    Darknut had dropped 5R beside Link, but the next stage left after 18f.
+    Wait for the death animation and collect the drop when it exists.
+    """
+
+    frames: int = 0
+    start_rupees: int = -1
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        credited = int(snap.rupees) + int(snap.rupees_to_add)
+        if self.start_rupees < 0:
+            self.start_rupees = credited
+        if snap.level != LEVEL3 or snap.screen != ROOM_L3_DARKNUTS:
+            self.failed = True
+            self.notes.append("left_0x5b")
+            return FrameAction(nes_idle_action(), "rupee_wrong_room")
+        if credited >= self.start_rupees + 5:
+            self.success = True
+            self.notes.append(f"rupees_{self.start_rupees}_to_{credited}")
+            return FrameAction(nes_idle_action(), "rupee_collected")
+        drop = next(
+            (obj for obj in snap.objects
+             if obj.type_id == RUPEE_DROP_OBJECT_TYPE
+             and obj.state == FIVE_RUPEE_DROP_STATE),
+            None,
+        )
+        if drop is None:
+            if self.frames >= 40:
+                self.success = True
+                self.notes.append("no_five_rupee_drop")
+            return FrameAction(nes_idle_action(), "rupee_wait")
+        if snap.link_y > drop.y + 2:
+            direction = "UP"
+        elif snap.link_y < drop.y - 2:
+            direction = "DOWN"
+        else:
+            direction = "RIGHT" if snap.link_x < drop.x else "LEFT"
+        return FrameAction(nes_action(direction), "rupee_scoop")
+
+    def report(self) -> dict[str, Any]:
+        return {"success": self.success, "frames": self.frames, "notes": self.notes}
 
 
 def level3_dest_6b_stages():

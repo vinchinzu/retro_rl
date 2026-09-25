@@ -245,3 +245,17 @@ def test_arrow_restock_stages() -> None:
     assert [h.target for h in ctl1.hops] == [0x73, 0x63, 0x64, 0x54, SHOP_E5_SCREEN]
     assert name2 == "exit_arrow_restock_l3_l4"
     assert frames2 == 600
+
+
+def test_post_l4_arrow_walk_steps_off_raft_before_turning_east() -> None:
+    hops = (ScreenHop(0x55, "DOWN"), ScreenHop(0x56, "RIGHT", align_y=141))
+    ctl = make_arrow_restock_controller(hops=hops, screen=ARROW_SHOP_SCREEN)
+    ctl.frames = 1
+    ctl.hop_index = 1
+    dock = read_snapshot(_ram(screen=0x55, x=128, y=125, sword=2, rupees=75))
+    act = ctl.step(dock)
+    assert act.reason == "raft_dismount"
+    assert list(act.action) == list(nes_action("DOWN"))
+    landed = read_snapshot(_ram(screen=0x55, x=128, y=141, sword=2, rupees=75))
+    act = ctl.step(landed)
+    assert act.reason != "raft_dismount"

@@ -47,7 +47,7 @@ left, so every remaining item below is a death point, not a resource.
 | C3 | L1 Triforce (new M5 on the gathered route) | **green** (64) |
 | C4 | L2 Triforce | **green** (64, TF `0x03`) |
 | C5 | L3 Triforce | **green** (`clean_poweron69`, 121,388f) |
-| C6 | L4 Triforce | red: 69 dies at the L4 Gleeok (0x13) with 0.7h, 150,867f |
+| C6 | L4 Triforce | red: `clean_poweron73` dies entering L4 Gleeok (0x13) with 0.7h, 150,867f |
 | C7 | L5 Triforce (bomb budget first) | – |
 | C8-C11 | L6, L7, L8, L9 + credits | – |
 
@@ -79,6 +79,13 @@ L2 Dodongo with 7 bombs and spends all of them, rr-pm7m).
 - L3: Darknut rooms 0x59/0x69 strike from a non-shield side
   (`CombatTuning.flank_shielded`, `_flank_strike`): 8 offsets from the L3
   entry pin, raft reached 1/8 → 7/8; L3 Triforce 0/8 → 0/8 (boss suffix).
+- L3's cleared 0x5B now has a short natural five-rupee pickup stage. The
+  continuous run collected it before leaving; this repairs the 75R→80R arrow
+  budget without a wallet write. The post-L4 raft walk now forces a south
+  dismount on 0x55 before turning east.
+- L4 Gleeok uses the turn-node `GleeokStand` at `dy=30`; isolated replays pass,
+  but the continuous run still reaches 0x13 at 0.71 hearts and dies before
+  the fight. The next work is the L4 health bleed, not arrow navigation.
 
 ### L3 (same sitting, later)
 

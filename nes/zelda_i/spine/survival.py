@@ -72,7 +72,12 @@ from zelda_i.level2.tf_spine import (
 )
 from zelda_i.level3.spine import l3_hops
 from zelda_i.level3.bomb_budget import L3_BOMB_WALL_SPEND
-from zelda_i.level3.boss_path import BOSS_PATH_MAX_FRAMES, Level3BossPathController
+from zelda_i.level3.boss_path import (
+    BOSS_PATH_MAX_FRAMES,
+    MANHANDLA_MAX_FRAMES,
+    Level3BossPathController,
+    Level3ManhandlaController,
+)
 from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
 from zelda_i.level4.spine import L4_STOPS, continue_level4_spine
 from zelda_i.level5.spine import (
@@ -94,6 +99,7 @@ from zelda_i.ram import (
     SCREEN_LEVEL1_ENTRANCE,
     ZeldaSnapshot,
     is_level1_ready,
+    ram_hearts,
     read_snapshot,
     read_u8,
 )
@@ -507,8 +513,28 @@ def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
         # A pin at 0x4D for the fight alone (no resume: the suffix is one stage).
         save_state(env, GAME_DIR, GAME, save_point_name(run.save_points, "level3_manhandla"))
     if ok:
-        fight = controller.fight_manhandla(env, assist, total, max_frames=16000)
-        ok = bool(fight.get("tf04"))
+        boss_entry = read_snapshot(env.get_ram())
+        # With two hearts and six bombs, the south-band intercept clears the
+        # flower before its long chase spends the bag (L3o3: 640f vs death).
+        # Higher-heart pins still favor the circle fight (L3o1/2).
+        if ram_hearts(env.get_ram()) <= 2.5 and boss_entry.bombs >= 6:
+            boss = Level3ManhandlaController()
+            run.obs, fight_stage = run_controller_stage(
+                env, run.obs,
+                name="manhandla_tf", controller=boss,
+                max_frames=MANHANDLA_MAX_FRAMES,
+                assist=assist, frame_base=total[0],
+            )
+            total[0] = fight_stage.end_frame
+            stage.potion = fight_stage.potion
+            controller.notes.append("south_manhandla_low_health")
+            controller.tf04 = controller.boss_beaten = fight_stage.success
+            controller.success = fight_stage.success
+            controller.frames = total[0]
+            ok = fight_stage.success
+        else:
+            fight = controller.fight_manhandla(env, assist, total, max_frames=16000)
+            ok = bool(fight.get("tf04"))
 
     stage.frames = total[0] - stage.frame_base
     stage.end_frame = total[0]
