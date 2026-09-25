@@ -49,9 +49,10 @@ What changed (details in [plan.md](plan.md), "Done this sitting"):
 Last-heart death map on d1c42958 (`lasth_poweron60`): L1, L2 and L4 need no
 refill; the gathering needed 2 (both fixed above); L3 needs 3.
 
-The zero-poke Survival regression (`natural_credits_poweron65`, this code
-minus the L3 flank) is red at the L2 Dodongo: the reshuffled tape spends all
-7 bombs without a kill. Open.
+The zero-poke Survival regression is red at L8 (`natural_credits_poweron67`,
+HEAD edf97dd6: TF `0x7F`, 0x4C bomb wall with 0 bombs, rr-awh6). The L2
+Dodongo failure of run 65 is fixed (bombs from a body length off the mouth:
+66/66 saved pins).
 
 ## 2026-09-24 (latest): `--clean` was silently Survival; first real Clean runs
 
