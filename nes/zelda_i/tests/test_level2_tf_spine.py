@@ -117,9 +117,11 @@ def test_dodongo_approach_does_not_grade_moving_boss() -> None:
 
 
 def test_dodongo_places_only_on_stable_clear_mouth() -> None:
+    # The stand is a body length off the mouth (``mouth_stand``): a bomb 16 px
+    # ahead of Link then lands before the snout, not on the body.
     ctl = Level2DodongoController(settle_frames=0, stable_face_frames=2)
     snap = _snap(
-        room=0x0E, x=124, y=141, dodo_hp=0x20, dodo_xy=(140, 141),
+        room=0x0E, x=108, y=141, dodo_hp=0x20, dodo_xy=(140, 141),
         dodo_face=0x02, link_face=0x01,
     )
     assert ctl.step(snap).reason == "dodo_wait_mouth"
@@ -132,17 +134,29 @@ def test_dodongo_places_only_on_stable_clear_mouth() -> None:
 
 def test_dodongo_turns_before_bombing() -> None:
     ctl = Level2DodongoController(settle_frames=0, stable_face_frames=2)
-    up = _snap(room=0x0E, x=124, y=141, dodo_hp=0x20, link_face=0x08)
+    up = _snap(room=0x0E, x=108, y=141, dodo_hp=0x20, link_face=0x08)
     for _ in range(2):
         assert ctl.step(up).reason == "dodo_wait_mouth"
     turn = ctl.step(up)
     assert turn.reason == "dodo_face"
     assert pressed_nes_buttons(list(turn.action)) == ["RIGHT"]
     assert ctl.bombs_used == 0
-    facing = _snap(room=0x0E, x=125, y=141, dodo_hp=0x20, link_face=0x01)
+    facing = _snap(room=0x0E, x=109, y=141, dodo_hp=0x20, link_face=0x01)
     place = ctl.step(facing)
     assert place.reason == "dodo_place"
     assert "B" in pressed_nes_buttons(list(place.action))
+
+
+def test_dodongo_does_not_bomb_from_on_top_of_a_south_facing_body() -> None:
+    # NC65 pin: 9 px under a south-facing Dodongo the bomb dropped on its back.
+    ctl = Level2DodongoController(settle_frames=0, stable_face_frames=0)
+    close = _snap(
+        room=0x0E, x=120, y=150, dodo_hp=0x20, dodo_xy=(120, 141),
+        dodo_face=0x04, link_face=0x08,
+    )
+    for _ in range(3):
+        assert "B" not in pressed_nes_buttons(list(ctl.step(close).action))
+    assert ctl.bombs_used == 0
 
 
 def test_dodongo_waits_unstable_face() -> None:
