@@ -69,7 +69,7 @@ LEVEL5_PATH_HOPS: tuple[ScreenHop, ...] = (
 # not contain the Raft, Stepladder, bombs, or prior Triforce bits.
 POST_L4_TO_LEVEL5_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x55, "DOWN", align_x=128),  # raft island 0x45 -> dock 0x55
-    ScreenHop(0x56, "RIGHT", align_y=133),
+    ScreenHop(0x56, "RIGHT", align_y=141),
     # From raft return, 0x56 settles just off-screen at x=0,y=133.  Recover
     # inward, align y=141, then the center channel is open east to 0x57.
     ScreenHop(0x57, "RIGHT", align_y=141),
@@ -141,6 +141,16 @@ class OverworldToLevel5Controller(OverworldPathController):
         self.hills_ups = 0
         self.in_scroll = False
         self.pocket_stage = 0
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        # On 0x55 the raft still owns Link at y=125. A threat-facing turn
+        # there lets it carry him north to 0x45 before he reaches the dock.
+        if (snap.level == 0 and snap.screen == 0x55 and hop.target == 0x56
+                and 100 <= snap.link_x <= 152 and snap.link_y < 141):
+            return FrameAction(nes_action("DOWN"), "raft_dismount")
+        return None
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         if self.require_dungeon:

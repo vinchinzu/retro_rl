@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from retro_harness.input_script import FrameAction
+from retro_harness.nes import nes_action
 from zelda_i.overworld.cave_shop import CaveShopBuyController, NORTH_GAP_Y_HI
 from zelda_i.overworld.graph import LEVEL2_PATH_HOPS, ScreenHop
 from zelda_i.overworld.locations import restock_for
@@ -168,6 +169,16 @@ class ArrowRestockController(CaveShopBuyController):
     """
 
     want: int = 1
+
+    def _extra_hop_action(
+        self, snap: ZeldaSnapshot, hop: ScreenHop
+    ) -> FrameAction | None:
+        # The post-L4 0x55 raft reverses at y=128. Reach the land at y=141
+        # before threat facing or the next east hop can take control.
+        if (snap.level == 0 and snap.screen == 0x55 and hop.target == 0x56
+                and 100 <= snap.link_x <= 152 and snap.link_y < 141):
+            return FrameAction(nes_action("DOWN"), "raft_dismount")
+        return None
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.frames == 0 and int(snap.arrows) >= self.want:

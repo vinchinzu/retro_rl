@@ -109,6 +109,7 @@ def test_entrance_tf_stages_are_dest_hops_without_poke() -> None:
     names = [name for name, _ctl, max_frames in level3_entrance_tf_stages()]
     assert names[:2] == ["west_key", "north_chain"]
     assert names[2:] == [
+        "rupee_scoop_5b",
         "bomb_5b",
         "clear_5c",
         "right_5d",

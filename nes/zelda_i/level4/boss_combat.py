@@ -30,6 +30,8 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import TF_BIT_L4
 from zelda_i.dungeon.gleeok import (
     FIREBALL_DODGE_DIST,
+    GLEEOK_STAND_DY,
+    GleeokStand,
     GLEEOK_FIREBALL_TYPE,
     GLEEOK_HEAD_OBJECT_TYPE,
     STAND_DY,
@@ -188,7 +190,7 @@ class Level4GleeokFightController:
 
     tag: str = "l4_gleeok"
     max_frames: int = FIGHT_MAX_FRAMES
-    stand_dy: int = STAND_DY
+    stand_dy: int = GLEEOK_STAND_DY
     stand_dx: int = 0
     fireball_dodge_dist: int = 10
     success: bool = False
@@ -203,6 +205,7 @@ class Level4GleeokFightController:
     continuous_mode: bool = False
     state_restores: int = 0
     _approached: bool = field(default=False, repr=False)
+    _stand: GleeokStand | None = field(default=None, repr=False)
     walker: OccupancyWalker = field(default_factory=_room13_walker)
 
     def _restore_state(self, env: Any, state: Any) -> None:
@@ -265,6 +268,7 @@ class Level4GleeokFightController:
         invuln = 0
         phase = "fight"
         self._approached = False
+        self._stand = GleeokStand(stand_dy=self.stand_dy)
         self.walker = _room13_walker()
         hc_hunt_i = 0
         approach_thr = approach_dodge_thr(
@@ -441,14 +445,17 @@ class Level4GleeokFightController:
                     continue
 
                 if bodies:
-                    # South stand on body for full fight — do not chase heads
-                    # while residual body remains (rr-vdnc Clean).
-                    act = _south_stand_action(
-                        snap,
-                        bodies[0],
-                        stand_dy=self.stand_dy,
-                        stand_dx=self.stand_dx,
-                    )
+                    # The body x is off the turn grid in 0x13. Stand on its
+                    # nearest turn node and pulse A so each swing can rearm.
+                    # The older offset stand remains available to lab callers.
+                    if self.stand_dx:
+                        act = _south_stand_action(
+                            snap, bodies[0], stand_dy=self.stand_dy,
+                            stand_dx=self.stand_dx,
+                        )
+                    else:
+                        assert self._stand is not None
+                        act, _ = self._stand.step(snap, bodies[0], env=env)
                     env.step(act)
                 elif heads:
                     # Body gone, heads linger: brief face-and-slash.
@@ -709,7 +716,7 @@ def make_gleeok_fight_controller(
     tag: str = "l4_gleeok",
     continuous_mode: bool = False,
     stand_dx: int = 0,
-    stand_dy: int = STAND_DY,
+    stand_dy: int = GLEEOK_STAND_DY,
     fireball_dodge_dist: int = 10,
 ) -> Level4GleeokFightController:
     return Level4GleeokFightController(

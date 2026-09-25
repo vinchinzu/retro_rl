@@ -1,13 +1,17 @@
 import numpy as np
 
 from zelda_i.level5.overworld import (
+    POST_L4_TO_LEVEL5_HOPS,
     PostL4SettlePhase,
     PostL4TriforceSettleController,
+    make_post_l4_level5_controller,
     post_l4_overworld_ready,
 )
+from retro_harness.nes import nes_action
 from zelda_i.level5.spine import level5_entry_success
 from zelda_i.ram import (
     ADDR_LADDER,
+    ADDR_HEALTH,
     ADDR_LEVEL,
     ADDR_LINK_X,
     ADDR_LINK_Y,
@@ -30,6 +34,7 @@ def _l4_ow_ram(*, mode: int = PLAY_MODE, screen: int = 0x45, tf: int = 0x0F, raf
     ram[ADDR_TRIFORCE] = tf
     ram[ADDR_RAFT] = raft
     ram[ADDR_LADDER] = 1
+    ram[ADDR_HEALTH] = 0x88
     return ram
 
 
@@ -47,6 +52,17 @@ def test_post_l4_settle_idles_fanfare_then_island() -> None:
     assert post_l4_overworld_ready(ready)
     assert not post_l4_overworld_ready(read_snapshot(_l4_ow_ram(tf=0x07)))
     assert not post_l4_overworld_ready(read_snapshot(_l4_ow_ram(raft=0)))
+
+
+def test_post_l4_level5_walk_dismounts_raft() -> None:
+    assert POST_L4_TO_LEVEL5_HOPS[1].align_y == 141
+    ctl = make_post_l4_level5_controller()
+    ctl.frames = 1
+    ctl.hop_index = 1
+    dock = read_snapshot(_l4_ow_ram(screen=0x55))
+    act = ctl.step(dock)
+    assert act.reason == "raft_dismount"
+    assert list(act.action) == list(nes_action("DOWN"))
 
 
 def test_level5_entry_stop_requires_l4_inventory() -> None:
