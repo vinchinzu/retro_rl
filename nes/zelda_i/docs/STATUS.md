@@ -5,16 +5,30 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Clean power-on through the **Level 3 Triforce** on the gathered route: triforce `0x07`, L1 at 77,181f, L2 at 98,337f, L3 at 121,388f, one continuous run, 0 state loads, 0 writes |
+| Best verified result | Clean power-on through the **Level 4 Triforce** on the gathered route: triforce `0x0F`, L1 at 76,579f, L2 at 97,634f, L3 at 126,566f, L4 at 152,416f, one continuous run, 0 state loads, 0 writes |
 | Last verification | 2026-09-25 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | [clean_poweron69.json](../recordings/clean_poweron69.json) (`run_survival_spine.py --clean --through level9-credits`); it dies at the L4 Gleeok at 150,867f. Earlier today: [clean_poweron64.json](../recordings/clean_poweron64.json) through L2. |
+| Evidence | [clean_poweron74.json](../recordings/clean_poweron74.json) (`run_survival_spine.py --clean --through level9-credits`); it stops at the post-L4 0x4A arrow shop with 15R against 80R (155,195f). Earlier today: [clean_poweron69.json](../recordings/clean_poweron69.json) through L3. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
 
 The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone
 recheck (`run_level1_complete.py --natural-entry`) is red at L1 0x33
 (`0x33_needs_heart`, 2026-09-24); the gathered route above replaces it.
+
+## 2026-09-25 (evening): Clean power-on through L4
+
+`clean_poweron74`: power-on → L4 Triforce (152,416f), no refill, no load, no
+write. Two changes: the L4 walk buys a blue potion at 0x64 keeping only the
+bomb-pack price in reserve (it used to hold back the 80R arrows too, so it
+never bought), and the Gleeok loop drinks at the last heart
+(`dungeon.pause_select.drink_if_low`; it steps the env itself, so the stage
+guard never ran). From the L3 Triforce, 12 RNG offsets: L4 Triforce 1/12
+before, 6/12 with the potion alone, 12/12 with both.
+
+The run then stops at 0x4A: 15R against the 80R arrows, 0 bombs. Manhandla
+spent all six bombs, so the L4 walk bought a 20R pack after the 40R potion.
+Money is the next wall (plan.md Next).
 
 ## 2026-09-25 (later): Clean power-on through L3
 

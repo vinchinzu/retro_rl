@@ -36,6 +36,7 @@ from zelda_i.ram import (
     ADDR_WORLD_PAUSED,
     PLAY_MODE,
     ZeldaSnapshot,
+    read_snapshot,
     read_u8,
 )
 
@@ -493,6 +494,37 @@ class PotionDrinkGuard:
         }
 
 
+
+@dataclass
+class _Idle:
+    def step(self, snap: ZeldaSnapshot) -> Any:
+        return FrameAction(nes_idle_action(), "drink_idle")
+
+
+def drink_if_low(env: Any, assist: Any | None, total: list[int]) -> bool:
+    """Drink a carried potion at the last heart, the way every spine stage does.
+
+    Boss loops step the env themselves, outside ``run_controller_stage``'s
+    ``PotionDrinkGuard``: Link died to Manhandla (L3) and the Gleeok (L4)
+    with a potion in the bag (Clean offsets, 2026-09-25). Runs the guard to
+    the end of the drink and the B restore, then hands the frame back.
+    """
+    snap = read_snapshot(env.get_ram())
+    if int(snap.potion) <= 0 or int(snap.whole_hearts) > 1 or int(snap.mode) != PLAY_MODE:
+        return False
+    guard = PotionDrinkGuard(inner=_Idle())
+    guard.bind_env(env)
+    for _ in range(DRINK_WAIT_BUDGET + DRINK_BUDGET + 200):
+        owned = guard.frames
+        action = guard.step(read_snapshot(env.get_ram()))
+        if guard.frames == owned and guard.phase is DrinkPhase.IDLE:
+            break
+        env.step(action.action)
+        total[0] += 1
+        if assist is not None:
+            assist.apply_env(env, frame=total[0])
+    return guard.drinks > 0
+
 __all__ = [
     "B_SLOT_ARROWS",
     "B_SLOT_BAIT",
@@ -513,6 +545,7 @@ __all__ = [
     "SELECT_MAX_FRAMES",
     "SLOT_NAMES",
     "b_slot_owned",
+    "drink_if_low",
     "pause_dropped",
     "potion_drink_window",
 ]
