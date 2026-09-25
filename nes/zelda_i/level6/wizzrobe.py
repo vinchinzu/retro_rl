@@ -255,6 +255,8 @@ class Level6EastKeyController(GenericDungeonRoomController):
         if not live:
             return self._go_key(snap, reason="wizzrobe_key")
 
+        self._update_stuck(snap)
+
         # No N/S path through the west block. Replan RIGHT; do not UP/DOWN.
         if (
             int(snap.link_x) <= _BLOCK_POCKET_X
@@ -292,8 +294,11 @@ class Level6EastKeyController(GenericDungeonRoomController):
             return FrameAction(nes_action(direction), "wizzrobe_backstep")
 
         if dist < self.spec.combat.engage_distance:
+            if self._stuck_frames >= _PATROL_STUCK:
+                detour = self._lattice_dir(snap, (int(nearest.x), int(nearest.y)))
+                if detour is not None:
+                    return FrameAction(nes_action(detour), "wizzrobe_chase_lattice")
             return self._engage(snap, nearest)
-        self._update_stuck(snap)
         if self._stuck_frames >= _PATROL_STUCK:
             n = len(self.spec.combat.patrol)
             self.patrol_index = (self.patrol_index + 1) % n

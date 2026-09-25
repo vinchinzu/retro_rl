@@ -83,18 +83,34 @@ POST_L4_TO_LEVEL5_HOPS: tuple[ScreenHop, ...] = (
 # Take the unclaimed H7 rock only after the L5 restock stages have checked
 # the bag. Spending its one bomb before that check would trigger a 20R pack
 # and erase the margin for L6's wooden arrows.
+# 0x67 is the dead-end grove north of the start screen. 0x66 does not open
+# into it, and 0x55's south gap is x=112, not the raft column (clean_poweron79
+# timed out at (128, 221) pressing DOWN). Walk the post-L4 corridor through
+# 0x4A, then the same south/UP rows Level 9 uses (level9/hops.py). Return to
+# 0x4A so enter_level5 resumes into Lost Hills.
 RUPEES_67_SCREEN = 0x67
 RUPEES_67_PAY = 30
-RUPEES_67_HOPS: tuple[ScreenHop, ...] = (
-    ScreenHop(0x55, "DOWN", align_x=128),
-    ScreenHop(0x65, "DOWN", align_x=128),
-    ScreenHop(0x66, "RIGHT", align_y=141),
-    ScreenHop(RUPEES_67_SCREEN, "RIGHT", align_y=141),
+RUPEES_67_WALK_FRAMES = 30000
+RUPEES_67_RETURN_FRAMES = 16000
+_RUPEES_67_TO_4A: tuple[ScreenHop, ...] = POST_L4_TO_LEVEL5_HOPS[:7]
+assert _RUPEES_67_TO_4A[-1].target == 0x4A
+RUPEES_67_HOPS: tuple[ScreenHop, ...] = _RUPEES_67_TO_4A + (
+    ScreenHop(0x49, "LEFT", align_y=141),
+    ScreenHop(0x59, "DOWN", align_x=112),
+    ScreenHop(0x58, "LEFT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x68, "DOWN", align_x=48),
+    ScreenHop(0x78, "DOWN", align_x=48),
+    ScreenHop(0x77, "LEFT", align_y=141),
+    ScreenHop(RUPEES_67_SCREEN, "UP", align_x=112),
 )
 RUPEES_67_BACK_HOPS: tuple[ScreenHop, ...] = (
-    ScreenHop(0x66, "LEFT", align_y=141),
-    ScreenHop(0x65, "LEFT", align_y=141),
-    ScreenHop(0x55, "UP", align_x=128),
+    ScreenHop(0x77, "DOWN", align_x=112),
+    ScreenHop(0x78, "RIGHT", align_y=141),
+    ScreenHop(0x68, "UP", align_x=48),
+    ScreenHop(0x58, "UP", align_x=48),
+    ScreenHop(0x59, "RIGHT", y_band_lo=148, y_band_hi=162),
+    ScreenHop(0x49, "UP", align_x=112),
+    ScreenHop(0x4A, "RIGHT", align_y=141),
 )
 
 SEGMENT_MAX_FRAMES = 30000

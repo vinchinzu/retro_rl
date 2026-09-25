@@ -26,11 +26,16 @@ from zelda_i.level6.gleeok18 import (
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.overworld.gather_segments import (
+    BombWallController,
     CaveExitController,
     HopWalkController,
     make_secret_rupee_controller,
 )
 from zelda_i.overworld.arrow_shop import SHOP_F3_SCREEN, arrow_restock_stages
+from zelda_i.overworld.cave_shop import (
+    make_potion_restock_controller,
+    restock_item,
+)
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.level6.overworld import (
     LEVEL6,
@@ -65,7 +70,15 @@ from zelda_i.dungeon.engine import GenericDungeonRoomController
 from zelda_i.level6.room19 import SETTLE_19_MAX_FRAMES
 from zelda_i.level6.stairs18 import make_stairs_18_controller
 from zelda_i.level6.wizzrobe import make_east_key_controller
-from zelda_i.ram import ADDR_WHISTLE, PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot, read_u8
+from zelda_i.ram import (
+    ADDR_WHISTLE,
+    CAVE_MODE,
+    PASSAGE_MODE,
+    PLAY_MODE,
+    ZeldaSnapshot,
+    read_snapshot,
+    read_u8,
+)
 from zelda_i.spine.hops import SpineHop, fight_stage, play_ready, ready
 
 __all__ = [
@@ -284,6 +297,107 @@ class _BackFromArrowShop(HopWalkController):
         return super().step(snap)
 
 
+@dataclass
+class _OpenPotion33(BombWallController):
+    """Bomb the measured 0x33 rock on the L5-to-L6 walk and enter its shop."""
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and restock_item(snap) is None:
+            self.frames += 1
+            return self._finish("potion_restock_nothing_to_buy")
+        return super().step(snap)
+
+    def _at_stop(self, snap: ZeldaSnapshot) -> bool:
+        return snap.level == 0 and snap.screen == 0x33 and snap.mode == CAVE_MODE
+
+
+@dataclass
+class _DrinkBeforePotion33:
+    """Spend the carried blue dose when a red refill can replace it."""
+
+    max_frames: int = 1200
+    drink_at_whole_hearts: int = 0
+    frames: int = 0
+    success: bool = False
+    enabled: bool = False
+
+    def bind_env(self, env) -> None:
+        snap = read_snapshot(env.get_ram())
+        self.enabled = (
+            snap.level == 0
+            and snap.screen == 0x33
+            and snap.potion == 1
+            and not snap.health_is_full
+            and snap.rupees >= 68
+        )
+        self.drink_at_whole_hearts = 10 if self.enabled else 0
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.success = not self.enabled or (snap.potion == 0 and snap.health_is_full)
+        reason = "potion_33_healed" if self.success else "potion_33_drink"
+        return FrameAction(nes_idle_action(), reason)
+
+    def report(self) -> dict:
+        return {"success": self.success, "frames": self.frames, "enabled": self.enabled}
+
+
+@dataclass
+class _StepIntoPotion33:
+    """Leave the north scroll strip before trying to use B on 0x33."""
+
+    max_frames: int = 300
+    frames: int = 0
+    success: bool = False
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        self.success = (
+            snap.level == 0
+            and snap.screen == 0x33
+            and snap.mode == PLAY_MODE
+            and snap.link_y >= 93
+        )
+        action = nes_idle_action() if self.success else nes_action("DOWN")
+        reason = "potion_33_inside" if self.success else "potion_33_south"
+        return FrameAction(action, reason)
+
+    def report(self) -> dict:
+        return {"success": self.success, "frames": self.frames}
+
+
+def _potion_33_stages(rem_hops: tuple[ScreenHop, ...]):
+    to_33 = rem_hops[:3]
+    walk = HopWalkController(hops=to_33, resume_on_screen=True, max_frames=5000)
+    inside = _StepIntoPotion33()
+    drink = _DrinkBeforePotion33()
+    opener = _OpenPotion33(
+        hops=(),
+        screen=0x33,
+        bomb_x=160,
+        bomb_y=85,
+        bomb_face="UP",
+        door_x=160,
+        door_y=80,
+        b_item=B_SLOT_BOMBS,
+        interior_x=None,
+        interior_y=None,
+        max_frames=12000,
+    )
+    buy = make_potion_restock_controller(hops=())
+    buy.shop_screen = 0x33
+    buy.cave_x = 160
+    buy.cave_y = 77
+    return (
+        ("walk_potion_33", walk, walk.max_frames),
+        ("inside_potion_33", inside, inside.max_frames),
+        ("drink_blue_before_l6", drink, drink.max_frames),
+        ("open_potion_33", opener, opener.max_frames),
+        ("potion_restock_l6", buy, buy.max_frames),
+        ("exit_potion_l6", CaveExitController(clear=0), 600),
+    )
+
+
 def _entry_stages():
     hops_to_13 = POST_L5_TO_LEVEL6_HOPS[:8] + (
         ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),
@@ -329,6 +443,7 @@ def _entry_stages():
             L6_ARROW_HOPS, "l5", screen=SHOP_F3_SCREEN, skip_short=True
         ),
         ("return_24_from_25", _BackFromArrowShop(max_frames=5000), 5000),
+        *_potion_33_stages(rem_hops),
         (
             "enter_level6",
             OverworldToLevel6Controller(

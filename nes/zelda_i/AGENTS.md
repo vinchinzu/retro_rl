@@ -1,7 +1,7 @@
 # Agent Instructions — zelda_i
 
-NES Legend of Zelda. Clean power-on reaches the L4 Triforce
-(`clean_poweron74`); the Clean frontier is money for L5 (`docs/plan.md` ladder).
+NES Legend of Zelda. The verified Clean power-on gate is the L5 Triforce
+(`clean_poweron76`); L6 is the active frontier (`docs/plan.md` ladder).
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/PRE_L1.md`.
 Session: `.grok/skills/zelda-session/SKILL.md`.
 Tracker: `bd ready -l zelda_i -l spine`. Living residual: `docs/PRE_L1.md`.

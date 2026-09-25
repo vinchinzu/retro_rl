@@ -6,6 +6,26 @@ Goal: power-on to credits, Clean (no RAM write, no state load), zero deaths.
 Inventory is already natural (run 53: zero pokes); only the health refill is
 left, so every remaining item below is a death point, not a resource.
 
+### C8 residual (2026-09-25, later)
+
+The verified gate is still C7 (`clean_poweron76`). `clean_poweron81` was a
+continuous Clean tape with natural 0x51/0x67 rupees and wooden arrows bought
+at 0x25; it reached TF `0x1F` and died in L6 0x38. The new 0x33 potion detour
+is proved only from the saved post-arrow pose: `c8_potion_33_drink2` drank the
+carried blue dose for 4.51 hearts, bombed the 0x33 cave, bought red for 68R,
+and entered L6 with two charges and no inventory writes. The pin continuation
+`c8_potion_7a_detour` cleared 0x7a through 0x28, then died in 0x18; later
+room-specific pin trials reached 0x19 and 0x09. `c8_l6_19_scoped` clears 0x19
+in 644 frames, then dies in 0x09 at 2.1 hearts of damage. These are resumed
+development tapes (`set_state_count=1`), not a Clean C8 result.
+
+Next: start at `C8c_level6_clear_0x09.state` for combat work, then compose
+from `C8c_level6_west_clear_0x78.state` to check the preceding health budget.
+Only a fresh `--clean --through level6` power-on with TF `0x3F`, Rod, zero
+state loads, zero assists and zero writes can promote C8. Bead `rr-d6v` stays
+open. The saved pins were overwritten by later trials, so inspect each pin's
+inventory and health before using it.
+
 ### What sets the plan (measured on d1c42958)
 
 - `clean_poweron60` (`--clean`): dies in `white` on 0x18 at 40,801f, the same
