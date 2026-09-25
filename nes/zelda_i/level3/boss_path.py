@@ -29,7 +29,6 @@ from zelda_i.dungeon.hop_controller import (
     dungeon_align_then_push,
 )
 from zelda_i.dungeon.ops import (
-    fight_clear,
     live_killables,
     poke_bombs,
     room_fields,
@@ -38,6 +37,7 @@ from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.dungeon.tilemap import has_room_tile_map
 from zelda_i.level3.boss_combat import (
     BOMB_NORTH_STANDS,
+    drink_if_low,
     Level3BossCombatMixin,
     PREP_CLEAR_TYPES,
     UP_APPROACHES,
@@ -45,7 +45,6 @@ from zelda_i.level3.boss_combat import (
     prep_5d_still_killable,
 )
 from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
-from zelda_i.level3.clear5c import Level3Clear5cController
 from zelda_i.level3.occupancy import seed_block_cells
 from zelda_i.level3.dungeon import (
     DARKNUT_OBJECT_TYPE,
@@ -53,6 +52,7 @@ from zelda_i.level3.dungeon import (
     MANHANDLA_OBJECT_TYPE,
     ROOM_5C_SPEC,
     ROOM_5D_SPEC,
+    ROOM_69_SPEC,
     ROOM_L3_BOSS,
     ROOM_L3_BOSS_PREP,
     ROOM_L3_BOMB_SHORTCUT,
@@ -313,10 +313,7 @@ class Level3SpawnClearController:
     route_eligible: bool = False
 
     def __post_init__(self) -> None:
-        if getattr(self.spec, "room_id", None) == ROOM_L3_BOMB_SHORTCUT:
-            self.combat = Level3Clear5cController(self.spec)
-        else:
-            self.combat = GenericDungeonRoomController(self.spec)
+        self.combat = GenericDungeonRoomController(self.spec)
         self.max_frames = int(self.spec.max_frames) + int(self.spawn_max)
 
     def bind_env(self, env: Any) -> None:
@@ -708,6 +705,7 @@ class Level3BossPathController(Level3BossCombatMixin):
             bind(env)
         limit = int(max_frames or getattr(controller, "max_frames", 4000) or 4000)
         for _ in range(limit):
+            drink_if_low(env, assist, total)
             snap = read_snapshot(env.get_ram())
             action = controller.step(snap)
             env.step(action.action)
@@ -785,18 +783,15 @@ class Level3BossPathController(Level3BossCombatMixin):
             self._set_phase("up_69", "entered_0x69")
             live_dn = live_killables(snap, (DARKNUT_OBJECT_TYPE,))
             if live_dn:
-                clr = fight_clear(
-                    env,
-                    assist,
-                    total,
-                    enemy_types=(DARKNUT_OBJECT_TYPE,),
-                    max_frames=6000,
-                )
+                # The respawned Darknuts on the way back up: the engine clear
+                # (flank strike), not ``fight_clear``'s centre patrol, which
+                # took 3.5-4.7 hearts here on two of eight Clean offsets.
+                clr = self._drive_hop(env, assist, total, Level3SpawnClearController(ROOM_69_SPEC))
                 path_log.append(
                     {
                         "step": "clear_69",
-                        "ok": clr.get("ok"),
-                        "frames": clr.get("frames"),
+                        "ok": clr.success,
+                        "frames": clr.frames,
                     }
                 )
             hop = L3DoorHopController(UP_69_SPEC)
@@ -960,7 +955,6 @@ __all__ = [
     "BOSS_PATH_PHASES",
     "L3DoorHopController",
     "Level3BossPathController",
-    "Level3Clear5cController",
     "Level3ManhandlaController",
     "Level3SpawnClearController",
     "PREP_CLEAR_TYPES",

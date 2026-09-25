@@ -5,16 +5,25 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Clean power-on through the **Level 2 Triforce** on the gathered route: triforce `0x03`, L1 Triforce at 76,580f, L2 at 97,609f, one continuous run, 0 state loads, 0 writes |
+| Best verified result | Clean power-on through the **Level 3 Triforce** on the gathered route: triforce `0x07`, L1 at 77,181f, L2 at 98,337f, L3 at 121,388f, one continuous run, 0 state loads, 0 writes |
 | Last verification | 2026-09-25 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | [clean_poweron64.json](../recordings/clean_poweron64.json) (`run_survival_spine.py --clean --through level9-credits`); it dies in L3 at 110,963f. |
+| Evidence | [clean_poweron69.json](../recordings/clean_poweron69.json) (`run_survival_spine.py --clean --through level9-credits`); it dies at the L4 Gleeok at 150,867f. Earlier today: [clean_poweron64.json](../recordings/clean_poweron64.json) through L2. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
 
 The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone
 recheck (`run_level1_complete.py --natural-entry`) is red at L1 0x33
 (`0x33_needs_heart`, 2026-09-24); the gathered route above replaces it.
+
+## 2026-09-25 (later): Clean power-on through L3
+
+`clean_poweron69`: power-on → L3 Triforce (121,388f), no refill, no load, no
+write; dies at the L4 Gleeok with 0.7 hearts (150,867f). L3 from its entry
+pin now clears 9/9 RNG offsets (was 0/8): pond and a blue potion before L3,
+potion drinks inside the boss suffix, Darknut flank strikes in every L3
+Darknut room, 0x5A blade traps baited, raft-passage fixes, and a Manhandla
+fight that dodges imminent fireballs. Details: [plan.md](plan.md).
 
 ## 2026-09-25: Clean power-on through L2 (gathering fixed)
 
@@ -189,8 +198,9 @@ Last-heart refill (`--engage-hearts 1`, refills = deaths prevented): power-on
 
 ## What is open
 
-Clean frontier: Level 3 (ladder rung C5 in [plan.md](plan.md)). The boss
-suffix fails from the L3 entry pin on 8/8 offsets (low hearts, spent bombs).
+Clean frontier: Level 4 (ladder rung C6 in [plan.md](plan.md)): the room
+fights bleed ~6 hearts into the Gleeok. L6 is the wall after it (~10
+last-heart refills).
 
 ## What is not written here
 

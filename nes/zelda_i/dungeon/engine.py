@@ -146,6 +146,8 @@ SHIELDED_TYPES = frozenset({_ids.DARKNUT_OBJECT_TYPE, 0x0C})
 _SIDES = {0x08: (0, -16, "DOWN"), 0x04: (0, 16, "UP"), 0x01: (16, 0, "LEFT"), 0x02: (-16, 0, "RIGHT")}
 # Route clear of every shielded body by this much (contact is under 9).
 FLANK_CLEAR_PX = 14
+# The strike stand's distance off the body (the blade reaches 10..22).
+FLANK_STAND_PX = 16
 # Frames a flank pick (body, side) holds before it is weighed again.
 FLANK_COMMIT_FRAMES = 45
 # ``_boxed``: frames within this many px of one spot before a replan.
@@ -492,8 +494,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _still_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _still_idle: int = field(default=0, init=False, repr=False)
     _still_off_until: int = field(default=0, init=False, repr=False)
-    # ``_flank_pick``: (slot, side, frame picked).
+    # ``_flank_pick``: (slot, side, frame picked); ``_flank_cut``'s A edge.
     _flank: tuple[int, int, int] | None = field(default=None, init=False, repr=False)
+    _flank_pressed: bool = field(default=False, init=False, repr=False)
     _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _box_frames: int = field(default=0, init=False, repr=False)
     _beam_pressed: bool = field(default=False, init=False, repr=False)
@@ -1220,6 +1223,9 @@ class GenericDungeonRoomController(EntryRouteWalker):
             if direction is None:
                 return FrameAction(nes_idle_action(), "flank_clear_stand")
             return FrameAction(nes_action(direction), "flank_clear")
+        cut = self._flank_cut(snap, shielded)
+        if cut is not None:
+            return cut
         free = frozenset(
             n
             for n in nodes
@@ -1237,10 +1243,15 @@ class GenericDungeonRoomController(EntryRouteWalker):
         if on_line and along:
             if int(snap.facing) != _combat.direction_to_facing(face):
                 return FrameAction(nes_action(face), "flank_face")
-            self.swings += 1
-            self.swings_authorized += 1
-            hold = (self.frames % 8) < 4
-            return FrameAction(nes_action("A") if hold else nes_idle_action(), "flank_slash")
+            # ``_flank_cut`` fires inside reach; a body parked at the far end
+            # of the stand's slack never walks in (L3 0x69: 26000 frames at
+            # 22 px). Close to it; back off from the blade's near end.
+            gap = abs(lx - int(target.x)) if horizontal else abs(ly - int(target.y))
+            if gap > FLANK_STAND_PX:
+                return FrameAction(nes_action(face), "flank_close")
+            if gap < STRIKE_SLASH_MIN:
+                return FrameAction(nes_action(OPPOSITE[face]), "flank_back")
+            return FrameAction(nes_idle_action(), "flank_wait")
         if (lx, ly) == node or (on_line and not along):
             # On the strike line short of the pixel stand: slide along it.
             step = ("RIGHT" if sx > lx else "LEFT") if horizontal else ("DOWN" if sy > ly else "UP")
@@ -1250,6 +1261,39 @@ class GenericDungeonRoomController(EntryRouteWalker):
             self._flank = None
             return None
         return FrameAction(nes_action(lattice_step(lx, ly, route[0])), "flank_approach")
+
+    def _flank_cut(self, snap: ZeldaSnapshot, shielded: tuple) -> FrameAction | None:
+        """A on the frame a body not facing Link sits in the blade, else ``None``.
+
+        Wherever Link stands: the stand is only a way to get here. Waiting for
+        the exact pick's line cost 8000 frames against 0x69's eight (one cut
+        in 480 frames); a Darknut crossing the blade side-on is a cut too.
+        One press per swing: ``$00AC`` holds the swing, idle is the release.
+        """
+        link = snap.objects[0] if snap.objects else None
+        if link is not None and int(link.slot) == 0 and int(link.state) != 0:
+            self._flank_pressed = False
+            return FrameAction(nes_idle_action(), "flank_swing")
+        if self._flank_pressed:
+            self._flank_pressed = False
+            return FrameAction(nes_idle_action(), "flank_release")
+        try:
+            face = _combat.facing_to_direction(int(snap.facing))
+        except ValueError:
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        toward_link = _combat.direction_to_facing(OPPOSITE[face])
+        for body in shielded:
+            if int(body.facing) == toward_link:
+                continue  # the shield is on Link's side
+            if _combat.in_sword_hitbox(lx, ly, face, int(body.x), int(body.y)) and (
+                chebyshev(lx, ly, int(body.x), int(body.y)) >= STRIKE_SLASH_MIN
+            ):
+                self._flank_pressed = True
+                self.swings += 1
+                self.swings_authorized += 1
+                return FrameAction(nes_action("A"), "flank_slash")
+        return None
 
     def _flank_pick(
         self, snap: ZeldaSnapshot, shielded: tuple, free: frozenset[tuple[int, int]]

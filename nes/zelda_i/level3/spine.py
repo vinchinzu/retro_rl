@@ -35,7 +35,14 @@ from zelda_i.overworld.armos_rupees import (
     ARMOS_4E_TILE,
     ArmosRupeeController,
 )
-from zelda_i.overworld.gather_segments import CaveExitController, HopWalkController
+from zelda_i.overworld.gather_segments import (
+    L1_FROM_POND_HOPS,
+    L1_POND_HOPS,
+    CaveExitController,
+    HopWalkController,
+)
+from zelda_i.overworld.cave_shop import potion_restock_stages
+from zelda_i.overworld.heart_farm import PondFairyController
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.settle import PostL2TriforceSettleController
 from zelda_i.overworld.settle import POST_L2_SETTLE_MAX_FRAMES
@@ -197,6 +204,15 @@ def _raft_hop(through: str, stop: str, pred, name: str, max_frames: int) -> Spin
     return SpineHop(through, stop, stages, pred)
 
 
+# Index of the 0x59 hop on the post-L2 walk (the pond detour's branch).
+_L3_WALK_59 = [hop.target for hop in LEVEL3_HOPS_FROM_POST_L2].index(0x59)
+_L3_FROM_POND_HOPS = L1_FROM_POND_HOPS[:2] + LEVEL3_HOPS_FROM_POST_L2[_L3_WALK_59 + 1 :]
+# Rupees kept past a pre-L3 potion. The pond leaves ~88R; L3 and L4 pay ~40
+# more before the 80R arrows at 0x4A on the L4 -> L5 walk, which a bomb pack
+# at 0x44 can make short (open: the arrow buy should not block L5).
+L3_POTION_RESERVE = 40
+
+
 def l3_hops(*, after_entry=None) -> tuple[SpineHop, ...]:
     """Entry → dest 0x5b → compass → west/south Darknuts → Raft."""
     compass = ready(level=LEVEL3, screen=0x5A)
@@ -267,11 +283,27 @@ def l3_hops(*, after_entry=None) -> tuple[SpineHop, ...]:
                     ),
                     5000,
                 ),
+                # The 0x39 pond is two screens up from 0x59 on this walk: L3
+                # is entered full (Clean L3 from 4.5/7 died 8/8 offsets).
+                (
+                    "walk_pond_l3",
+                    OverworldPostL2ToLevel3Controller(
+                        hops=LEVEL3_HOPS_FROM_POST_L2[2:_L3_WALK_59 + 1] + L1_POND_HOPS[3:],
+                        require_dungeon=False,
+                    ),
+                    POST_L2_PATH_MAX_FRAMES,
+                ),
+                ("pond_39_l3", PondFairyController(), 3000),
+                # And a potion from 0x64 on the way in when the wallet can
+                # spare it past the L5 arrows: Manhandla killed 2.2-heart
+                # Links (Clean power-on 66/67/68).
+                *potion_restock_stages(_L3_FROM_POND_HOPS, "l2", reserve=L3_POTION_RESERVE),
                 (
                     "enter_level3",
                     OverworldPostL2ToLevel3Controller(
-                        hops=LEVEL3_HOPS_FROM_POST_L2[2:],
+                        hops=_L3_FROM_POND_HOPS,
                         require_dungeon=True,
+                        resume_on_screen=True,
                     ),
                     POST_L2_PATH_MAX_FRAMES,
                 ),
