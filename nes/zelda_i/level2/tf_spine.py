@@ -593,6 +593,17 @@ class Level2DodongoController:
             abs(snap.link_x - tx) <= self.mouth_tol
             and abs(snap.link_y - ty) <= self.mouth_tol
         )
+        # The bomb lands 16 px ahead of Link, so Link stands where the bloat
+        # stand is (a body length off the mouth), not 16 px off the body: the
+        # NC65 pin stood 9 px from a south-facing Dodongo, every bomb dropped
+        # on its back, and all 7 were spent. 66/66 saved pins with this.
+        spot = mouth_stand(d)
+        if spot is not None:
+            (tx, ty), face = spot
+            at_mouth = (
+                abs(snap.link_x - tx) <= DODONGO_STAND_SLACK
+                and abs(snap.link_y - ty) <= DODONGO_STAND_SLACK
+            )
         front = in_front_of_mouth(snap.link_x, snap.link_y, d)
         path_ok = mouth_path_clear(d)
         stable = self.stable_n.get(d.slot, 0) >= self.stable_face_frames
