@@ -1435,13 +1435,13 @@ def test_reward_waypoints_only_drive_the_walk_under_occupancy_patrol() -> None:
         "level1_room72",
         "level2_room3e_moldorm_key",
         "level2_room6f_compass",
-        "level4_room40_zols_key",
         "level4_room51_keese_key",
         "level6_room7a_east_key",
     } <= unwalked
     # Rooms that do walk their hunt pattern must stay out of the gap.
     assert "level1_room23" not in unwalked
     assert "level1_room45" not in unwalked
+    assert "level4_room40_zols_key" not in unwalked
     assert "level5_room77_pols_voice" not in unwalked
 
 

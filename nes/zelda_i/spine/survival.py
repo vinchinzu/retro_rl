@@ -79,6 +79,7 @@ from zelda_i.level3.boss_path import (
     Level3ManhandlaController,
 )
 from zelda_i.anchors import TF_BIT_L3 as LEVEL3_TRIFORCE_BIT
+from zelda_i.level4.overworld import LEVEL4_BOMB_WALLS
 from zelda_i.level4.spine import L4_STOPS, continue_level4_spine
 from zelda_i.level5.spine import (
     L5_STOPS,
@@ -484,8 +485,13 @@ def load_save_point(env, run: SpineRun, stage: str) -> None:
 def _run_level3_boss_suffix(env, run: SpineRun, *, assist: Any) -> bool:
     """Run Raft → Manhandla → TF in the same session, without inventory writes."""
     entry = read_snapshot(env.get_ram())
+    # Manhandla bombed down to zero on some tapes, which bought a 20R pack
+    # on the L4 walk. Leaving L4's walls costs ~1100f over 12 offsets.
     controller = Level3BossPathController(
-        poke_bombs=None, tag="survival_spine_l3", continuous_mode=True
+        poke_bombs=None,
+        tag="survival_spine_l3",
+        continuous_mode=True,
+        manhandla_bomb_reserve=LEVEL4_BOMB_WALLS,
     )
     stage = ControllerStageResult(
         name="level3_boss_tf",

@@ -694,11 +694,31 @@ class LatticeDoorWalker:
     pushed: int = 0
     released: int = 0
     frames: int = 0
+    ladder_step: str | None = None
+    _ladder_xy: tuple[int, int] | None = None
+    _ladder_still: int = 0
 
     def action(
         self, env: Any, snap: ZeldaSnapshot, direction: str, reason: str
     ) -> FrameAction | None:
-        step = ladder_release(snap, lattice_door_step(env, snap, direction))
+        xy = (int(snap.link_x), int(snap.link_y))
+        if deployed_ladder(snap) is None:
+            self.ladder_step = None
+            self._ladder_still = 0
+        if self.ladder_step is not None:
+            self._ladder_still = self._ladder_still + 1 if xy == self._ladder_xy else 0
+            self._ladder_xy = xy
+            if self._ladder_still >= LADDER_STILL_FRAMES:
+                self.ladder_step = None
+        if self.ladder_step is not None:
+            step = self.ladder_step
+        else:
+            raw_step = lattice_door_step(env, snap, direction)
+            step = ladder_release(snap, raw_step)
+            if deployed_ladder(snap) is not None and step != raw_step:
+                self.ladder_step = step
+                self._ladder_xy = xy
+                self._ladder_still = 0
         if step is None:
             return None
         self.frames += 1

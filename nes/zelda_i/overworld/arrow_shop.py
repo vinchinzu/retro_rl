@@ -1,4 +1,4 @@
-"""OW wooden arrows (80R): the 0x4A and 0x44 caves, and between-dungeon restocks.
+"""OW wooden arrows (80R): the 0x4A, 0x44 and 0x25 caves, and between-dungeon restocks.
 
 ``ArrowRestockController`` buys wooden arrows only when the carried count is
 short of ``want`` (default 1, e.g. at 0x4A before L2, or at 0x44 between
@@ -43,6 +43,7 @@ __all__ = [
     "SHOP_E5_CAVE_Y",
     "SHOP_E5_MAX_FRAMES",
     "SHOP_E5_SCREEN",
+    "SHOP_F3_SCREEN",
     "arrow_restock_stages",
     "arrow_shop_restock",
     "arrow_shop_success",
@@ -69,6 +70,14 @@ SHOP_E5_CAVE_X = 64
 SHOP_E5_CAVE_Y = 77
 SHOP_E5_APPROACH_Y = 93
 SHOP_E5_MAX_FRAMES = 12000
+
+# F-3, on the L6 walk one screen east of 0x24. Door measured from the
+# $6530 lattice: the black cave tiles sit over x=160 and Link walks UP from
+# (160,85); x=144 is wall (P25_arrive, 2026-09-25).
+SHOP_F3_SCREEN = 0x25
+SHOP_F3_CAVE_X = 160
+SHOP_F3_CAVE_Y = 77
+SHOP_F3_APPROACH_Y = 93
 
 
 def _arrows_value(snap: ZeldaSnapshot) -> int:
@@ -169,6 +178,9 @@ class ArrowRestockController(CaveShopBuyController):
     """
 
     want: int = 1
+    # Between dungeons with a later stop on the route: short of the price,
+    # end at once (walking nowhere) instead of failing the run.
+    skip_short: bool = False
 
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
@@ -184,6 +196,9 @@ class ArrowRestockController(CaveShopBuyController):
         if self.frames == 0 and int(snap.arrows) >= self.want:
             self.frames += 1
             return self._finish("arrow_restock_enough")
+        if self.frames == 0 and self.skip_short and int(snap.rupees) < self.price:
+            self.frames += 1
+            return self._finish(f"arrow_restock_short_{int(snap.rupees)}")
         return super().step(snap)
 
 
@@ -192,11 +207,13 @@ def make_arrow_restock_controller(
     hops: tuple[ScreenHop, ...],
     want: int = 1,
     screen: int | None = None,
+    skip_short: bool = False,
 ) -> ArrowRestockController:
-    """Buy 80R wooden arrows on a walk that crosses/ends on ``screen`` (0x44 or 0x4A).
+    """Buy 80R wooden arrows on a walk that crosses/ends on ``screen``.
 
-    Fails closed when short of 80R. Defaults to 0x44 (SHOP_E5_SCREEN), but also
-    supports 0x4A (ARROW_SHOP_SCREEN) or infers from ``hops[-1].target``.
+    Fails closed when short of 80R unless ``skip_short``. Defaults to 0x44
+    (SHOP_E5_SCREEN), but also supports 0x4A (ARROW_SHOP_SCREEN), 0x25
+    (SHOP_F3_SCREEN) or infers from ``hops[-1].target``.
     """
     if screen is None:
         screen = (
@@ -213,6 +230,14 @@ def make_arrow_restock_controller(
         north_gap_x: int | None = None
         north_gap_y_hi: int = NORTH_GAP_Y_HI
         max_frames = SHOP_E5_MAX_FRAMES
+    elif screen == SHOP_F3_SCREEN:
+        cave_x = SHOP_F3_CAVE_X
+        cave_y = SHOP_F3_CAVE_Y
+        door_x = SHOP_F3_CAVE_X
+        mouth_approach_y = SHOP_F3_APPROACH_Y
+        north_gap_x = None
+        north_gap_y_hi = NORTH_GAP_Y_HI
+        max_frames = SHOP_E5_MAX_FRAMES
     elif screen == ARROW_SHOP_SCREEN:
         cave_x = ARROW_SHOP_CAVE_X
         cave_y = ARROW_SHOP_CAVE_Y
@@ -228,6 +253,7 @@ def make_arrow_restock_controller(
         hops=tuple(hops),
         resume_on_screen=True,
         want=int(want),
+        skip_short=bool(skip_short),
         enter_cave=True,
         door_x=door_x,
         door_dir="UP",
@@ -260,6 +286,7 @@ def arrow_restock_stages(
     *,
     want: int = 1,
     screen: int = SHOP_E5_SCREEN,
+    skip_short: bool = False,
 ) -> tuple[tuple[str, Any, int], ...]:
     """Spine stages for an arrow buy on a walk that crosses it: buy, exit.
 
@@ -275,7 +302,9 @@ def arrow_restock_stages(
         to_shop = hops[: targets.index(screen) + 1]
     else:
         to_shop = hops
-    buy = make_arrow_restock_controller(hops=to_shop, want=want, screen=screen)
+    buy = make_arrow_restock_controller(
+        hops=to_shop, want=want, screen=screen, skip_short=skip_short
+    )
     return (
         (f"arrow_restock_{tag}", buy, buy.max_frames),
         (f"exit_arrow_restock_{tag}", CaveExitController(clear=0), 600),

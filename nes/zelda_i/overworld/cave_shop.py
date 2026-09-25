@@ -717,16 +717,17 @@ def make_potion_buy_controller(
 
 
 def make_potion_restock_controller(
-    *, hops: tuple[ScreenHop, ...], reserve: int = 0
+    *, hops: tuple[ScreenHop, ...], reserve: int = 0, resume_on_screen: bool = False
 ) -> PotionShopBuyController:
     """0x64 buy between dungeons, skipped on its first frame when not wanted."""
     ctl = make_potion_buy_controller(hops=hops, restock=True)
     ctl.reserve = int(reserve)
+    ctl.resume_on_screen = bool(resume_on_screen)
     return ctl
 
 
 def potion_restock_stages(
-    hops: tuple[ScreenHop, ...], tag: str, *, reserve: int = 0
+    hops: tuple[ScreenHop, ...], tag: str, *, reserve: int = 0, resume_on_screen: bool = False
 ) -> tuple[tuple[str, Any, int], ...]:
     """Spine stages for a restock on a walk that crosses 0x64: buy, then exit.
 
@@ -737,7 +738,9 @@ def potion_restock_stages(
     from zelda_i.overworld.gather_segments import CaveExitController
 
     to_shop = hops[: [hop.target for hop in hops].index(POTION_SHOP_SCREEN) + 1]
-    buy = make_potion_restock_controller(hops=to_shop, reserve=reserve)
+    buy = make_potion_restock_controller(
+        hops=to_shop, reserve=reserve, resume_on_screen=resume_on_screen
+    )
     return (
         (f"potion_restock_{tag}", buy, buy.max_frames),
         (f"exit_potion_{tag}", CaveExitController(clear=0), 600),

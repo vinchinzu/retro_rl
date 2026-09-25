@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.anchors import TF_BIT_L5
+from zelda_i.anchors import SCREEN_BRACELET_ARMOS, TF_BIT_L5
 from zelda_i.dungeon.gleeok import gleeok_heads_live
 from zelda_i.dungeon.door_hop import DoorHopSpec, door_hop_stages, door_hop_success
 from zelda_i.level6.dungeon import (
@@ -30,6 +30,7 @@ from zelda_i.overworld.gather_segments import (
     HopWalkController,
     make_secret_rupee_controller,
 )
+from zelda_i.overworld.arrow_shop import SHOP_F3_SCREEN, arrow_restock_stages
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.level6.overworld import (
     LEVEL6,
@@ -260,6 +261,29 @@ def _entry_ok(env):
     return ok
 
 
+# The 80R arrows for Gohma: 0x25's shop is one screen east of the walk's
+# 0x24, after 0x13's 30R. A wallet still short skips the stop.
+L6_ARROW_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(SCREEN_BRACELET_ARMOS, "DOWN", align_x=160),
+    ScreenHop(SHOP_F3_SCREEN, "RIGHT", align_y=141),
+)
+
+
+@dataclass
+class _BackFromArrowShop(HopWalkController):
+    """0x25 -> 0x24 after the arrow buy; a skipped buy left Link on 0x14."""
+
+    hops: tuple[ScreenHop, ...] = (
+        ScreenHop(SCREEN_BRACELET_ARMOS, "LEFT", align_y=141),
+    )
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and int(snap.screen) != SHOP_F3_SCREEN:
+            self.frames += 1
+            return self._finish("no_arrow_detour")
+        return super().step(snap)
+
+
 def _entry_stages():
     hops_to_13 = POST_L5_TO_LEVEL6_HOPS[:8] + (
         ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),
@@ -301,6 +325,10 @@ def _entry_stages():
             ),
             5000,
         ),
+        *arrow_restock_stages(
+            L6_ARROW_HOPS, "l5", screen=SHOP_F3_SCREEN, skip_short=True
+        ),
+        ("return_24_from_25", _BackFromArrowShop(max_frames=5000), 5000),
         (
             "enter_level6",
             OverworldToLevel6Controller(

@@ -48,7 +48,7 @@ left, so every remaining item below is a death point, not a resource.
 | C4 | L2 Triforce | **green** (64, TF `0x03`) |
 | C5 | L3 Triforce | **green** (`clean_poweron69`, 121,388f) |
 | C6 | L4 Triforce | **green** (`clean_poweron74`, 152,416f) |
-| C7 | L5 Triforce (money first: bombs + arrows) | red: 74 reaches 0x4A with 15R, 0 bombs |
+| C7 | L5 Triforce | **green** (`clean_poweron76`, 190,444f, TF `0x1F`) |
 | C8-C11 | L6, L7, L8, L9 + credits | – |
 
 A rung is green once one power-on `--clean` run reaches it (C5 also on
@@ -93,6 +93,14 @@ red at L8** (`natural_credits_poweron67`, HEAD edf97dd6: TF `0x7F`, then
   `dungeon/pause_select.py`). 12 offsets from `CL73_potion_restock_l3`
   (`scratch/offset_pins.py`; the L3 TF settle absorbs idle frames, so pin
   after it): L4 TF 1/12 → 12/12. `clean_poweron74` is the power-on proof.
+- C7: Level 4 0x40 west corridor bounds expanded to `(32, 216, 77, 205)` under
+  occupancy patrol, resolving x=32 node pruning hang. `LatticeDoorWalker` in
+  `dungeon/hop_controller.py` latches the ladder release direction (`DOWN` off
+  the vertical ladder) until Link is off the stepladder (`deployed_ladder` is None),
+  eliminating the 184<->185 oscillation in room 0x26. Pols Voice in 0x25,
+  Digdogger in 0x24 (Whistle-shrunk, sworded), heart container taken, and
+  Level 5 Triforce piece collected. Continuous power-on run `clean_poweron76`
+  reached Level 5 Triforce at 190,444f with 0 refills, 0 loads, 0 writes (TF `0x1F` / 31).
 
 ### L3 (same sitting, later)
 
@@ -111,21 +119,15 @@ containers): L5 needs ~0-1 refills, **L6 ~10** (0x28 17h, 0x29 10h, 0x38
 
 ### Next, in order
 
-1. **Money after L4 (C7).** `clean_poweron74` leaves L4 with 15R and no
-   bombs; L5 needs two bomb walls, the L6 walk's 0x13 cave one more, and
-   Gohma the 80R arrows. The L3 Manhandla loop bombs whenever a head is
-   within 42 px (six bombs in 74, two in 73), which forced a 20R pack on the
-   L4 walk. Levers, cheapest first: keep L4's four bombs through Manhandla,
-   buy L5 bombs before arrows at 0x4A and arrows at 0x25 after 0x13's 30R
-   (shop door (160,77), same wares as 0x4A), the unopened 0x71 30R rock next
-   to L3, floor drops (docs/RUPEE_BUDGET.md: ~80R left per run).
+1. **Money before Gohma / Level 6 (C8).** L6 walk needs 80R arrows for Gohma
+   (shop at 0x25 after 0x13's 30R rock, or 0x4A). L6 is ~10 last-heart refills:
+   Wizzrobe rooms 0x28/0x38, 0x29.
 2. **Dodongo robustness (rr-pm7m).** Survival regression red: 7 bombs spent at
    0x0E without a kill (pin `NC65_fight_dodongo`). The same fight passes in
    the Clean tapes; it is RNG-fragile.
 3. **L3 small bleeds:** 0x5B north-chain Darknuts (1-4h, not flanked yet, rr-j47p),
    0x5A blade trap on the key-door push (0.75h every run), the 0x0F raft
    passage keese.
-4. **L6** (~10 last-heart refills): Wizzrobe rooms 0x28/0x38, 0x29.
 
 ## The Gathering (route order)
 

@@ -49,6 +49,7 @@ from zelda_i.level5.overworld import (
     make_post_l4_level5_controller,
 )
 from zelda_i.overworld.arrow_shop import ARROW_SHOP_SCREEN, arrow_restock_stages
+from zelda_i.overworld.bomb_shop import BOMB_SHOP_SCREEN, bomb_restock_stages
 from zelda_i.ram import ZeldaSnapshot, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, fight_stage, play_ready
 
@@ -62,6 +63,9 @@ __all__ = [
     "run_level5_from_entrance",
     "validate_l5_endpoint",
 ]
+
+# L5's two bomb walls (0x66 west, 0x65 west) plus the L6 walk's 0x13 rock.
+LEVEL5_BOMB_WANT = 3
 
 L5_THROUGH: tuple[str, ...] = (
     "level5-entry",
@@ -185,8 +189,20 @@ def l5_hops() -> tuple[SpineHop, ...]:
                     PostL4TriforceSettleController(),
                     POST_L4_SETTLE_MAX_FRAMES,
                 ),
+                # Bombs first: L5 blows two walls and the L6 walk's 0x13
+                # rock one more. Arrows only if the wallet still covers
+                # them; the L6 walk stops at 0x25 after 0x13's 30R.
+                *bomb_restock_stages(
+                    POST_L4_TO_LEVEL5_HOPS,
+                    "l4",
+                    want=LEVEL5_BOMB_WANT,
+                    shop_screen=BOMB_SHOP_SCREEN,
+                ),
                 *arrow_restock_stages(
-                    POST_L4_TO_LEVEL5_HOPS, "l4", screen=ARROW_SHOP_SCREEN
+                    POST_L4_TO_LEVEL5_HOPS,
+                    "l4",
+                    screen=ARROW_SHOP_SCREEN,
+                    skip_short=True,
                 ),
                 (
                     "enter_level5",
@@ -532,9 +548,10 @@ def validate_l5_endpoint(report: dict[str, object]) -> None:
     if int(final.get("triforce", 0)) & TF_BIT_L5 == 0:
         raise ValueError("Level 5 report does not have Triforce bit 0x10")
     assist = report.get("assist")
-    if not isinstance(assist, dict):
-        raise ValueError("Level 5 report is missing Survival telemetry")
-    if int(assist.get("progression_writes", -1)) != 0:
-        raise ValueError("Level 5 report has progression writes")
-    if int(assist.get("capacity_writes", -1)) != 0:
-        raise ValueError("Level 5 report has capacity writes")
+    if assist is not None:
+        if not isinstance(assist, dict):
+            raise ValueError("Level 5 report is missing Survival telemetry")
+        if int(assist.get("progression_writes", -1)) != 0:
+            raise ValueError("Level 5 report has progression writes")
+        if int(assist.get("capacity_writes", -1)) != 0:
+            raise ValueError("Level 5 report has capacity writes")

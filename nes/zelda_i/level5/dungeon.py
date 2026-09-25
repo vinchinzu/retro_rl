@@ -158,6 +158,7 @@ ROOM_66_SPEC = DungeonRoomSpec(
         occupancy_bounds=(16, 216, 77, 205),
         # Clean leftover (128,133) walked into 3× Gibdo. Intermittent peel.
         contact_backstep=16,
+        melee=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     required_open_doors=ROOM_66_EAST_DOOR_BIT,
@@ -225,6 +226,7 @@ ROOM_77_SPEC = DungeonRoomSpec(
         occupancy_patrol=True,
         occupancy_from_tilemap=True,
         evade=True,
+        melee=True,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
@@ -266,6 +268,7 @@ ROOM_65_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        melee=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     exit_routes=(
@@ -299,6 +302,7 @@ ROOM_27_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=6,
         patrol_attack_hold=3,
+        melee=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=ROOM_ITEM_SMALL_KEY,
@@ -329,6 +333,7 @@ ROOM_26_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=10,
         patrol_attack_hold=3,
+        melee=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=ROOM_ITEM_SMALL_KEY,
@@ -338,6 +343,15 @@ ROOM_26_SPEC = DungeonRoomSpec(
     ),
     max_frames=28000,
     level=LEVEL_5,
+)
+
+_ROOM_25_PATROL: tuple[tuple[int, int], ...] = (
+    (208, 93),
+    (120, 93),
+    (32, 93),
+    (32, 149),
+    (120, 149),
+    (208, 149),
 )
 
 # Natural from cleared 0x26 WEST. 5× Pols Voice — same combat as ROOM_77_SPEC.
@@ -353,22 +367,27 @@ ROOM_25_SPEC = DungeonRoomSpec(
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
     combat=CombatTuning(
-        patrol=_ROOM_77_PATROL,
+        patrol=_ROOM_25_PATROL,
         engage_distance=72,
         engage_attack_period=5,
         engage_attack_hold=3,
         patrol_attack_period=6,
         patrol_attack_hold=3,
+        occupancy_patrol=True,
+        occupancy_from_tilemap=True,
+        evade=True,
+        melee=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=ROOM_ITEM_NONE,
     exit_routes=(
-        DoorRoute("RIGHT", ((120, 141), (208, 141))),
-        DoorRoute("LEFT", ((120, 141), (32, 141))),
+        DoorRoute("RIGHT", ((208, 141),)),
+        DoorRoute("LEFT", ((32, 141),)),
     ),
     max_frames=28000,
     level=LEVEL_5,
 )
+
 
 register_room_spec(ROOM_66_SPEC)
 register_room_spec(ROOM_67_SPEC)

@@ -48,7 +48,9 @@ from zelda_i.level4.overworld import (
     LEVEL4_HOPS_VIA_SHOP_E5,
     LEVEL4_ENTRY_ROOM,
     POST_L3_PATH_MAX_FRAMES,
+    RUPEES_71_MAX_FRAMES,
     OverworldToLevel4Controller,
+    Rupees71Detour,
 )
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_PRICE, bomb_restock_stages
 from zelda_i.overworld.cave_shop import potion_restock_stages
@@ -206,8 +208,12 @@ def l4_hops(*, spine_fields) -> tuple[SpineHop, ...]:
                 # The L4 walk crosses 0x64's potion shop. Clean L4 bleeds
                 # ~7h into the Gleeok (clean_poweron73), so the potion comes
                 # before the arrows: keep only the L4 bomb pack.
+                ("rupees_71_l3", Rupees71Detour(), RUPEES_71_MAX_FRAMES),
                 *potion_restock_stages(
-                    LEVEL4_HOPS_FROM_POST_L3, "l3", reserve=BOMB_SHOP_PRICE
+                    LEVEL4_HOPS_FROM_POST_L3,
+                    "l3",
+                    reserve=BOMB_SHOP_PRICE,
+                    resume_on_screen=True,
                 ),
                 # Then 0x44's bombs when short of L4's four walls (rr-doua).
                 *bomb_restock_stages(

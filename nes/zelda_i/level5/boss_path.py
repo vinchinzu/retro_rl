@@ -37,11 +37,16 @@ from zelda_i.level5.cellar_path import (
 from zelda_i.level5.dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
+    POLS_VOICE_OBJECT_TYPE,
+    ROOM_25_SPEC,
+    ROOM_26_SPEC,
     ROOM_65_SPEC,
     ROOM_66_SPEC,
     ROOM_L5_BLUE_64,
     ROOM_L5_CELLAR_07,
     ROOM_L5_PASSAGE_06,
+    ROOM_L5_WEST_25,
+    ROOM_L5_WEST_26,
     ROOM_L5_WHISTLE_05,
     ROOM_L5_WHISTLE_ITEM,
     ZOL_OBJECT_TYPE,
@@ -231,6 +236,20 @@ def _fight_if_live(env, assist, total, hops, spec, types, name: str) -> bool:
 def _walk_west(env, assist, total, hops, walker, expect: int, name: str) -> bool:
     room = read_snapshot(env.get_ram()).screen
 
+    # In 0x26 and 0x25, live enemies in narrow lanes make a blind door push
+    # lethal. Clear them first with ROOM_26_SPEC / ROOM_25_SPEC; White Sword
+    # with _melee takes 0 damage.
+    if room == ROOM_L5_WEST_26:
+        if not _fight_if_live(
+            env, assist, total, hops, ROOM_26_SPEC, (GIBDO_OBJECT_TYPE,), "fight_26"
+        ):
+            return False
+    elif room == ROOM_L5_WEST_25:
+        if not _fight_if_live(
+            env, assist, total, hops, ROOM_25_SPEC, (POLS_VOICE_OBJECT_TYPE,), "fight_25"
+        ):
+            return False
+
     def attempt() -> tuple[dict, object]:
         rec = walker(env, assist, total)
         wait_play(env, assist, total, max_f=180)
@@ -244,11 +263,11 @@ def _walk_west(env, assist, total, hops, walker, expect: int, name: str) -> bool
         # Live Gibdos on the door column knock Link off the lane (R21 0x26:
         # 600 frames of 133<->134 knockback). Clear them, then walk again.
         spec = replace(
-            ROOM_66_SPEC,
+            ROOM_26_SPEC if room == ROOM_L5_WEST_26 else ROOM_66_SPEC,
             spec_id=f"level5_west_{room:02x}_gibdos",
             source_room=room + 1,
             room_id=room,
-            entry=DoorRoute("RIGHT", ((32, 141),)),
+            entry=DoorRoute("LEFT", ((224, 141),)),
             reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
             max_frames=WEST_FIGHT_MAX_FRAMES,
             level=LEVEL_5,
@@ -452,27 +471,11 @@ def path_05_to_24(env, assist, total: list[int], hops: list[dict]) -> dict:
         _append(hops, "37_up", rec)
         if not rec.get("ok"):
             return {"ok": False, "failed": "up_did_not_enter_27", "room": 0x37}
-        keys0 = read_snapshot(env.get_ram()).keys
-        grab_item(
-            env,
-            assist,
-            total,
-            lambda e: read_snapshot(e.get_ram()).keys > keys0,
-            ((120, 141), (96, 141), (144, 141), (120, 157), (80, 141), (160, 141)),
-        )
         room = 0x27
 
     if room == 0x27:
         if not _walk_west(env, assist, total, hops, walk_west_from_27, 0x26, "27_west"):
             return {"ok": False, "failed": "west_did_not_enter_26", "room": 0x27}
-        keys0 = read_snapshot(env.get_ram()).keys
-        grab_item(
-            env,
-            assist,
-            total,
-            lambda e: read_snapshot(e.get_ram()).keys > keys0,
-            ((224, 141), (120, 141), (96, 141), (144, 141)),
-        )
         room = 0x26
 
     if room == 0x26:

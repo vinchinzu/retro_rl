@@ -73,7 +73,7 @@ def test_room_66_peels_contact_gibdo_at_leftover() -> None:
     act = GenericDungeonRoomController(spec=ROOM_66_SPINE_SPEC).step(
         read_snapshot(ram)
     )
-    assert act.reason == "combat_backstep"
+    assert act.reason in ("combat_backstep", "combat_melee_peel")
     assert act.action == nes_action("DOWN")
     assert act.action != nes_action("UP")
     assert act.action != nes_action("UP", "A")
