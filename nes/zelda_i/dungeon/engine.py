@@ -140,6 +140,14 @@ STILL_BACKOFF_FRAMES = 300
 STRIKE_TURN_MIN = 16
 STRIKE_TURN_MAX = 20
 _BEHIND = {0x08: (0, 16, "UP"), 0x04: (0, -16, "DOWN"), 0x01: (-16, 0, "RIGHT"), 0x02: (16, 0, "LEFT")}
+# Shielded bodies (red, blue Darknut): the sword only cuts a side they do
+# not face. Stands are 16 px off each side, Link facing in.
+SHIELDED_TYPES = frozenset({_ids.DARKNUT_OBJECT_TYPE, 0x0C})
+_SIDES = {0x08: (0, -16, "DOWN"), 0x04: (0, 16, "UP"), 0x01: (16, 0, "LEFT"), 0x02: (-16, 0, "RIGHT")}
+# Route clear of every shielded body by this much (contact is under 9).
+FLANK_CLEAR_PX = 14
+# Frames a flank pick (body, side) holds before it is weighed again.
+FLANK_COMMIT_FRAMES = 45
 # ``_boxed``: frames within this many px of one spot before a replan.
 BOXED_PX = 8
 BOXED_FRAMES = 24
@@ -217,6 +225,9 @@ class CombatTuning:
     evade: bool = False
     # Fire the full-health sword shot at a body already in a lane.
     beam: bool = True
+    # Darknuts: strike only from a side their shield is not on
+    # (``GenericDungeonRoomController._flank_strike``).
+    flank_shielded: bool = False
 
     def __post_init__(self) -> None:
         if not self.patrol:
@@ -481,6 +492,8 @@ class GenericDungeonRoomController(EntryRouteWalker):
     _still_xy: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _still_idle: int = field(default=0, init=False, repr=False)
     _still_off_until: int = field(default=0, init=False, repr=False)
+    # ``_flank_pick``: (slot, side, frame picked).
+    _flank: tuple[int, int, int] | None = field(default=None, init=False, repr=False)
     _box_anchor: tuple[int, int] | None = field(default=None, init=False, repr=False)
     _box_frames: int = field(default=0, init=False, repr=False)
     _beam_pressed: bool = field(default=False, init=False, repr=False)
@@ -1059,6 +1072,10 @@ class GenericDungeonRoomController(EntryRouteWalker):
         shot = self._beam_shot(snap, live)
         if shot is not None:
             return shot
+        if self.spec.combat.flank_shielded:
+            flank = self._flank_strike(snap, live)
+            if flank is not None:
+                return flank
         target = fight_target(snap.link_x, snap.link_y, live)
         if target is None:
             # Parked Wallmasters (and other illegal slots) stay in ``live``.
@@ -1172,6 +1189,127 @@ class GenericDungeonRoomController(EntryRouteWalker):
         if not seen or min(n for _, n in seen.values()) < STATIC_ENEMY_FRAMES:
             return None
         return tuple(live)
+
+    def _flank_strike(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction | None:
+        """Cut a Darknut from a side its shield is not on.
+
+        The chase ran at the target's front: L3 0x69 (Clean power-on 64) took
+        seven contact hits in ``combat_engage`` and 0/8 RNG offsets left L3.
+        A Darknut walks 0.25 px/f and turns every tile or so, so a stand 16 px
+        off any other side is reachable; the route skips lattice nodes inside
+        ``FLANK_CLEAR_PX`` of every shielded body. Link slashes on the strike
+        line, facing in. Too close, the lattice escape steps out first.
+        """
+        shielded = tuple(o for o in live if int(o.type_id) in SHIELDED_TYPES)
+        nodes = self._lattice_nodes(snap)
+        if not shielded or not nodes:
+            return None
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        close = min(shielded, key=lambda o: chebyshev(lx, ly, int(o.x), int(o.y)))
+        if chebyshev(lx, ly, int(close.x), int(close.y)) < FLANK_CLEAR_PX - 2:
+            tracks = {t.slot: t for t in self.tracked}
+            rows = [
+                (float(o.x), float(o.y), float(getattr(tracks.get(int(o.slot)), "vx", 0.0)),
+                 float(getattr(tracks.get(int(o.slot)), "vy", 0.0)), 0.25)
+                for o in live
+            ]
+            from zelda_i.overworld.common import body_escape
+
+            direction = body_escape(lx, ly, rows, DEFAULT_BOUNDS, nodes=nodes)
+            self._flank = None
+            if direction is None:
+                return FrameAction(nes_idle_action(), "flank_clear_stand")
+            return FrameAction(nes_action(direction), "flank_clear")
+        free = frozenset(
+            n
+            for n in nodes
+            if all(chebyshev(n[0], n[1], int(o.x), int(o.y)) >= FLANK_CLEAR_PX for o in shielded)
+        )
+        pick = self._flank_pick(snap, shielded, free)
+        if pick is None:
+            return None
+        target, side, node = pick
+        dx, dy, face = _SIDES[side]
+        sx, sy = int(target.x) + dx, int(target.y) + dy
+        horizontal = face in ("LEFT", "RIGHT")
+        on_line = abs(ly - sy) <= 3 if horizontal else abs(lx - sx) <= 3
+        along = abs(lx - sx) <= 6 if horizontal else abs(ly - sy) <= 6
+        if on_line and along:
+            if int(snap.facing) != _combat.direction_to_facing(face):
+                return FrameAction(nes_action(face), "flank_face")
+            self.swings += 1
+            self.swings_authorized += 1
+            hold = (self.frames % 8) < 4
+            return FrameAction(nes_action("A") if hold else nes_idle_action(), "flank_slash")
+        if (lx, ly) == node or (on_line and not along):
+            # On the strike line short of the pixel stand: slide along it.
+            step = ("RIGHT" if sx > lx else "LEFT") if horizontal else ("DOWN" if sy > ly else "UP")
+            return FrameAction(nes_action(step), "flank_slide")
+        route = lattice_route(free | {node}, (lx, ly), {node})
+        if not route:
+            self._flank = None
+            return None
+        return FrameAction(nes_action(lattice_step(lx, ly, route[0])), "flank_approach")
+
+    def _flank_pick(
+        self, snap: ZeldaSnapshot, shielded: tuple, free: frozenset[tuple[int, int]]
+    ) -> tuple[ZeldaObject, int, tuple[int, int]] | None:
+        """The committed (Darknut, side, line node), re-picked when stale.
+
+        Picking afresh every frame flipped between a node above and one below
+        a walking Darknut: (152,139)/(152,141) for 28000 frames. A pick holds
+        until its side becomes the shield, its body is gone, or
+        ``FLANK_COMMIT_FRAMES`` pass.
+        """
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        by_slot = {int(o.slot): o for o in shielded}
+        held = self._flank
+        if held is not None:
+            slot, side, since = held
+            target = by_slot.get(slot)
+            if target is not None and side != int(target.facing) and self.frames - since < FLANK_COMMIT_FRAMES:
+                node = self._flank_node(target, side, free | {(lx, ly)})
+                if node is not None:
+                    return target, side, node
+        best = None
+        for target in shielded:
+            for side in _SIDES:
+                if side == int(target.facing):
+                    continue  # the shield
+                node = self._flank_node(target, side, free)
+                if node is None:
+                    continue
+                route = lattice_route(free | {node}, (lx, ly), {node})
+                if route is None:
+                    continue
+                if best is None or len(route) < best[0]:
+                    best = (len(route), target, side, node)
+        if best is None:
+            self._flank = None
+            return None
+        _, target, side, node = best
+        self._flank = (int(target.slot), side, self.frames)
+        return target, side, node
+
+    @staticmethod
+    def _flank_node(
+        target: ZeldaObject, side: int, free: frozenset[tuple[int, int]]
+    ) -> tuple[int, int] | None:
+        """The walkable node nearest ``target``'s ``side`` stand, on its strike line."""
+        dx, dy, face = _SIDES[side]
+        sx, sy = int(target.x) + dx, int(target.y) + dy
+        horizontal = face in ("LEFT", "RIGHT")
+        line = [
+            n for n in free
+            if (
+                abs(n[1] - sy) <= 3 and abs(n[0] - sx) <= 8
+                if horizontal
+                else abs(n[0] - sx) <= 3 and abs(n[1] - sy) <= 8
+            )
+        ]
+        if not line:
+            return None
+        return min(line, key=lambda n: abs(n[0] - sx) + abs(n[1] - sy))
 
     def _strike_from_behind(self, snap: ZeldaSnapshot, still: tuple) -> FrameAction | None:
         """Walk to exactly 16 px behind a still body, turn, slash.

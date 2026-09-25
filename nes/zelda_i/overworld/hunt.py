@@ -39,7 +39,7 @@ from zelda_i.combat import (
     heal_wanted,
     nearest_to,
 )
-from zelda_i.dungeon.behaviors import EnemyKind, face_toward, kind_for_type
+from zelda_i.dungeon.behaviors import ZORA_SHOT_SPEED, EnemyKind, face_toward, kind_for_type
 from zelda_i.dungeon.ids import OBJECT_NAMES
 from zelda_i.dungeon.postmortem import DamageLog, HitEvent
 from zelda_i.dungeon.threat import (
@@ -50,7 +50,12 @@ from zelda_i.dungeon.threat import (
 )
 from zelda_i.dungeon.tracking import HazardClass, ObjectTracker, TrackedObject
 from zelda_i.overworld.common import (
+    BODY_JITTER_DEFAULT,
+    BODY_JITTER_PX,
+    SHOT_HIT_PX,
+    shot_escape,
     DODGE_BOX as _DODGE_BOX,  # noqa: F401  (re-export for probes)
+    body_escape,
     box_step as _box_step,
     keep_y_band,
     perpendicular,
@@ -148,6 +153,14 @@ HUNT_BOX = (32, 214, 76, 198)
 HUNT_BLADE_MIN_FWD = 10
 # ``$00AC`` slot 0 non-zero for the whole swing; idle is the ROM's A-release edge.
 LINK_SLOT = 0
+# Swing timing from one A press on 0x48 (2026-09-25): ``$00AC`` 0x11 for
+# frames 0-11, 0x31 on 12, free on 13; the blade object (``$00B9``) is 1 on
+# frames 0-3 and extended (2) on frames 4-11.
+BLADE_OUT_FIRST = 4
+BLADE_OUT_LAST = 11
+SWING_PIN_FRAMES = 13
+# A turn before the press (``_a_edge`` waits for ``$0098``): measured 1-4.
+SWING_TURN_FRAMES = 2
 HUNT_SHIELD_WINDOW = 16  # swing pins Link with the shield down; do not A a shot in it
 SHIELD_CLOSING_PAD = 48  # only a *closing* body silences the shield
 HUNT_OFF_LINE_MAX_FRAMES = 40  # leave a shooter's axis only while there is room to close
@@ -164,6 +177,9 @@ HUNT_MUZZLE_ALARM = 176  # dwelling muzzle still worth stepping away from. Measu
 # tektite hops off the lane: live 0x79/0x7A spent 229/274 frames reversing
 # UP/DOWN to chase that row, retired with tektites still up, and banked 0R.
 BEAM_STAND_KINDS = frozenset({EnemyKind.LEEVER})
+# Bodies the peel steers around: anything that can close 16 px inside its
+# horizon at 2 px/f, plus the pad.
+PEEL_RADIUS = 48
 _SIDE_FACE = {"N": "UP", "S": "DOWN", "E": "RIGHT", "W": "LEFT"}
 _FACING_SIDE = {0x08: "N", 0x04: "S", 0x01: "E", 0x02: "W"}  # $0098 facing -> muzzle side
 
@@ -456,6 +472,7 @@ class ShotPolicy:
         self, snap: ZeldaSnapshot, tracked: tuple[TrackedObject, ...],
         box: tuple[int, int, int, int], bodies: tuple[ZeldaObject, ...] = (),
         band: tuple[int, int] | None = None,
+        nodes: frozenset[tuple[int, int]] | None = None,
     ) -> tuple[str, str] | None:
         """Leave the line of a shot the shield cannot eat.
 
@@ -463,6 +480,11 @@ class ShotPolicy:
         ``assess`` scores it safe. Launched inside ``MIN_DODGE_SHOT`` is the
         late case. A surfaced Zora with no shot yet is *not* a reason to
         move — the shot is aimed when it leaves, not when the mouth opens.
+
+        With the screen's lattice ``nodes`` the step is the path layer's
+        ``shot_escape`` (every input flown against the shot on the lattice);
+        ``perpendicular`` crosses the bearing and walked into 43 Zora hits on
+        the ring road (no-refill gather, 12 offsets, 2026-09-25).
         """
         if not self.enabled or not self.duck_enabled:
             return None
@@ -470,6 +492,8 @@ class ShotPolicy:
         shot = self._unblockable(link, tracked)
         if shot is None:
             return None
+        if nodes:
+            return self._escape(link, shot, box, bodies, nodes)
         step = perpendicular(
             link[0], link[1], int(shot.x), int(shot.y), box, bodies
         )
@@ -481,6 +505,29 @@ class ShotPolicy:
             return None
         self.census.ducks += 1
         return (step, "hunt_duck")
+
+    def _escape(
+        self, link: tuple[int, int], shot: TrackedObject, box: tuple[int, int, int, int],
+        bodies: tuple[ZeldaObject, ...], nodes: frozenset[tuple[int, int]],
+    ) -> tuple[str, str] | None:
+        """``shot_escape`` against one unblockable shot; None when every input is safe."""
+        lx, ly = link
+        tx, ty = int(shot.x), int(shot.y)
+        vx, vy = float(shot.vx), float(shot.vy)
+        if max(abs(vx), abs(vy)) < SHOT_DWELL_SPEED:
+            # A spit on the muzzle is flown at Link from now, as the path does.
+            ax, ay = lx + 8 - (tx + 4), ly - ty
+            norm = max(1.0, (ax * ax + ay * ay) ** 0.5)
+            vx, vy = ZORA_SHOT_SPEED * ax / norm, ZORA_SHOT_SPEED * ay / norm
+        direction, needed = shot_escape(
+            lx, ly, ((float(tx), float(ty), vx, vy, 4),), box, nodes=nodes, bodies=bodies
+        )
+        if not needed:
+            return None
+        self.census.ducks += 1
+        if direction is None:
+            return ("", "hunt_duck_stand")
+        return (direction, "hunt_duck")
 
     def _unblockable(self, link: tuple[int, int], tracked: tuple[TrackedObject, ...]) -> TrackedObject | None:
         best: TrackedObject | None = None
@@ -612,6 +659,8 @@ class HuntCensus:
     hunt_frames: int = 0
     guard_frames: int = 0
     peel_frames: int = 0
+    # Contact swings :meth:`ScreenHunter._swing_pays` turned down.
+    swings_declined: int = 0
     transit_frames: int = 0
     collect_frames: int = 0
     heal_frames: int = 0
@@ -767,6 +816,9 @@ class ScreenHunter:
     _occ: FarmOccupancy = field(default_factory=FarmOccupancy, repr=False)
     _tracker: ObjectTracker = field(default_factory=ObjectTracker, repr=False)
     _tracked: tuple[TrackedObject, ...] = field(default=(), repr=False)
+    # This screen's walk lattice (``OverworldPathController._geo_walkable``),
+    # so the peel simulates walls. None: the box only.
+    nodes_fn: Any = field(default=None, repr=False)
     # The ladder, and the frame context its rungs read. ``RungFn`` is
     # ``(snap) -> FrameAction | None`` — the shape every ``if act is not
     # None`` branch already had — so ``step``'s other two arguments and the
@@ -897,6 +949,9 @@ class ScreenHunter:
 
     def _rung_strike(self, snap: ZeldaSnapshot) -> FrameAction | None:
         if not self._strikeable:
+            return None
+        if not link_busy(snap) and not self._pressed and not self._swing_pays(snap, self._close):
+            self.census.swings_declined += 1
             return None
         return self._strike(
             snap, self._step_frames, self._close, f"hunt_{int(snap.screen):02x}"
@@ -1219,18 +1274,74 @@ class ScreenHunter:
             return None
         return self.beam.stand(snap, target, self.box)
 
+    def _swing_pays(self, snap: ZeldaSnapshot, body: ZeldaObject) -> bool:
+        """The blade reaches ``body`` before any body reaches Link.
+
+        A press pins Link for :data:`SWING_PIN_FRAMES` and the blade is only
+        out on frames :data:`BLADE_OUT_FIRST`..:data:`BLADE_OUT_LAST`. The
+        no-refill gather eval (12 offsets, 2026-09-25) took most of its
+        close hits right after a swing: a leever or tektite walked in while
+        Link stood in recovery. Each near body is flown along its tracked
+        velocity, widened by its jitter; the target may touch Link only
+        after the blade has met it (a cut knocks it back).
+        """
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        bx0, by0 = int(body.x), int(body.y)
+        held = _held_face(snap)
+        face = face_toward(lx, ly, bx0, by0)
+        if held is not None and blade_lands(lx, ly, held, bx0, by0):
+            face = held
+        turn = 0 if held == face else SWING_TURN_FRAMES
+        rows = []
+        for obj in live_enemies(snap):
+            if dormant_body(obj) or chebyshev(lx, ly, int(obj.x), int(obj.y)) > PEEL_RADIUS:
+                continue
+            track = self._track(obj)
+            vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
+            jitter = BODY_JITTER_PX.get(kind_for_type(int(obj.type_id)).value, BODY_JITTER_DEFAULT)
+            rows.append((int(obj.slot) == int(body.slot), float(obj.x), float(obj.y), vx, vy, jitter))
+        landed = None
+        for k in range(turn + SWING_PIN_FRAMES + 1):
+            for target, bx, by, vx, vy, jitter in rows:
+                px, py = bx + vx * k, by + vy * k
+                if target and landed is None and turn + BLADE_OUT_FIRST <= k <= turn + BLADE_OUT_LAST:
+                    if blade_lands(lx, ly, face, round(px), round(py)):
+                        landed = k
+                if target and landed is not None:
+                    continue
+                if max(abs(px - lx), abs(py - ly)) - jitter * k < SHOT_HIT_PX:
+                    return False
+        return landed is not None
+
     def _peel(self, snap: ZeldaSnapshot, body: ZeldaObject, reason: str) -> FrameAction | None:
+        """Walk the input that keeps every near body off Link longest.
+
+        ``common.body_escape`` on the lattice, against each live body inside
+        ``PEEL_RADIUS`` with its tracked velocity. The bigger-axis "away" is
+        only the tie-break.
+        """
         lx, ly = int(snap.link_x), int(snap.link_y)
         dx, dy = int(body.x) - lx, int(body.y) - ly
         away = ("LEFT" if dx > 0 else "RIGHT", "UP" if dy > 0 else "DOWN")
         if abs(dy) > abs(dx):
             away = away[::-1]
-        for direction in away:
-            if _box_step(lx, ly, direction, self.box) is not None:
-                self.census.peel_frames += 1
-                self._freeze_occ()
-                return FrameAction(nes_action(direction), f"{reason}_peel")
-        return None
+        rows = []
+        for obj in live_enemies(snap):
+            if dormant_body(obj) or chebyshev(lx, ly, int(obj.x), int(obj.y)) > PEEL_RADIUS:
+                continue
+            track = self._track(obj)
+            vx, vy = (float(track.vx), float(track.vy)) if track is not None else (0.0, 0.0)
+            jitter = BODY_JITTER_PX.get(kind_for_type(int(obj.type_id)).value, BODY_JITTER_DEFAULT)
+            rows.append((float(obj.x), float(obj.y), vx, vy, jitter))
+        if not rows:
+            rows.append((float(body.x), float(body.y), 0.0, 0.0, BODY_JITTER_DEFAULT))
+        nodes = self.nodes_fn(snap) if self.nodes_fn is not None else None
+        direction = body_escape(lx, ly, rows, self.box, nodes=nodes, prefer=away)
+        self.census.peel_frames += 1
+        self._freeze_occ()
+        if direction is None:
+            return FrameAction(nes_idle_action(), f"{reason}_peel_stand")
+        return FrameAction(nes_action(direction), f"{reason}_peel")
 
     def _shield_action(self, snap: ZeldaSnapshot, body: ZeldaObject | None, pad: int) -> FrameAction | None:
         verdict = self.shield_policy.face(
@@ -1251,11 +1362,14 @@ class ScreenHunter:
             self.box,
             tuple(o for o in live_enemies(snap) if not dormant_body(o)),
             band=self._step_band,
+            nodes=self.nodes_fn(snap) if self.nodes_fn is not None else None,
         )
         if verdict is None:
             return None
         direction, reason = verdict
         self._freeze_occ()
+        if not direction:
+            return FrameAction(nes_idle_action(), reason)
         return FrameAction(nes_action(direction), reason)
 
     def _approach(

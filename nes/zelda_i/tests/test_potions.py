@@ -19,6 +19,7 @@ from zelda_i.dungeon.pause_select import (
     B_SLOT_ARROWS,
     B_SLOT_BOMBS,
     B_SLOT_BOOMERANG,
+    B_SLOT_CANDLE,
     B_SLOT_POTION,
     PotionDrinkGuard,
     b_slot_owned,
@@ -106,6 +107,18 @@ def test_guard_takes_the_frame_at_the_last_heart_with_a_potion() -> None:
     assert inner.steps == 0
     assert action.action == nes_action("B")  # potion already on B: drink at once
     assert guard.holds_refill(snap) is True
+
+
+def test_a_retry_keeps_the_b_item_from_before_the_first_try() -> None:
+    # An ignored B press aborts with the potion still selected; the next try
+    # must still put the candle back (CL63: 0x5B's burn press drank instead).
+    env = _Env()
+    env.ram[ADDR_SELECTED_ITEM] = B_SLOT_POTION
+    guard = PotionDrinkGuard(inner=_Inner())
+    guard.bind_env(env)
+    guard._prior = B_SLOT_CANDLE
+    guard.step(_snap(potion=2, health=0x50))
+    assert guard._prior == B_SLOT_CANDLE
 
 
 @pytest.mark.parametrize(

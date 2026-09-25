@@ -1712,6 +1712,8 @@ class OverworldPathController:
     def bind_env(self, env: Any) -> None:
         """Keep the env so ``_rung_geo`` can read the room tile map. Read only."""
         self._env = env
+        if self.hunter is not None and self.hunter.nodes_fn is None:
+            self.hunter.nodes_fn = self._geo_walkable
 
     def _geo_walkable(self, snap: ZeldaSnapshot) -> frozenset[tuple[int, int]] | None:
         """This screen's lattice, re-read every 64 frames (a secret opens tiles)."""
@@ -1889,7 +1891,7 @@ class OverworldPathController:
         if not self.defend:
             return None
         if self._guard is None:
-            self._guard = ScreenHunter()
+            self._guard = ScreenHunter(nodes_fn=self._geo_walkable)
         self._guard.observe(snap)
         act = self._guard.defend(snap, self.frames)
         if act is not None:
@@ -1898,6 +1900,14 @@ class OverworldPathController:
 
     def _on_defended(self) -> None:
         """A defend frame moved Link: re-check any pose a subclass latched."""
+
+    def _on_stray_cave(self) -> None:
+        """Link stepped onto open stairs mid-hop: a subclass's walk restarts.
+
+        0x28's rupee stairs sit on the straight line west from the pose the
+        cave lets Link out at; with its corner legs spent, a peahat peel sent
+        him back down them sixty times (6000 frames, no-refill offset 7).
+        """
 
 
     @property
@@ -2005,6 +2015,7 @@ class OverworldPathController:
             # A hop is screen to screen, so a cave mid-hop is a step onto an
             # already-open stairs tile (0x56's, after a duck: 17716f of
             # unstick_wait inside it, natural_credits_45r). Walk back out.
+            self._on_stray_cave()
             if abs(int(snap.link_x) - CAVE_EXIT_X) > 1:
                 side = "RIGHT" if int(snap.link_x) < CAVE_EXIT_X else "LEFT"
                 return FrameAction(nes_action(side), "stray_cave_align")

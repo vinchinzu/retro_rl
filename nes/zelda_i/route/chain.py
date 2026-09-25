@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from zelda_i.dungeon.pause_select import PotionDrinkGuard
+from zelda_i.dungeon.postmortem import DamageLog
+from zelda_i.dungeon.tracking import ObjectTracker
 from zelda_i.level1.clear import Level1Clear53Controller, Level1Clear63Controller
 from zelda_i.level1.path import (
     CLEAR_53_MAX_FRAMES,
@@ -216,6 +218,10 @@ def run_natural_to_level1(
     return obs, boot_frames, sword, nav, global_frame
 
 
+# Frames of (x, y, reason) kept before each census hit.
+HIT_TRAIL = 24
+
+
 @dataclass
 class ControllerStageResult:
     """One reusable controller stage in a live natural-entry chain."""
@@ -236,6 +242,18 @@ class ControllerStageResult:
     damage_by_room: dict[str, float] = field(default_factory=dict)
     # ``PotionDrinkGuard.report()`` when the stage drank or held a refill.
     potion: dict[str, Any] | None = None
+    # Hit census (``DamageLog``, observation only): which object took each
+    # heart, with the controller reason on that frame.
+    hits: DamageLog = field(default_factory=DamageLog)
+    _tracker: ObjectTracker = field(default_factory=ObjectTracker, repr=False)
+    # The frames before each hit: (x, y, reason), oldest first.
+    _recent: list[tuple[int, int, str]] = field(default_factory=list, repr=False)
+    _pre_hit: list[list[tuple[int, int, str]]] = field(default_factory=list, repr=False)
+
+    def observe_hits(self, snap: Any, reason: str) -> None:
+        self._recent = (self._recent + [(int(snap.link_x), int(snap.link_y), reason)])[-HIT_TRAIL:]
+        if self.hits.observe(snap, self._tracker.observe(snap), action=reason) is not None:
+            self._pre_hit.append(list(self._recent))
 
     def observe_hearts(self, hearts: float, room: str = "") -> None:
         if self.hearts_in is None:
@@ -284,6 +302,10 @@ class ControllerStageResult:
             payload["end_frame"] = self.end_frame
         if self.potion is not None:
             payload["potion"] = dict(self.potion)
+        if self.hits.hits:
+            payload["hits"] = self.hits.report()
+            for event, trail in zip(payload["hits"]["events"], self._pre_hit):
+                event["trail"] = trail
         return payload
 
 
@@ -385,7 +407,9 @@ def run_controller_stage(
         frame_base=frame_base,
         end_frame=frame_base,
     )
-    guard = PotionDrinkGuard(inner=controller) if potions else None
+    # A controller may raise the drink floor (the 0x0A Lynel hits for two).
+    drink_at = int(getattr(controller, "drink_at_whole_hearts", 1))
+    guard = PotionDrinkGuard(inner=controller, drink_at_whole_hearts=drink_at) if potions else None
     stepper = controller if guard is None else guard
     if guard is not None:
         guard.bind_env(env)
@@ -407,6 +431,7 @@ def run_controller_stage(
             result.end_frame = frame_base + frame
             _observe_room_timer(room_timer, env, frame=result.end_frame)
             result.observe_hearts(ram_hearts(env.get_ram()), room)
+            result.observe_hits(read_snapshot(env.get_ram()), fa.reason)
             _apply_assist(assist, env, frame=result.end_frame)
             _notify_frame(on_frame, env, obs, action, frame=result.end_frame)
             if controller_stage_done(controller):

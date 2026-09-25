@@ -1,57 +1,99 @@
 # Plan — Zelda I
 
-## Now: the real Clean frontier is the gathering (2026-09-24, later)
+## Now: Clean credits as a health economy (2026-09-25)
 
-`--clean` never reached the spine before today (see STATUS): every "Clean"
-tape was Survival. The inventory gate is done (natural_credits_poweron39:
-zero pokes). The only assist left is the health refill, and with it off
-power-on dies at 40,564f on the White Sword walk (`clean_poweron45`).
+Goal: power-on to credits, Clean (no RAM write, no state load), zero deaths.
+Inventory is already natural (run 53: zero pokes); only the health refill is
+left, so every remaining item below is a death point, not a resource.
 
-The refreshed zero-poke Survival baseline is `natural_credits_poweron53`:
-power-on to credits, 310,175f, TF `0xFF`, 14 containers, zero state loads,
-zero inventory/progression/capacity writes. L3 0x5D and L8 0x6E room rupees
-cover the L4 arrows and first post-L8 bomb pack. After that pack, 0x67's
-30R rock cave funds the second. This is still Survival health refill; it
-does not advance the Clean frontier.
+### What sets the plan (measured on d1c42958)
 
-Measure Clean with `run_survival_spine.py --clean --through level9-credits
---save-points CL<n>`: one run is about 1 minute to the gather death. Fix a
-death from its `CL<n>_<stage>` pin, score the change over RNG offsets (the
-scratch `hits.py` / `arms.sh` pattern: `--idle` offsets, success and hearts
-left), then re-run power-on. Keep the zero-poke Survival run green after each
-change (`--no-pokes`), because every change reshuffles later rooms.
+- `clean_poweron60` (`--clean`): dies in `white` on 0x18 at 40,801f, the same
+  tape as CL45. Pond 0x39 (4/4) to 0x0A spends 5.5h and heals 1 (the 0x2C
+  container). 7 of the 11 hits are 0x2B blue leevers and 0x1E tektites.
+- `lasth_poweron60` (`--engage-hearts 1 --observed-damage-guard --no-pokes`,
+  from a worktree snapshot): the death map. Each last-heart refill is one
+  Clean death. Gathering: 2 (walk_28 before White Sword; the ring road, then
+  0x34 on `rupees_62`). L1, L2 and L4: **0**. L3: enters at 4/8 after a 2.8h
+  walk, then refills at 0x69 and the raft/boss rooms. Stopped at L5 0x66 on
+  `bombs=0` (a bomb budget miss under a reshuffled tape, not health).
+- Survival damage by level (run 53, beam always on): OW 61h, L1 3, L2 7,
+  L3 12, L4 11, L5 40, L6 57, L7 19, L8 57, L9 71. L5+ are unmapped for
+  last-heart; expect the next death points there.
 
-Next, in order:
+### Re-think
 
-1. **Northeast attrition (gathering rung 3).** After the 0x39 pond Link
-   has 4/4. walk_2c spends 2.5h (0x2B blue leevers, 0x4B), and the 0x2C
-   container brings him to 3/5. ne_100 (0x1E tektites) spends 0.5h, the
-   letter (0x1E) 1h and walk_28 (0x0C) 0.5h, so he reaches `white` with 1h.
-   No heal on that stretch. The remaining hits happen inside the defend
-   layer (close peel, slash recovery against tektites and leevers), so melee
-   quality is the lever. Route levers, each a rupee trade: the 0x0D potion
-   shop sits on the 0x0E→0x0C walk (1 bomb + 40R, but the ring then needs
-   0x62's 100R before it, and Bait needs a new 60R source); or White Sword
-   after the ring and the second pond. On 1 heart the 0x28→0x38→0x48 walk
-   also died in 305f (prototype), so reordering alone is not enough. The
-   0x2C take-any left item is a red potion, but the tested early-potion
-   reroute drank both charges near the candle shop and still died at 0x28.
-2. **0x0A Lynel (`white`, rr-lkqf).** Gated now: the climb waits for the
-   Lynel on the bottom band, and the top-band walks hold for its sword shot
-   (`white_sword.py` `_lynel_gate` / `_beam_hold`). `white` went 1/6 → 4-5/6
-   and `back_1a` 6/6 with no hits. Still open: a Lynel that climbs the west
-   lane meets Link on the top band (1 of 6), and the Zora's fireballs hit
-   while he waits at the corridor foot.
-3. **Then L1 onward.** The last-heart baseline on HEAD (`lasth_poweron43`)
-   had 8 gathering refills and 1 more through L4. Run 37 (pre-reshuffle)
-   ranked L5 0x05/0x64, L9 0x10, L6 0x3A and L9 0x20 worst.
+1. **The unit is the segment between full refills**: pond fairy (0x39,
+   0x43), potion drink, Triforce. A segment survives when the hearts it
+   starts with plus what it heals inside beat its damage. Per-room combat
+   tuning chased damage everywhere; most rooms are already inside budget.
+2. **Heal before you fight.** For each death point, first try a heal on the
+   route (take-any potion, pond, potion shop), then combat. A heal is one
+   stage; a combat fix reshuffles every later room.
+3. **Last-heart refills are the death map.** Run it from a worktree snapshot
+   so the main tree stays editable (`PYTHONPATH=$W:$W/snes:$W/nes`).
+4. **Not Clean:** `--rollout` (it `set_state`s the played emulator), any
+   heart write. A game-over Continue writes nothing, but the target stays
+   zero deaths.
+5. The White Sword beam needs full hearts. Healing to full is worth more
+   than the hearts: it turns the beam back on.
 
-Run 53 is the current continuous Survival regression gate after route edits.
-The separate Clean M5 natural-entry recheck is also red on current code:
-`run_level1_complete.py --natural-entry --trials 2` failed twice at
-`clear33_key` (frame 9742, `0x33_needs_heart`). The 18909f figure remains a
-historical best, not a passing current gate. Investigate room 0x33 after the
-gathering frontier, or sooner if changing the standalone L1 controller.
+### Ladder (each rung is a `--clean` power-on, no resume)
+
+| rung | stop | now |
+|---|---|---|
+| C1 | White Sword taken | **green** (`clean_poweron64`) |
+| C2 | Blue Ring, L1 mouth 0x37 | **green** (64) |
+| C3 | L1 Triforce (new M5 on the gathered route) | **green** (64) |
+| C4 | L2 Triforce | **green** (64, TF `0x03`) |
+| C5 | L3 Triforce | red: dies in L3 at 110,963f |
+| C6 | L4 Triforce | – |
+| C7 | L5 Triforce (bomb budget first) | – |
+| C8-C11 | L6, L7, L8, L9 + credits | – |
+
+A rung is green once one power-on `--clean` run reaches it. Keep
+`natural_credits_poweron53` green (`--no-pokes`) after each route change:
+**it is red now** (`natural_credits_poweron65`: the reshuffled tape reaches the
+L2 Dodongo with 7 bombs and spends all of them, rr-pm7m).
+
+### Done this sitting (2026-09-25)
+
+- G1: 0x2C take-any gives the red potion; 0x47's container comes before
+  the White Sword (`walk_48` → `heart_47` → `walk_white` → `white` →
+  `walk_back_48`). `white` is defended now.
+- Overworld melee, scored on 12 RNG offsets from the pond pin
+  (`scratch/eval_gather_clean.py`): post-pond gathering 0/12 → 11/12.
+  * `common.body_escape`: the peel flies every input on the lattice
+    against each near body (84 of 268 hits were the old "away" press).
+  * `ScreenHunter._swing_pays`: swing only when the blade (frames 4-11 of
+    the 13-frame pin) meets the body before any body touches Link.
+  * The hunter's Zora duck uses `shot_escape` on the lattice.
+- Stalls found by the census: 0x48 off-lattice burn cell flutter
+  (`_nudge_dir`), 0x2D stairs lane (`OPENING_LANE_SLACK`), 0x28 stray-cave
+  loop (`_on_stray_cave` restarts the corners), a help-drop bomb ending the
+  coast walk on 0x7F (`CaveExitController` passes when not in a cave), the
+  potion guard leaving B on the potion after a retry (burn cells now
+  reselect their B item).
+- Every stage report carries a hit census (`hits`: cause, action, 24-frame
+  trail).
+- L3: Darknut rooms 0x59/0x69 strike from a non-shield side
+  (`CombatTuning.flank_shielded`, `_flank_strike`): 8 offsets from the L3
+  entry pin, raft reached 1/8 → 7/8; L3 Triforce 0/8 → 0/8 (boss suffix).
+
+### Next, in order
+
+1. **L3 boss suffix (C5, rr-tff2).** From `L3o<n>_enter_level3` (8 offsets,
+   `scratch/offset_pins.py` + a resume per offset) every run now reaches
+   the boss path and fails there: low hearts after the raft (0.5-2.5 left)
+   or `bombs=0` (0x5D's prep clear bombs Zols/Gels on a timer). Keep bombs
+   for Manhandla; heal before L3 (0x39 pond from 0x59 on the entry walk).
+2. **Dodongo robustness (rr-pm7m).** Survival regression red: 7 bombs spent at
+   0x0E without a kill (pin `NC65_fight_dodongo`). The same fight passes in
+   the Clean tapes; it is RNG-fragile.
+3. **L3 small bleeds:** 0x5B north-chain Darknuts (1-4h, not flanked yet, rr-j47p),
+   0x5A blade trap on the key-door push (0.75h every run), the 0x0F raft
+   passage keese.
+4. Then extend the last-heart death map past L5 (bomb budget first).
 
 ## The Gathering (route order)
 
@@ -59,13 +101,20 @@ Zelda Dungeon calls this The Gathering. Order:
 
 1. Wooden sword on `0x77`.
 2. South-coast walk to bombs at `0x6F`. Stop when `ADDR_BOMBS >= 1`.
-3. Heart at `0x7B` (taken from a `BFS_7C` pin, `GatherHeartL8Leave`), then the heart at `0x2C` (taken from a `BFS_2C` pin, `GatherHeartM3Leave`).
-4. Northeast cluster: 100 rupees `0x0F`, letter `0x0E`, candle `0x0C`, White Sword `0x0A`. Go around Lost Hills `0x1B`. The older 21609-frame chain ended ringless at L1 and is historical evidence only. Next: heal before `exit_6f` so the chain can run with no refill. The `backtrack44` key poke is gone: L1 takes 0x72's key (rr-doua).
-5. Burn heart `0x47` and the 90-rupee shield at `0x46`.
-6. Blue Ring at `0x34` is mandatory before L1, paid by the hidden rupee caves; 0x62's 100R after it buys Bait at `0x34`. Arrows are bought after L4, and 0x67 funds Level 9's second bomb pack.
-7. Then the Level 1 mouth at `0x37`, and only then a new Clean Level 1 measure.
+3. Heart at `0x7B`, the 0x39 pond, then **the red potion** at the `0x2C`
+   take-any (left item, (88,149); 2026-09-25, was the container).
+4. Northeast cluster: 30R `0x2D`, 100R `0x0F`, letter `0x0E`, candle `0x0C`,
+   30R `0x28`.
+5. Burn row before the sword: 30R `0x48`, heart `0x47` (5 containers), back
+   up the x=120 cut to `0x28`, White Sword `0x0A`, back down to `0x48`.
+6. Blue Ring at `0x34`, paid by the hidden rupee caves (`0x5B`, `0x6B`,
+   `0x56`); 0x62's 100R after it buys Bait at `0x34`. Arrows are bought
+   after L4, and 0x67 funds Level 9's second bomb pack.
+7. The 0x39 pond again, then the Level 1 mouth at `0x37` with 5 containers
+   and usually one potion charge.
 
-Do not overwrite the 18909f oracle while this prefix is open.
+The 18909f wooden-sword oracle is historical; the gathered Clean L1
+Triforce (`clean_poweron64`) replaces it as the M5 evidence.
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-infinite-life --no-video --trials 1   # gather → L1 TF

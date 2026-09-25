@@ -12,7 +12,12 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import direction_to_facing
 from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.ops import B_ITEM_CANDLE
-from zelda_i.dungeon.pause_select import PauseSelectController
+from zelda_i.dungeon.pause_select import (
+    B_SLOT_BOMBS,
+    B_SLOT_CANDLE,
+    PauseSelectController,
+    b_slot_owned,
+)
 from zelda_i.overworld.cave_shop import (
     SHOP_34_ARMOS_STAND,
     SHOP_34_ARMOS_TILE,
@@ -37,7 +42,15 @@ from zelda_i.overworld.white_sword import (
     WhiteSwordDetourController,
     WhiteSwordPhase,
 )
-from zelda_i.ram import ADDR_CANDLE, ADDR_RING, CAVE_MODE, PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import (
+    ADDR_CANDLE,
+    ADDR_RING,
+    ADDR_SELECTED_ITEM,
+    CAVE_MODE,
+    PLAY_MODE,
+    ZeldaSnapshot,
+    read_u8,
+)
 from zelda_i.walk.physics import OPPOSITE, OccupancyGrid, OccupancyWalker
 
 BLAST_FRAMES = 80
@@ -48,8 +61,11 @@ BOMB_CONFIRM_FRAMES = 12
 # in place.
 BACK_OFF_FRAMES = 4
 BACK_OFF_TRIES = 2
-# Half a tile past the opened tile object (or off its lane) is knocked off it.
+# Half a tile past the opened tile object is knocked off it.
 OPENING_SLACK = 8
+# Off the opening's lane by more than this walks back first: a peel left
+# Link at x=88 under 0x2D's x=80 stairs and UP pushed rock for 400 frames.
+OPENING_LANE_SLACK = 4
 # Inside this many px of the bomb cell the approach pushes instead of swinging.
 BOMB_CELL_PUSH_PX = 8
 # Link's ObjState while a cave's text (or a pond fairy) holds him.
@@ -65,6 +81,11 @@ HEART_L8_STALL_DIR = "UP"
 HEART_CAVE_SPRITE = 0x6B
 # Heart is the right-hand item (potion left). Same touch as the candle pedestal.
 HEART_L8_ITEM_XY = (152, 149)
+# The left-hand item: a red potion, two full refills. Clean takes it at 0x2C,
+# where the pond-to-0x0A stretch has no other heal (clean_poweron60 died at
+# 0x18 with 5.5h spent and 1 healed); 0x47's container then makes the five
+# the White Sword needs.
+TAKE_ANY_POTION_XY = (88, 149)
 
 HEART_M3_SCREEN = 0x2C
 # Measured 2026-09-22 by a bomb sweep on BFS_2C: the doorway is on the
@@ -289,6 +310,12 @@ WHITE_FROM_28_HOPS = WHITE_HOPS[6:]
 # down (12000 frames, 2026-09-23): up the x=224 column first, then the
 # east-entry corners, which pass above and left of it.
 WHITE_FROM_28_WAYPOINTS = {0x28: ((224, 133),) + WAYPOINTS[0x28][2:]}
+# 0x47's container comes before the White Sword now (0x2C gave the potion):
+# from 0x28's rupee cave the east corners, then the burn walk's x=120 cut
+# down through 0x38 into 0x48; back up the same cut after 0x47. White then
+# starts on 0x28 from the south and leaves 0x28's corners to the lattice.
+WALK_28_TO_48_HOPS = BURN_WALK_HOPS[-2:]
+WALK_47_TO_28_HOPS = L1_MOUTH_HOPS[:2] + (ScreenHop(0x28, "UP", align_x=120),)
 # After 0x47's heart: east along row 5 to 0x5B's tree (10R) and down the
 # x=48 gap to 0x6B's (100R), back to 0x58, then the ring road with 0x56's
 # tree (10R). That is exactly the 250 (the wallet caps at 255: 0x62's
@@ -377,6 +404,22 @@ def push(direction: str, reason: str) -> FrameAction:
     return FrameAction(nes_action(direction), reason)
 
 
+def _nudge_dir(snap: ZeldaSnapshot, goal: tuple[int, int]) -> str | None:
+    """The straight press along the row or column Link shares with ``goal``.
+
+    ``room_step`` plans on the turn lattice, so an off-lattice cell flips it:
+    0x48's stand x=188 swapped LEFT/RIGHT at x 184/185 for 2700 frames after
+    a duck latched the exact cell, while the river Zora shot at Link.
+    """
+    x, y = int(snap.link_x), int(snap.link_y)
+    gx, gy = int(goal[0]), int(goal[1])
+    if y == gy and x != gx:
+        return "RIGHT" if gx > x else "LEFT"
+    if x == gx and y != gy:
+        return "DOWN" if gy > y else "UP"
+    return None
+
+
 def _credited(snap: ZeldaSnapshot) -> int:
     """Wallet plus the payout still counting up on the HUD."""
     return int(snap.rupees) + int(snap.rupees_to_add)
@@ -416,7 +459,7 @@ class BombWallController(OverworldPathController):
     # Frames from B to walking in. A bomb blasts at ~80. A flame walks 16
     # frames, stands $3F, and the tree reveals once its timer drops below 2.
     use_wait: int = BLAST_FRAMES
-    # "container" (take-any heart) or "rupees" (one-item secret cave).
+    # "container" or "potion" (take-any), or "rupees" (one-item secret cave).
     reward: str = "container"
     reward_rupees: int = 0
     keeper: int = SECRET_MOBLIN
@@ -427,6 +470,11 @@ class BombWallController(OverworldPathController):
     leave_fail: str = "left_0x7b"
     # A bomb shows in ``$0658``; a flame does not, so burns do not check it.
     consumes_bomb: bool = True
+    # B slot the press needs (bombs or candle); ``None`` trusts whatever is
+    # selected. A potion drink or a shop can leave B elsewhere, and a press
+    # on the potion slot drinks it (CL63 0x5B spent the last charge).
+    b_item: int | None = None
+    _b_select: PauseSelectController | None = None
     _bombs_at_press: int = -1
     _bombed: int = 0
     _on_cell: bool = False
@@ -435,6 +483,7 @@ class BombWallController(OverworldPathController):
     _backs: int = 0
     _regain: bool = False
     _entry_containers: int = -1
+    _entry_potion: int = -1
     _cave_rupees: int = -1
     _interior: int = 0
     _cave_walker: OccupancyWalker | None = None
@@ -446,6 +495,7 @@ class BombWallController(OverworldPathController):
     def _remember(self, snap: ZeldaSnapshot) -> None:
         if self._entry_containers < 0 and snap.mode == PLAY_MODE:
             self._entry_containers = int(snap.heart_containers)
+            self._entry_potion = int(snap.potion)
 
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         self._remember(snap)
@@ -458,6 +508,8 @@ class BombWallController(OverworldPathController):
                 and self._cave_rupees >= 0
                 and _credited(snap) >= self._cave_rupees + self.reward_rupees
             )
+        if self.reward == "potion":
+            return in_cave and 0 <= self._entry_potion < int(snap.potion)
         return (
             in_cave
             and self._entry_containers >= 0
@@ -507,7 +559,7 @@ class BombWallController(OverworldPathController):
                 # the lane below: every DOWN step became a slash that pinned
                 # him, and B was never pressed in 3827 frames.
                 if off <= BOMB_CELL_PUSH_PX and not link_busy(snap):
-                    return push(step, "bomb_cell_nudge")
+                    return push(_nudge_dir(snap, (self.bomb_x, self.bomb_y)) or step, "bomb_cell_nudge")
                 return self._swing(step, "bomb_cell")
             # The bomb lands ahead of Link. A walk that ended on the other
             # axis faces the wrong way (0x2C's first try bombed open sand).
@@ -527,6 +579,9 @@ class BombWallController(OverworldPathController):
             # bombs and stood 401 frames against a shut wall.
             if link_busy(snap):
                 return idle("bomb_wait_busy")
+            act = self._select_b(snap)
+            if act is not None:
+                return act
             self._bombed = 1
             self._bombs_at_press = int(snap.bombs)
             return press_b("place_bomb")
@@ -558,6 +613,23 @@ class BombWallController(OverworldPathController):
                 return push(step, "regain_cell")
         return push(self.bomb_face, "into_wall")
 
+    def _select_b(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        """Pause-select ``b_item`` when B holds something else; ``None`` once it is there."""
+        if self.b_item is None or self._env is None:
+            return None
+        if self._b_select is None:
+            ram = self._env.get_ram()
+            if int(read_u8(ram, ADDR_SELECTED_ITEM)) == self.b_item or not b_slot_owned(ram, self.b_item):
+                return None
+            self._b_select = PauseSelectController(want=self.b_item)
+            self._b_select.bind_env(self._env)
+            self.notes.append(f"reselect_b_{self.b_item}")
+        act = self._b_select.drive(snap)
+        if act is not None and not self._b_select.failed:
+            return act
+        self._b_select = None
+        return None
+
     def _on_defended(self) -> None:
         # A duck moved Link 2 px off the 0x47 stand with the cell still
         # latched; the flame went out from (176,155), inside the walk's 2 px
@@ -576,7 +648,7 @@ class BombWallController(OverworldPathController):
             (self.door_y, self.bomb_x) if self.bomb_face in ("UP", "DOWN") else (self.door_x, self.bomb_y)
         )
         sign = 1 if self.bomb_face in ("DOWN", "RIGHT") else -1
-        return (along - door) * sign > OPENING_SLACK or abs(across - lane) > OPENING_SLACK
+        return (along - door) * sign > OPENING_SLACK or abs(across - lane) > OPENING_LANE_SLACK
 
     def _cave_walker_for(self, snap: ZeldaSnapshot) -> OccupancyWalker:
         """Occupancy for the open cave. The measured UP miss stays blocked."""
@@ -679,6 +751,8 @@ class GatherWhiteController(OverworldPathController):
     farm_below_hearts: int = 0
     evade: bool = False
     max_frames: int = 12000
+    # The blue Lynel hits for two hearts: drink a carried potion at two.
+    drink_at_whole_hearts: int = 2
     # None walks ``WAYPOINTS``; ``{}`` leaves every screen to the lattice.
     waypoints: dict[int, tuple[tuple[int, int], ...]] | None = None
     _detour: WhiteSwordDetourController | None = None
@@ -687,6 +761,9 @@ class GatherWhiteController(OverworldPathController):
 
     def _extra_hop_action(self, snap: ZeldaSnapshot, hop: ScreenHop):
         return waypoint_action(self, snap)
+
+    def _on_stray_cave(self) -> None:
+        self._way_screen = -1
 
     def _wants_post_hop(self) -> bool:
         return True
@@ -741,6 +818,9 @@ class HopWalkController(OverworldPathController):
     def _extra_hop_action(self, snap: ZeldaSnapshot, hop: ScreenHop):
         return waypoint_action(self, snap)
 
+    def _on_stray_cave(self) -> None:
+        self._way_screen = -1
+
     def _at_stop(self, snap: ZeldaSnapshot) -> bool:
         return (
             snap.level == 0
@@ -767,6 +847,13 @@ class CaveExitController:
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         self.frames += 1
+        if self.frames == 1 and snap.level == 0 and snap.mode == PLAY_MODE:
+            # Not in a cave: nothing to walk out of. A help-drop bomb ended
+            # the coast walk on 0x7F with bombs, so the 0x6F buy never ran
+            # and this exit pushed DOWN into 0x7F's rock for 600 frames.
+            self.success = True
+            self.notes.append("not_in_cave")
+            return idle("cave_exited")
         # Mode 10 is the walk out. On a burn cave's stairs, DOWN held
         # through it walks Link back down (600 frames on 0x47), and he comes
         # up beside the stairs, so those exits clear nothing (``clear`` 0).
@@ -808,6 +895,7 @@ class WhiteReturnController:
     max_frames: int = 3000
     success: bool = False
     failed: bool = False
+    drink_at_whole_hearts: int = 2
     _detour: WhiteSwordDetourController | None = None
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
@@ -904,6 +992,7 @@ def make_heart_l8_controller() -> BombWallController:
         interior_y=HEART_L8_ITEM_XY[1],
         bomb_fail="north_wall_did_not_open",
         leave_fail="left_0x7b",
+        b_item=B_SLOT_BOMBS,
     )
 
 
@@ -920,7 +1009,16 @@ def make_heart_m3_controller() -> BombWallController:
         interior_y=HEART_L8_ITEM_XY[1],
         bomb_fail="center_rock_did_not_open",
         leave_fail="left_0x2c",
+        b_item=B_SLOT_BOMBS,
     )
+
+
+def make_potion_m3_controller() -> BombWallController:
+    """0x2C's take-any, left item: the red potion instead of the container."""
+    ctl = make_heart_m3_controller()
+    ctl.reward = "potion"
+    ctl.interior_x, ctl.interior_y = TAKE_ANY_POTION_XY
+    return ctl
 
 
 def make_secret_rupee_controller(
@@ -952,6 +1050,7 @@ def make_secret_rupee_controller(
         bomb_fail=f"{kind}_0x{spot.screen:02x}_did_not_open",
         leave_fail=f"left_0x{spot.screen:02x}",
         consumes_bomb=spot.uses_bomb,
+        b_item=B_SLOT_BOMBS if spot.uses_bomb else B_SLOT_CANDLE,
     )
 
 
@@ -975,6 +1074,7 @@ def make_burn_47_controller() -> BombWallController:
         bomb_fail="tree_0x47_did_not_open",
         leave_fail="left_0x47",
         consumes_bomb=False,
+        b_item=B_SLOT_CANDLE,
     )
 
 
@@ -1051,7 +1151,7 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("walk_pond", HopWalkController(hops=POND_WALK_HOPS)),
         ("pond_39", PondFairyController()),
         ("walk_2c", HopWalkController(hops=POND_RETURN_HOPS, waypoints=POND_RETURN_WAYPOINTS)),
-        ("heart_2c", make_heart_m3_controller()),
+        ("potion_2c", make_potion_m3_controller()),
         ("exit_2c", CaveExitController()),
         ("rupees_2d", _defended(make_secret_rupee_controller(0x2D, RUPEES_2D_HOPS))),
         ("exit_2d", CaveExitController()),
@@ -1066,15 +1166,20 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("rupees_28", _defended(make_secret_rupee_controller(0x28))),
         ("exit_28", CaveExitController(clear=0)),
         (
-            "white",
-            GatherWhiteController(hops=WHITE_FROM_28_HOPS, waypoints=WHITE_FROM_28_WAYPOINTS),
+            "walk_48",
+            HopWalkController(hops=WALK_28_TO_48_HOPS, waypoints=WHITE_FROM_28_WAYPOINTS),
         ),
-        ("back_1a", WhiteReturnController()),
-        ("walk_48", HopWalkController(hops=BURN_WALK_HOPS, waypoints={}, max_frames=8000)),
         ("rupees_48", _defended(make_burn_48_controller())),
         ("exit_48", CaveExitController(clear=0)),
         ("heart_47", make_burn_47_controller()),
         ("exit_47", CaveExitController(clear=0)),
+        ("walk_white", HopWalkController(hops=WALK_47_TO_28_HOPS, waypoints={})),
+        ("white", _defended(GatherWhiteController(hops=WHITE_FROM_28_HOPS, waypoints={}))),
+        ("back_1a", WhiteReturnController()),
+        (
+            "walk_back_48",
+            HopWalkController(hops=BURN_WALK_HOPS, waypoints={}, max_frames=8000),
+        ),
         ("rupees_5b", _defended(make_secret_rupee_controller(0x5B, RUPEES_5B_HOPS, 8000))),
         ("exit_5b", CaveExitController(clear=0)),
         ("rupees_6b", _defended(make_secret_rupee_controller(0x6B, RUPEES_6B_HOPS, 4000))),

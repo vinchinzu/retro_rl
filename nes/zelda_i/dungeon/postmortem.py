@@ -28,6 +28,9 @@ __all__ = ("HitEvent", "DamageLog", "heart_value", "HIT_DEBOUNCE")
 
 # Hurt-freeze plus invulnerability; two decrements closer than this are one hit.
 HIT_DEBOUNCE = 8
+# ``Link_BeHarmed`` arms ``$04F0`` at 24. Larger values are some other use of
+# the timer (0x48, 2026-09-25: 233 re-armed every 165 frames with no loss).
+HARM_IFRAMES_MAX = 32
 DEATH_MODE = 17
 
 
@@ -144,7 +147,7 @@ class DamageLog:
         self._room = room
         value = heart_value(snap)
         iframes = int(getattr(snap, "link_iframes", 0))
-        armed = iframes > 0 and self._iframes == 0
+        armed = 0 < iframes <= HARM_IFRAMES_MAX and self._iframes == 0
         self._iframes = iframes
         event: HitEvent | None = None
         if (

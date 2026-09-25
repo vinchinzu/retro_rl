@@ -337,6 +337,7 @@ ROOM_59_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
         engage_attack_period=5,
         engage_attack_hold=3,
+        flank_shielded=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     required_open_doors=DoorDir.DOWN,  # kill-clear opens south
@@ -366,6 +367,7 @@ ROOM_69_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
         engage_attack_period=5,
         engage_attack_hold=3,
+        flank_shielded=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     exit_routes=(

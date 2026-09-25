@@ -358,6 +358,79 @@ def shot_escape(
     return scored[0][1], not all_safe
 
 
+# ------------------------------------------------ the body escape ---
+# A body touches Link the way a shot does (``CheckLinkCollision``: middles
+# inside 9 px on both axes); both are 16 px wide, so positions inside 9.
+# Horizon: long enough for the 16 px the pad asks for at 1.5 px/f.
+BODY_ESCAPE_HORIZON = 16
+# Off-line spread per frame for a body that does not walk straight: a
+# tektite's hop and a peahat's flutter. Walkers get a little for turns.
+BODY_JITTER_PX = {"tektite": 1.0, "peahat": 0.75}
+BODY_JITTER_DEFAULT = 0.25
+
+
+def _stays_in(x: int, y: int, direction: str, box: tuple[int, int, int, int]) -> bool:
+    """One step of ``direction`` stays in ``box``, or heads back into it."""
+    if box_step(x, y, direction, box) is not None:
+        return True
+    xlo, xhi, ylo, yhi = box
+    dx, dy = WALK_DELTA[direction]
+    return (
+        (x < xlo and dx > 0) or (x > xhi and dx < 0)
+        or (y < ylo and dy > 0) or (y > yhi and dy < 0)
+    )
+
+
+def body_escape(
+    lx: int,
+    ly: int,
+    bodies: Iterable[tuple[float, float, float, float, float]],
+    box: tuple[int, int, int, int],
+    *,
+    nodes: frozenset[tuple[int, int]] | None = None,
+    prefer: tuple[str, ...] = (),
+    horizon: int = BODY_ESCAPE_HORIZON,
+) -> str | None:
+    """Held input that keeps Link off every body for the longest.
+
+    A walk whose first step leaves ``box`` is not a candidate: the sim clamps
+    at the box, the ROM does not, and a peel off 0x63's north edge scrolled
+    Link onto 0x53 and lost the hop (no-refill offsets 0/2/4).
+
+    ``bodies`` is ``(x, y, vx, vy, jitter)``: position, tracked velocity and
+    how far per frame it may stray from that line. Each candidate walk is
+    simulated with the turn rule on the lattice (:func:`_sim_walk`), so a
+    press that only slides Link along the other axis first scores as the
+    slide it is. The old peel pressed "away" on the bigger axis: off the
+    lattice that press moved Link sideways, and 84 of 268 no-refill gather
+    hits (12 offsets, 2026-09-25) landed during it. Score: latest contact,
+    then the widest worst gap, then the end gap, then ``prefer``.
+    """
+    bodies = tuple(bodies)
+    scored: list[tuple[tuple, str | None]] = []
+    for cand in (None, "UP", "DOWN", "LEFT", "RIGHT"):
+        if cand is not None and not _stays_in(lx, ly, cand, box):
+            continue
+        path = _sim_walk(lx, ly, cand, horizon, nodes, box)
+        first = horizon + 1
+        worst = 10.0**6
+        for bx, by, vx, vy, jit in bodies:
+            for k, (px, py) in enumerate(path, start=1):
+                gap = max(abs(px - (bx + vx * k)), abs(py - (by + vy * k))) - jit * k
+                worst = min(worst, gap)
+                if gap < SHOT_HIT_PX and k < first:
+                    first = k
+                    break
+        ex, ey = path[-1]
+        end = min(
+            (max(abs(ex - (bx + vx * horizon)), abs(ey - (by + vy * horizon))) for bx, by, vx, vy, _ in bodies),
+            default=0.0,
+        )
+        rank = prefer.index(cand) if cand in prefer else len(prefer)
+        scored.append(((first, min(worst, 32.0), min(end, 48.0), -rank), cand))
+    return max(scored, key=lambda t: t[0])[1]
+
+
 def keep_y_band(
     step: str | None,
     lx: int,
