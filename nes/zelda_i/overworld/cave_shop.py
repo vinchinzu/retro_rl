@@ -496,6 +496,11 @@ def restock_item(snap: ZeldaSnapshot, *, reserve: int = 0) -> str | None:
     potion, spare = int(snap.potion), int(snap.rupees) - int(reserve)
     if potion >= 2:
         return None
+    if potion and int(snap.letter) < LETTER_SHOWN:
+        # The potion sits in the letter's subscreen slot, so a letter never
+        # shown cannot be selected while a charge is carried (take-any
+        # potion): the shop would fail on "letter_cursor_not_found".
+        return None
     if spare >= RED_POTION_PRICE:
         return "red"
     if potion == 0 and spare >= BLUE_POTION_PRICE:
