@@ -1,4 +1,4 @@
-# RAM Decomposition
+# RAM decomposition
 
 ## Rule
 
@@ -14,7 +14,7 @@ The initial map comes from SMWDisX `rammap.asm`, SMW Central's RAM map, and
 stable-retro's bundled SMW integration. Emulator traces become the final local
 truth once a ROM is installed.
 
-## Autoplay-Critical Fields
+## Autoplay-critical fields
 
 | Field | WRAM | Offset | Type | Purpose |
 | --- | ---: | ---: | --- | --- |
@@ -49,7 +49,7 @@ truth once a ROM is installed.
 | `active_boss` | `$7E:13FC` | `0x13FC` | `u8` | boss context |
 | `camera_scrolling` | `$7E:13FD` | `0x13FD` | `u8` | camera transition state |
 
-## Decomposition Milestones
+## Decomposition milestones
 
 ### Bronze
 
@@ -74,7 +74,7 @@ truth once a ROM is installed.
 - Tests that diff states before/after exits, keyholes, switches, bosses,
   midpoint tape, and overworld movement.
 
-### Editor-Ready
+### Editor-ready
 
 - ROM model links RAM fields to decoded level/overworld/sprite structures.
 - Live emulator snapshots can be projected onto editor coordinates.

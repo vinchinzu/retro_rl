@@ -33,5 +33,5 @@ Route id: `smw_yoshi_island` / `yi_chain` (YI2→YI3→YI4→Iggy).
 
 YI4 seed notes:
 
-- `recording_002_*` / `recording_003_*` — package `YoshiIsland4` only (small Mario).
-- `recording_004_chained_clear.json` — natural entry; 1 idle frame pads Evaluator free-frame resync.
+- `recording_002_*` / `recording_003_*`: package `YoshiIsland4` only (small Mario).
+- `recording_004_chained_clear.json`: natural entry; 1 idle frame pads Evaluator free-frame resync.

@@ -11,12 +11,20 @@ from typing import List, Optional, Sequence
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.recovery import RecoveryTask
-from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
+from harvest.core.task_progress import (
+    GOAL_STALL_FRAMES,
+    MOTION_STALL_FRAMES,
+    ProgressSnapshot,
+    stalled,
+    task_progress_snapshot,
+)
+from harvest.core.world_context import WorldContext
 from harvest.tasks.nav import make_action
 from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     Tool,
 )
+from harvest.tasks.water_refill import is_no_work_reason
 from harvest.planner.day_phase_types import (
     ACQUIRE_TOOL_KINDS,
     PhaseKind,
@@ -40,11 +48,11 @@ from harvest.planner.day_plan_status import (
     is_farm_tilemap,
     read_world_day_time,
 )
+from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.day_plan_tasks import (
     EnsureCarryToolTask,
     ExitToFarmTask,
 )
-from harvest.planner.day_task_factory import DayTaskFactory
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result
 
@@ -52,6 +60,22 @@ from harvest.tasks.primitives import dismiss_dialogue_result
 # Carry tags a mid-day phase cannot go and get for itself. Tools come off a
 # shed shelf via EnsureCarryToolTask; a seed bag needs the shop.
 _UNFETCHABLE_TOOL_TAGS = frozenset({"seed"})
+# One external step used to recurse. Cap the loop so a repeated D2 child
+# cannot spin the stack or the frame.
+_STEP_BUDGET = 128
+
+
+def _tag_d2_spec(spec: PhaseSpec) -> PhaseSpec:
+    """Copy a live D2 child so catalog singletons stay untagged."""
+    params = dict(spec.params)
+    params["d2_expanded"] = True
+    return PhaseSpec(
+        spec.phase,
+        spec.kind,
+        params,
+        failure_policy=spec.failure_policy,
+        contract=spec.contract,
+    )
 
 
 @dataclass
@@ -121,15 +145,28 @@ class DayPlanTask(Task):
     _recovery_attempted_phases: set[tuple[int, str]] = field(default_factory=set, init=False)
     _deferred_plans: list[DeferredPlan] = field(default_factory=list, init=False)
     _phase_results: list[dict[str, object]] = field(default_factory=list, init=False)
-    _task_factory: DayTaskFactory = field(init=False, repr=False)
+    _world_context: WorldContext = field(init=False, repr=False)
+    _build_ctx: TaskBuildContext = field(init=False, repr=False)
+    _d2_last_phase: str = field(default="", init=False)
+    _d2_plot_attempted: bool = field(default=False, init=False)
+    _d2_prev: object = field(default=None, init=False)
+    _d2_unobs: int = field(default=0, init=False)
+    _d2_fails: dict = field(default_factory=dict, init=False)
+    _d2_motion_seen: object = field(default=None, init=False)
+    _d2_motion_at: int = field(default=0, init=False)
+    _d2_goal_key: object = field(default=None, init=False)
+    _d2_goal_at: int = field(default=0, init=False)
+    _d2_status: object = field(default=None, init=False)
 
     def __post_init__(self):
         self._reset_phase_lists()
-        self._reset_task_factory()
+        self._reset_build_context()
+        self._reset_d2_cursor()
 
     def reset(self, world: WorldState) -> None:
         self._reset_phase_lists()
-        self._reset_task_factory()
+        self._reset_build_context()
+        self._reset_d2_cursor()
         self._phase_index = 0
         self._current_task = None
         self._step_count = 0
@@ -148,19 +185,28 @@ class DayPlanTask(Task):
     def _reset_phase_lists(self) -> None:
         self._schedule = PhaseSchedule.from_sequence(self.phase_sequence, DAY1_PHASES)
 
-    def _reset_task_factory(self) -> None:
-        """Start each day with one shared builder context.
-
-        ``DayTaskFactory`` owns the per-frame ``WorldContext`` cache.  Keeping
-        it for the lifetime of a day lets phase builders share observations
-        while reset deliberately drops any cache from the previous morning.
-        """
-        self._task_factory = DayTaskFactory(
+    def _reset_build_context(self) -> None:
+        """One WorldContext per day. Reset drops the previous morning's cache."""
+        self._world_context = WorldContext()
+        self._build_ctx = TaskBuildContext(
             seed_type=self.seed_type,
             tasks_dir=self.tasks_dir,
             state_name=self.state_name,
             policy=self.policy,
+            world_context=self._world_context,
         )
+
+    def _reset_d2_cursor(self) -> None:
+        self._d2_last_phase = ""
+        self._d2_plot_attempted = False
+        self._d2_prev = None
+        self._d2_unobs = 0
+        self._d2_fails = {}
+        self._d2_motion_seen = None
+        self._d2_motion_at = 0
+        self._d2_goal_key = None
+        self._d2_goal_at = 0
+        self._d2_status = None
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -194,6 +240,7 @@ class DayPlanTask(Task):
         status: str,
         reason: str = "",
         world: WorldState | None = None,
+        extra: dict | None = None,
     ) -> None:
         if spec is None:
             return
@@ -231,6 +278,8 @@ class DayPlanTask(Task):
                 "shipping_money_before": int(getattr(task, "_shipping_before", 0)),
                 "shipping_money_after": int(getattr(task, "_shipping_after", 0)),
             }
+        if extra:
+            row.update(extra)
         self._phase_results.append(row)
 
     @property
@@ -273,7 +322,8 @@ class DayPlanTask(Task):
         )
 
     def _make_task(self, spec: PhaseSpec, world: WorldState) -> Optional[Task]:
-        return self._task_factory.make_task(spec, world)
+        self._world_context.bind(world)
+        return build_phase_task(self._build_ctx, spec, world)
 
     def resume_after_hotswap(self, world: WorldState) -> None:
         task = self._recovery_task or self._current_task
@@ -604,7 +654,7 @@ class DayPlanTask(Task):
         status: TaskStatus,
         reason: str,
         world: WorldState,
-    ) -> TaskResult:
+    ) -> TaskResult | None:
         key = self._recovery_phase_key(spec)
         self._recovery_attempted_phases.add(key)
         self._current_task = None
@@ -642,7 +692,7 @@ class DayPlanTask(Task):
                 return True
         return False
 
-    def _step_recovery(self, world: WorldState) -> TaskResult:
+    def _step_recovery(self, world: WorldState) -> TaskResult | None:
         if self._recovery_task is None:
             return TaskResult(status=TaskStatus.FAILURE, reason="recovery task missing")
 
@@ -662,7 +712,7 @@ class DayPlanTask(Task):
             self._clear_recovery()
             self._current_task = None
             self._skip_map_lock = False
-            return self.step(world)
+            return None
 
         self._clear_recovery()
         return TaskResult(
@@ -679,12 +729,8 @@ class DayPlanTask(Task):
         status: TaskStatus,
         reason: str,
         world: WorldState,
-    ) -> TaskResult:
-        if spec.phase == "D2_FARM_CLEAR":
-            return TaskResult(
-                status=status,
-                reason=f"required phase {spec.phase} failed: {reason}",
-            )
+    ) -> TaskResult | None:
+        """None means step() should keep walking the schedule."""
         policy = self._failure_policy(spec)
         if policy in {"optional", "opportunistic"}:
             if spec.phase in OPTIONAL_MONEY_PHASES:
@@ -693,7 +739,7 @@ class DayPlanTask(Task):
                 )
             else:
                 self._skip_failed_phase(spec, reason)
-            return self.step(world)
+            return None
         if reason != "no task":
             key = self._recovery_phase_key(spec)
             if key not in self._recovery_attempted_phases:
@@ -723,90 +769,356 @@ class DayPlanTask(Task):
         print(f"[DAY_PLAN] Appending end-day route ({reason})")
         return True
 
-    def step(self, world: WorldState) -> TaskResult:
-        self._step_count += 1
+    def _d2_controls(self, spec: PhaseSpec) -> tuple[str, str, bool]:
+        params = spec.params or {}
+        chunk = params.get("chunk") or "all"
+        if not isinstance(chunk, str):
+            chunk = "all"
+        return (
+            str(params.get("section") or "all"),
+            chunk,
+            bool(params.get("include_spa", True)),
+        )
 
-        if shipping_scene_needs_dismiss(world.ram):
-            # 5pm shipper box (any phase). Child tasks must not hold A.
-            return dismiss_dialogue_result(
-                self._step_count,
-                buttons=("a",),
-                pulse_every=2,
-                reason="shipping scene",
-            )
+    def _d2_marker(self) -> PhaseSpec | None:
+        for phase in self._schedule.active[self._phase_index :]:
+            if phase.phase == "D2_FARM_CLEAR":
+                return phase
+        return None
 
-        if self._recovery_task is not None:
-            return self._step_recovery(world)
+    def _d2_idle(self, reason: str, world: WorldState) -> TaskResult:
+        from harvest.tasks.farm_clear_quota import yard_load_action
 
-        # All phases complete
-        if self._phase_index >= len(self._schedule.active):
-            if self._append_late_end_day_if_needed(world):
-                return self.step(world)
-            return TaskResult(status=TaskStatus.SUCCESS, reason="day plan complete")
+        if reason == "stale_farm_map":
+            action = yard_load_action(world.ram)
+        else:
+            action = make_action()
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(action),
+            reason=reason,
+        )
 
-        spec = self._schedule.active[self._phase_index]
-        if self._expand_dynamic_phase(spec, world):
-            return self.step(world)
+    def _d2_blocked(self, spec: PhaseSpec, reason: str, *, watchdog: str = "") -> TaskResult:
+        extra: dict[str, object] = {}
+        chunk = (spec.params or {}).get("chunk")
+        if chunk:
+            extra["chunk"] = chunk
+        if watchdog:
+            extra["watchdog"] = watchdog
+        self._record_phase_result(spec, "blocked", reason, extra=extra or None)
+        return TaskResult(status=TaskStatus.BLOCKED, reason=reason)
 
-        # Create sub-task if needed
-        if self._current_task is None:
-            map_reason = self._phase_map_mismatch(spec, world)
-            if map_reason is not None:
-                if self._try_map_lock_exit(spec, world, map_reason):
-                    return self.step(world)
-                print(f"[DAY_PLAN] Phase {spec.phase} map lock: {map_reason}")
-                return self._handle_failed_phase(
-                    spec, TaskStatus.FAILURE, map_reason, world
+    def _d2_motion_key(self, world: WorldState):
+        """Liveness while navigating. A planted tool swing is not motion."""
+        from harvest.tasks.nav import get_pos_from_ram
+
+        child = self._current_task
+        if child is None:
+            return None
+        snapshot = task_progress_snapshot(child)
+        phase = (snapshot.phase_text if snapshot is not None else "").lower()
+        name = str(getattr(child, "name", "")).lower()
+        navigating = phase in {"navigate", "navigating", "navigation"}
+        navigating = navigating or name == "nav" or name.startswith("nav_")
+        if not navigating:
+            return None
+        details = dict(snapshot.details) if snapshot is not None else {}
+        pos = get_pos_from_ram(world.ram)
+        return (
+            (pos.x, pos.y),
+            details.get("target", getattr(child, "_target_tile", None)),
+            details.get("approach", getattr(child, "_approach_tile", None)),
+        )
+
+    def _d2_stall(self, spec: PhaseSpec, world: WorldState, status) -> TaskResult | None:
+        """Motion and goal stalls for expanded D2 work. The spa stands still."""
+        if spec.phase == "HOT_SPRING_STAMINA":
+            self._d2_motion_at = self._step_count
+            self._d2_goal_at = self._step_count
+            self._d2_motion_seen = None
+            return None
+        if spec.phase != "D2_FARM_CLEAR":
+            motion = self._d2_motion_key(world)
+            if motion is None or motion != self._d2_motion_seen:
+                self._d2_motion_seen = motion
+                self._d2_motion_at = self._step_count
+            elif stalled(self._d2_motion_at, self._step_count, MOTION_STALL_FRAMES):
+                return self._d2_blocked(
+                    spec, "navigation motion stall", watchdog="navigation_motion_stall"
                 )
-            tool_reason = self._phase_tool_lock(spec, world)
-            if tool_reason is not None:
-                print(f"[DAY_PLAN] Phase {spec.phase} tool lock: {tool_reason}")
-                self._advance_no_work(world, tool_reason)
-                return self.step(world)
-            task = self._make_task(spec, world)
-            if task is None:
-                reason = "no task"
-                print(f"[DAY_PLAN] Phase {spec.phase} unavailable: {reason}")
-                return self._handle_failed_phase(spec, TaskStatus.FAILURE, reason, world)
-            task.reset(world)
+        from harvest.core.carry import backpack_tool, selected_tool
+
+        goal = (
+            status.weeds,
+            status.fences,
+            status.stones,
+            status.large_rocks,
+            status.stumps,
+            status.planted,
+            status.wet,
+            status.stamina.current,
+            int(selected_tool(world.ram)),
+            int(backpack_tool(world.ram)),
+        )
+        if goal != self._d2_goal_key:
+            self._d2_goal_key = goal
+            self._d2_goal_at = self._step_count
+        elif stalled(self._d2_goal_at, self._step_count, GOAL_STALL_FRAMES):
+            return self._d2_blocked(spec, "goal stall", watchdog="goal_stall")
+        return None
+
+    def _expand_d2_marker(self, spec: PhaseSpec, world: WorldState) -> TaskResult | None:
+        """Splice the next live child, or drop the marker when the section settles."""
+        from harvest.planner.d2_work import (
+            D2FarmOutcome,
+            expand_d2_marker,
+            observe_d2_farm,
+        )
+
+        status = observe_d2_farm(world.ram, self._phase_results)
+        self._d2_status = status
+        stalled_result = self._d2_stall(spec, world, status)
+        if stalled_result is not None:
+            return stalled_result
+        if status.outcome == D2FarmOutcome.TEMPORARILY_UNOBSERVABLE:
+            self._d2_unobs += 1
+            if self._d2_unobs >= GOAL_STALL_FRAMES:
+                return self._d2_blocked(spec, "stale_farm_map")
+            return self._d2_idle(status.reason or "temporarily_unobservable", world)
+        self._d2_unobs = 0
+        section, chunk, include_spa = self._d2_controls(spec)
+        kind, nxt = expand_d2_marker(
+            status,
+            section=section,
+            chunk=chunk,
+            include_spa=include_spa,
+            last_phase=self._d2_last_phase,
+            plot_attempted=self._d2_plot_attempted,
+            previous=self._d2_prev,  # type: ignore[arg-type]
+        )
+        if kind == "start" and nxt is not None:
+            self._current_task = None
+            self._schedule.splice_at(self._phase_index, [_tag_d2_spec(nxt), spec])
+            return None
+        if kind == "complete":
+            self._d2_prev = None
+            self._current_task = None
+            self._schedule.splice_at(self._phase_index, [])
+            return None
+        self._d2_prev = status
+        reason = "settle" if kind == "settle" else "waiting verification"
+        return self._d2_idle(reason, world)
+
+    def _insert_d2_after(self, specs: list[PhaseSpec]) -> None:
+        nxt = self._phase_index + 1
+        active = self._schedule.active
+        if nxt < len(active) and active[nxt].phase == "D2_FARM_CLEAR":
+            self._schedule.splice_at(nxt, [*specs, active[nxt]])
+            return
+        active[nxt:nxt] = list(specs)
+
+    def _leave_d2_phase(
+        self,
+        spec: PhaseSpec,
+        status: str,
+        reason: str,
+        world: WorldState,
+    ) -> None:
+        print(f"[DAY_PLAN] {spec.phase} -> {status} ({reason})")
+        self._record_phase_result(spec, status, reason, world)
+        self._phase_index += 1
+        self._current_task = None
+        self._skip_map_lock = False
+
+    def _finish_d2_child(self, spec: PhaseSpec, result: TaskResult, world: WorldState) -> TaskResult:
+        from harvest.planner.day_phase_stamina import full_restore_spa_phase
+        from harvest.planner.d2_work import (
+            _SPA_RETRY_PHASES,
+            _section_done,
+            leftover_chain_decision,
+            observe_d2_farm,
+        )
+
+        status = observe_d2_farm(world.ram, self._phase_results)
+        self._d2_status = status
+        reason = result.reason or ""
+        if spec.phase == "CLEAR_PLOT" and result.status == TaskStatus.SUCCESS:
+            self._d2_plot_attempted = True
+        self._d2_last_phase = spec.phase
+        if spec.phase == "HOT_SPRING_STAMINA" and result.status != TaskStatus.SUCCESS:
+            text = f"spa failed: {reason or result.status.value}"
+            self._record_phase_result(spec, result.status.value, text, world)
+            self._current_task = None
+            return TaskResult(status=TaskStatus.BLOCKED, reason=text)
+        marker = self._d2_marker()
+        if marker is None:
+            section, chunk, include_spa = "all", "all", True
+        else:
+            section, chunk, include_spa = self._d2_controls(marker)
+        remaining: list[str] = []
+        if spec.phase in _SPA_RETRY_PHASES and not _section_done(status, section, chunk):
+            remaining = ["CLEAR_ROCKS", "CLEAR_STUMPS"]
+        decision = leftover_chain_decision(
+            spec.phase,
+            result.status,
+            reason,
+            status.stamina,
+            remaining,
+            include_spa=include_spa,
+        )
+        if decision == "spa_retry":
+            self._insert_d2_after([_tag_d2_spec(full_restore_spa_phase()), spec])
+        elif decision == "insert_spa":
+            self._insert_d2_after([_tag_d2_spec(full_restore_spa_phase())])
+        if decision in {"spa_retry", "insert_spa", "continue"} or result.status == TaskStatus.SUCCESS:
+            recorded = "success" if result.status == TaskStatus.SUCCESS else result.status.value
+            self._leave_d2_phase(spec, recorded, reason or recorded, world)
+            idle = "queued" if decision in {"spa_retry", "insert_spa"} else "advance"
+            return self._d2_idle(idle, world)
+        chunk_name = (spec.params or {}).get("chunk")
+        key = (spec.phase, chunk_name)
+        self._d2_fails[key] = self._d2_fails.get(key, 0) + 1
+        self._record_phase_result(spec, result.status.value, reason, world)
+        self._current_task = None
+        if chunk_name and self._d2_fails[key] >= 2:
+            text = (
+                f"required chunk failed {self._d2_fails[key]} times: "
+                f"{spec.phase} chunk={chunk_name}; {reason or result.status.value}"
+            )
+            self._record_phase_result(
+                spec,
+                "blocked",
+                text,
+                world,
+                extra={"chunk": chunk_name, "watchdog": "required_chunk_failure"},
+            )
+            return TaskResult(status=TaskStatus.BLOCKED, reason=text)
+        return TaskResult(
+            status=TaskStatus.BLOCKED,
+            reason=f"blocked: {reason or result.status.value}",
+        )
+
+    def _boot_phase_task(self, spec: PhaseSpec, world: WorldState) -> TaskResult | None:
+        """Start spec. None means the schedule changed and step should continue."""
+        map_reason = self._phase_map_mismatch(spec, world)
+        if map_reason is not None:
+            if self._try_map_lock_exit(spec, world, map_reason):
+                return None
+            print(f"[DAY_PLAN] Phase {spec.phase} map lock: {map_reason}")
+            return self._handle_failed_phase(spec, TaskStatus.FAILURE, map_reason, world)
+        tool_reason = self._phase_tool_lock(spec, world)
+        if tool_reason is not None:
+            print(f"[DAY_PLAN] Phase {spec.phase} tool lock: {tool_reason}")
+            if spec.params.get("d2_expanded"):
+                self._d2_last_phase = spec.phase
+            self._advance_no_work(world, tool_reason)
+            if spec.params.get("d2_expanded"):
+                return self._d2_idle("advance", world)
+            return None
+        task = self._make_task(spec, world)
+        if task is None:
+            reason = "no task"
+            print(f"[DAY_PLAN] Phase {spec.phase} unavailable: {reason}")
+            if spec.params.get("d2_expanded"):
+                self._record_phase_result(spec, "failure", reason, world)
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"required phase {spec.phase} failed: {reason}",
+                )
+            return self._handle_failed_phase(spec, TaskStatus.FAILURE, reason, world)
+        task.reset(world)
+        self._current_task = task
+        self._skip_map_lock = (
+            isinstance(spec.kind, PhaseKind) and spec.kind in SKIP_MAP_LOCK_KINDS
+        )
+        print(
+            f"[DAY_PLAN] Starting phase {self._phase_index + 1}/{len(self._schedule.active)}: "
+            f"{spec.phase} ({spec.kind})"
+        )
+        return task  # type: ignore[return-value]
+
+    def step(self, world: WorldState) -> TaskResult:
+        expanded_d2 = False
+        for _ in range(_STEP_BUDGET):
+            self._step_count += 1
+            if shipping_scene_needs_dismiss(world.ram):
+                # 5pm shipper box (any phase). Child tasks must not hold A.
+                return dismiss_dialogue_result(
+                    self._step_count,
+                    buttons=("a",),
+                    pulse_every=2,
+                    reason="shipping scene",
+                )
+            if self._recovery_task is not None:
+                recovered = self._step_recovery(world)
+                if recovered is None:
+                    continue
+                return recovered
+            if self._phase_index >= len(self._schedule.active):
+                if self._append_late_end_day_if_needed(world):
+                    continue
+                return TaskResult(status=TaskStatus.SUCCESS, reason="day plan complete")
+
+            spec = self._schedule.active[self._phase_index]
+            if self._expand_dynamic_phase(spec, world):
+                continue
             if spec.phase == "D2_FARM_CLEAR":
-                set_evidence = getattr(task, "set_evidence", None)
-                if callable(set_evidence):
-                    set_evidence(self._phase_results)
-            self._current_task = task
-            self._skip_map_lock = (
-                isinstance(spec.kind, PhaseKind) and spec.kind in SKIP_MAP_LOCK_KINDS
-            )
-            print(
-                f"[DAY_PLAN] Starting phase {self._phase_index + 1}/{len(self._schedule.active)}: "
-                f"{spec.phase} ({spec.kind})"
-            )
+                if expanded_d2:
+                    return self._d2_idle("advance", world)
+                expanded_d2 = True
+                held = self._expand_d2_marker(spec, world)
+                if held is None:
+                    continue
+                return held
 
-        # Step the sub-task
-        result = self._current_task.step(world)
+            if self._current_task is None:
+                booted = self._boot_phase_task(spec, world)
+                if booted is None:
+                    continue
+                if isinstance(booted, TaskResult):
+                    return booted
 
-        if result.status == TaskStatus.SUCCESS:
-            reason = result.reason or "SUCCESS"
-            # Crop no-ops (no dry plots / no seeds) must not count as crop work.
-            try:
-                from harvest.tasks.water_refill import is_no_work_reason
+            if spec.params.get("d2_expanded"):
+                from harvest.planner.d2_work import observe_d2_farm
 
+                status = observe_d2_farm(world.ram, self._phase_results)
+                self._d2_status = status
+                stalled_result = self._d2_stall(spec, world, status)
+                if stalled_result is not None:
+                    return stalled_result
+
+            result = self._current_task.step(world)
+            if result.status == TaskStatus.SUCCESS:
+                reason = result.reason or "SUCCESS"
                 if is_no_work_reason(reason):
+                    if spec.params.get("d2_expanded"):
+                        self._d2_last_phase = spec.phase
                     self._advance_no_work(world, reason)
-                    return self.step(world)
-            except Exception:
-                pass
-            self._advance(world, reason if reason != "SUCCESS" else "SUCCESS")
-            return self.step(world)
-        elif result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
-            reason = result.reason or "unknown"
-            print(f"[DAY_PLAN] Phase {spec.phase} {result.status.value.upper()}: {reason}")
-            return self._handle_failed_phase(spec, result.status, reason, world)
-
-        # Pass through RUNNING action
-        if result.action is not None:
-            return TaskResult(status=TaskStatus.RUNNING, action=result.action)
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+                    if spec.params.get("d2_expanded"):
+                        return self._d2_idle("advance", world)
+                    continue
+                if spec.params.get("d2_expanded"):
+                    return self._finish_d2_child(spec, result, world)
+                self._advance(world, reason if reason != "SUCCESS" else "SUCCESS")
+                continue
+            if result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                reason = result.reason or "unknown"
+                print(f"[DAY_PLAN] Phase {spec.phase} {result.status.value.upper()}: {reason}")
+                if spec.params.get("d2_expanded"):
+                    return self._finish_d2_child(spec, result, world)
+                failed = self._handle_failed_phase(spec, result.status, reason, world)
+                if failed is None:
+                    continue
+                return failed
+            if result.action is not None:
+                return TaskResult(status=TaskStatus.RUNNING, action=result.action)
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason="day plan advance",
+        )
 
 
 # Stable re-export for runtime importers.

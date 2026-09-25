@@ -41,7 +41,7 @@ class PizzaSeek:
     **Stage 1 (Alleycat) / Stage 2 (Sewer):** underfoot pickup always;
     far seek **only between waves** (no living enemies). Mid-wave far
     chase desynced emergency Stage2 (190→479 dmg). Global seek soft-locks
-    Skull (see CLEAN_PLAYBOOK). Sewer needs the same between-wave grab
+    Skull (see docs/plan.md). Sewer needs the same between-wave grab
     for Clean boss entry HP.
 
     Clean suite thresholds (heal=none Stage1 + power-on):

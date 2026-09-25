@@ -6,9 +6,11 @@ cellar leftover is 0x04 mode 9 (135,141).
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
+from typing import Any
 
-from retro_harness.nes import nes_idle_action
+from retro_harness.input_script import FrameAction
+from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import LEVEL5_ENTRY_ROOM, LEVEL5_TF_ROOM, TF_BIT_L4, TF_BIT_L5
 from zelda_i.route.chain import ControllerStageResult
 from zelda_i.level5.dungeon import (
@@ -46,11 +48,21 @@ from zelda_i.level5.overworld import (
     POST_L4_PATH_MAX_FRAMES,
     POST_L4_SETTLE_MAX_FRAMES,
     PostL4TriforceSettleController,
+    RUPEES_67_BACK_HOPS,
+    RUPEES_67_HOPS,
+    RUPEES_67_PAY,
+    RUPEES_67_SCREEN,
     make_post_l4_level5_controller,
 )
-from zelda_i.overworld.arrow_shop import ARROW_SHOP_SCREEN, arrow_restock_stages
+from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
+from zelda_i.overworld.gather_segments import (
+    BombWallController,
+    CaveExitController,
+    HopWalkController,
+    make_secret_rupee_controller,
+)
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_SCREEN, bomb_restock_stages
-from zelda_i.ram import ZeldaSnapshot, read_snapshot
+from zelda_i.ram import ZeldaSnapshot, ow_secret_taken, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, fight_stage, play_ready
 
 __all__ = [
@@ -66,6 +78,94 @@ __all__ = [
 
 # L5's two bomb walls (0x66 west, 0x65 west) plus the L6 walk's 0x13 rock.
 LEVEL5_BOMB_WANT = 3
+
+
+class _Rupees67Skip:
+    """The 0x67 cave is optional once opened or if a bomb is unavailable."""
+
+    def _skip_reason(
+        self, snap: ZeldaSnapshot, *, require_screen: bool = False
+    ) -> str | None:
+        if require_screen and snap.screen != RUPEES_67_SCREEN:
+            return "off_67"
+        if int(snap.bombs) < 1:
+            return "no_bomb"
+        if int(snap.rupees) + RUPEES_67_PAY > 255:
+            return "wallet_full"
+        if self._env is not None and ow_secret_taken(self._env.get_ram(), RUPEES_67_SCREEN):
+            return "taken"
+        return None
+
+
+@dataclass
+class _WalkToRupees67(_Rupees67Skip, HopWalkController):
+    hops: tuple = RUPEES_67_HOPS
+    resume_on_screen: bool = True
+
+    def _extra_hop_action(self, snap: ZeldaSnapshot, hop) -> FrameAction | None:
+        if (snap.level == 0 and snap.screen == 0x55 and hop.target == 0x65
+                and 100 <= snap.link_x <= 152 and snap.link_y < 141):
+            return FrameAction(nes_action("DOWN"), "raft_dismount")
+        return super()._extra_hop_action(snap, hop)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0:
+            why = self._skip_reason(snap)
+            if why is None and snap.screen not in (0x45, 0x55, 0x65, 0x66, 0x67):
+                why = "off_route"
+            if why:
+                self.frames += 1
+                return self._finish(f"skip_67_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _SelectBombs67(_Rupees67Skip, PauseSelectController):
+    want: int = B_SLOT_BOMBS
+    name: str = "bombs"
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap, require_screen=True)):
+            self.frames += 1
+            return self._finish(f"skip_67_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _TakeRupees67(_Rupees67Skip, BombWallController):
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and (why := self._skip_reason(snap, require_screen=True)):
+            self.frames += 1
+            return self._finish(f"skip_67_{why}")
+        return super().step(snap)
+
+
+@dataclass
+class _ReturnFromRupees67(HopWalkController):
+    hops: tuple = RUPEES_67_BACK_HOPS
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.frames == 0 and snap.screen != RUPEES_67_SCREEN:
+            self.frames += 1
+            return self._finish("no_rupees_67_detour")
+        return super().step(snap)
+
+
+def rupees_67_stages() -> tuple[tuple[str, Any, int], ...]:
+    """0x45 → 0x67's 30R rock → 0x55 after the L5 restock checks."""
+    return (
+        ("walk_67", _WalkToRupees67(max_frames=8000), 8000),
+        ("select_bombs_67", _SelectBombs67(), 600),
+        (
+            "rupees_67",
+            make_secret_rupee_controller(
+                RUPEES_67_SCREEN, controller_type=_TakeRupees67
+            ),
+            5000,
+        ),
+        ("exit_cave_67", CaveExitController(clear=16), 600),
+        ("return_55", _ReturnFromRupees67(max_frames=8000), 8000),
+    )
 
 L5_THROUGH: tuple[str, ...] = (
     "level5-entry",
@@ -198,12 +298,7 @@ def l5_hops() -> tuple[SpineHop, ...]:
                     want=LEVEL5_BOMB_WANT,
                     shop_screen=BOMB_SHOP_SCREEN,
                 ),
-                *arrow_restock_stages(
-                    POST_L4_TO_LEVEL5_HOPS,
-                    "l4",
-                    screen=ARROW_SHOP_SCREEN,
-                    skip_short=True,
-                ),
+                *rupees_67_stages(),
                 (
                     "enter_level5",
                     make_post_l4_level5_controller(),

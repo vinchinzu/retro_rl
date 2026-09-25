@@ -156,9 +156,8 @@ ROOM_66_SPEC = DungeonRoomSpec(
         # north of the water; same occupancy as ROOM_66_SPINE_SPEC.
         occupancy_patrol=True,
         occupancy_bounds=(16, 216, 77, 205),
-        # Clean leftover (128,133) walked into 3× Gibdo. Intermittent peel.
+        # Clean leftover (128,133) needs the shared contact strike/peel.
         contact_backstep=16,
-        melee=True,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     required_open_doors=ROOM_66_EAST_DOOR_BIT,
@@ -226,7 +225,7 @@ ROOM_77_SPEC = DungeonRoomSpec(
         occupancy_patrol=True,
         occupancy_from_tilemap=True,
         evade=True,
-        melee=True,
+        contact_backstep=16,
     ),
     reward=RewardSpec(
         kind=RewardKind.FIXED_INVENTORY,
@@ -268,7 +267,7 @@ ROOM_65_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=10,
         patrol_attack_hold=3,
-        melee=True,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     exit_routes=(
@@ -302,7 +301,7 @@ ROOM_27_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=6,
         patrol_attack_hold=3,
-        melee=True,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=ROOM_ITEM_SMALL_KEY,
@@ -333,7 +332,7 @@ ROOM_26_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         patrol_attack_period=10,
         patrol_attack_hold=3,
-        melee=True,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=ROOM_ITEM_SMALL_KEY,
@@ -375,8 +374,10 @@ ROOM_25_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
         occupancy_patrol=True,
         occupancy_from_tilemap=True,
-        evade=True,
-        melee=True,
+        # The generic body parry held A through its 13-frame pin in the
+        # C8a 0x25 replay; contact owns these Pols Voice instead.
+        evade=False,
+        contact_backstep=16,
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
     room_item_id=ROOM_ITEM_NONE,

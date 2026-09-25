@@ -1,4 +1,4 @@
-# Room engine — low-context room work
+# Room engine: low-context room work
 
 SM-style **data + generic player** for dungeon rooms. Agents should **not** load
 full segment source for every B1 door.
@@ -50,13 +50,13 @@ Skip: entire `main_hall_to_zelda.py` history, probe PNG dumps, unrelated docs.
 | `screen_1b_courtyard` | outdoor 0x1B | Courtyard pocket → main door geometry (bush-cut still in segment) |
 | `room_61` | 0x61 | Main hall; west continuous prefix |
 | `room_60` | 0x60 | Main west; north→0x50 continuous prefix |
-| `room_50` | 0x50 | NW chamber; east→0x01 **natural_entry** (only forward exit) |
-| `room_01` | 0x01 | North connector; east→0x52 on tip chain |
+| `room_50` | 0x50 | Continuous tip. East to `0x01` is natural_entry, not a new tip. |
+| `room_01` | 0x01 | North connector. Well `down_to_0x72` is natural_entry in the graph, not continuous. |
 | `room_51` | 0x51 | Throne / mantle approach |
-| `room_52` | 0x52 | NE chamber; clear before south→0x62 from north entry |
+| `room_52` | 0x52 | NE chamber |
 | `room_62` | 0x62 | Main east |
-| `room_70` | 0x70 | B1 west landing (`CastleB2Landing`); seed |
-| `room_71`–`room_72`, `room_80`–`room_82` | B1 / Zelda | Geometry seeds; doors partial |
+| `room_70` | 0x70 | B1 west landing (`CastleB2Landing`) |
+| `room_71`–`room_72`, `room_80`–`room_82` | B1 / Zelda | Measured doors stay on the graph ladder. Not the continuous tip. |
 
 `z3Label` on maps is optional randomizer logic text (US/JP vanilla same room
 ids for these chambers). Geometry authority is still the measured JSON.
@@ -67,12 +67,12 @@ ids for these chambers). Geometry authority is still the measured JSON.
 2. `show` validates load; unit-test load if non-trivial.
 3. `run room_XX --edge <label> --state <State>` until isolated green.
 4. Graph: add node/edge when isolated (`verification=isolated`) with
-   `map_id` + `door_label` only — **no** copied approach/landing xy.
+   `map_id` + `door_label` only: **no** copied approach/landing xy.
 5. If a real predecessor wedges on an otherwise measured door, record its
    alternate measured points as that door's map-only `recoveryPath`; do not
    add room-specific coordinates to Python.
 6. Optional thin segment only if continuous spine needs multi-room acceptance.
-7. STATUS fact + TRIGGER_HANDOFF row — no Zelda claim without `$F3CC==1`.
+7. Planner owns STATUS. No Zelda claim without `$F3CC==1` on a walked chain. A pin is not that claim. Leave proof is a RAM glance, not an MP4.
 
 ## Map schema (minimal)
 

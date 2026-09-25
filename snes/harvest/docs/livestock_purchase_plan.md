@@ -1,88 +1,29 @@
-# Livestock Purchase Plan
+# Livestock purchase plan
 
-## Goal
+Fixture editing is not a purchase. [adr/0006-clean.md](adr/0006-clean.md):
+published rungs use controller input only. `livestock_builder` may write
+money, feed, and slots so a later diff has something to compare. That state
+is not a Clean buy.
 
-Use verified save-state editing as the first path for Harvest Moon scenario and farm-data hacking, then anchor later gameplay automation against those same bytes.
+## What the builder covers
 
-## Phase 1: Compact State Builder
-
-Implemented in `harvest/tools/livestock_builder.py`.
-
-- Start from `Y1_After_Buy_Potato`.
-- Inject working purchase resources:
-  - money
-  - stored grass / hay
-  - chicken feed
-  - cow feed
-- Write three compact validation states:
-  - `<prefix>_resources.state`
-  - `<prefix>_chicken.state`
-  - `<prefix>_chicken_cow.state`
-- Verify each output two ways:
-  - parse the written `.state` directly
-  - load it through `stable-retro` and parse `env.initial_state`
-
-This keeps verification tied to the actual Snes9x snapshot bytes instead of trusting `get_ram()`, which does not currently reflect the same address space.
-
-## Current Scope
-
-- Confirmed edit path:
-  - money
-  - hay / stored grass
-  - chicken feed
-  - cow feed
-  - chicken count + slot 0 data
-  - cow count + slot 0 data
-- Deferred until live capture proves the layout:
-  - scenario/event flags
-  - romance/event progression flags
-  - any animal structures beyond the current chicken/cow slots
-
-## Sheep Status
-
-Do not assume sheep exist in this SNES build.
-
-- The local integration exposes cow/chicken counts and feed only.
-- The validated livestock slot work so far only yields chicken and cow structures.
-- Sheep should stay blocked until a real purchase capture or ROM evidence in this repo shows a separate sheep structure.
-
-## Phase 2: Real Purchase Automation
-
-Use the existing task stack instead of inventing a parallel system.
-
-- `NavTask` handles day-time movement from farm to map exit.
-- `CrossMapRecordedTask` handles off-farm store/menu playback.
-- Record dedicated tasks once the compact states are stable:
-  - `buy_chicken.json`
-  - `buy_cow.json`
-- Chain them into a livestock day plan:
-  - leave house
-  - navigate to farm exit
-  - replay chicken purchase
-  - save post-purchase state
-  - on a later day, replay cow purchase
-  - save post-purchase state
-
-## Validation Loop
-
-For each new live purchase state:
-
-- diff the raw snapshot RAM against the compact builder output
-- confirm money/feed/hay deltas
-- confirm animal counts
-- confirm slot bytes for the purchased animal
-- load the state in the editor and confirm the same values render there
-
-## Commands
-
-Build and verify compact livestock states:
+`harvest/tools/livestock_builder.py` starts from `Y1_After_Buy_Potato` and
+can write money, hay, chicken feed, cow feed, and slot 0 for one chicken
+and one cow. Sheep stay blocked until a ROM dump or a live purchase shows a
+separate structure. Do not assume this SNES build has sheep.
 
 ```bash
 uv run python -m harvest.tools.livestock_builder --base Y1_After_Buy_Potato --verify
 ```
 
-Run the narrow editor/state tests:
+## Live buy, when it is in scope
 
-```bash
-uv run python -m unittest tests.test_extract_tiles tests.test_rom_tools tests.test_harvest_state tests.test_livestock_builder tests.test_editor_app
-```
+Walk with search. Do not record a path BFS can close. Do not treat the
+animal-shop menu, or a cross-map return to the farm, as a completed buy.
+A buy needs the shop tilemap plus a wallet change and an animal-count
+change. Playback that only returns to the origin is a miss.
+
+Prices, and whether a chicken is worth buying, are unmeasured. The stub is
+`harvest.planner.livestock_econ`. It refuses to answer while inputs are
+missing. Ship prices that are already pinned live in
+[SPRING_ECONOMY.md](SPRING_ECONOMY.md).

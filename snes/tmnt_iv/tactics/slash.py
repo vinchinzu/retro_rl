@@ -52,8 +52,7 @@ class SlashTactics:
     RaphFullHardBoss5 (char 8) production spin_dodge_adx=52: **11,386f /
     478 dmg / 6 heals**. Probe KEEP spin=40 is **6,765f / 226 / 3** (5/5)
     but continuous dry-runs lose the sub-hour damage baseline via later
-    RNG — keep 52 until a full-route re-tune. Rules
-    (also ``docs/SLASH_VULN_MAP.md``):
+    RNG — keep 52 until a full-route re-tune. Rules:
 
     * Claw ``0x83``/``0x09`` → hop away when already close.
     * Spin ``0xEE`` close → hop away.

@@ -243,10 +243,6 @@ from harvest.planner.day_plan_tasks import (
     tool_in_carry_pair,
 )
 
-from harvest.planner.day_task_factory import (
-    DayTaskFactory,
-)
-
 from harvest.tasks.eve_loop_task import (
     EveTalkLoopTask,
     ROMANCE_HEART_THRESHOLDS,
@@ -335,7 +331,6 @@ __all__ = [
     "DayPlanTask",
     "DayPlannerPolicy",
     "day_planner_policy_for_season",
-    "DayTaskFactory",
     "DeadlineCheckTask",
     "DeferredPlan",
     "DirectionalTransitionTask",

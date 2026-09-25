@@ -13,10 +13,11 @@ All terminal branches regroup at a common exit staging tile so the outer
 planner can use one reliable coop-exit transition instead of depending on
 whatever tile the last interaction happened to leave us on.
 
-Extracted arms:
+Phase arms are plain functions, not mixins:
   - ``coop_layout`` — stands, flags, route constants
-  - ``coop_feed_ops`` — feed bin / trough phase mixin
-  - ``coop_egg_ops`` — egg / incubate / ship / exit-prep mixin
+  - ``coop_feed_ops`` — feed bin / trough phases
+  - ``coop_egg_ops`` — egg / incubate / ship / exit-prep phases
+  Feed-bin and shipping-bin nav/press call ``skills.py`` factories.
 """
 
 from __future__ import annotations
@@ -55,8 +56,6 @@ from harvest.core.npc_catalog import game_objects
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.tasks.animal_navigation import fallback_action, find_path_around_blockers
-from harvest.tasks.coop_egg_ops import CoopEggMixin
-from harvest.tasks.coop_feed_ops import CoopFeedMixin
 from harvest.tasks.coop_layout import (  # noqa: F401 — re-export for tests/skills
     CHICKEN_FEED_SPOTS,
     COOP_ENTRY_STAND,
@@ -85,7 +84,7 @@ from harvest.tasks.primitives import press_a_sequence
 
 
 @dataclass
-class CoopChoresTask(CoopFeedMixin, CoopEggMixin, Task):
+class CoopChoresTask(Task):
     """Dynamic coop chores that scale to up to 12 chickens.
 
     ``egg_mode`` controls what happens after egg pickup:
@@ -257,6 +256,20 @@ class CoopChoresTask(CoopFeedMixin, CoopEggMixin, Task):
         if result.status == TaskStatus.FAILURE:
             self._active_skill = None
         return result
+
+    def _enqueue_skill_actions(self, world: WorldState, skill: Task) -> None:
+        """Step a skills.py press skill and adopt its frames.
+
+        Phase gates stay on this task. The skill owns the button sequence,
+        which then drains through the same action queue as other presses.
+        """
+        skill.reset(world)
+        for _ in range(getattr(skill, "timeout", 180) + 2):
+            result = skill.step(world)
+            if result.action is not None:
+                self._action_queue.append(np.array(result.action.action, dtype=np.int32, copy=True))
+            if result.status != TaskStatus.RUNNING:
+                return
 
     # ── Action helpers ───────────────────────────────────────────
 
@@ -504,3 +517,10 @@ class CoopChoresTask(CoopFeedMixin, CoopEggMixin, Task):
             return handler(world)
 
         return TaskResult(status=TaskStatus.FAILURE, reason=f"unknown phase {self._phase}")
+
+
+from harvest.tasks.coop_egg_ops import bind_task_methods as _bind_coop_egg
+from harvest.tasks.coop_feed_ops import bind_task_methods as _bind_coop_feed
+
+_bind_coop_feed(CoopChoresTask)
+_bind_coop_egg(CoopChoresTask)

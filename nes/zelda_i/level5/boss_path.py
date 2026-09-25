@@ -7,7 +7,8 @@ pokes; do not grant the Whistle.
     0x04 exit (ladder x=176 DOWN, pit y=189, mouth x=48 UP) → play 0x05
     east 0x06 stairs → cellar 0x07 → 0x64 east 0x65
     0x65 Gibdo clear; north shutter else bomb-east 0x66 → 0x56 → 0x57
-    skip combat through 0x47/0x37/0x27/0x26/0x25
+    pass 0x47/0x37, collect a visible 0x27 key, clear 0x26/0x25,
+    then west to 0x24
     west key 0x24, whistle-shrink 0x38→0x18, sword, north TF 0x14
 """
 
@@ -16,6 +17,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from retro_harness.nes import nes_action, nes_idle_action
+from retro_harness.input_script import FrameAction
 
 from zelda_i.anchors import LEVEL5_TF_ROOM, TF_BIT_L5
 from zelda_i.dungeon.behaviors import DIGDOGGER_SHRUNK_TYPE, DIGDOGGER_TYPE
@@ -26,6 +28,7 @@ from zelda_i.dungeon.engine import (
     RewardKind,
     RewardSpec,
 )
+from zelda_i.dungeon.hop_controller import LadderEscape, room_step
 from zelda_i.dungeon.ops import exit_door, idle, push_dir
 from zelda_i.level3.dungeon import ROOM_59_SPEC, ROOM_5B_SPEC
 from zelda_i.level5.cellar_path import (
@@ -37,16 +40,14 @@ from zelda_i.level5.cellar_path import (
 from zelda_i.level5.dungeon import (
     GIBDO_OBJECT_TYPE,
     LEVEL_5,
-    POLS_VOICE_OBJECT_TYPE,
     ROOM_25_SPEC,
     ROOM_26_SPEC,
+    ROOM_27_SPEC,
     ROOM_65_SPEC,
     ROOM_66_SPEC,
     ROOM_L5_BLUE_64,
     ROOM_L5_CELLAR_07,
     ROOM_L5_PASSAGE_06,
-    ROOM_L5_WEST_25,
-    ROOM_L5_WEST_26,
     ROOM_L5_WHISTLE_05,
     ROOM_L5_WHISTLE_ITEM,
     ZOL_OBJECT_TYPE,
@@ -77,6 +78,8 @@ from zelda_i.ram import (
     PLAY_MODE,
     read_snapshot,
     read_u8,
+    room_item_taken,
+    room_item_xy,
 )
 
 HEART_CONTAINER = 0x1A
@@ -162,6 +165,7 @@ def fight_ctl(env, assist, total: list[int], spec, controller_cls=GenericDungeon
         "xy": [snap.link_x, snap.link_y],
         "room": snap.screen,
         "phase": str(ctl.phase),
+        "notes": ctl.report()["notes"],
     }
 
 
@@ -210,21 +214,28 @@ def _in_whistle_cellar(snap) -> bool:
     return snap.level == LEVEL_5 and snap.screen == ROOM_L5_WHISTLE_ITEM
 
 
-# Cap on clearing a west room whose Gibdos block the door lane.
-WEST_FIGHT_MAX_FRAMES = 4000
 # Frames a room's wave may take to appear after the scroll lands.
 SPAWN_WAIT_FRAMES = 90
+
+_WEST_ROOM_FIGHTS = {
+    ROOM_26_SPEC.room_id: ROOM_26_SPEC,
+    ROOM_25_SPEC.room_id: ROOM_25_SPEC,
+}
+WEST_KEY_PICKUP_FRAMES = 450
 
 
 def _fight_if_live(env, assist, total, hops, spec, types, name: str) -> bool:
     # Count after the wave spawns, not on the scroll-in frame: a zero there
     # skipped the 0x65/0x66 Gibdos and left both shutters shut (R16).
+    def live(snap):
+        return [obj for obj in spec.live_enemies(snap) if obj.type_id in types]
+
     wait_ram(
-        env, assist, total, lambda s: bool(live_types(s, types)),
+        env, assist, total, lambda s: bool(live(s)),
         max_frames=SPAWN_WAIT_FRAMES, spec_id=f"spawn_{name}",
     )
     snap = read_snapshot(env.get_ram())
-    n = len(live_types(snap, types))
+    n = len(live(snap))
     if not n:
         return True
     spec = replace(spec, expected_enemy_count=n, required_open_doors=0)
@@ -233,22 +244,79 @@ def _fight_if_live(env, assist, total, hops, spec, types, name: str) -> bool:
     return bool(fight.get("ok"))
 
 
-def _walk_west(env, assist, total, hops, walker, expect: int, name: str) -> bool:
-    room = read_snapshot(env.get_ram()).screen
+def _collect_west_key(env, assist, total, hops, room: int, keys_in: int) -> bool:
+    """Take a cleared west room's fixed key before spending one at a door."""
+    def taken() -> bool:
+        ram = env.get_ram()
+        return room_item_taken(ram, LEVEL_5, room) or read_snapshot(ram).keys > keys_in
 
-    # In 0x26 and 0x25, live enemies in narrow lanes make a blind door push
-    # lethal. Clear them first with ROOM_26_SPEC / ROOM_25_SPEC; White Sword
-    # with _melee takes 0 damage.
-    if room == ROOM_L5_WEST_26:
+    # The room-item slot can appear a few frames after the final kill.
+    for _ in range(SPAWN_WAIT_FRAMES):
+        if taken() or any(room_item_xy(env.get_ram())):
+            break
+        _step(env, assist, total, nes_idle_action())
+
+    item_x, item_y = room_item_xy(env.get_ram())
+    if not taken() and item_x and item_y:
+        ladder_escape = LadderEscape()
+        stands = (
+            (item_x, item_y),
+            (item_x, item_y + 8),
+            (item_x - 8, item_y),
+            (item_x + 8, item_y),
+        )
+        for goal in stands:
+            near_frames = 0
+            for _ in range(WEST_KEY_PICKUP_FRAMES):
+                snap = read_snapshot(env.get_ram())
+                if taken() or snap.screen != room:
+                    break
+                direction = room_step(snap, goal, tol=2, env=env)
+                if direction is None:
+                    near_frames += 1
+                    if near_frames > 12:
+                        break
+                    action = FrameAction(nes_idle_action(), "key_stand")
+                else:
+                    action = FrameAction(nes_action(direction), "key_walk")
+                action = ladder_escape.filter(snap, action, env=env, goal=goal)
+                _step(env, assist, total, action.action)
+            if taken() or read_snapshot(env.get_ram()).screen != room:
+                break
+
+    snap = read_snapshot(env.get_ram())
+    ok = snap.screen == room and taken()
+    hops.append({
+        "hop": f"key_{room:02x}", "ok": ok,
+        "item_taken": room_item_taken(env.get_ram(), LEVEL_5, room),
+        "keys_in": keys_in, "keys_out": int(snap.keys),
+        "xy": [snap.link_x, snap.link_y],
+    })
+    return ok
+
+
+def _walk_west(env, assist, total, hops, walker, expect: int, name: str) -> bool:
+    start = read_snapshot(env.get_ram())
+    room = start.screen
+    spec = _WEST_ROOM_FIGHTS.get(room)
+    if spec is not None:
         if not _fight_if_live(
-            env, assist, total, hops, ROOM_26_SPEC, (GIBDO_OBJECT_TYPE,), "fight_26"
+            env, assist, total, hops, spec, spec.enemy_types, f"fight_{room:02x}"
         ):
             return False
-    elif room == ROOM_L5_WEST_25:
-        if not _fight_if_live(
-            env, assist, total, hops, ROOM_25_SPEC, (POLS_VOICE_OBJECT_TYPE,), "fight_25"
-        ):
-            return False
+    elif room == ROOM_27_SPEC.room_id:
+        # The 0x27 key is optional for this spine. The room does not expose
+        # it before the clear on the C8a tape; a full clear cost two hearts
+        # and left the following Pols Voice room lethal. Keep the stand grab
+        # as its owner if the item is already on the floor.
+        ram = env.get_ram()
+        visible = any(room_item_xy(ram)) and not room_item_taken(ram, LEVEL_5, room)
+        if visible:
+            _collect_west_key(env, assist, total, hops, room, int(start.keys))
+        else:
+            hops.append({"hop": "key_27", "ok": False, "reason": "not_visible"})
+    else:
+        raise ValueError(f"no west room policy for 0x{room:02x}")
 
     def attempt() -> tuple[dict, object]:
         rec = walker(env, assist, total)
@@ -258,21 +326,6 @@ def _walk_west(env, assist, total, hops, walker, expect: int, name: str) -> bool
     west, snap = attempt()
     if snap.screen == room and snap.mode == PLAY_MODE:
         # A key door can outlast the first push budget (0x27): walk again.
-        west, snap = attempt()
-    if snap.screen == room and snap.mode == PLAY_MODE:
-        # Live Gibdos on the door column knock Link off the lane (R21 0x26:
-        # 600 frames of 133<->134 knockback). Clear them, then walk again.
-        spec = replace(
-            ROOM_26_SPEC if room == ROOM_L5_WEST_26 else ROOM_66_SPEC,
-            spec_id=f"level5_west_{room:02x}_gibdos",
-            source_room=room + 1,
-            room_id=room,
-            entry=DoorRoute("LEFT", ((224, 141),)),
-            reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
-            max_frames=WEST_FIGHT_MAX_FRAMES,
-            level=LEVEL_5,
-        )
-        _fight_if_live(env, assist, total, hops, spec, (GIBDO_OBJECT_TYPE,), f"fight_{room:02x}")
         west, snap = attempt()
     west["dest"] = snap.screen
     west["mode"] = snap.mode
@@ -304,7 +357,7 @@ def path_exit_whistle_04(env, assist, total: list[int], hops: list[dict]) -> dic
 
 
 def path_05_to_24(env, assist, total: list[int], hops: list[dict]) -> dict:
-    """Play 0x05 → Digdogger 0x24. Skip combat after 0x65 until the boss."""
+    """Play 0x05 → 0x24; probe 0x27's key, clear 0x26/0x25 west."""
     snap = read_snapshot(env.get_ram())
     room = snap.screen
 
@@ -537,12 +590,28 @@ def fight_digdogger(env, assist, total: list[int]) -> dict:
             expected_enemy_count=max(1, len(bosses + small)),
             required_open_doors=0,
             reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
-            combat=ROOM_59_SPEC.combat,
+            combat=replace(
+                ROOM_59_SPEC.combat,
+                flank_shielded=False,
+                contact_backstep=16,
+            ),
             exit_routes=(DoorRoute("UP", ((120, 93),)),),
             max_frames=20000,
             level=LEVEL_5,
         )
         fight = fight_ctl(env, assist, total, spec)
+        if not fight["ok"]:
+            snap = read_snapshot(env.get_ram())
+            return {
+                "ok": False,
+                "menu": menu,
+                "fight": _slim(fight),
+                "shrunk": shrunk,
+                "room": snap.screen,
+                "mode": snap.mode,
+                "health": int(read_u8(env.get_ram(), ADDR_HEALTH)),
+                "tf_l5": False,
+            }
 
     idle(env, assist, total, 20)
     snap = read_snapshot(env.get_ram())

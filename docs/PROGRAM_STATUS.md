@@ -1,6 +1,7 @@
 # Program Status
 
-Last updated: 2026-09-01.
+Last updated: 2026-09-01. Zelda I next action corrected 2026-09-21
+to the gathering prefix. Other rows were not re-checked in that pass.
 
 Live facts only. Stable rules live in [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 Multi-horizon strategy lives in [ROADMAP.md](ROADMAP.md). Solver layer stack
@@ -64,7 +65,7 @@ Battle Clash remains `blocked: infrastructure` (no Super Scope injection).
 | SMZ3 | Longer one-bot SM or Z3 segment + video; multi-seed after single-game rungs |
 | Final Fight | Natural-entry hardening + Stage 3 continuity → chain toward continuous dry-run |
 | Magical Quest / Joe & Mac | First reliable room/segment clears with natural entry |
-| NES | Zelda I Level 2 route; MM2 / Glass Joe skill work |
+| NES | Zelda I gathering, coast bombs then the rest of the prefix. Clean gate stays M5. MM2 / Glass Joe unchanged. |
 | Hygiene | Regenerate matrix + update local `STATUS.md` after every verified advance |
 | Assists | Explicit `ASSIST_CONTRACT.md` before any assisted published result |
 
@@ -110,7 +111,7 @@ Not popularity rank — capability diversity for harness transfer with SNES:
 | **Single-game rando** | SM-rando M1 vertical slice + held-out BC candidate; ALTTP-rando M1 | Seed ROM integration and S/T early tips |
 | Linear combat | Final Fight M3→M4 | Natural-entry and Stage 3 continuity |
 | Platforming | Magical Quest / Joe & Mac M2→M3 | First room/segment clears |
-| Graph navigation | Super Metroid M5→M6; ALTTP M1; Zelda I M5 | SM: Gravity on Phantoon; ALTTP: beyond opening; Zelda: Level 2 |
+| Graph navigation | Super Metroid M5→M6; ALTTP M1; Zelda I M5 | SM: Gravity on Phantoon; ALTTP: beyond opening; Zelda: gathering (`pre_l1`), not Level 2 yet |
 | Randomizer proof | SMZ3 M2→M3 | Prefer single-game S/T first; then multi-seed SMZ3 |
 | Continuous control | F-Zero / Pilotwings M2→M3 | First lap / lesson objective |
 | NES top-10 | M1→M3+ | SMB M8 parked; TMNT II M3 + Zelda I M5 done; remaining skill work |

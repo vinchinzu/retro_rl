@@ -1,13 +1,11 @@
 """
-Crop planting task — CropWaterTask composer + dual-FSM (detect/plant/water/refill).
+Crop planting task — one ``CropWaterTask``.
 
-Remaining mixins:
-  - ``crop_geometry`` — plot/water geometry (pond/refill stands in water_refill)
-  - ``crop_establish`` — detect / plot lifecycle + hoe + plant
-  - ``crop_water_ops`` — water-step, residual recovery, center/act/verify/tool_switch
-  - ``crop_refill`` — can refill / pond access / corridor thrash mixin
-  - ``crop_navigate`` — multi-phase navigate / stuck recovery
-  - ``pond_*`` — corridor charges, hop densify, policy
+``step`` runs pocket / crop skills for establish, water, and full.
+Plot geometry stays in ``crop_geometry``. Refill policy that is not a skill
+yet is plain functions in ``crop_refill`` / ``crop_refill_verify`` /
+``crop_navigate`` / ``crop_water_ops``, called by this task (including the
+pre-armed navigate and corridor phases).
 """
 
 from __future__ import annotations
@@ -31,7 +29,7 @@ from harvest.core.carry import (
     watering_can_in_carry_pair,
 )
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
-from harvest.tasks.nav import Pathfinder, Navigator, get_tile_at, make_action
+from harvest.tasks.nav import TILE_SIZE, Pathfinder, Navigator, get_tile_at, make_action, tile_dist
 from harvest.tasks.farm_ops import TileScanner, ToolManager
 from harvest.tasks.water_refill import REFILL_PREFERRED_WATER_TILES, crop_completion_status
 from harvest.tasks.pond_hop import PondCorridorController
@@ -155,12 +153,6 @@ WORK_MODE_WATER = "water"
 
 VALID_WORK_MODES = frozenset({WORK_MODE_FULL, WORK_MODE_ESTABLISH, WORK_MODE_WATER})
 
-# Remaining mixins import CropState from this module; define enums first.
-from harvest.tasks.crop_establish import CropEstablishMixin  # noqa: E402
-from harvest.tasks.crop_water_ops import CropWaterOpsMixin  # noqa: E402
-from harvest.tasks.crop_refill import CropRefillMixin  # noqa: E402
-from harvest.tasks.crop_navigate import CropNavigateMixin  # noqa: E402
-
 # Re-export carry helpers under the historical crop_planter names.
 __all__ = [
     "CropWaterTask",
@@ -176,28 +168,16 @@ __all__ = [
 
 
 @dataclass
-class CropWaterTask(
-    CropEstablishMixin,
-    CropWaterOpsMixin,
-    CropRefillMixin,
-    CropNavigateMixin,
-    Task,
-):
-    """Detect crop plots, plant seeds on tilled tiles, water all crops.
+class CropWaterTask(Task):
+    """Plant and water crops by running crop skills. One task, no mixins.
 
-    Follows the GrassPlantTask state machine pattern:
-      detect -> navigate -> center -> act -> verify -> tool_switch
+    ``work_mode``:
+      - establish: ``farm_pocket_plant_skill`` (hoe + plant, no water)
+      - water: detected plots via ``water_until_wet_skill``; empty can calls
+        refill functions (``refill_bounds``, not the pocket fill skill)
+      - full: establish skill, then the water skills
 
-    ``work_mode`` splits the two-slot plant vs water ceremony:
-      - establish: hoe + plant only (day-plan plant pass with seeds+hoe)
-      - water: water existing plots only (day-plan can pass)
-      - full: plant then water in one run (legacy / manual crop mode)
-
-    Fixes vs v1:
-      - Planting: explicit tile position check (must be ON center tile)
-      - Watering: waters all 8 tiles blindly, tracks per-plot 8/8
-      - Refill: RAM-based (reads actual water level at 0x0926), verifies success
-      - Center detection: refined with offset search to fix alignment
+    Refill corridor / pre-armed navigate still uses the plain policy functions.
     """
 
     name: str = "crop_water"
@@ -279,6 +259,9 @@ class CropWaterTask(
     _acceptance_snapped: bool = field(default=False, init=False)
     # Planned centers that failed hoe/path — avoid infinite redetect loops.
     _rejected_plan_centers: Set[Tuple[int, int]] = field(default_factory=set, init=False)
+    # Skill sequence for establish / water / full. Refill phases do not use it.
+    _child: Optional[Task] = field(default=None, init=False)
+    _armed_water_tiles: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -372,6 +355,8 @@ class CropWaterTask(
         self._had_seed_stock_at_start = False
         self._acceptance_snapped = False
         self._rejected_plan_centers = set()
+        self._child = None
+        self._armed_water_tiles = 0
         self._clear_crop_walkable()
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
@@ -436,6 +421,8 @@ class CropWaterTask(
         self._had_seed_stock_at_start = False
         self._acceptance_snapped = False
         self._rejected_plan_centers = set()
+        self._child = None
+        self._armed_water_tiles = 0
         print(f"[CROP] Hot-swap resume: re-scan crops/refill state can={self._water_level(world.ram)}")
 
     def can_start(self, world: WorldState) -> bool:
@@ -529,7 +516,178 @@ class CropWaterTask(
         """Clamp planning to a viewport-reachable neighborhood around the player."""
         return self._plan_bounds_around(start, radius=12)
 
-    def step(self, world: WorldState) -> TaskResult:
+    def _use_legacy_dispatch(self) -> bool:
+        """Refill corridor and pre-armed navigate/act still use policy functions.
+
+        A fresh DETECT tick composes skills instead. That refill phase machine
+        is not a second task; folding the corridor charges into a skill would
+        be one.
+        """
+        if self._plot_phase in (
+            PlotPhase.REFILL,
+            PlotPhase.STAGE_POND,
+            PlotPhase.OPEN_POND,
+        ):
+            return True
+        if self._state == CropState.FENCE_OPEN:
+            return True
+        return self._child is None and self._state != CropState.DETECT
+
+    def _detect_work_plots(self, ram: np.ndarray) -> List[Tuple[int, int]]:
+        resume_plots = detect_crop_resume_plots(ram, self.bounds)
+        if resume_plots:
+            plots = _merge_plot_centers(resume_plots, detect_plots(ram, self.bounds))
+        else:
+            plots = detect_plots(ram, self.bounds)
+        if not plots and self._is_water_only and self._dry_crop_tiles_at_start > 0:
+            plots = detect_crop_resume_plots(ram, self.bounds, min_count=1)
+        if not plots:
+            return []
+        current = self._navigator.current_tile
+        return sorted(plots, key=lambda center: (tile_dist(current, center), center[1], center[0]))
+
+    def _plant_skill(self, ram: np.ndarray) -> Optional[Task]:
+        from harvest.tasks.skills import farm_pocket_plant_skill, sequence_skills
+
+        centers = self._plan_new_plot_centers(ram)
+        if not centers:
+            return None
+        self._plots = list(centers)
+        self._plot_index = 0
+        skills = [
+            farm_pocket_plant_skill(
+                seed_type=self.seed_type,
+                center=center,
+                ram=ram,
+                include_water=False,
+            )
+            for center in centers
+        ]
+        if len(skills) == 1:
+            return skills[0]
+        return sequence_skills("crop_establish", *skills)
+
+    def _water_skill(self, ram: np.ndarray) -> Optional[Task]:
+        from harvest.tasks.crop_skills import water_until_wet_skill
+        from harvest.tasks.skills import NavSkill, sequence_skills
+
+        plots = self._detect_work_plots(ram)
+        if not plots:
+            return None
+        if self._is_water_only or not self._plots:
+            self._plots = list(plots)
+        else:
+            for plot in plots:
+                if plot not in self._plots:
+                    self._plots.append(plot)
+        self._plot_index = 0
+        start = self._navigator.current_tile
+        timeout = max(int(self.max_steps_per_target), 1)
+        skills: List[Task] = []
+        for center in plots:
+            steps = build_water_steps(
+                ram,
+                center,
+                allow_crop_walkable=False,
+                start_tile=start,
+                skip_tiles=set(self.skip_water_tiles),
+            )
+            for index, (target, stand, face) in enumerate(steps):
+                skills.append(
+                    NavSkill(
+                        name=f"nav_water_{center[0]}_{center[1]}_{index}",
+                        target_px=(stand[0] * TILE_SIZE + 8, stand[1] * TILE_SIZE + 8),
+                        radius=7,
+                        soft_radius=7,
+                        timeout=timeout,
+                        require_tilemap=0x00,
+                    )
+                )
+                skills.append(
+                    water_until_wet_skill(
+                        target_tile=target,
+                        face=face,
+                        timeout=timeout,
+                    )
+                )
+        self._armed_water_tiles = sum(
+            1 for skill in skills if str(getattr(skill, "name", "")).startswith("water")
+        )
+        if not skills:
+            return None
+        return sequence_skills("crop_water", *skills)
+
+    def _compose_mode_skill(self, ram: np.ndarray) -> Task | TaskResult:
+        self._snapshot_start_acceptance(ram)
+        if self._is_water_only:
+            skill = self._water_skill(ram)
+            if skill is None:
+                return self._terminal_result()
+            self._plot_phase = PlotPhase.WATER
+            return skill
+        if self._is_establish_only:
+            if not self._has_plantable_seed_stock(ram):
+                return self._terminal_result()
+            skill = self._plant_skill(ram)
+            if skill is None:
+                return self._terminal_result()
+            self._plot_phase = PlotPhase.HOE
+            return skill
+        skills: List[Task] = []
+        if self._has_plantable_seed_stock(ram):
+            plant = self._plant_skill(ram)
+            if plant is not None:
+                skills.append(plant)
+        water = self._water_skill(ram)
+        if water is not None:
+            skills.append(water)
+        if not skills:
+            return self._terminal_result()
+        # Plant runs first when both are armed; water-only full mode stays on water.
+        self._plot_phase = (
+            PlotPhase.WATER if len(skills) == 1 and water is not None else PlotPhase.HOE
+        )
+        if len(skills) == 1:
+            return skills[0]
+        from harvest.tasks.skills import sequence_skills
+
+        return sequence_skills("crop_full", *skills)
+
+    def _sync_phase_from_child(self) -> None:
+        current = getattr(self._child, "current_task", None)
+        name = str(getattr(current, "name", "") or "")
+        if name.startswith("water") or name.startswith("nav_water"):
+            self._plot_phase = PlotPhase.WATER
+        elif "hoe" in name:
+            self._plot_phase = PlotPhase.HOE
+        elif "plant" in name or name.startswith("select_carry"):
+            self._plot_phase = PlotPhase.PLANT
+
+    def _skill_needs_refill(self, ram: np.ndarray) -> bool:
+        if self._is_establish_only or self._refill_exhausted:
+            return False
+        if self._water_level(ram) >= 1:
+            return False
+        current = getattr(self._child, "current_task", None)
+        name = str(getattr(current, "name", "") or getattr(self._child, "name", "") or "")
+        return name.startswith("water") or name.startswith("nav_water") or name == "crop_water"
+
+    def _credit_skill_success(self) -> None:
+        if (
+            not self._is_water_only
+            and self.planted_count == 0
+            and self._plots
+            and (self._is_establish_only or self._had_seed_stock_at_start)
+        ):
+            self.planted_count = len(self._plots)
+        if (
+            not self._is_establish_only
+            and self._armed_water_tiles
+            and self.watered_count == 0
+        ):
+            self.watered_count = self._armed_water_tiles
+
+    def _step_mode_skill(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
         self._total_steps += 1
@@ -542,225 +700,76 @@ class CropWaterTask(
             and not seed_item_in_carry_pair(world.ram, self.seed_type)
         ):
             wanted = SEED_ITEM.get(self.seed_type, SEED_ITEM["potato"])
-            # Rain waters existing crops; without seeds there is no plant work either.
-            # Still run detect in case established plots need nothing — but if no
-            # seeds and rain, short-circuit so day plan can finish.
-            # Water-only mode still scans (rain already watered; detect will no-op).
-            print(f"[CROP] Rain and seed tool 0x{wanted:02X} not in carry pair; no crop work needed")
+            print(
+                f"[CROP] Rain and seed tool 0x{wanted:02X} not in carry pair; "
+                "no crop work needed"
+            )
             self._snapshot_start_acceptance(world.ram)
             return self._terminal_result(rain=True)
 
-        # Do not fail early when the watering can is out of the 2-slot carry pair.
-        # Day plan often leaves seeds in-hand after ENSURE_CROP_SEEDS; we still
-        # need to hoe/plant, then cycle to the can for watering.
-
-        if self.debug and self._total_steps % self.debug_interval == 0:
-            cur = self._navigator.current_tile
-            print(f"[CROP] step={self._total_steps} phase={self._plot_phase} state={self._state} "
-                  f"pos={cur} plot={self._plot_index}/{len(self._plots)} "
-                  f"planted={self.planted_count} watered={self.watered_count} can={self._water_level(world.ram)}")
-
-        # Timeout per target. Multi-hop refill gets a longer budget (corridor
-        # from west pocket is 15–25 tiles + fence open overhead). Fence-open /
-        # stage_pond own their own subtask budgets — do not abort them via
-        # crop per-target timeout (that was resetting to detect mid-clear).
-        if self._plot_phase in POND_ACCESS_PHASES:
-            # Soft-cap fence thrash. Only early-bail when gap is open AND hands
-            # are empty — otherwise we interrupt mid-carry before local_drop
-            # (ROM: gap opens on lift, then 900f timeout left the bot stuck
-            # carrying on the gap tile).
-            carrying = self._player_carrying(world.ram)
-            gap_open = self._pond_corridor_gap_open(world.ram)
-            fence_budget = (
-                900
-                if gap_open and not carrying
-                else max(self.max_steps_per_target * 3, 4000)
+        if self._child is None:
+            built = self._compose_mode_skill(world.ram)
+            if isinstance(built, TaskResult):
+                return built
+            self._child = built
+            self._child.reset(world)
+            self._state = CropState.ACT
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason=f"crop skill {self.work_mode}",
             )
-            if self._steps_on_target > fence_budget:
-                print(
-                    f"[CROP] Fence/stage soft-timeout phase={self._plot_phase} "
-                    f"budget={fence_budget}; forcing multi-hop or refill search"
-                )
-                self._fence_subtask = None
-                self._steps_on_target = 0
-                # Drop carried post first — multi-hop while carrying soft-locks
-                # south-through-gap at the cleared fence tile.
-                if self._ensure_hands_empty_for_refill(world.ram):
-                    self._pending_multihop_after_drop = True
-                    self._plot_phase = PlotPhase.REFILL
-                    self._state = CropState.NAVIGATE
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(self._action_queue.popleft()),
-                    )
-                if self._pond_corridor_gap_open(world.ram) or self._fence_open_attempts > 0:
-                    if self._commit_multihop_main_pond(
-                        world.ram, self._water_level(world.ram)
-                    ):
-                        return TaskResult(
-                            status=TaskStatus.RUNNING,
-                            action=ActionResult(make_action()),
-                        )
-                self._plot_phase = PlotPhase.WATER
-                self._start_refill(world.ram)
+
+        if self._skill_needs_refill(world.ram):
+            self._start_refill(world.ram)
+            if self._use_legacy_dispatch():
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(make_action()),
+                    reason="refill",
                 )
-            # Fall through to normal step handling without target timeout.
-            pass
-        refill_budget = (
-            max(self.max_steps_per_target * 3, 3600)
-            if self._plot_phase == PlotPhase.REFILL
-            else self.max_steps_per_target
-        )
-        if (
-            self._plot_phase not in POND_ACCESS_PHASES
-            and self._steps_on_target > refill_budget
-            and self._target_tile is not None
-        ):
-            self._failed_tiles.add(self._target_tile)
-            self._failures += 1
-            self._action_queue.clear()
-            if self._plot_phase == PlotPhase.WATER:
-                if self._reprioritize_water_step(world.ram, reason="timeout"):
-                    return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
-                if self._try_residual_crop_walk_recovery(world.ram):
-                    return TaskResult(
-                        status=TaskStatus.RUNNING, action=ActionResult(make_action())
-                    )
-                self.skipped_water += 1
-                self._plot_skipped += 1
-                print(f"[CROP] SKIP water tile {self._water_index + 1}/{len(self._water_steps)} (timeout) target={self._target_tile}")
-                self._advance_water_step(world.ram)
-            elif self._plot_phase == PlotPhase.HOE:
-                print(
-                    f"[CROP] SKIP hoe tile {self._water_index + 1}/{len(self._water_steps)} "
-                    f"(timeout) target={self._target_tile}"
-                )
-                self._advance_hoe_step(world.ram)
-            elif self._plot_phase == PlotPhase.REFILL:
-                player = self._navigator.current_tile
-                print(
-                    f"[CROP] Refill timed out at {player} "
-                    f"stand={self._refill_pond_tile} best_dist="
-                    f"{getattr(self, '_refill_best_dist', '?')}"
-                )
-                # Densify thrash: scripted charge before more multihop.
-                pond = self._refill_pond_tile
-                pond_ok = pond is None or (pond[0] >= 30 and pond[1] >= 30)
-                if (
-                    player[1] <= 31
-                    and 18 <= player[0] <= 32
-                    and pond_ok
-                    and getattr(self._corridor, "east_south_charges", 0) < 6
-                ):
-                    self._queue_east_south_corridor_charge(player)
-                    self._steps_on_target = 0
-                    self._corridor.refill_densify_stalls = 0
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(make_action()),
-                    )
-                if (
-                    player[1] >= 32
-                    and player[0] <= 31
-                    and pond_ok
-                    and getattr(self._corridor, "south_lip_charges", 0) < 12
-                ):
-                    self._queue_west_south_lip_charge(player)
-                    self._steps_on_target = 0
-                    self._corridor.refill_densify_stalls = 0
-                    return TaskResult(
-                        status=TaskStatus.RUNNING,
-                        action=ActionResult(make_action()),
-                    )
-                # Soft: try multi-hop re-commit once more before blacklisting.
-                if (
-                    getattr(self, "_refill_multihop", False)
-                    and getattr(self, "_refill_nav_failures", 0) < 6
-                    and (
-                        self._pond_corridor_gap_open(world.ram)
-                        or self._fence_open_attempts > 0
-                    )
-                ):
-                    self._refill_nav_failures = getattr(self, "_refill_nav_failures", 0) + 1
-                    self._steps_on_target = 0
-                    if self._commit_multihop_main_pond(
-                        world.ram, self._water_level(world.ram)
-                    ):
-                        return TaskResult(
-                            status=TaskStatus.RUNNING,
-                            action=ActionResult(make_action()),
-                        )
-                if self._refill_pond_tile and not is_main_pond_stand(
-                    self._refill_pond_tile
-                ):
-                    self._bad_refill_tiles.add(self._refill_pond_tile)
-                # Navigate back to current water step
-                self._plot_phase = PlotPhase.WATER
-                self._refill_multihop = False
-                self._set_water_walkable()
-                if self._water_index < len(self._water_steps):
-                    target, stand, face = self._water_steps[self._water_index]
-                    self._target_tile = target
-                    self._approach_tile = stand
-                    self._face_direction = face
-                else:
-                    center = self._plots[self._plot_index]
-                    self._target_tile = center
-                    self._approach_tile = center
-                self._state = CropState.NAVIGATE
-                self._navigator.path = []
-            elif self._plot_phase == PlotPhase.PLANT:
-                center = self._plots[self._plot_index] if self._plot_index < len(self._plots) else None
-                if center is not None:
-                    self._rejected_plan_centers.add(center)
-                print(f"[CROP] Plant timeout at {center}; skipping plot")
-                self._advance_plot(world.ram)
-            else:
-                self._target_tile = None
-                self._state = CropState.DETECT
-            if self._failures >= self.max_failures:
-                return TaskResult(status=TaskStatus.FAILURE, reason="too many target timeouts")
 
-        # Drain action queue
-        if self._action_queue:
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._action_queue.popleft()))
-
-        # Dialog dismissal
-        input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
-        if input_lock != 1:
-            action = make_action(a=True) if self._total_steps % 2 == 0 else make_action()
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason="dialog")
-
-        # Check if all plots done
-        if self._state == CropState.DONE:
+        result = self._child.step(world)
+        self._sync_phase_from_child()
+        if result.status == TaskStatus.RUNNING:
+            return result
+        if result.status == TaskStatus.SUCCESS:
+            self._credit_skill_success()
+            self._state = CropState.DONE
             return self._terminal_result()
+        reason = result.reason or ""
+        if "watering can not in carry pair" in reason and self._is_water_only:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason="watering can not in carry pair",
+            )
+        self._failures += 1
+        print(f"[CROP] Skill failed mode={self.work_mode}: {reason}")
+        return self._terminal_result()
 
-        # Outer CropState dispatch. FENCE_OPEN takes WorldState (subtask);
-        # other arms take RAM only.
-        if self._state == CropState.FENCE_OPEN:
-            result = self._handle_fence_open(world)
-            if result is not None:
-                return result
+    def step(self, world: WorldState) -> TaskResult:
+        if self._state == CropState.DONE and self._child is None:
+            return self._terminal_result()
+        if self._use_legacy_dispatch():
+            return self._dispatch_legacy(world)
+        return self._step_mode_skill(world)
 
-        handlers = {
-            CropState.DETECT: self._handle_detect,
-            CropState.NAVIGATE: self._handle_navigate,
-            CropState.CENTER: self._handle_center,
-            CropState.ACT: self._handle_act,
-            CropState.VERIFY: self._handle_verify,
-            CropState.TOOL_SWITCH: self._handle_tool_switch,
-        }
 
-        handler = handlers.get(self._state)
-        if handler:
-            result = handler(world.ram)
-            if result is not None:
-                return result
+def _bind_crop_policy(cls: type) -> None:
+    """Install refill / navigate / establish functions as CropWaterTask methods."""
+    import harvest.tasks.crop_establish as establish
+    import harvest.tasks.crop_navigate as navigate
+    import harvest.tasks.crop_refill as refill
+    import harvest.tasks.crop_refill_verify as verify
+    import harvest.tasks.crop_water_ops as water_ops
 
-        if self._action_queue:
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._action_queue.popleft()))
+    for mod in (establish, water_ops, refill, verify, navigate):
+        for name, obj in vars(mod).items():
+            if not name.startswith("_") or not callable(obj):
+                continue
+            if getattr(obj, "__module__", None) != mod.__name__:
+                continue
+            setattr(cls, name, obj)
 
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+_bind_crop_policy(CropWaterTask)

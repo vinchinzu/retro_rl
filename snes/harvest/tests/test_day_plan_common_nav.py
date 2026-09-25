@@ -29,7 +29,7 @@ from harvest.planner.day_plan import (
     TaskResult,
     TaskStatus,
 )
-from harvest.planner.day_task_factory import DayTaskFactory
+from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_MAP,
@@ -329,7 +329,7 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
             },
         )
 
-        task = DayTaskFactory().make_task(spec, make_transition_world(0x00))
+        task = build_phase_task(TaskBuildContext(), spec, make_transition_world(0x00))
 
         self.assertIsInstance(task, DirectionalTransitionTask)
         self.assertEqual(task.target_stand_tile, (8, 22))
@@ -350,7 +350,7 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
             },
         )
 
-        task = DayTaskFactory().make_task(spec, make_transition_world(0x00))
+        task = build_phase_task(TaskBuildContext(), spec, make_transition_world(0x00))
 
         self.assertIsInstance(task, DirectionalTransitionTask)
         self.assertEqual(task.door_align_px, 456)

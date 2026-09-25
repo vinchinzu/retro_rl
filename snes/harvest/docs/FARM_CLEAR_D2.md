@@ -12,7 +12,7 @@ not a morning whole-farm wipe. Do not STATUS-promote Gate B from this list.
 Walk invariant (must stay true through nav refactors): **BFS never routes
 onto stumps, large rocks, damage tiles, or the small boulder.** Stand on a
 neighbor and swing/lift. Tool-swing frames must not hold the d-pad.
-WEED `0x03` is ROM-walkable but pins travel — travel BFS must not route onto
+WEED `0x03` is ROM-walkable but pins travel - travel BFS must not route onto
 it either (`rr-20w.2.2`).
 
 **2026-08-21 landed (unit, no live pin):** travel denylist
@@ -56,9 +56,9 @@ boxed west-lip carry runs east instead of throwing north. Live
 `(11,29)=0x02`, first hoe tills `(13,29)=0x07`. Hoe well stand is remapped
 in `remap_pocket_hoe_stand`: `(14,27)` from `(14,28)` face-up, not
 `nav_hoe_ring_1_left` onto `(15,27)`. East-bottom `(14,29)` is not
-`(15,29)` face-left — leftover stone `(16,29)` seals the rightward
+`(15,29)` face-left - leftover stone `(16,29)` seals the rightward
 nudge (`nav_hoe_ring_3_left` timeout); stand `(13,29)` face-right
-instead. Left-middle `(12,28)` is not `(12,29)` face-up — leftover
+instead. Left-middle `(12,28)` is not `(12,29)` face-up - leftover
 stone `(12,30)` seals the southward nudge (`nav_hoe_ring_6_up`);
 stand on the untilled notch `(13,28)` face-left. Young potato `0x54`/`0x55`
 is farm-walkable so the can-fetch can leave the boxed notch.
@@ -78,7 +78,7 @@ loaded a8/a1 → hammer remaining large (4 chunks) → axe remaining stumps
 door `(26,30)` `0xFF` (farm map unloads; counts look like a wipe with
 `cleared_count=0`). Hammer fetch now NavTasks to `(25,28)` a1 before
 SUCCESS; FarmClearer keeps holding west/NW until `farm_map_loaded`.
-`0x06` is absent — leftover "10 small" is 10 pond-tossed `0x04` stones,
+`0x06` is absent - leftover "10 small" is 10 pond-tossed `0x04` stones,
 not hammered.
 
 Fence dump (`--section fences`, not green): y=31 wall first, F0 south-lip
@@ -99,12 +99,12 @@ North-of-barn leftover dumps at `(46,16)` face-up into `0xFA` (trimmed
 `Y1_D2_Stones_Frontier`: 45→39 then hug `(48,13)` held=13. y=13→14 is a
 physical wall at x=46–50; open south is x=51. 8k from
 `Y1_D2_Leftover_Checkpoint`: **39→21**. West of the spur do not RIGHT
-onto `(45,14)` 0xA1 — drop at x=44 to y=16. Stall abort at 24k (no
+onto `(45,14)` 0xA1 - drop at x=44 to y=16. Stall abort at 24k (no
 more 400k hug). Do not STATUS-promote Gate B.
 
 Rocks (`--section rocks`): first slice 4/4 from `Y1_D2_After_Stones` in
 3747f, `51 → 47`, stam 65→17. CLEAR_ROCKS is now exhaustive (all remaining
-2×2). Hammer stays planted after the first face — a d-pad re-center STZs
+2×2). Hammer stays planted after the first face - a d-pad re-center STZs
 `$096D`. Spa-return from `Y1_D2_After_Rocks` is pin-green
 (`Y1_D2_After_Spa`, 17→100). Stumps quota 2/2 is pin-green from that spa
 pin (`Y1_D2_After_Stumps`, 38→36). Do not STATUS-promote Gate B.
@@ -113,7 +113,7 @@ pin (`Y1_D2_After_Stumps`, 38→36). Do not STATUS-promote Gate B.
 
 | Tile | IDs | `FARM_WALKABLE` | Travel BFS | Clear |
 |------|-----|-----------------|------------|-------|
-| Soil / path | `0x00`, `0x01`, `0xA0`–`0xA3`, … | yes | yes | — |
+| Soil / path | `0x00`, `0x01`, `0xA0`–`0xA3`, … | yes | yes | - |
 | WEED | `0x03` | yes (ROM) | **no** | adjacent lift |
 | STONE / FENCE | `0x04` / `0x05` | no | no | adjacent |
 | Small ROCK | `0x06` | **no** | **no** | adjacent hammer |
@@ -126,7 +126,7 @@ Push-facing (`player_action==0` + no pixel motion) must not seal the
 
 ## Issues
 
-### P0 — travel walks onto weeds (`rr-20w.2.2`)
+### P0 - travel walks onto weeds (`rr-20w.2.2`)
 
 `FARM_WALKABLE` includes `WEED`. `Pathfinder.is_walkable` / `NavTask` BFS
 onto bushes; MultiNav already no-gos them. FarmClearer rock-first then paths
@@ -136,28 +136,28 @@ onto bushes; MultiNav already no-gos them. FarmClearer rock-first then paths
 the ROM walkable set includes the tile. Clear still stands on a walkable
 neighbor. Do not remove `0x03` from scanner dumps.
 
-### P0 — `CLEAR_PLOT` must not stand on bushes (`rr-20w.2.3`)
+### P0 - `CLEAR_PLOT` must not stand on bushes (`rr-20w.2.3`)
 
 Pocket clear is weeds/stones, `fetch_tools=False`. Approach is `NavTask`,
 which still walks onto `0x03`. After `rr-20w.2.2`, pocket approach uses the
 same travel denylist.
 
-### P0 — stumps/rocks must stay non-walkable (`rr-20w.2.10`)
+### P0 - stumps/rocks must stay non-walkable (`rr-20w.2.10`)
 
 Already absent from `FARM_WALKABLE`, but no unit test. Uncommitted
 `Navigator.follow_path` push-facing can `temp_block` the **approach** tile
 after 20f of zero motion (same byte as idle). Hammer swing must stay
 direction-free (`use_tool` is Y-only; do not add d-pad to hit frames).
 
-### P1 — shop success deletes leftover `CLEAR_FIELD`
+### P1 - shop success deletes leftover `CLEAR_FIELD`
 
 `_splice_plant_after_shop` drops every remaining `CLEAR_FIELD` and inserts
 pocket plant (`day_plan_orchestrator.py`). **Morning wipe is not the D2
-goal** — keep the splice. Evening leftover is `rr-20w.2.8` and must not
+goal** - keep the splice. Evening leftover is `rr-20w.2.8` and must not
 depend on a 06:08 `late_day` expansion (currently `_evening_field_clear_phases`
 only runs if `hour >= 17` **at plan time**, so a 6am plan never attaches it).
 
-### P1 — unbounded `CLEAR_FIELD` SUCCESS-lies (`rr-20w.2.11`)
+### P1 - unbounded `CLEAR_FIELD` SUCCESS-lies (`rr-20w.2.11`)
 
 `FarmClearTask` returns SUCCESS on `stamina_low`, `partial_clear`,
 `clear_budget`, lift-only leftovers, and **off-farm empty scans**
@@ -169,7 +169,7 @@ SUCCESS is still correct.
 Incomplete → not `_advance` success. Off-farm unbounded clear must not
 SUCCESS in one tick.
 
-### P1 — hammer never fetched; missing axe drops ROCK (`rr-20w.2.12`)
+### P1 - hammer never fetched; missing axe drops ROCK (`rr-20w.2.12`)
 
 `FETCH_CLEAR_TOOL_RECORDINGS` stays off. Leftover uses RAM shelf
 `ENSURE_HAMMER` / `ENSURE_AXE` (`ensure_tool` → `EnsureCarryToolTask`),
@@ -181,7 +181,7 @@ ENSURE_HAMMER → CLEAR_ROCKS → ENSURE_AXE → CLEAR_STUMPS (never both).
 **Fix:** drop only the debris types whose tool is actually missing. If
 hammer is in the pair, still smash rocks.
 
-### P1 — stamina gate cannot finish a large rock (`rr-20w.2.14`; spa is `rr-pzw`)
+### P1 - stamina gate cannot finish a large rock (`rr-20w.2.14`; spa is `rr-pzw`)
 
 Hammer/axe is −2/swing; ROM breaks a 2×2 at **6** registered hits (`$096D`).
 Y-holds miss, so clear will not *start* a rock/stump below an **8-swing**
@@ -197,14 +197,14 @@ spa on D2 morning. Mid-phase spa+retry if `CLEAR_ROCKS`/`CLEAR_STUMPS`
 fail `stamina_low` is a follow-up (orchestrator-owned, not a
 `farm_clearer` thrash `if`).
 
-### P2 — 5pm A-pulse steals tool frames (`rr-20w.2.13`)
+### P2 - 5pm A-pulse steals tool frames (`rr-20w.2.13`)
 
 `shipping_scene_needs_dismiss` treats farm + `hour>=17` + `lock!=1` as the
 shipper box. Orchestrator intercepts every phase and pulses A. A hammer
 swing after 17:00 looks like a lock. Keep dismiss on text `0x031A`/`0x031B`
 and pending flag `0x0400`, not “any locked farm evening.”
 
-### P2 — file size / spaghetti
+### P2 - file size / spaghetti
 
 `day_plan_phases.py` 1002, `farm_clearer.py` 999, `multi_nav.py` 1062.
 Do not add spa / hammer / evening branches as thrash `if`s. Extract a
@@ -214,7 +214,7 @@ helper first.
 
 | Item | Bead | Note |
 |------|------|------|
-| Whole-farm 800-target wipe | — | Starves hoe; catalog 3500f is keep-alive only |
+| Whole-farm 800-target wipe | - | Starves hoe; catalog 3500f is keep-alive only |
 | Hot spring | `rr-pzw` | Evening leftover insert is wired. D2 night pin `Y1_D2_Night_Farm`: grape-corridor farm→spa→farm GREEN (outbound 1956f, return SUCCESS 3813f). Do not route the east fish pond. |
 | Farm-bush `SHIP_BERRY` | `rr-r3he` | Not D2 grape |
 | Gate B soak | `rr-5in` | Do not close on one D2 pin |

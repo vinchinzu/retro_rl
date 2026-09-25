@@ -47,7 +47,7 @@ The ROM event scripts assign the bits as shown above. Catalog name:
 - Ann and Eve both set their expected bits in live probes. Nina, Maria, and
   the livestock dealer also have verified interaction stands and event text.
 
-## Human recording (2026-08-01) — `tasks/town_day1_rest.json`
+## Human recording (2026-08-01) - `tasks/town_day1_rest.json`
 
 From `Y1_Spring_D1_AnnEve` (mask `0x03`) the rest of the handoff was recorded
 controller-only (11 134 frames) → house sleep → Spring D2 06:00.
@@ -58,18 +58,18 @@ controller-only (11 134 frames) → house sleep → Spring D2 06:00.
 | `0x04` Nina | 5159 | `(101,102)` face **left** + A | flower back `0x1D` |
 | `0x08` Flower owner | 6599 | `(34,347)` face **down** + A | flower shop `0x1C` |
 | `0x20` Maria | 8411 | `(103,405)` face **up** + A | church `0x1B` |
-| mask `0x3F` complete | 8411 | — | — |
+| mask `0x3F` complete | 8411 | - | - |
 | Truck leave | ~9777 | path `0x0C` then **cutscene into house** `0x15` (no outdoor farm map) | |
 | Sleep → D2 | 10788–10845 | bed → morning house `(136,120)` | house |
 
 **Important:** `(201,157)` face-right in the animal shop is the later **buy-cow**
-menu stand — it does **not** set D1 bit `0x10`. Use `(230,139)` face down.
+menu stand - it does **not** set D1 bit `0x10`. Use `(230,139)` face down.
 
 ### Starter tools (not picked in the recording)
 
 New-game init already places free bags on the shed shelf
 (`shed_items_row_2 = 0x88` = watering can `0x80` | grass seeds `0x08`).
-`town_day1_rest` never visited the shed — end state still has empty carry.
+`town_day1_rest` never visited the shed - end state still has empty carry.
 
 ROM-verified shelf stands (face up + A):
 
@@ -96,7 +96,7 @@ Pure Town_Gate / power-on path reaches peak mask `0x3F` and D2 morning bed
    horizontal control (`gs` bit `0x1000` scripted walk).
 3. Door dialogue (`text 0x0124/0x0125`) then soft-lock → tilemap `0x5F`.
 4. `$0970` (`house_size`) INC's during Ann talk (0→2) is a **dialogue step
-   counter**, not remodel — **not causal** for free-move loss.
+   counter**, not remodel - **not causal** for free-move loss.
 
 #### Causal root (ROM + offline A/B on `town_day1_rest_end`)
 
@@ -105,13 +105,13 @@ Pure Town_Gate / power-on path reaches peak mask `0x3F` and D2 morning bed
 | `0x0011` (truck D2 bed) | **Lost** → softlock | Baseline pure/rest truck path |
 | `0x0011` + `house_size=0` | **Lost** | house_size not causal |
 | `0x0031` / `0x0091` | **Lost** | partial intro bits still fail |
-| `0x00A1` / `0x00B1` (Y1) | **Kept** — can walk to shed | Min `0x00A1` = truck+intro+dog |
+| `0x00A1` / `0x00B1` (Y1) | **Kept** - can walk to shed | Min `0x00A1` = truck+intro+dog |
 
 Bits (HM-Decomp `bank_83` `CODE_83CEAE`, `bank_84` dog whistle):
 
-- `0x0001` — truck/day processing (present after truck leave)
-- `0x0020` — first outdoor morning intro done (CC `0x0C/0`; sets mid-exit)
-- `0x0080` — **dog owned**
+- `0x0001` - truck/day processing (present after truck leave)
+- `0x0020` - first outdoor morning intro done (CC `0x0C/0`; sets mid-exit)
+- `0x0080` - **dog owned**
 
 With only `0x0011`, house→farm runs morning intro: ORA `0x0020`, clear free-move,
 auto-walk to door. Controller-only recovery (neutral, mash A/B, name-entry
@@ -134,8 +134,8 @@ stays closed). So shed cannot be completed on D1 without truck either.
 `CompleteOutdoorMorningIntroTask` pure-completes the outdoor intro:
 
 1. `ExitToFarm` from D2 bed → ROM ORA `0x0020`, clear free-move, auto-walk south
-2. House-front dialogue (`lock=2`) — mash A
-3. **Dog name entry** tilemap `0x5F` / `$099F=3` / `lock=5` — deterministic
+2. House-front dialogue (`lock=2`) - mash A
+3. **Dog name entry** tilemap `0x5F` / `$099F=3` / `lock=5` - deterministic
    `AAAA` + OK (same reversed-grid path as `PowerOnStartTask`)
 4. Post-name dialogue → dog-owned `0x0080` (`f1f68→0x00B1`) → free-move
    `0x4000` restored at house-front `~(136,424)`
@@ -156,8 +156,8 @@ then optionally attempts shed starter tools.
 
 | Bit | Person | Auto status |
 |-----|--------|-------------|
-| `0x01` | Ann | **Works** — outdoor route; rest recording assumes already set |
-| `0x02` | Eve | **Works** — outdoor route; rest recording assumes already set |
+| `0x01` | Ann | **Works** - outdoor route; rest recording assumes already set |
+| `0x02` | Eve | **Works** - outdoor route; rest recording assumes already set |
 | `0x04`–`0x20` | Nina/owner/livestock/Maria | **Works via rest recording** (human capture) |
 | Shed pickups | grass + can | **Works** from `house_size=0`; soft-optional after rest (AnnEve is size2) |
 

@@ -18,6 +18,7 @@ from zelda_i.overworld.arrow_shop import (
     SHOP_E5_APPROACH_Y,
     SHOP_E5_CAVE_X,
     SHOP_E5_SCREEN,
+    SHOP_F3_SCREEN,
     arrow_restock_stages,
     arrow_shop_restock,
     arrow_shop_success,
@@ -211,6 +212,16 @@ def test_restock_short_of_want_walks_to_0x4A() -> None:
     assert (ctl.door_x, ctl.cave_x) == (ARROW_SHOP_CAVE_X, ARROW_SHOP_CAVE_X)
     assert (ctl.buy_x, ctl.buy_y, ctl.price) == (ARROW_BUY_X, ARROW_BUY_Y, ARROW_SHOP_PRICE)
     assert ctl.farm is None
+
+
+def test_restock_infers_0x25_shop_door_from_hops() -> None:
+    ctl = make_arrow_restock_controller(
+        hops=(ScreenHop(SHOP_F3_SCREEN, "RIGHT"),), want=1
+    )
+    assert ctl.shop_screen == SHOP_F3_SCREEN
+    assert (ctl.door_x, ctl.cave_y, ctl.mouth_approach_y) == (160, 77, 93)
+    assert ctl.north_gap_x is None
+    assert ctl.max_frames == 12000
 
 
 def test_restock_fails_closed_when_rupees_short_without_farm() -> None:

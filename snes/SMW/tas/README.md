@@ -4,7 +4,7 @@ This directory contains tracked parsers and verification tooling. ROMs, source
 movies, generated BK2 files, states, logs, and extracted skills are local,
 ignored artifacts.
 
-## Source Roles
+## Source roles
 
 | Source | Role | Current result |
 | --- | --- | --- |

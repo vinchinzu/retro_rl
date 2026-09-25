@@ -24,7 +24,7 @@ blocker: Whole-run Bronze/Clean dry-run (Alleycat Clean 2/4; S2–S9 suites firs
 notes: >-
   Flagship linear-combat continuous clear (M8). Next publication target is
   Bronze/Clean unassisted — maturity stays M8. Tracker is beads
-  (`bd ready -l tmnt_iv`); play lessons in CLEAN_PLAYBOOK.md. Current
+  (`bd ready -l tmnt_iv`); play lessons in docs/plan.md and AGENTS.md. Current
   low-assist dry-run is 00:57:19.635 with 4,667 damage and zero life
   losses; Stage1 Clean suite done; Alleycat Clean BOSS+LATE green.
 setup:

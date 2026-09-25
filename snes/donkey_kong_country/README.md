@@ -55,7 +55,7 @@ These are sourced from the stable-retro integration set.
 - Save states are written to `custom_integrations/<Game>/`.
 - Shared helper: `retro_harness.save_state(...)` is the generic save path for all games.
 
-## Autosplit + Best Times
+## Autosplit and best times
 
 Enable split tracking and best-time storage:
 
@@ -105,7 +105,7 @@ To rebuild split logs from all recordings (and regenerate missing replays):
 ./run_bot.sh replay-splits-all
 ```
 
-## Replay + Split Recovery (Standardized)
+## Replay and split recovery
 
 Use this flow to reproduce timings from recordings:
 

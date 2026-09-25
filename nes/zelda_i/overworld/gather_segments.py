@@ -1022,7 +1022,10 @@ def make_potion_m3_controller() -> BombWallController:
 
 
 def make_secret_rupee_controller(
-    screen: int, hops: tuple[ScreenHop, ...] = (), max_frames: int = 3000
+    screen: int,
+    hops: tuple[ScreenHop, ...] = (),
+    max_frames: int = 3000,
+    controller_type: type[BombWallController] = BombWallController,
 ) -> BombWallController:
     """Open ``screen``'s hidden rupee cave (bomb or candle) and take the pay.
 
@@ -1032,7 +1035,7 @@ def make_secret_rupee_controller(
     """
     spot = SECRET_RUPEE_CAVES[int(screen)]
     kind = "rock" if spot.uses_bomb else "tree"
-    return BombWallController(
+    return controller_type(
         hops=hops,
         max_frames=max_frames,
         screen=spot.screen,

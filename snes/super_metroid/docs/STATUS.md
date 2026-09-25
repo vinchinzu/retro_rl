@@ -1,4 +1,4 @@
-# Status — Super Metroid
+# Status: Super Metroid
 
 Glossary: [`CONTEXT.md`](../CONTEXT.md). Working board: [plan.md](plan.md).
 
@@ -23,9 +23,9 @@ Glossary: [`CONTEXT.md`](../CONTEXT.md). Working board: [plan.md](plan.md).
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
 | Ready work | `bd ready -l super_metroid -l spine` |
-| Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2 — [CLEAN_TRACK.md](CLEAN_TRACK.md); does **not** change this gate |
+| Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2. [CLEAN_TRACK.md](CLEAN_TRACK.md). Does **not** change this gate. |
 
-## Current verified tip — Phantoon (K6)
+## Current verified tip: Phantoon (K6)
 
 Two matching `--to phantoon` runs (2026-08-24, `rr-8g2u`) reached ordinary
 Wrecked Ship Basement `0xCC6F` after doppler kill + loot/exit. Exact frame
@@ -53,14 +53,14 @@ Wave / Speed / Moat / WS are prefix CI, not extra products.
 
 Previous living tip (still valid prefix): Ice Beam `--to ice` **148,167f** ×2
 (`recordings/ice.json` + `ice_dual.json`, 2026-08-10, room `0xA890`, beams
-`0x1007`). Superseded as default CLI tip — not false.
+`0x1007`). Superseded as default CLI tip. Not false.
 
 Previous prefix: Wave Beam `--to wave` **136,361f** ×2. Speed Booster
 `--to speed` **130,388f** ×2. Frog Save `--to frog` **114,923f** ×2 (side).
 Non-Spazer Bat Cave **122,304f** ×2 remains valid history.
 
-★ Next: **Gravity** on this tip (`rr-kw8t`). Pin
-`scratch/post_phantoon_leave.state`. Power-on green is the rung. Residual:
+Gravity (`rr-kw8t`) is the next spine bead. The residual owns the pin.
+Do not treat that pin as this gate.
 [`tasks/rr-kw8t-residual.md`](tasks/rr-kw8t-residual.md).
 Work: `bd ready -l super_metroid -l spine`.
 
@@ -90,40 +90,26 @@ Work: `bd ready -l super_metroid -l spine`.
 All listed tips are integrity-green continuous (0 loads / progression / capacity).
 Detail and history: [routes/MILESTONES.md](routes/MILESTONES.md).
 
-## Spazer mainline — Warehouse dual (promoted prefix)
+## Spazer prefix
 
-K2.2 Spazer on continuous spine through Warehouse. Two integrity-matching runs
-(2026-08-05 / 2026-08-06): same tip room, beams, and zero load/prog/capacity/death
-flags. Frame delta attributed to Spore combat variance — not a tip mismatch.
-Prefix of the Speed tip (beams `0x1004` through Speed dual).
-
-| Metric | Run 1 | Run 2 |
-|--------|------:|------:|
-| Total frames | **89,416** | **90,904** |
-| Final room | `0xA6A1` | `0xA6A1` |
-| Beams | **`0x1004`** (Charge+Spazer) | **`0x1004`** |
-| Outcome | warehouse entry (all final_conditions green) | `warehouse_entry` |
-| Integrity core | 0 loads / prog / capacity / deaths | same + success |
-| Video frame match | False (encoded clip only) | True |
-| Report | `recordings/warehouse_with_spazer.json` | `recordings/warehouse_with_spazer_dual.json` |
-| Video (optional) | `recordings/warehouse_with_spazer.mp4` | — |
-
-Spazer spine extend (historical single, superseded by Speed dual): `--to bat_cave`
-with Spazer **127,806f** beams `0x1004` room `0xB07A`
-(`recordings/bat_cave_spazer_cwu.json`, 2026-08-06). Folded into Speed dual at
-**130,388f**.
+Warehouse Spazer is a prefix of the Speed tip, not a second gate. Dual
+reports: `recordings/warehouse_with_spazer.json` (**89,416f**) and
+`recordings/warehouse_with_spazer_dual.json` (**90,904f**), room `0xA6A1`,
+beams `0x1004`. Frame delta is Spore combat variance. The older single
+`--to bat_cave` with Spazer (**127,806f**, `recordings/bat_cave_spazer_cwu.json`)
+is folded into the Speed dual at **130,388f**.
 
 ## Clean track
 
-Secondary only — does **not** change the program gate above.
+Secondary only. Does **not** change the program gate above.
 
 | Fact | Value |
 |------|-------|
 | Morph on clean bombs path | **26,824f** (split; older than assisted 24,187 tip) |
-| Clean bombs tip | **GREEN** **49,321f** ×2 (2026-08-06) — parlor `0x92FD`, items `0x1004` |
+| Clean bombs tip | **GREEN** **49,321f** ×2 (2026-08-06). Parlor `0x92FD`, items `0x1004`. |
 | Clean integrity | 0 energy/ammo writes; 0 loads/progression/capacity; dual reverify |
-| Residual | purged (clean bombs dual GREEN; see CLEAN_TRACK) |
-| Next | `SM-CLEAN-STATUS` secondary promote; spore clean still parked |
+| Evidence | `recordings/bombs_clean*.json`. Residual purged. |
+| Next | Spore clean is parked. Not a Clean primary claim. |
 
 Contract: [CLEAN_TRACK.md](CLEAN_TRACK.md) · [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
 No Clean dual / STATUS primary claim.

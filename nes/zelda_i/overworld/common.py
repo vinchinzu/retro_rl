@@ -365,7 +365,7 @@ def shot_escape(
 BODY_ESCAPE_HORIZON = 16
 # Off-line spread per frame for a body that does not walk straight: a
 # tektite's hop and a peahat's flutter. Walkers get a little for turns.
-BODY_JITTER_PX = {"tektite": 1.0, "peahat": 0.75}
+BODY_JITTER_PX = {"tektite": 1.0, "peahat": 0.75, "pols_voice": 0.5, "keese": 0.5}
 BODY_JITTER_DEFAULT = 0.25
 
 

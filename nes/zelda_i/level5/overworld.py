@@ -80,6 +80,23 @@ POST_L4_TO_LEVEL5_HOPS: tuple[ScreenHop, ...] = (
     *LEVEL5_PATH_HOPS,
 )
 
+# Take the unclaimed H7 rock only after the L5 restock stages have checked
+# the bag. Spending its one bomb before that check would trigger a 20R pack
+# and erase the margin for L6's wooden arrows.
+RUPEES_67_SCREEN = 0x67
+RUPEES_67_PAY = 30
+RUPEES_67_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x55, "DOWN", align_x=128),
+    ScreenHop(0x65, "DOWN", align_x=128),
+    ScreenHop(0x66, "RIGHT", align_y=141),
+    ScreenHop(RUPEES_67_SCREEN, "RIGHT", align_y=141),
+)
+RUPEES_67_BACK_HOPS: tuple[ScreenHop, ...] = (
+    ScreenHop(0x66, "LEFT", align_y=141),
+    ScreenHop(0x65, "LEFT", align_y=141),
+    ScreenHop(0x55, "UP", align_x=128),
+)
+
 SEGMENT_MAX_FRAMES = 30000
 POST_L4_PATH_MAX_FRAMES = 40000
 SCREEN_POST_L4_RETURN = SCREEN_LEVEL4_ENTRANCE

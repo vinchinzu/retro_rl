@@ -1,15 +1,9 @@
-# Agent Instructions — smb
+# SMB agent notes
 
-NES Super Mario Bros. (**M8** Clean power-on → 8-4 ending). Shared:
-`retro_harness.platformer`. Docs: `docs/STATUS.md`, `docs/plan.md`,
-`docs/HYGIENE.md`. Physics search: `.grok/skills/smb-physics-search/`.
-Tracker: `bd ready -l smb`.
-
-## Immediate goal
-
-Bead `rr-g2ht` (32-exit warpless #3728M from 2-2). Recipe:
-[`docs/HANDOFF_32EXIT.md`](docs/HANDOFF_32EXIT.md). Isolated 1-3 pits:
-`rr-tb15`. Do not touch the warp any% seed.
+NES Super Mario Bros. Package `smb` (disk `nes/smb/`). Repo rules:
+[root AGENTS.md](../../AGENTS.md). Gate: [docs/STATUS.md](docs/STATUS.md).
+Future work: [docs/plan.md](docs/plan.md). Layout rules:
+[docs/HYGIENE.md](docs/HYGIENE.md).
 
 ## Commands
 
@@ -17,11 +11,11 @@ Bead `rr-g2ht` (32-exit warpless #3728M from 2-2). Recipe:
 uv run python smb/scripts/setup_rom.py
 uv run pytest nes/smb/tests -q
 
-# M8 Clean power-on → ending
+# Clean power-on any% warp (the M8 gate)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.run_warp_finish --mode poweron --trials 3
 
-# 32-exit (warpless #3728M only — not HappyLee warps #1715M)
+# Warpless #3728M extract. Not the warp seed.
 uv run python -m smb.tas.fetch_refs
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m smb.scripts.annotate_fm2 --search 2-2 --from-pred --export
@@ -30,40 +24,25 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
 ./play smb --list
 ```
 
-Parked polish / TAS / oracle CLIs: `docs/plan.md` § CLI catalog.
+Parked polish and import CLIs are in [docs/plan.md](docs/plan.md).
+Adapt rules: [docs/TAS_ADAPT.md](docs/TAS_ADAPT.md). RAM: [docs/ram_map.md](docs/ram_map.md).
 
-## Layout
-
-| Path | Role |
-|------|------|
-| `ram.py`, `obs.py`, `observation.py` | RAM snap / neuro vec / physics lattice |
-| `policy.py` | Replay seeds + 1-1 play helper (Composer inputs) |
-| `tas/stages.py` | **Composer**: `StageSpec` rows (TAS adapt) |
-| `reactive_12.py` / `reactive_route.py` | Warp 1-2 + route tracker |
-| `flag_12.py` | 32-exit 1-2 flag body (not W4) |
-| `rta_panel.py` | HUD capture (`VideoWriter`) |
-| `scripts/` | Thin CLIs — env/report only |
-
-Soft max ~1000 LOC: merge into `StageSpec` / `policy` or delete
-([CODING_STANDARDS.md](../../CODING_STANDARDS.md)).
+`policy.py` replays warp seeds. `tas/stages.py` holds `StageSpec` rows.
+`flag_12.py` is the 32-exit 1-2 flag body, not the World 4 warp.
+`scripts/` stays thin. Soft max about 1000 lines. Merge into `StageSpec`
+or `policy`, or delete ([CODING_STANDARDS.md](../../CODING_STANDARDS.md)).
 
 ## Traps
 
-- Power-on: **350** boot + **16** idle. Level1_1 continuous: **14** idle.
-  Natural 1-1 alone: **1** idle (`NATURAL_SETTLE_FRAMES`).
-- World 4 = world index **3**. 32-exit clock is `$075C` LevelNumber — never
-  default `_smb_level` AreaNumber (`$0760`).
-- Ending = 8-4 + `oper_mode=2` held **120** idle. Recordings hold **780f**
-  through Peach (`ENDING_PEACH_HOLD_FRAMES`).
-- Do not absolute-stitch a faster 1-1 into old 1-2. Retime from control.
-  Warpless is **#3728M**, not warps #1715M. Pin boot: `set_state` →
-  `reset()` → `set_state`. RAM y is head/top (floor stand y=176).
-  2-2 TAS @10451 from 7999/2440 unique-peaks x=2225 after a Cheep hit at
-  body 1399 / x=2041 (Fire→Small). Do not patch that body; do not
-  approx-heal swim.
-
-## Pointers
-
-[docs/STATUS.md](docs/STATUS.md) · [docs/plan.md](docs/plan.md) ·
-[docs/HYGIENE.md](docs/HYGIENE.md) · [docs/TAS_ADAPT.md](docs/TAS_ADAPT.md) ·
-[docs/HANDOFF_32EXIT.md](docs/HANDOFF_32EXIT.md)
+- Power-on warp: boot 350 plus settle 16. Level1_1 continuous: settle 14.
+  Natural 1-1 alone: settle 1.
+- World 4 is world index 3. The 32-exit clock is `$075C` LevelNumber, not
+  `$0760` AreaNumber.
+- Ending is world 8-4 and `oper_mode=2`, held 120 idle frames.
+- Do not absolute-stitch a faster 1-1 into an old 1-2 body. Retime from
+  control. Preserve Left+Right. `sanitize_action` clears that combo.
+- Warpless movie is TASVideos #3728M. Warp any% is #1715M. Do not mix them.
+- Pin boot order is `set_state`, then `reset()`, then `set_state`.
+- RAM Y is the head. A floor stand is y=176.
+- Do not promote a hybrid, a pure FCEUX replay, or a 32-exit tape to the
+  Clean gate. The Clean seed is `models/smb_1_1_to_ending_natural_82.json`.

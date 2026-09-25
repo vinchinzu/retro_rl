@@ -119,7 +119,7 @@ Playbooks:
 - **Long path oracle (BizHawk BSNES / lsnes truth dumps):** [`docs/TAS_BSNES_ORACLE.md`](../docs/TAS_BSNES_ORACLE.md) — epic `rr-0lz6`
 - **Oracle env (BizHawk version, ROM SHA1, SEGV notes):** [`tas/ref/ORACLE_ENV.md`](ref/ORACLE_ENV.md)
 - **Oracle tooling:** [`tas/oracle/`](oracle/) (`run_verify_100.sh`, Phase 1 verify Lua)
-- Next-session prompt: [`docs/tasks/NEXT_SESSION_TAS_ORACLE.md`](../docs/tasks/NEXT_SESSION_TAS_ORACLE.md)
+- Native lsnes 100% plan: [`docs/tasks/LSNES_100_PLAN.md`](../docs/tasks/LSNES_100_PLAN.md)
 
 Artifacts (harness thrash / hybrid):
 `recordings/tas_import/<run_id>/` (`trace.json`, `pins.json`, `series.jsonl`,

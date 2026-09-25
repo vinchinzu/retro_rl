@@ -1,11 +1,9 @@
-# Agent Instructions — tmnt_iv
+# Agent instructions: tmnt_iv
 
-SNES TMNT IV (M8 continuous hard clear). Shared combat helpers:
-`retro_harness.combat` / `segment_runner`. Docs: `CONTEXT.md`,
-`docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/plan.md`,
-`docs/ASSIST_CONTRACT.md`, `docs/CLEAN_PLAYBOOK.md`.
-Raph hard speed: `docs/RAPH_SPEED_HANDOFF.md`,
-`docs/SPEEDRUN_STRATEGIES.md` (`rr-iprz`). Tracker: `bd ready -l tmnt_iv`.
+SNES TMNT IV. Shared combat helpers: `retro_harness.combat` /
+`segment_runner`. Docs: `CONTEXT.md`, `docs/ARCHITECTURE.md`,
+`docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
+`docs/ram_map.md`. Tracker: `bd ready -l tmnt_iv`.
 
 ## Commands
 
@@ -13,51 +11,31 @@ Raph hard speed: `docs/RAPH_SPEED_HANDOFF.md`,
 uv run python -m tmnt_iv.scripts.setup_rom
 uv run python -m tmnt_iv.scripts.boot_probe
 
-# Stage Clean suites (human stage 1–3)
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
   uv run python -m tmnt_iv.scripts.probe_clean --stage 1 --suite
 
-# Full hard run (assisted default; Clean never clobbers assisted)
-# Video: shared VideoRecorder, 1080p60 YouTube layout ( --native-video to opt out)
 uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run
 uv run python -m tmnt_iv.scripts.record_full_hard_run
 uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
 
-# Segment / bridge: run_segment --stage N / run_bridge --to {2,3}
-# Raph grind states (char 8): capture_raph_states
-# Local knob agent: run_local_grind_agent --focus slash --max-trials 2
 uv run pytest tmnt_iv/tests -q -m rom
 ```
 
-## Immediate goal
-
-**Bronze / Clean** unassisted full run (maturity stays M8). `run_trial`
-is the loop. Alleycat suite **2/4** (LATE+Boss2). Next Clean: Stage2 /
-stage1_clear 0x5E 24-dmg (`rr-1bmx`). Sewer LiveHard reaches Rat King at
-10 HP then KO (`rr-t4s3`). Parallel Raph speed (`rr-iprz.5`). Do **not**
-re-open Stage 1 hazard jump-dodge, global pizza seek, sewer dumpster
-thrash, TTC/hy≥180 spike hop, or Slash spin=40.
+Segment and bridge entry points are `run_segment --stage N` and
+`run_bridge --to {2,3}`. Clean artifacts use
+`retro_harness.artifacts.clean_artifact_stem` and must not overwrite
+assisted `tmnt_iv_full_hard_*` files.
 
 ## Traps
 
-| Trap | Lesson |
-|------|--------|
-| Mash START after Stage 1 HUD | Pauses game |
-| Special (**A**) | Drains HP — avoid |
-| Global pizza seek all stages | Soft-locks Skull & Crossbones; scope by stage |
-| Blind `RIGHT+Y` | Stutter; `pickup_every=0`; PizzaSeek owns boxes |
-| Checkpoint-only tuning | Also prove power-on / continuous entry |
-| Port Slash spin=40 blindly | Continuous damage regressed (keep 52) |
-| Rewrite Slash from KEEP trace | Four algs + three patches lost to 9,595/435 |
-| Sewer-like dumpster skip on Starbase | 40k timeout; keep DOWN+JUMP (x=126 collision) |
-| Starbase dumpster on right rail (x≥220) | Diag 7k loop; hold RIGHT. 96f budget / form-1 latch then RIGHT both 40k-timeout Diag |
-| Starbase x=207 dumpster forever | Continuous auto-scroll loop (dmg stuck, stall_right/up/up_right). Three cycles then RIGHT (`starbase_unstick_right`). Do not skip x=126 |
-| `raph_starbase_close_gap` period < 4 | `%3` timeout / `%2` jump-lock |
-| Mid-run knob w/o full dry-run | Route desync |
-| Clean artifact stems | Use `retro_harness.artifacts.clean_artifact_stem`; never overwrite assisted |
-| Clone `run_stageN_segment.py` | Add a `StageSpec` / `CleanProbeSpec` / `BridgeSpec` |
-| Clone a fourth emulator loop | `run/trial.py` `run_trial` is the loop |
-| TTC / hy≥180 sewer hop | 6 jumps, four 16s, never reached RK. Keep `adx≤56` + air-frame lock |
-| Fail 0x0B fade HP as unlabeled pizza | Metalhead already dead; LATE/Boss2 were `stage_advance` |
-
-RAM: `docs/ram_map.md`. Ready work: `bd ready -l tmnt_iv`.
+- START after the Stage 1 HUD pauses the game.
+- Special (A) drains HP. Do not use it.
+- Global pizza seek soft-locks Skull and Crossbones. Big Apple may seek. Other stages take underfoot or between-wave pizza only.
+- Blind `RIGHT+Y` stutters. `pickup_every=0`. Pizza seek owns boxes.
+- Stage 1 hazard jump-dodge stays offline. It caused Clean mid-wave deaths.
+- Slash spin dodge stays at adx 52. Porting 40 regressed the continuous run.
+- A KEEP trace is not production. Do not rewrite Slash from one.
+- Sewer dumpster skip and Starbase right-rail skip are different stalls. Starbase holds RIGHT. Do not skip x=126.
+- `raph_starbase_close_gap` period below 4 times out.
+- One trial loop: `run/trial.py` `run_trial`. Add a spec. Do not clone `run_stageN_segment.py`.
+- The default continuous CLI stays assisted. Clean is parallel and is not the STATUS gate.

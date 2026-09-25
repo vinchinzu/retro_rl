@@ -1,7 +1,7 @@
-# Agent Instructions — smz3
+# Agent Instructions: smz3
 
-SM + ALttP **combined randomizer**. Reuse vanilla `alttp/` + `super_metroid/`
-— do **not** fork those trees. Docs: `docs/STATUS.md`, `docs/plan.md`,
+SM + ALttP **combined randomizer**. Reuse vanilla `alttp/` + `super_metroid/`.
+Do **not** fork those trees. Docs: `docs/STATUS.md`, `docs/plan.md`,
 `docs/EARLY_ROOMS.md`, `docs/RANDOMIZER.md`, `docs/ram_map.md`.
 
 ## Commands
@@ -27,7 +27,7 @@ uv run --frozen pytest snes/smz3/tests -q
 ## Traps
 
 - ALttP must be **Japanese 1.0** (`roms/zelda3_jp.sfc`, xxh32 `0x8AC8FD15`).
-  USA `zelda3.sfc` is for `alttp/` only — wrong dump → portal hang module `$0F`.
+  USA `zelda3.sfc` is for `alttp/` only. Wrong dump hangs in portal module `$0F`.
 - SM ROM: `roms/SuperMetroid.sfc` (`0xCADB4883`). Base IPS: `refs/zsm.ips.gz`.
 - Room timeout: **3×** baseline dwell → game over (`room_timeout.py`).
 - Interactive play: focus **pygame window** for ESC/Q (terminal ESC ignored).
@@ -35,8 +35,7 @@ uv run --frozen pytest snes/smz3/tests -q
 - Multi-seed dry report is **fixture substrate** (not shuffled ROMs); spoiler
   oracle stays off unless labeled. Live tip still uses missile red-door assist.
 
-## Immediate goal
+## Now
 
-Dual-bot race harness + video (`race.py` scaffold). Early quest path through
-house chest is verified; multi-seed dry S/T is claimable on fixtures. Mature
-primitives stay in vanilla game folders.
+Future work is `docs/plan.md`. `PortalSettled` and the fixture dry S/T are
+not a continuous Clean clear. Mature primitives stay in the vanilla trees.

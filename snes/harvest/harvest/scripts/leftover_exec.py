@@ -1,13 +1,16 @@
-"""Leftover probe step loop: checkpoint saves and stall abort."""
+"""Leftover step loop and the report helpers tests still import."""
 
 from __future__ import annotations
 
 import gzip
+from dataclasses import fields, is_dataclass
+from enum import Enum
 from pathlib import Path
 
 from retro_harness import TaskResult, TaskStatus, WorldState
 from retro_harness.headed import headed_emu_repeat
 
+from harvest.clock_glance import leftover_json
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.paths import GAME_DIR
 from harvest.tasks.farm_clear_quota import ClearQuota, DebrisCounts, count_debris
@@ -197,3 +200,28 @@ def run_leftover_task(
         if stopped:
             break
     return frame, _phase_timeout_result(result, timeout), env.get_ram()
+
+
+def _json_report_value(value):
+    """Convert nested task observations to JSON-safe diagnostic evidence."""
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value):
+        return {
+            field.name: _json_report_value(getattr(value, field.name))
+            for field in fields(value)
+        }
+    if isinstance(value, dict):
+        return {str(key): _json_report_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_report_value(item) for item in value]
+    return value
+
+
+def _terminal_payload(result, farm) -> dict:
+    """Keep the task result and complete observed farm status in one report."""
+    return {
+        "terminal_status": result.status.value if result is not None else "none",
+        "terminal_reason": str(result.reason or "") if result is not None else "",
+        "farm_status": _json_report_value(farm) if farm is not None else {},
+    }

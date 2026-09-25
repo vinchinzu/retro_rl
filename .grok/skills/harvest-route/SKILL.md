@@ -26,8 +26,8 @@ Negative Δ is faster. Same enter pin both rows. Hour-by-hour stands and the
 2. **Bench BEFORE** the product body from the live predecessor pin
    (`Y1_Inside_House` for D2 mountain). Save JSON under `recordings/`.
    ```bash
-   HEADLESS=1 uv run python -m harvest.scripts.mountain_berry_probe \
-     --state Y1_Inside_House --ship \
+   HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 \
+     --day-plan mountain_berry --state Y1_Inside_House \
      --out recordings/mountain_segments_before.json
    ```
 3. **Implement without a new tape.** Prefer named `SEGMENTS` / `ROUTES`,

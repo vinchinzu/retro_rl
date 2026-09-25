@@ -208,7 +208,7 @@ change, not this horizon plan.
 5. **Final Fight** — Natural-entry hardening + Stage 3 continuity.
 6. **Magical Quest / Joe & Mac** — First reliable room/segment clears with natural
    entry.
-7. **NES** — Zelda I Level 2 graph; TMNT / SMB / MM2 continuations as skill work.
+7. **NES** — Zelda I gathering prefix before any Level 2 graph work. TMNT / SMB / MM2 continuations stay skill work. Corrected 2026-09-21. The rest of this roadmap was not re-checked in that pass.
 8. **Harvest Moon** — Close crop loop; planning-stack hardening.
 9. Keep regenerating the game matrix and updating local `STATUS.md` after every
    verified advance.

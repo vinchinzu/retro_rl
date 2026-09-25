@@ -24,7 +24,7 @@ from harvest.core.tile_catalog import (
 from harvest.tasks.farm_toss import HELD_STONE
 from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseKind
 from harvest.planner.day_plan_phases import PHASE_SEQUENCES, build_day_phases
-from harvest.tasks.farm_clear_task import FarmClearTask, choose_clear_target
+from harvest.tasks.farm_clear_task import FarmClearTask
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
     ADDR_TILEMAP,
@@ -42,6 +42,7 @@ from harvest.tasks.farm_clearer import (
     FarmClearer,
     Target,
     TileScanner,
+    choose_clear_target,
     use_tool,
 )
 from harvest.tasks.farm_ops import sort_targets_cluster
@@ -197,11 +198,11 @@ class TestPocketClearTask(unittest.TestCase):
         self.assertIn(nxt, ("navigating", "clearing", "scanning"))
 
     def test_factory_passes_pocket_bounds(self) -> None:
+        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
         from harvest.planner.day_plan_phases import pocket_clear_phase
-        from harvest.planner.day_task_factory import DayTaskFactory
 
         world = WorldState(frame=0, ram=_make_farm_ram(), info={}, obs=None)
-        task = DayTaskFactory().make_task(pocket_clear_phase(), world)
+        task = build_phase_task(TaskBuildContext(), pocket_clear_phase(), world)
         self.assertIsInstance(task, FarmClearTask)
         self.assertEqual(task.farm_bounds, (3, 14, 28, 30))
         self.assertFalse(task.fetch_tools)

@@ -1,4 +1,4 @@
-# Plan — Super Metroid
+# Plan: Super Metroid
 
 Verified facts: [STATUS.md](STATUS.md). Language:
 [`CONTEXT.md`](../CONTEXT.md). Assist:
@@ -62,8 +62,8 @@ planner-owned.
 **Rungs:** Phantoon (living tip) → Gravity → Maridia → LN+Ridley → Tourian+credits
 → rewrite toward sub-hour.
 
-**Critical path:** Phantoon is the living tip. Next compose is Gravity from
-`scratch/post_phantoon_leave.state`. Living residual:
+**Critical path:** Phantoon is the living tip. Next compose is Gravity.
+The residual owns the pin. Do not name that pin in STATUS.
 [tasks/rr-kw8t-residual.md](tasks/rr-kw8t-residual.md).
 
 Live work: `bd ready -l super_metroid -l spine`.
@@ -76,86 +76,15 @@ work that starts from archived room pins, changes a room already on the spine,
 or attempts a tape-backed continuous chain. Its scaffold track is development
 evidence, not the Survival living tip.
 
-### Ceres TAS-speed elevator (parallel Chip)
+### Ceres elevator (parallel Chip)
 
-Not Gravity. Not a second tip. Play from
-`routes/kpdr/ceres/data/ceres_first_control.state` only. Leftover magnet /
-falling seats are gone.
-
-Rungs are entry → 475 → 363 → 267 → 171 → ship pad. Miss raises. Hard fail
-over 2500f (`CERES_ELEV_MAX_FRAMES`). No 571 checkpoint recover. TAS
-`elev_to_landing` is **2246f**. A 3349f station that remapped y=651 as
-success was a gaslight.
-
-Falling leave lands **(216, 633) pose 26 vd=1 vy=4 inv=6** against TAS
-**(216, 632) pose 25 vy=+4 inv=36**. x=45 was never debris: it is the Ceres
-door enemy `$E23F` (`CERES_DOOR_ID`), shut for ~16f after the ledge. Walking
-it is pose 138 / movement type 21 — momentum 0 and a y=108 ceiling bonk, in
-the air as much as on the ground. The door policy crouches it out east of
-x=45, then runs LEFT and jumps at `_CERES_FALLING_DOOR_JUMP_X = 33` so the
-leave is the 4th air frame. Door leave WRAM is frozen into the elev dest:
-dest y is Falling y + 512.
-
-`_ceres_fast_entry_window` gates `momentum_x >= 1`. That is the measured
-floor, not a widened band: ground momentum caps at 2.75 (`$0B46`/`$0B48`)
-however long the runway and halves once to 1.375 on the second airborne
-frame, while the y band needs air frame 3. Eight takeoffs — spin, A-tap, aim,
-shoot, UP, L-pump, and turnaround jumps carrying 4.375 — all halve the same
-way, so no leave out of this door can carry 2 into the window. The other
-clauses (y band, spin pose, `vd == 1`, `vy > 0`, `inv > 0`) are unchanged.
-
-**The climb is one wall jump then three ledge hops, and it is not Sniq's
-tape.** Sniq's `elev_wj` inputs (slice `sniq_100_ceres_open`, TAS frames
-13074–13148) replay from this entry to the right *places* — the 475 seat, the
-y=404 latch height — but never latch: they release A for one frame and
-stable-retro needs two. Measured shape, `scratch/ceres_elev_wj`:
-
-| rung | how | seat | cost |
-|------|-----|------|------|
-| entry → 475 | RIGHT+A 16f up the x=211 wall, LEFT 2f with A released, LEFT+A kick (pose 132), hold A 34f | (156, 475) | 75f |
-| 475 → 363 | walk x=137, spin jump RIGHT | (189, 363) | 75f |
-| 363 → 267 | walk x=191, spin jump LEFT | (107, 267) | 71f |
-| 267 → 171 | walk x=144, spin jump LEFT | (66, 171) | 96f |
-| 171 → pad | walk x=48, spin jump RIGHT, pad walk | (113, 75) gs 32 | 67f |
-
-The entry arrives four air frames into its spin jump, so the entry rise alone
-tops out at y=608 and the wall jump is what reaches 475. Above 475 a full
-ground spin jump rises 111px against gaps of 112/96/96, so no further wall
-jump is needed — what has to be right is the launch x. Each constant is the
-middle of its measured band (475: 130–144, 363: 185–211, 267: 132–156, 171:
-41–55); off the band the jump clips a ledge lip and drops back down the
-shaft, which raises.
-
-Entry → Ceres success (gs 32) is **384f**. Station is green end to end:
-`success=True ridley=3255 landing=7876`.
-
-**Open, and the next knob: it is not TAS speed.** Elevator gs 8 → Landing
-gs 8 is **2575f** against the TAS 2246f (`tas_elev=False`; the report's
-synthesized row prints 3071f because it counts our 496f Landing settle loop,
-which the TAS clock does not). The +329 is structural: four ledge hops at
-~70f of jump arc each against the TAS wall-jump chain's 31f plant-to-plant.
-Closing it needs wall jumps *between* rungs. The shaft does have a chimney —
-x=155, walls both sides, y 371–404, Samus pins there for 15f — but a
-release-2 kick out of it (5 launch x × 2 spin dirs × 7 contact frames × 2
-kick dirs) reaches y=323 and never lands a rung seat. That is where to start.
-
-**Also open (planner-owned):** the `CERES_ELEV_MAX_FRAMES` guard at the end
-of `play_ceres_escape_to_landing` is dead. It reads
-`session.info["ceres_elev_start"]`, and `RouteSession.step` overwrites
-`self.info` with the env's step info on every frame, so the lookup is always
-`None` and the hard fail never fires. It is also mis-clocked: it compares a
-span that includes the 496f settle loop against a cap set on the
-settle-excluding TAS clock, so even a TAS-perfect climb could not pass it.
-`_ceres_elev_budget` inside the climb uses a local start and does work. Left
-untouched: making it fire flips `station` red and kills the JSON report
-(`_write_json` is after the raise), which is a reporting decision, not this
-knob.
-
-```bash
-PYTHONPATH=snes uv run python -m super_metroid.routes.kpdr.ceres.spine station
-```
-
-Do not STATUS. Do not change `DEFAULT_CONTINUOUS_TIP`.
+Not Gravity and not a second tip. Closed climb notes live in
+[tasks/rr-gzsd-residual.md](tasks/rr-gzsd-residual.md). Still open: wall
+jumps between shaft rungs (slower than the TAS elevator), and the
+`CERES_ELEV_MAX_FRAMES` check at the end of `play_ceres_escape_to_landing`
+never fires because `RouteSession.step` replaces `session.info` each frame.
+`_ceres_elev_budget` inside the climb still uses a local start. Do not
+STATUS. Do not change `DEFAULT_CONTINUOUS_TIP`.
 
 ---
 

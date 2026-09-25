@@ -690,12 +690,12 @@ class SpaFillToMaxTests(unittest.TestCase):
         self.assertIn("returned to farm", result.reason or "")
 
     def test_full_restore_phase_builds_fill_to_max_task(self) -> None:
+        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
         from harvest.planner.day_phase_stamina import full_restore_spa_phase
-        from harvest.planner.day_task_factory import DayTaskFactory
 
         ram = _blank_ram()
         world = WorldState(frame=0, ram=ram, info={}, obs=None)
-        task = DayTaskFactory().make_task(full_restore_spa_phase(), world)
+        task = build_phase_task(TaskBuildContext(), full_restore_spa_phase(), world)
         self.assertIsInstance(task, HotSpringStaminaTask)
         self.assertIsNone(task.min_stamina)
         self.assertTrue(task.return_to_farm)

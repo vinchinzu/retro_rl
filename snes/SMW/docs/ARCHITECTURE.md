@@ -1,4 +1,4 @@
-# SMW Architecture
+# SMW architecture
 
 ## Goal
 
@@ -9,7 +9,7 @@ then editor/modding and the native C-port track.
 The design is deliberately split into layers so each layer can be validated
 against the one below it.
 
-## Source Policy
+## Source policy
 
 Use these sources, in this order:
 
@@ -23,7 +23,7 @@ Use these sources, in this order:
 Do not import leaked Nintendo source. Do not commit ROMs or ROM-derived binary
 assets unless they are explicitly legal/generated metadata.
 
-## Runtime Layers
+## Runtime layers
 
 ### 1. Emulator truth
 
@@ -135,7 +135,7 @@ Track separately from the emulator route:
 The C port is not the first source of truth for speedrun timing. It is the
 future modding target after RAM and route behavior are validated in emulator.
 
-## Canonical Directory Contract
+## Canonical directory contract
 
 ```text
 SMW/
@@ -153,7 +153,7 @@ SMW/
   roms/                 local ROMs
 ```
 
-## Shared Code Boundary
+## Shared code boundary
 
 Use `retro_harness.platformer` when behavior is useful to other platformers:
 

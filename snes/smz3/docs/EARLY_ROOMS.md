@@ -37,7 +37,7 @@ Implementation: `smz3/early_route.py` (room timeout 3× provisional baselines).
 ## Path to first Zelda portal (natural)
 
 Fixed portal (not randomized). tewtal `sm_teleport_table` comment:
-**"Crateria map station → Fortune teller"** — door **`$8976`** → cave **`$0122`**.
+**"Crateria map station to Fortune teller"**. Door **`$8976`** to cave **`$0122`**.
 
 On the combo ROM that door pointer is the **Parlor bottom-right red door**
 (block `[31, 55]`). Walking through it **is** the SM→Z3 teleport; Pre-Map
@@ -62,7 +62,7 @@ ALttP cave $0122  Fortune Teller (light world, OW screen $35 data)
 
 ### Dev checkpoint: stop **before** teleport
 
-Post-teleport residue is a **black force-blank** under stable-retro — not useful
+Post-teleport residue is a **black force-blank** under stable-retro. Not useful
 to "play". Save at the red door still in SM, then walk the portal yourself:
 
 ```bash
@@ -71,13 +71,13 @@ SDL_VIDEODRIVER=dummy uv run python smz3/scripts/probe_portal.py --save-png --sa
 uv run python smz3/scripts/play_portal.py
 # In window: missiles + RIGHT into red door. F9 dumps. ESC records buttons.
 
-# Optional: auto-walk into portal (usually black hang)
+# Optional: walk the portal and wait for Z3 settle (module $09). Residue is not Link control.
 SDL_VIDEODRIVER=dummy uv run python smz3/scripts/probe_portal.py --through-portal --save-state
 ```
 
 | State | What you see |
 |-------|----------------|
-| `PortalRedDoor` | SM Parlor, door band, missiles assist — **use this** |
+| `PortalRedDoor` | SM Parlor, door band, missiles assist. **Use this.** |
 | `PortalResidue` | module `$0F` / black screen after natural walk-in |
 
 Missile grant is only a reachability assist (open red door); the teleport is
@@ -105,7 +105,7 @@ Maridia missile refill ↔ DW ice rod, LN refill ↔ Mire fairy.
 then `jml $02b6fb` pre-overworld. Under stable-retro + **JP 1.0** combo this
 completes in ~300 frames → module `$09`, screen `$35` (Fortune Teller exterior),
 drawn OW frame, D-pad changes facing / DOWN walks. Stopping on first `$0F`
-looks like a permanent hang — `open_red_door_portal` now waits a settle budget.
+looks like a permanent hang. `open_red_door_portal` now waits a settle budget.
 
 **ROM prerequisite:** ALttP JP 1.0 at `roms/zelda3_jp.sfc` (not USA
 `zelda3.sfc`). USA base breaks Z3 handoff.
@@ -121,7 +121,7 @@ OW $35 Fortune Teller exterior  (PortalSettled)
 ```
 
 No sword on test seed 1337 (uncle not yet). Hostiles are **side-stepped**
-only — never reverse the phase goal. Sticky south-clear avoids DOWN/UP
+only. Never reverse the phase goal. Sticky south-clear avoids DOWN/UP
 oscillation against the house wall.
 
 ```bash
@@ -134,14 +134,14 @@ Implementation: `smz3/outdoor_route.py`, `scripts/probe_outdoor.py`.
 
 ### Link's House: enter + chest (map-driven)
 
-Map sources (snes_editor / Yaze — not the in-game minimap):
+Map sources (snes_editor / Yaze, not the in-game minimap):
 
 | Source | Path / fact |
 |--------|-------------|
-| Yaze warp JSON | `snes_editor/alttp/.../yaze_map_data/hyrule_castle_warps_0x1b.json` — entrance_id `$01` @ **(2224, 2800)** map `$2C` |
-| OW asset YAML | `snes_editor/alttp/zelda3/assets/overworld/overworld-44.yaml` — entrance tile (11,15), exit door local (184,232) |
+| Yaze warp JSON | `snes_editor/alttp/.../yaze_map_data/hyrule_castle_warps_0x1b.json`. Entrance_id `$01` at **(2224, 2800)** map `$2C` |
+| OW asset YAML | `snes_editor/alttp/zelda3/assets/overworld/overworld-44.yaml`. Entrance tile (11,15), exit door local (184,232) |
 | Feature CSV | `snes_editor/alttp/data/overworld_features.csv` + `overworld_map.overworld_feature_rows(0x2C)` |
-| Interior room | `asset_editor/assets/rooms/room_004.json` — Chest (6,16); door spawn measured (2424, 8664) |
+| Interior room | `asset_editor/assets/rooms/room_004.json`. Chest (6,16); door spawn measured (2424, 8664) |
 | Vanilla open XY | alttp lamp script end **(2491, 8632)** face UP + A |
 
 ```
@@ -175,4 +175,4 @@ Game over at **3×** standard (`smz3.room_timeout`).
 ## Reuse
 
 While SM is active, call `super_metroid.ram.parse_state` on combo `get_ram()`.
-While Z3 is controllable, use `alttp.ram` (pending clean portal settle).
+While Z3 is active, use `alttp.ram` (outdoor and house routes already do).

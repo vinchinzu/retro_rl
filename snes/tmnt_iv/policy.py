@@ -1,6 +1,6 @@
 """Segment policy behavior tree for TMNT IV (all stages; Clean path Stage 0).
 
-Clean lessons (do not relearn): ``docs/CLEAN_PLAYBOOK.md``.
+Clean lessons (do not relearn): ``docs/plan.md`` and ``AGENTS.md``.
 
 Production rules already burned in:
 
@@ -138,7 +138,7 @@ class Stage1Policy:
     so stall can still overlay a freeze. HazardAvoid is not ticked.
 
     Clean production choices are intentional — see module docstring and
-    ``docs/CLEAN_PLAYBOOK.md`` before reordering or re-enabling hazard dodge.
+    ``docs/plan.md`` before reordering or re-enabling hazard dodge.
     """
 
     def __init__(self) -> None:

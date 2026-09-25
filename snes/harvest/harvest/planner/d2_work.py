@@ -1,9 +1,10 @@
-"""Spring D2 work — one D2_FARM_CLEAR Tactic after BUY_SEEDS.
+"""Spring D2 work — one D2_FARM_CLEAR marker after BUY_SEEDS.
 
 Grape → shop → CLEAR_PLOT → plant 8 → water 8 → leftover smash.
 Lift is section-first: weeds then fences then stones in one quadrant
 before walking to the next. Hammer/rocks then axe/stumps still chain
 by chunk after hands work. ``next_d2_spec`` is the live order.
+``DayPlanTask`` splices one child at a time; counts change after each child.
 """
 
 from __future__ import annotations
@@ -12,10 +13,9 @@ from dataclasses import dataclass, fields
 from enum import StrEnum
 from typing import List, Sequence
 
-from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
+from retro_harness import TaskStatus
 
 from harvest.core.stamina import Stamina
-from harvest.core.task_progress import GOAL_STALL_FRAMES, MOTION_STALL_FRAMES
 from harvest.core.tile_catalog import LARGE_ROCK_DAMAGE_TILES, Tool
 from harvest.planner.d2_farm_chunks import (
     EXHAUSTIVE,
@@ -653,11 +653,21 @@ def next_d2_spec(
     return None
 
 
-def d2_farm_clear_phase() -> PhaseSpec:
+def d2_farm_clear_phase(
+    *,
+    section: str = "all",
+    chunk: str = "all",
+    include_spa: bool = True,
+) -> PhaseSpec:
     return PhaseSpec(
         "D2_FARM_CLEAR",
         "clear_field",
-        {"timeout": 0, "section": "all", "chunk": "all"},
+        {
+            "timeout": 0,
+            "section": section,
+            "chunk": chunk,
+            "include_spa": include_spa,
+        },
         failure_policy="required",
         required_maps=(0x00,),
         estimated_frames=400000,
@@ -672,7 +682,7 @@ def d2_farm_clear_phase() -> PhaseSpec:
 
 
 def d2_post_shop_work_phases() -> List[PhaseSpec]:
-    """One required D2_FARM_CLEAR Tactic after BUY_SEEDS."""
+    """One required D2_FARM_CLEAR marker after BUY_SEEDS."""
     return [d2_farm_clear_phase()]
 
 
@@ -707,314 +717,50 @@ def _section_done(status: D2FarmStatus, section: str, chunk: str) -> bool:
     )
 
 
-def _debris_row(st: D2FarmStatus | None) -> dict:
-    if st is None:
-        return {}
-    return {
-        "weeds": st.weeds,
-        "stones": st.stones,
-        "large_rocks": st.large_rocks,
-        "stumps": st.stumps,
-        "fences": st.fences,
-    }
+def expand_d2_marker(
+    status: D2FarmStatus,
+    *,
+    section: str,
+    chunk: str,
+    include_spa: bool,
+    last_phase: str,
+    plot_attempted: bool,
+    previous: D2FarmStatus | None,
+) -> tuple[str, PhaseSpec | None]:
+    """Next splice for the D2_FARM_CLEAR marker. Not a task.
 
-
-class D2FarmClearTactic:
-    """Thin stepper: observe → next_d2_spec → build_phase_task → settle."""
-
-    name = "d2_farm_clear"
-
-    def __init__(
-        self, *, section="all", chunk="all", include_spa=True, ctx=None, evidence=None
-    ) -> None:
-        self.section = section
-        self.chunk = chunk
-        self.include_spa = include_spa
-        self._ctx = ctx
-        self.journal: list[dict] = list(evidence or [])
-        self.farm_status: D2FarmStatus | None = None
-        self._prev = self._child = self._spec = self._retry = self._pending = None
-        self._fails: dict[tuple, int] = {}
-        self._plot_attempted = False
-        self._step = self._motion_at = self._goal_at = self._unobs = 0
-        self._motion_key = self._goal_key = self._last_phase = ""
-
-    @classmethod
-    def from_spec(cls, ctx, spec: PhaseSpec) -> "D2FarmClearTactic":
-        p = spec.params or {}
-        return cls(
-            section=str(p.get("section") or "all"),
-            chunk=str(p.get("chunk") or "all"),
-            include_spa=bool(p.get("include_spa", True)),
-            ctx=ctx,
-        )
-
-    def reset(self, world: WorldState) -> None:
-        self._child = self._spec = self._retry = self._pending = self._prev = self.farm_status = None
-        self._fails.clear()
-        self._plot_attempted = False
-        self._step = self._unobs = 0
-        self._motion_key = self._goal_key = self._last_phase = ""
-
-    def can_start(self, world: WorldState) -> bool:
-        return True
-
-    @property
-    def current_task(self):
-        return self._child
-
-    def set_evidence(self, evidence: Sequence[dict]) -> None:
-        """Seed prior same-day facts needed by the terminal contract."""
-        self.journal = [dict(row) for row in evidence]
-
-    @property
-    def step_count(self) -> int:
-        return self._step
-
-    def progress_snapshot(self):
-        from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
-
-        st, spec = self.farm_status, self._spec
-        details = []
-        if st is not None:
-            details.extend(
-                (k, getattr(st, k))
-                for k in ("weeds", "stones", "large_rocks", "stumps", "fences", "planted", "wet")
-            )
-        if spec is not None:
-            details += [("child", spec.phase), ("chunk", (spec.params or {}).get("chunk"))]
-        return ProgressSnapshot(
-            task_name=self.__class__.__name__,
-            phase_text=spec.phase if spec is not None else (st.outcome.value if st else ""),
-            step_count=self._step,
-            details=tuple(details),
-            child=task_progress_snapshot(self._child) if self._child is not None else None,
-        )
-
-    def _observe(self, world: WorldState) -> D2FarmStatus:
-        self.farm_status = observe_d2_farm(world.ram, self.journal)
-        return self.farm_status
-
-    def _snap(self, prefix: str, st: D2FarmStatus | None = None) -> str:
-        st, spec, bits = st or self.farm_status, self._spec, [prefix]
-        if spec is not None:
-            bits.append(f"target={spec.phase}")
-            chunk = (spec.params or {}).get("chunk")
-            if chunk:
-                bits.append(f"chunk={chunk}")
-        if st is not None:
-            bits += [
-                f"debris=w{st.weeds}/f{st.fences}/s{st.stones}/r{st.large_rocks}/u{st.stumps}",
-                f"stamina={st.stamina.current}/{st.stamina.maximum}",
-                f"carry_clear={st.hands_clear}",
-            ]
-        return " ".join(bits)
-
-    def _idle(self, reason: str, ram=None) -> TaskResult:
-        from harvest.tasks.farm_clear_quota import yard_load_action
-        from harvest.tasks.nav import make_action
-
-        walk = reason == "stale_farm_map" and ram is not None
-        action = yard_load_action(ram) if walk else make_action()
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason=reason)
-
-    def _blocked(self, prefix: str, st: D2FarmStatus | None = None) -> TaskResult:
-        return TaskResult(status=TaskStatus.BLOCKED, reason=self._snap(prefix, st))
-
-    def _navigation_motion_key(self, world: WorldState):
-        """Liveness key while navigating. Tool-swing stays planted on purpose."""
-        from harvest.core.task_progress import task_progress_snapshot
-        from harvest.tasks.nav import get_pos_from_ram
-
-        child = self._child
-        if child is None:
-            return None
-        snapshot = task_progress_snapshot(child)
-        phase = (snapshot.phase_text if snapshot is not None else "").lower()
-        name = str(getattr(child, "name", "")).lower()
-        navigating = phase in {"navigate", "navigating", "navigation"}
-        navigating = navigating or name == "nav" or name.startswith("nav_")
-        if not navigating:
-            return None
-
-        details = dict(snapshot.details) if snapshot is not None else {}
-        pos = get_pos_from_ram(world.ram)
-        return (
-            (pos.x, pos.y),
-            details.get("target", getattr(child, "_target_tile", None)),
-            details.get("approach", getattr(child, "_approach_tile", None)),
-        )
-
-    def _record_navigation_stall(self, status: D2FarmStatus) -> TaskResult:
-        """Stop a required phase visibly; it must never become a skipped chunk."""
-        spec = self._spec
-        chunk = (spec.params or {}).get("chunk") if spec is not None else None
-        reason = self._snap("navigation motion stall", status)
-        self.journal.append({
-            "phase": spec.phase if spec is not None else "",
-            "status": TaskStatus.BLOCKED.value,
-            "reason": reason,
-            "chunk": chunk,
-            "watchdog": "navigation_motion_stall",
-            "debris_before": _debris_row(status),
-            "debris_after": _debris_row(status),
-        })
-        return TaskResult(status=TaskStatus.BLOCKED, reason=reason)
-
-    def _watchdogs(self, world: WorldState, status: D2FarmStatus) -> TaskResult | None:
-        from harvest.core.carry import backpack_tool, selected_tool
-
-        if self._child is not None and getattr(self._child, "name", "") != "hot_spring_stamina":
-            motion = self._navigation_motion_key(world)
-            if motion is None:
-                # A cleared/stationary tool sequence is not a movement stall.
-                self._motion_key, self._motion_at = "", self._step
-            elif motion != self._motion_key:
-                self._motion_key, self._motion_at = motion, self._step
-            elif self._step - self._motion_at >= MOTION_STALL_FRAMES:
-                return self._record_navigation_stall(status)
-        goal = (
-            status.weeds, status.fences, status.stones, status.large_rocks, status.stumps,
-            status.planted, status.wet, status.stamina.current,
-            int(selected_tool(world.ram)), int(backpack_tool(world.ram)),
-        )
-        if goal != self._goal_key:
-            self._goal_key, self._goal_at = goal, self._step
-        elif self._step - self._goal_at >= GOAL_STALL_FRAMES:
-            return self._blocked("goal stall", status)
-        return None
-
-    def _start(self, spec: PhaseSpec, world: WorldState) -> TaskResult:
-        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
-
-        task = build_phase_task(self._ctx or TaskBuildContext(), spec, world)
-        if task is None:
-            return TaskResult(status=TaskStatus.FAILURE, reason=self._snap(f"no task for {spec.phase}"))
-        task.reset(world)
-        self._child, self._spec = task, spec
-        result = task.step(world)
-        if result.status == TaskStatus.RUNNING:
-            return result
-        return self._after(result, world)
-
-    def _after(self, result: TaskResult, world: WorldState) -> TaskResult:
-        spec, before = self._spec, self.farm_status
-        status = self._observe(world)
-        if spec is not None:
-            self.journal.append({
-                "phase": spec.phase, "status": result.status.value, "reason": result.reason or "",
-                "chunk": (spec.params or {}).get("chunk"),
-                "spa": spec.phase == "HOT_SPRING_STAMINA",
-                "debris_before": _debris_row(before), "debris_after": _debris_row(status),
-            })
-        self._child = None
-        last = spec.phase if spec is not None else ""
-        self._last_phase = last
-        if last == "CLEAR_PLOT" and result.status == TaskStatus.SUCCESS:
-            self._plot_attempted = True
-        if spec is not None and spec.phase == "HOT_SPRING_STAMINA":
-            if result.status != TaskStatus.SUCCESS:
-                return self._blocked(f"spa failed: {result.reason or result.status.value}", status)
-            retry, self._retry = self._retry, None
-            self._spec = None
-            return self._queue_next(retry) if retry is not None else self._idle("advance")
-        remaining = []
-        if last in _SPA_RETRY_PHASES and not _section_done(
-            status, self.section, self.chunk
-        ):
-            remaining = ["CLEAR_ROCKS", "CLEAR_STUMPS"]
-        decision = leftover_chain_decision(
-            last, result.status, result.reason, status.stamina, remaining,
-            include_spa=self.include_spa,
-        )
-        if decision == "spa_retry" and spec is not None:
-            self._retry = spec
-            return self._queue_next(full_restore_spa_phase())
-        if decision == "insert_spa":
-            return self._queue_next(full_restore_spa_phase())
-        if decision == "continue" or result.status == TaskStatus.SUCCESS:
-            self._spec = None
-            return self._idle("advance")
-        chunk = (spec.params or {}).get("chunk") if spec is not None else None
-        key = (last, chunk)
-        self._fails[key] = self._fails.get(key, 0) + 1
-        if chunk and self._fails[key] >= 2:
-            reason = (
-                f"required chunk failed {self._fails[key]} times: "
-                f"{last} chunk={chunk}; {result.reason or result.status.value}"
-            )
-            self.journal.append({
-                "phase": last,
-                "status": TaskStatus.BLOCKED.value,
-                "reason": reason,
-                "chunk": chunk,
-                "watchdog": "required_chunk_failure",
-                "debris_before": _debris_row(status),
-                "debris_after": _debris_row(status),
-            })
-            return self._blocked(reason, status)
-        return self._blocked(f"blocked: {result.reason or result.status.value}", status)
-
-    def _queue_next(self, spec: PhaseSpec) -> TaskResult:
-        self._pending = spec
-        return self._idle("queued")
-
-    def _select(self, world: WorldState, status: D2FarmStatus) -> TaskResult:
-        done = _section_done(status, self.section, self.chunk)
-        if done:
-            settled = (
-                confirm_d2_complete(self._prev, status)
-                if self.section == "all"
-                else (self._prev is not None and _section_done(self._prev, self.section, self.chunk))
-            )
-            if settled:
-                return TaskResult(status=TaskStatus.SUCCESS, reason="d2 farm clear complete")
-            self._prev = status
-            return self._idle("settle")
-        pending, self._pending = self._pending, None
-        spec = pending or next_d2_spec(
-            status, include_spa=self.include_spa, section=self.section,
-            chunk=self.chunk, last_phase=self._last_phase,
-            plot_attempted=self._plot_attempted,
-        )
-        if spec is None:
-            self._prev = status
-            return self._idle("waiting verification")
-        return self._start(spec, world)
-
-    def step(self, world: WorldState) -> TaskResult:
-        from harvest.core.shipping_credit import shipping_scene_needs_dismiss
-        from harvest.tasks.primitives import dismiss_dialogue_result
-
-        self._step += 1
-        if shipping_scene_needs_dismiss(world.ram):
-            return dismiss_dialogue_result(
-                world.frame, buttons=("a",), pulse_every=2, reason="shipping scene"
-            )
-        status = self._observe(world)
-        stall = self._watchdogs(world, status)
-        if stall is not None:
-            return stall
-        if self._child is not None:
-            # Shed/spa fetches must keep stepping; yard idle is only for
-            # choosing the next farm child while the map is unloaded.
-            result = self._child.step(world)
-            return result if result.status == TaskStatus.RUNNING else self._after(result, world)
-        if status.outcome == D2FarmOutcome.TEMPORARILY_UNOBSERVABLE:
-            self._unobs += 1
-            if self._unobs >= GOAL_STALL_FRAMES:
-                return self._blocked("stale_farm_map", status)
-            return self._idle(status.reason or "temporarily_unobservable", world.ram)
-        self._unobs = 0
-        return self._select(world, status)
+    ``("start", spec)`` replaces the marker for one child.
+    ``("settle", None)`` needs another settled observation.
+    ``("wait", None)`` has no child yet.
+    ``("complete", None)`` drops the marker.
+    """
+    if status.outcome == D2FarmOutcome.TEMPORARILY_UNOBSERVABLE:
+        return "unobservable", None
+    if _section_done(status, section, chunk):
+        if section == "all":
+            settled = confirm_d2_complete(previous, status)
+        else:
+            settled = previous is not None and _section_done(previous, section, chunk)
+        return ("complete" if settled else "settle"), None
+    spec = next_d2_spec(
+        status,
+        include_spa=include_spa,
+        section=section,
+        chunk=chunk,
+        last_phase=last_phase,
+        plot_attempted=plot_attempted,
+    )
+    if spec is None:
+        return "wait", None
+    return "start", spec
 
 
 __all__ = [
-    "D2_LEFTOVER_PHASE_NAMES", "D2_TARGETS", "D2FarmClearTactic", "D2FarmOutcome",
+    "D2_LEFTOVER_PHASE_NAMES", "D2_TARGETS", "D2FarmOutcome",
     "D2FarmStatus", "bush_clear_phase", "confirm_d2_complete", "d2_farm_clear_phase",
     "d2_post_shop_work_phases", "ensure_axe_phase", "ensure_hammer_phase",
-    "fence_dump_phase", "leftover_already_queued", "leftover_chain_decision",
-    "needs_spa_before_next_smash", "next_d2_spec", "observe_d2_farm",
-    "pocket_clear_phase", "pocket_water_phase", "rock_clear_phase",
-    "should_spa_retry", "stone_pond_phase", "stump_clear_phase",
+    "expand_d2_marker", "fence_dump_phase", "leftover_already_queued",
+    "leftover_chain_decision", "needs_spa_before_next_smash", "next_d2_spec",
+    "observe_d2_farm", "pocket_clear_phase", "pocket_water_phase",
+    "rock_clear_phase", "should_spa_retry", "stone_pond_phase", "stump_clear_phase",
 ]

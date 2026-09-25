@@ -47,12 +47,12 @@ _DIR_DELTA = {
 }
 
 
-def _neighbor_tile(tx: int, ty: int, direction: str) -> Tuple[int, int]:
+def neighbor_tile(tx: int, ty: int, direction: str) -> Tuple[int, int]:
     dx, dy = _DIR_DELTA[direction]
     return tx + dx, ty + dy
 
 
-def _nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskResult]:
+def nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskResult]:
     """Dismiss dialogue/menu/input-lock so navigation does not walk blind."""
     if shipping_scene_needs_dismiss(ram):
         return dismiss_dialogue_result(
@@ -305,7 +305,7 @@ class NavTask(Task):
             )
 
         # Dialog / menu dismissal (tool menus and shop prompts block BFS).
-        dismissed = _nav_needs_menu_dismiss(world.ram, self._step_count)
+        dismissed = nav_needs_menu_dismiss(world.ram, self._step_count)
         if dismissed is not None:
             return dismissed
 
@@ -546,8 +546,8 @@ __all__ = [
     "RecordedTransitionTask",
     "MultiMapNavTask",
     "_DIR_DELTA",
-    "_neighbor_tile",
-    "_nav_needs_menu_dismiss",
+    "neighbor_tile",
+    "nav_needs_menu_dismiss",
     "_OPPOSITE_FACE",
 ]
 

@@ -225,7 +225,7 @@ def test_engage_far_enemy_walks_without_slash() -> None:
 
 
 def test_engage_enemy_in_sword_hitbox_slashes() -> None:
-    """Enemy in blade rectangle → combat_engage_slash on attack hold frames."""
+    """Enemy in blade rectangle → the shared contact rung owns the swing."""
     tuning = replace(
         ROOM_54_SPEC.combat,
         engage_distance=64,
@@ -246,9 +246,10 @@ def test_engage_enemy_in_sword_hitbox_slashes() -> None:
         enemy_x=120 + 12,
         enemy_y=141,
     )
+    ram[ADDR_LINK_FACING] = 0x01
     snap = read_snapshot(ram)
     action = controller.step(snap)
-    assert action.reason == "combat_engage_slash"
+    assert action.reason == "combat_contact_strike"
     assert controller.swings == 1
     assert controller.swings_authorized == 1
     assert controller.engage_frames == 1
@@ -415,7 +416,7 @@ def test_occupancy_nopath_near_still_closes() -> None:
         enemy_type=0x1B,
         enemies=1,
         hp=0,
-        enemy_x=x + 20,
+        enemy_x=x + 32,
         enemy_y=y,
     )
     action = controller.step(read_snapshot(ram))
@@ -783,7 +784,7 @@ def test_combat_backstep_gap_does_not_stale_grade_the_walker() -> None:
     )
     controller = GenericDungeonRoomController(spec)
     controller.phase = DungeonPhase.FIGHT
-    controller.combat_frames = 4  # next call -> 5 (5 % 6 == 5, not backstep)
+    controller.combat_frames = 4
 
     def snap_with(link_xy: tuple[int, int], target_xy: tuple[int, int]) -> ZeldaSnapshot:
         ram = _room_ram(
@@ -803,23 +804,21 @@ def test_combat_backstep_gap_does_not_stale_grade_the_walker() -> None:
     controller._combat(snap, spec.live_enemies(snap))
     assert controller.walker.last_dir == "UP"
 
-    # Frame 2 (combat_frames=6, backstep-eligible): Link's real UP step
+    # Frame 2: Link's real UP step
     # landed; the target darts close (distance 10 < contact_backstep 16).
     snap = snap_with((120, 160), (120, 150))
     action = controller._combat(snap, spec.live_enemies(snap))
-    assert action.reason == "combat_backstep"
+    assert action.reason == "combat_contact_peel"
     assert controller.walker.misses == 0
 
-    # Frame 3 (combat_frames=7, still backstep-eligible): Link's real DOWN
-    # backstep landed; target holds close.
+    # Frame 3: Link's real DOWN peel landed; a sword turn now owns the frame.
     snap = snap_with((120, 161), (120, 150))
     action = controller._combat(snap, spec.live_enemies(snap))
-    assert action.reason == "combat_backstep"
+    assert action.reason == "combat_contact_turn"
     assert controller.walker.misses == 0
 
-    # Frame 4 (combat_frames=8, backstep window closed): Link's real DOWN
-    # backstep landed again; target retreats, occupancy branch resumes.
-    snap = snap_with((120, 162), (120, 93))
+    # Frame 4: Link's real UP turn landed; target retreats, occupancy resumes.
+    snap = snap_with((120, 160), (120, 93))
     controller._combat(snap, spec.live_enemies(snap))
     assert controller.walker.misses == 0
     assert not controller.walker.grid.blocked
