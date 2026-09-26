@@ -1,4 +1,4 @@
-"""Post-Gleeok L6 hop rows. Factories stay in their modules; no first-half import."""
+"""Post-Rod L6 hop rows. Factories stay in their modules; no first-half import."""
 
 from __future__ import annotations
 

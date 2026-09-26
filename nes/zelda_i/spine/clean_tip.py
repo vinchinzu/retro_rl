@@ -175,8 +175,8 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="pre_l1",
         bead="rr-ps7.4",
         segment="power-on → sword → bombs → 3 OW hearts → White Sword → L1 mouth",
-        rung=Rung.HYPOTHESIS,
-        blocker=Blocker.INVENTORY_GAP,
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
         room="OW 0x77 → 0x6F / 0x7B / 0x2C / 0x0C / 0x0A / 0x47",
         pose="stop on 0x37 with 6 HC, bombs, candle, White Sword",
         residual="docs/PRE_L1.md",
@@ -200,8 +200,8 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l1_exit_ow_l2",
         bead="rr-ps7.3",
         segment="L1 leave → OW walk → L2 east mouth 0x4C",
-        rung=Rung.NATURAL,
-        blocker=Blocker.OCCUPANCY_STALL,
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
         room="OW 0x48 / 0x49 hop lanes",
         pose="dies 0x4C (120,133) mode 17 hearts 0/4, door_death, 5 live octoroks",
         residual="docs/tasks/rr-8t4.4-residual.md",
@@ -243,8 +243,8 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l2_tf",
         bead="rr-4oz",
         segment="L2 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVALID_PIN,
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
         room="L2 0x0e / 0x4f",
         pin="Level2Entrance $066F=0x3f (15 hearts in 4 containers)",
         residual="docs/tasks/rr-4oz-residual.md",
@@ -259,8 +259,8 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l3_tf",
         bead="rr-npv.1",
         segment="L3 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVALID_PIN,
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
         pin="Level3Entrance $066F=0x7f (15 hearts in 8 containers)",
         residual="docs/tasks/rr-npv.1-residual.md",
         note=(
@@ -273,8 +273,8 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l4_tf",
         bead="rr-bxzj",
         segment="L4 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVALID_PIN,
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
         pin="Level4Entrance $066F=0x6f (15 hearts in 7 containers)",
         residual="docs/tasks/rr-bxzj-residual.md",
         note=(
@@ -287,8 +287,8 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l5_tf",
         bead="rr-npv.2",
         segment="L5 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVALID_PIN,
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
         room="L5 0x77",
         pose="(120,173) mode 17, third time on the hold line",
         pin="Level5Entrance $066F=0x3f (15 hearts in 4 containers), TF 0x00",
@@ -305,62 +305,57 @@ CLEAN_LADDER: tuple[CleanStep, ...] = (
         id="l6_tf",
         bead="rr-d6v",
         segment="L6 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVALID_PIN,
-        room="L6 0x78",
-        pose="(144,141) mode 17, 3/3 on the east waist",
-        pin="Level6Entrance $066F=0x2f (15 hearts in 3 containers), TF 0x00",
+        rung=Rung.SPINE_GREEN,
+        blocker=Blocker.NONE,
+        room="L6 0x0C",
+        pose="triforce 0x3F, sword 3, 13 containers, 235596f",
+        pin="power-on clean_poweron83",
         residual="docs/tasks/rr-d6v-residual.md",
         note=(
-            "Room class is firing_line: 0x78 is a 5-wizzrobe crossfire, and "
-            "the health is spent upstream (6 hits in the *green* "
-            "level6_east_key_0x7a stage, 4x 0x24 from the east). All of it "
-            "was measured against a pin holding 15 hearts in 3 containers. "
-            "2026-09-14: scripts/run_level6_entrance_tf.py now refuses this "
-            "pin. The measured replacement is "
-            "scripts/fixtures/capture_level6_entrance_fixture.py (power-on "
-            "spine, no state load); it is not captured yet — the spine now "
-            "clears 23 stages and stops at L2 0x6e enter_6f_key, which is a "
-            "route question, not another stall. Do not re-tune an L6 room "
-            "until the pin exists."
+            "clean_poweron83. 0x78 and 0x28 are walked, 0x28 bombs east "
+            "into 0x29, and 0x7a is off the route. Next open row is L7."
         ),
     ),
     CleanStep(
         id="l7_tf",
-        bead="rr-npv.3",
+        bead="rr-rgum",
         segment="L7 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVENTORY_GAP,
-        room="L7 hungry Goriya",
-        pose="Food 0 from the recon pin",
+        rung=Rung.HYPOTHESIS,
+        blocker=Blocker.NONE,
+        room="L7 0x42",
+        pose="triforce 0x7F after Aquamentus",
         residual="docs/tasks/rr-npv.3-residual.md",
-        note="needs the natural bait-shop hop; never poke ADDR_FOOD",
+        note=(
+            "rr-rgum: --clean --through level7 from power-on. Food is "
+            "already carried from the gather. Do not poke ADDR_FOOD."
+        ),
     ),
     CleanStep(
         id="l8_tf",
         bead="rr-npv.4",
         segment="L8 Entrance → Triforce",
-        rung=Rung.FIXTURE_LIVE,
-        blocker=Blocker.INVALID_PIN,
+        rung=Rung.HYPOTHESIS,
+        blocker=Blocker.INVENTORY_GAP,
         room="L8 0x1E",
         pose="(128,181) mode 17, 3/3 oscillating 128↔112",
         pin="Level8EntranceReconFixture $066F=0x2f (15 hearts in 3 containers)",
         residual="docs/tasks/rr-npv.4-residual.md",
         note=(
-            "Room class is shot_undodgeable: Blue Gohma fires down the "
-            "arrow-alignment column. The recon pin is incoherent as well "
-            "(2026-09-14 audit) and holds 3 containers where a real L8 "
-            "arrival holds far more, so the 3/3 death is not yet evidence "
-            "about the column."
+            "rr-npv.4 waits on Level 7 and on rr-awh6. 0x3E clears its "
+            "wall-bombed flag on every screen change, so the 0x4C bomb "
+            "can be spent twice."
         ),
     ),
     CleanStep(
         id="l9_credits",
         bead="rr-npv.5",
         segment="L9 Entrance → Ganon → credits",
-        rung=Rung.FIXTURE_LIVE,
+        rung=Rung.HYPOTHESIS,
         residual="docs/tasks/rr-npv.5-residual.md",
-        note="Patra / Ganon / credits green from recon pins, deaths 0",
+        note=(
+            "rr-npv.5: one --clean --through level9-credits power-on. "
+            "That tape is the STATUS row. Recon pins are not it."
+        ),
     ),
 )
 

@@ -91,21 +91,32 @@ blade traps sprung and waited out, keese cut in the raft passage, the
 passage ladder fix, two bombs kept for Manhandla, and Manhandla dodging only
 imminent fireballs (16 frames) and hands inside 14 px.
 
-Last-heart map past L4 (`lasth_l5on`, from run 53's L4 Triforce pin, 10-11
-containers): L5 needs ~0-1 refills, **L6 ~10** (0x28 17h, 0x29 10h, 0x38
-9.5h, 0x7A 4.5h). L6 is the next wall after L4.
+`clean_poweron83` leaves the Level 6 Triforce with 6.24 hearts. The
+expensive rooms on that tape are 0x3a (10h), 0x09 (5h), 0x19 (3.5h), and
+0x38 (2h). 0x78 and 0x28 are walked. 0x28 spends one bomb east into 0x29.
+0x7a is skipped.
 
 ### Next, in order
 
-1. **Money before Gohma / Level 6 (C8).** L6 walk needs 80R arrows for Gohma
-   (shop at 0x25 after 0x13's 30R rock, or 0x4A). L6 is ~10 last-heart refills:
-   Wizzrobe rooms 0x28/0x38, 0x29.
-2. **Dodongo robustness (rr-pm7m).** Survival regression red: 7 bombs spent at
-   0x0E without a kill (pin `NC65_fight_dodongo`). The same fight passes in
-   the Clean tapes; it is RNG-fragile.
-3. **L3 small bleeds:** 0x5B north-chain Darknuts (1-4h, not flanked yet, rr-j47p),
-   0x5A blade trap on the key-door push (0.75h every run), the 0x0F raft
-   passage keese.
+Claim one spine bead. `bd ready -l zelda_i -l spine` is this list.
+
+1. **C9, Level 7 (rr-rgum).** `--clean --through level7` from power-on.
+   Food is already owned. Fix the first red stage from its `C9_` pin,
+   then re-run the power-on.
+2. **Zero-poke Survival credits (rr-k3vj).** `--no-pokes --through
+   level9-credits`. Heart refill stays on. This does not block C9. It
+   blocks the Level 8 bomb patch, because `natural_credits_poweron67`
+   is from before the Level 6 reroute.
+3. **L8 bombs (rr-awh6),** after that tape still dies at 0x4C with no
+   bombs. `_3e_wall_bombed` clears on every screen change
+   (`level8/north_column.py`).
+4. **C10, Level 8 (rr-npv.4).** Blocked on C9 and on rr-awh6.
+5. **C11, credits (rr-npv.5).** `--clean --through level9-credits`.
+   That tape is the STATUS row.
+
+Potion (rr-thlc), extra keys (rr-qb6w), and the 0x3a heart bleed
+(rr-rgum.1) wait until a Clean tape actually dies there. They are not
+on the spine filter.
 
 ## The Gathering (route order)
 
@@ -168,12 +179,15 @@ Next, in order, from the ledger of run 9:
    (tape-dependent), L7 bombs/rupees, L8 0x4C key, L9 0x61 key. Taking them
    is how the key top-ups retire (rr-doua).
 4. Slow visits: L7 0x0D Wallmasters 8,448f, L2 0x6E 4,302f, L5 0x65 3,940f.
-5. Overworld hearts still skipped: ladder heart 0x5F, raft heart 0x2F
-   (rr-ps7.4.*), for 16 containers.
+5. The ladder heart 0x5F and the raft heart 0x2F are taken after L4
+   (`overworld/magical_sword.py`). The 0x21 grave is on the L6 walk.
+   `clean_poweron83` ends at 13 containers and sword 3.
 
 ## This sitting's leftover
 
-See PRE_L1.md, "Leftover (2026-09-22, second sitting)". The default spine is green to the L1 Triforce with the pond detour. Rung 2 (L1 health off) is red at L1 0x23, and rung 3 is red at `heart_7b`. The next measure is the 0x23 chase, without moving M5's 18909f.
+The verified gate is Clean power-on through the Level 6 Triforce.
+The next Clean claim is rr-rgum. The 18909f wooden-sword oracle is
+historical. PRE_L1.md stays the gathering note. It is not this sitting.
 
 ## Open on the bomb errand
 
