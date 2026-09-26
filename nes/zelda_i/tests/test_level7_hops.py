@@ -154,7 +154,7 @@ def _measured_leave_ram() -> np.ndarray:
         y=125,
         triforce=0x3F,
         keys=2,
-        bombs=7,
+        bombs=6,
         arrows=1,
         health=0xAA,  # 11 containers, full
         whistle=1,

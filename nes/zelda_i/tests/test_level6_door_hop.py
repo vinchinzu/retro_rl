@@ -198,3 +198,17 @@ def test_up_hop_off_column_leftover_binds_door_column() -> None:
     assert dest != (208, 157)
     assert list(first.action) != list(nes_idle_action())
     assert list(first.action) == list(nes_action("LEFT"))
+
+
+def test_door_hop_controller_releases_stepladder_toward_goal() -> None:
+    import dataclasses
+    from zelda_i.dungeon.ids import STEPLADDER_OBJECT_TYPE
+    from zelda_i.ram import ZeldaObject
+
+    snap = _snap(screen=0x39, x=158, y=117)
+    ladder = ZeldaObject(11, STEPLADDER_OBJECT_TYPE, 160, 120, 1, 64, 2)
+    snap = dataclasses.replace(snap, objects=(ladder,))
+    ctl = DoorHopController(EAST39_SPEC)
+    act = ctl.step(snap)
+    assert act.reason == "east_descend_off_ladder"
+    assert list(act.action) == list(nes_action("RIGHT"))

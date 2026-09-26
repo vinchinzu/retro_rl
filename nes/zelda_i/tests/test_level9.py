@@ -654,11 +654,6 @@ def test_level9_entry_chapter_chaining() -> None:
         "level9_post_l8_overworld",
         "bomb_restock_l8",
         "exit_bomb_restock_l8",
-        "level9_walk_rupees_67",
-        "level9_select_bombs_67",
-        "level9_rupees_67",
-        "level9_exit_rupees_67",
-        "level9_return_4a_from_67",
         "bomb_restock_l8_second",
         "exit_bomb_restock_l8_second",
         "level9_post_l8_to_rock",
@@ -667,14 +662,14 @@ def test_level9_entry_chapter_chaining() -> None:
     ]
     assert stages[0][2] == 12_000
     assert stages[2][2] == 600
-    assert stages[9][2] == 600
-    assert stages[10][2] == 12_000
-    assert stages[11][2] == 20_000
-    assert stages[12][2] == 4000
+    assert stages[4][2] == 600
+    assert stages[5][2] == 12_000
+    assert stages[6][2] == 20_000
+    assert stages[7][2] == 4000
 
     # Both controllers accept measured handoff and have route_eligible when complete
     ow_ctl = stages[0][1]
-    bomb_ctl = stages[12][1]
+    bomb_ctl = stages[7][1]
     assert isinstance(ow_ctl, Level9PostL8OverworldController)
     assert isinstance(bomb_ctl, Level9SpectacleRockBombController)
 

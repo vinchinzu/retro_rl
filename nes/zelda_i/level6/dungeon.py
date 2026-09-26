@@ -490,7 +490,7 @@ ROOM_09_SPEC = DungeonRoomSpec(
     enemy_types=(WIZZROBE_ORANGE_TYPE, WIZZROBE_BLUE_OBJECT_TYPE),
     expected_enemy_count=5,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=_occ(_ROOM_09_PATROL),
+    combat=_occ(_ROOM_09_PATROL, evade=True, contact_backstep=16),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=0x03,
     exit_routes=(
@@ -639,7 +639,7 @@ ROOM_3A_SPEC = DungeonRoomSpec(
     ),
     expected_enemy_count=7,
     alive_rule=AliveRule.TYPE_AND_HP,
-    combat=_occ(_ROOM_3A_PATROL),
+    combat=_occ(_ROOM_3A_PATROL, evade=True, contact_backstep=16),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
     room_item_id=0x03,
     exit_routes=(

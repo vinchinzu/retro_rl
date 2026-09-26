@@ -26,6 +26,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     WAIT_SCROLL,
     WAIT_SCROLL_B,
+    release_action,
 )
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyGrid, OccupancyWalker
@@ -498,7 +499,7 @@ class DoorHopController(HopController):
         return None
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
-        return self._walk(snap)
+        return release_action(snap, self._walk(snap), self.goal)
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.spec.track_keys and self.keys < 0:
