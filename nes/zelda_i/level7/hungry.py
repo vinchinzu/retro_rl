@@ -27,6 +27,7 @@ from zelda_i.dungeon.hop_controller import (
     HopController,
     LatticeDoorWalker,
     dungeon_align_then_push,
+    room_step,
 )
 from zelda_i.level7.graph import HUNGRY_GORIYA, LEVEL7_ROOM_BY_ID
 from zelda_i.level7.path import (
@@ -42,6 +43,8 @@ from zelda_i.ram import (
     PLAY_MODE,
     ZeldaSnapshot,
     read_u8,
+    room_item_taken,
+    room_item_xy,
 )
 
 __all__ = [
@@ -374,6 +377,14 @@ class Room38UpController(HopController):
             and snap.mode == PLAY_MODE
             and not snap.transitioning
         ):
+            if self._env is not None:
+                ram = self._env.get_ram()
+                if not room_item_taken(ram, snap.level, snap.screen):
+                    step = room_step(snap, room_item_xy(ram), tol=0, env=self._env)
+                    return FrameAction(
+                        nes_action(step) if step else nes_idle_action(),
+                        "collect_rupees_38",
+                    )
             # ROM lattice to the centred north key door once the room is
             # clear; the column/pocket cardinals parked Link at (200,181)
             # for 14000f on the power-on gathered spine.

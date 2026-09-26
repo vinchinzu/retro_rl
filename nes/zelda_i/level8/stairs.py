@@ -47,22 +47,24 @@ _SAMPLE_PERIOD = 12
 _MAX_FRAMES = 4000
 
 
-from zelda_i.overworld.common import walk_or_swing
-
-
 def stairs_3f_step(snap: ZeldaSnapshot, frames: int = 0) -> FrameAction:
     """Walk to (208,141), idle on 0x70-0x73. Exact CheckWarp. No occupancy."""
     x, y = int(snap.link_x), int(snap.link_y)
     tile = int(snap.colliding_tile)
-    if tile in STAIRS_TILES:
+    # The adjacent tile at (192,133) also reads 0x71, but idling there
+    # never triggers CheckWarp. Align to the live y=141 row first.
+    if x >= 184 and y != STAIRS_3F_HYP_XY[1]:
+        btn = "DOWN" if y < STAIRS_3F_HYP_XY[1] else "UP"
+        return FrameAction(nes_action(btn), "stairs_row")
+    if tile in STAIRS_TILES and y == STAIRS_3F_HYP_XY[1]:
         return FrameAction(nes_idle_action(), "stairs_stand")
     gx, gy = STAIRS_3F_HYP_XY
     if x != gx:
         btn = "RIGHT" if x < gx else "LEFT"
-        return walk_or_swing(frames, btn, "stairs_x", snap)
+        return FrameAction(nes_action(btn), "stairs_x")
     if y != gy:
         btn = "DOWN" if y < gy else "UP"
-        return walk_or_swing(frames, btn, "stairs_y", snap)
+        return FrameAction(nes_action(btn), "stairs_y")
     return FrameAction(nes_idle_action(), "stairs_exact")
 
 

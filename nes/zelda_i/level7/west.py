@@ -16,8 +16,12 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.engine import (
+    AliveRule, CombatTuning, DoorRoute, DungeonPhase, DungeonRoomSpec,
+    GenericDungeonRoomController, RewardSpec,
+)
 from zelda_i.combat import nearest_enemy, should_swing_at
-from zelda_i.dungeon.behaviors import EnemyKind, engagement_hint
+from zelda_i.dungeon.behaviors import EnemyKind, KEESE_TYPE, engagement_hint
 from zelda_i.dungeon.hop_controller import (
     HopController,
     LatticeDoorWalker,
@@ -348,11 +352,34 @@ class Room68NorthController(_WestHop):
         {ENTRY_SCREEN, ROOM_69, ROOM_6A, ROOM_6B, ROOM_68}
     )
     door: str = "UP"
+    _clear: GenericDungeonRoomController | None = field(default=None, init=False, repr=False)
 
     def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
         return FrameAction(nes_action("UP"), "north68_scroll")
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.screen == ROOM_68:
+            if self._clear is None:
+                spec = DungeonRoomSpec(
+                    spec_id="level7_room68_bombs",
+                    source_room=ROOM_68, room_id=ROOM_68,
+                    entry=DoorRoute("RIGHT", ((208, 141),)),
+                    enemy_types=(KEESE_TYPE,), expected_enemy_count=4,
+                    alive_rule=AliveRule.TYPE,
+                    combat=CombatTuning(
+                        patrol=((176, 109), (128, 141), (80, 157), (128, 189)),
+                        evade=True, contact_backstep=16,
+                    ),
+                    reward=RewardSpec(), room_item_id=0x00,
+                    max_frames=5000, level=LEVEL7,
+                )
+                self._clear = GenericDungeonRoomController(spec)
+                self._clear.phase = DungeonPhase.FIGHT
+                self._clear.bind_env(self._env)
+            if self._clear.phase not in (DungeonPhase.DONE, DungeonPhase.FAILED):
+                return self._clear.step(snap)
+            if self._clear.phase is DungeonPhase.FAILED:
+                return self.mark_fail("room68_bombs_clear_failed")
         action = room_68_north_step(snap, dest=self.dest)
         if action.reason.startswith("unexpected_room"):
             return self.mark_fail(action.reason)

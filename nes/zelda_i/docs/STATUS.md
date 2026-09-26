@@ -5,11 +5,11 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Clean power-on through the **Level 6 Triforce** on the gathered route: triforce `0x3F`, Magical Rod and Magical Sword, 13 containers; L1 at 77,177f, L2 at 98,090f, L3 at 121,400f, L4 at 157,020f, L5 at 211,047f, L6 at 235,596f, one continuous run, 0 state loads, 0 writes |
-| Last verification | 2026-09-25 |
+| Best verified result | Clean power-on through the **Level 8 Triforce** on the gathered route: triforce `0xFF`, Magic Key, 15 containers, 296,423 frames, one continuous run, 0 state loads, 0 deaths, 0 inventory/progression writes |
+| Last verification | 2026-09-26 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | [clean_poweron83.json](../recordings/clean_poweron83.json) (`run_survival_spine.py --clean --through level6`, code c903cb4b); 235,596 frames continuous power-on, `resumed_from` null, 0 state loads, no assist, 0 position/progression writes, 0 inventory writes between frames. Previous gate: [clean_poweron76.json](../recordings/clean_poweron76.json) through L5. |
+| Evidence | [clean_poweron98.json](../recordings/clean_poweron98.json) (`run_survival_spine.py --clean --through level8`); 296,423 frames continuous power-on, `resumed_from` null, 0 state loads, no assist, 0 position/progression writes, 0 inventory writes between frames. Previous gate: [clean_poweron83.json](../recordings/clean_poweron83.json) through L6. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
 
 The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone

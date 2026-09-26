@@ -18,7 +18,7 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import nearest_enemy
 from zelda_i.dungeon.behaviors import EnemyKind, engagement_hint
-from zelda_i.dungeon.hop_controller import CELLAR_MODE, HopController, WAIT_SCROLL_B
+from zelda_i.dungeon.hop_controller import CELLAR_MODE, HopController, WAIT_SCROLL_B, room_step
 from zelda_i.dungeon.ids import GORIYA_BLUE_OBJECT_TYPE, GORIYA_OBJECT_TYPE
 from zelda_i.level7.graph import LEVEL7_ROOM_BY_ID, RED_CANDLE_CELLAR
 from zelda_i.overworld.arbiter import Arbiter, Rung
@@ -539,6 +539,16 @@ class Room1ACandleController(HopController):
         return FrameAction(nes_action(face), "goriya_face")
 
     def _hunt(self, snap: ZeldaSnapshot, live: tuple) -> FrameAction:
+        # A last goriya can settle against the east side of the sealed cross.
+        # Chasing it from the north aims DOWN into the solid diamond forever.
+        # Walk around the cross on the ROM lattice and strike from its east.
+        if len(live) == 1 and 152 < int(live[0].x) < 176 and 118 <= int(live[0].y) <= 170:
+            step = room_step(snap, (184, 157), tol=2)
+            if step is not None:
+                return FrameAction(nes_action(step), "candle_east_flank")
+            if self.frames % 8 < 4:
+                return FrameAction(nes_action("LEFT", "A"), "candle_east_slash")
+            return FrameAction(nes_action("LEFT"), "candle_east_face")
         wps = ((32, 189), (192, 189), (192, 93), (160, 93))
         if self._hunt_i >= len(wps):
             return self._aggressive_fight(snap, live)

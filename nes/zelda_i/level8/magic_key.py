@@ -272,22 +272,8 @@ class Level8BlueGohma1EController(HopController):
     def _clamp_hmove(
         self, snap: ZeldaSnapshot, btn: str, reason: str
     ) -> FrameAction:
-        lx = int(snap.link_x)
-        if self._hold_column(snap):
-            if btn == "LEFT" and lx <= COLUMN_X_MAX:
-                if lx < COLUMN_X_MIN:
-                    return FrameAction(nes_action("RIGHT"), "column_recover")
-                if lx >= COLUMN_X_MAX:
-                    return FrameAction(nes_action("LEFT"), "column_peel")
-                if self.cooldown > 0 and self._column_shot(snap):
-                    return FrameAction(nes_action("LEFT"), "column_peel")
-                return FrameAction(nes_idle_action(), "column_hold")
-            if btn == "RIGHT" and lx >= COLUMN_X_MAX:
-                return FrameAction(nes_idle_action(), "column_hold")
-        if btn == "LEFT" and lx <= INLAND_X_MIN:
-            return self._inland_escape(snap, reason)
-        if btn == "RIGHT" and lx >= INLAND_X_MAX:
-            return self._inland_escape(snap, reason)
+        # The eye moves across the full inland lane. Holding the old narrow
+        # centre column made arrows miss while Gohma passed to either side.
         return FrameAction(nes_action(btn), reason)
 
     def _sidestep(
@@ -440,9 +426,6 @@ class Level8BlueGohma1EController(HopController):
 
         inland = self._inland(snap)
         if not inland:
-            dodge = self._hazard_dodge(snap, body)
-            if dodge is not None:
-                return dodge
             if lx < INLAND_X_MIN or lx > INLAND_X_MAX:
                 return self._inland_escape(snap, "climb_dodge_fb")
 
@@ -455,25 +438,21 @@ class Level8BlueGohma1EController(HopController):
             if driven is not None:
                 return driven
 
-        dodge = self._hazard_dodge(snap, body)
-        if dodge is not None:
-            return dodge
-
         if not bodies:
             return FrameAction(nes_idle_action(), "wait_body")
 
         body = bodies[0]
-        gx = int(body.x)
-        eye_x = gx - 4
-        target_x = max(COLUMN_X_MIN, min(COLUMN_X_MAX, eye_x))
+        target_x = arrow_aim_x(
+            self.gx_hist, body, ly, (INLAND_X_MIN, INLAND_X_MAX)
+        ) - 4
         dx = target_x - int(snap.link_x)
 
         if int(snap.rupees) <= 0:
             return self.mark_fail("l8_gohma_out_of_ammo")
 
         vulnerable = self._gohma_vulnerable(body, ly)
-        aim_aligned = abs(int(snap.link_x) - eye_x) <= 4
-        in_column = COLUMN_X_MIN <= int(snap.link_x) <= COLUMN_X_MAX
+        aim_aligned = abs(dx) <= FIRE_TOL
+        in_column = INLAND_X_MIN <= int(snap.link_x) <= INLAND_X_MAX
 
         if self.cooldown <= 0 and vulnerable and aim_aligned and in_column:
             return self._arrow_fire(snap)
@@ -481,7 +460,7 @@ class Level8BlueGohma1EController(HopController):
         if abs(dx) > ALIGN_TOL:
             go_right = dx > 0
             # y=189 RIGHT-strafe walked into the SE statue stream (140,189).
-            if go_right and (ly >= GOHMA_DOOR_LIP_Y or self._se_shot(snap)):
+            if go_right and ly >= GOHMA_DOOR_LIP_Y:
                 if ly > STAND_Y:
                     return FrameAction(nes_action("UP"), "climb")
                 return self._sidestep(snap, int(snap.link_x) + 16, "climb_dodge_fb")

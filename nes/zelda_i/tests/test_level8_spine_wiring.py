@@ -160,23 +160,36 @@ def test_measured_leave_accepts_and_walks_west_ring() -> None:
         sword=1,
     )
     run = _run()
-    stages = _StageRecorder(step=True)
+    stages = _StageRecorder(step=False)
     continue_level8_spine(
         _env(ram), run, through="level8-entry", run_stages=stages
     )
-    assert stages.names()[:4] == [
+    assert stages.names()[:13] == [
         "level8_post_l7_to_shop",
         "bomb_restock_l7",
         "exit_bomb_restock_l7",
+        "level8_warp_to_l6_door",
+        "level8_walk_to_rupees_13",
+        "level8_select_bombs_13",
+        "level8_rupees_13",
+        "level8_exit_rupees_13",
+        "level8_warp_to_l4_door",
+        "level8_walk_to_potion_64",
+        "level8_buy_blue_potion_64",
+        "level8_exit_blue_potion_64",
         "level8_post_l7_to_bush",
     ]
     pond = stages.rows[0][1]
+    pond.bind_env(_env(ram))
+    pond.step(read_snapshot(ram))
     assert pond.handoff is MEASURED_POST_L7_HANDOFF
     assert "post_l7_handoff_accepted" in pond.notes
     assert "post_l7_path_unmeasured" not in pond.notes
     assert pond.hops[-1].target == pond.stop_screen == 0x54
     assert pond.phase.name != "FAILED"
-    approach = stages.rows[3][1]
+    approach = stages.rows[12][1]
+    approach.bind_env(_env(ram))
+    approach.step(read_snapshot(ram))
     assert approach.hops[-1].target == 0x6D
     assert not approach.check_handoff and approach.resume_on_screen
     assert "post_l7_resumed" in approach.notes

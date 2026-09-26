@@ -968,13 +968,10 @@ class Level8DarknutKeyController(_NorthColumnBase):
             # Mixed 0x4E census is not a clear target; north key is live.
             return self._north_key(snap, reason="key_north_0x4e")
         if room == ROOM_BLUE_DARKNUTS:
-            live = _live_of(snap, (TYPE_0C,))
-            any_0c = any(obj.type_id == TYPE_0C for obj in snap.objects if 1 <= obj.slot <= 12)
-            if live or (any_0c and self._room_frames < 40):
-                return self._heart_safe_darknut(snap)
-            wait = self._spawn_wait(snap, DARKNUT_SETTLE_FRAMES)
-            if wait is not None:
-                return wait
+            # The north wall is a bomb door. The east shutter is the only
+            # exit that requires clearing these Darknuts, on the return leg.
+            # Cross north now while Link still has health for Gohma and the
+            # Magic Key cellar.
             return self._bomb(
                 snap, BombWall3ENorth(), approach=BOMB_NORTH_APPROACH_3E
             )

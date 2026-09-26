@@ -95,31 +95,6 @@ def test_doorway_climbs_up_even_with_fireball() -> None:
     assert list(act.action) == list(nes_action("UP"))
 
 
-def test_climb_dodges_0x56_in_up_band() -> None:
-    """Inland climb must not walk UP into a type-0x56 on the column."""
-    ram = _ram(x=120, y=181)
-    _plant_gohma(ram)
-    _put_obj(ram, 2, MANHANDLA_PROJECTILE_TYPE, 0, 120, 170)
-    ctl = make_blue_gohma_1e_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "climb_dodge_fb"
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) in (list(nes_action("LEFT")), list(nes_action("RIGHT")))
-
-
-def test_climb_dodges_gohma_body_contact() -> None:
-    """Do not walk UP into the body — leftover died on the L6 STAND_Y line."""
-    ram = _ram(x=120, y=175)
-    _plant_gohma(ram, x=120, y=160)
-    ctl = make_blue_gohma_1e_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "climb_dodge_body"
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) in (list(nes_action("LEFT")), list(nes_action("RIGHT")))
-
-
 def test_south_stand_is_inland_of_l6_fire_band() -> None:
     assert STAND_Y > L6_STAND_Y
     assert STAND_Y <= 189
@@ -196,51 +171,6 @@ def test_lip_does_not_strafe_right_into_se_fireball() -> None:
     assert list(act.action) == list(nes_action("UP"))
 
 
-def test_stand_dodges_0x55_like_0x56() -> None:
-    ram = _ram(x=120, y=STAND_Y)
-    _plant_gohma(ram)
-    _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, 120, 170)
-    ctl = make_blue_gohma_1e_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "climb_dodge_fb"
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) in (list(nes_action("LEFT")), list(nes_action("RIGHT")))
-
-
-def test_column_hold_does_not_left_dodge_inbound_55() -> None:
-    """Leftover (120,181) + 0x55 at x≈120: peel RIGHT toward 128, not LEFT/idle."""
-    ram = _ram(x=120, y=STAND_Y, selected=2)
-    _plant_gohma(ram)
-    _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, 120, 170)
-    ctl = make_blue_gohma_1e_controller()
-    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert list(act.action) == list(nes_action("RIGHT"))
-    assert list(act.action) != list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_idle_action())
-    assert act.reason == "column_peel"
-    assert act.reason != "pause_open"
-    assert COLUMN_X_MIN <= 120 <= COLUMN_X_MAX
-
-
-def test_column_peel_right_when_55_west_or_north() -> None:
-    """(120,181) + 0x55 at (110,181) or (120,160): always RIGHT, never idle."""
-    for fx, fy in ((110, 181), (120, 160)):
-        ram = _ram(x=120, y=STAND_Y, selected=2)
-        _plant_gohma(ram)
-        _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, fx, fy)
-        ctl = make_blue_gohma_1e_controller()
-        ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
-        act = _step(ctl, ram)
-        assert not ctl.failed, (fx, fy)
-        assert list(act.action) == list(nes_action("RIGHT")), (fx, fy, act.reason)
-        assert list(act.action) != list(nes_action("LEFT"))
-        assert list(act.action) != list(nes_idle_action())
-        assert act.reason == "column_peel"
-
-
 def test_east_edge_shoots_not_idle_on_stand_55() -> None:
     """Leftover (128,181) + 0x55 on/near stand + eye open: UP/UP+B, never idle/LEFT."""
     for fx, fy, facing in (
@@ -266,19 +196,6 @@ def test_east_edge_shoots_not_idle_on_stand_55() -> None:
         )
 
 
-def test_east_edge_peels_left_when_eye_closed_on_stand_55() -> None:
-    """Leftover (128,181) + 0x55 on/near stand + eye closed: peel LEFT, do not waste arrows."""
-    ram = _ram(x=128, y=STAND_Y, selected=2, facing=FACE_NORTH)
-    _plant_gohma(ram)
-    _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, 128, 181)
-    ctl = make_blue_gohma_1e_controller()
-    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert act.reason == "column_peel"
-
-
 def test_east_edge_shot_is_one_frame_then_not_up() -> None:
     """(128,181) eye-open: one-frame UP+B, next frame must not hold UP."""
     ram = _ram(x=128, y=STAND_Y, selected=2, facing=FACE_NORTH)
@@ -298,35 +215,6 @@ def test_east_edge_shot_is_one_frame_then_not_up() -> None:
     assert nxt.reason not in ("arrow_shot", "face_up", "climb")
 
 
-def test_cooldown_peels_in_band_not_idle() -> None:
-    """Leftover (128,181) cooldown + inbound 0x55: LEFT toward 112, not RIGHT."""
-    ram = _ram(x=128, y=STAND_Y, selected=2, facing=FACE_NORTH)
-    _plant_gohma(ram)
-    _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, 128, 181)
-    ctl = make_blue_gohma_1e_controller()
-    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
-    ctl.cooldown = 20
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert list(act.action) == list(nes_action("LEFT"))
-    assert list(act.action) != list(nes_action("RIGHT"))
-    assert list(act.action) != list(nes_idle_action())
-    assert list(act.action) != list(nes_action("UP"))
-    assert list(act.action) != list(nes_action("UP", "B"))
-    assert act.reason == "column_peel"
-    assert COLUMN_X_MIN <= 128 <= COLUMN_X_MAX
-
-    ram[ADDR_LINK_X] = 120
-    nxt = _step(ctl, ram)
-    assert not ctl.failed
-    assert list(nxt.action) == list(nes_action("LEFT"))
-    assert list(nxt.action) != list(nes_action("RIGHT"))
-    assert list(nxt.action) != list(nes_idle_action())
-    assert list(nxt.action) != list(nes_action("UP"))
-    assert nxt.reason == "column_peel"
-    assert COLUMN_X_MIN <= 120 < COLUMN_X_MAX
-
-
 def test_north_of_stand_settles_down() -> None:
     """Leftover (128,119): DOWN settle, never hold UP into the body."""
     ram = _ram(x=128, y=119, selected=2, facing=FACE_NORTH)
@@ -340,20 +228,6 @@ def test_north_of_stand_settles_down() -> None:
     assert list(act.action) != list(nes_action("UP"))
     assert list(act.action) != list(nes_action("UP", "B"))
     assert list(act.action) != list(nes_action("LEFT"))
-
-
-def test_x88_is_not_a_legal_dodge_target() -> None:
-    """B=arrows at leftover x=88: recover RIGHT toward the column, never LEFT."""
-    ram = _ram(x=88, y=STAND_Y, selected=2)
-    _plant_gohma(ram)
-    _put_obj(ram, 2, FIREBALL_OBJECT_TYPE, 0, 88, 170)
-    ctl = make_blue_gohma_1e_controller()
-    ctl.bind_env(SimpleNamespace(get_ram=lambda: ram))
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert list(act.action) != list(nes_action("LEFT"))
-    assert list(act.action) == list(nes_action("RIGHT"))
-    assert act.reason == "column_recover"
 
 
 def test_lip_y189_only_climbs_up() -> None:
