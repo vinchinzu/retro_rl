@@ -148,7 +148,10 @@ def test_rupees_67_stages_skip_without_cave_pay(
     snap = read_snapshot(ram)
     stages = rupees_67_stages()
     assert [name for name, _, _ in stages] == [
-        "walk_67", "select_bombs_67", "rupees_67", "exit_cave_67", "return_4a"
+        "walk_67", "select_bombs_67", "rupees_67", "exit_cave_67",
+        "walk_coast_5f", "ladder_heart_5f", "walk_dock_3f", "raft_2f",
+        "raft_heart_2f", "exit_cave_2f", "raft_3f", "off_dock_3f",
+        "walk_coast_back", "return_4a",
     ]
     for _, ctl, _ in stages:
         if hasattr(ctl, "bind_env"):

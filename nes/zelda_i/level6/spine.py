@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from zelda_i.anchors import TF_BIT_L5
-from zelda_i.level6.dungeon import ROOM_7A_SPEC
 from zelda_i.level6.hops import l6_prefix
 from zelda_i.level6.overworld import (
     LEVEL6,
-    LEVEL6_EAST_KEY_ROOM,
     LEVEL6_ENTRY_ROOM,
 )
 from zelda_i.level6.spine_suffix import l6_suffix_hops
@@ -18,7 +16,6 @@ __all__ = [
     "L6_STOPS",
     "L6_THROUGH",
     "continue_level6_spine",
-    "level6_east_key_success",
     "level6_entry_success",
     "run_level6_from_entrance",
 ]
@@ -41,23 +38,6 @@ def level6_entry_success(snap: ZeldaSnapshot, *, whistle: int) -> bool:
         )
         and snap.ladder > 0
         and whistle >= 1
-    )
-
-
-def level6_east_key_success(snap: ZeldaSnapshot, *, keys_before: int) -> bool:
-    """Cleared 0x7a with a natural key pickup. Do not UP to Old Man 0x6a.
-
-    Named form of the ``level6-east-key`` hop predicate
-    (``ok6(screen=LEVEL6_EAST_KEY_ROOM, spec=ROOM_7A_SPEC, keys_cmp="gt", ...)``).
-    """
-    return play_ready(
-        snap,
-        level=LEVEL6,
-        screen=LEVEL6_EAST_KEY_ROOM,
-        spec=ROOM_7A_SPEC,
-        tf_bit=TF_BIT_L5,
-        keys_before=keys_before,
-        keys_cmp="gt",
     )
 
 

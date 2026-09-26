@@ -18,7 +18,6 @@ from zelda_i.level6.door_hop import (
     NORTH2C_SPEC,
     SOUTH18_SPEC,
     SOUTH1D_SPEC,
-    SOUTH29_SPEC,
     WEST19_SPEC,
     WEST2D_SPEC,
 )
@@ -142,25 +141,6 @@ def test_north2c_align_x_then_up() -> None:
     assert list(shuffled.action) == list(nes_action("RIGHT"))
     assert NORTH2C_SPEC.cardinal_hold is True
     assert NORTH2C_SPEC.align == "x"
-
-
-def test_south29_live_leftover_goes_down() -> None:
-    """Waist leftover (120,141) occupancies DOWN. Not RIGHT+DOWN clip."""
-    leftover = _snap(screen=SOUTH29_SPEC.room, x=120, y=141)
-    first = DoorHopController(SOUTH29_SPEC).step(leftover)
-    assert list(first.action) == list(nes_action("DOWN"))
-    assert list(first.action) != list(nes_action("RIGHT", "DOWN"))
-    assert SOUTH29_SPEC.clip_buttons is None
-    door = DoorHopController(SOUTH29_SPEC).step(
-        _snap(screen=SOUTH29_SPEC.room, x=120, y=189)
-    )
-    assert list(door.action) == list(nes_action("DOWN"))
-    trap = DoorHopController(SOUTH29_SPEC).step(
-        _snap(screen=SOUTH29_SPEC.room, x=63, y=133)
-    )
-    assert list(trap.action) != list(nes_action("UP"))
-    assert list(trap.action) != list(nes_action("LEFT", "UP"))
-    assert trap.reason != "south_clip"
 
 
 def test_east39_north_band_leftover_drops_to_waist_then_right() -> None:

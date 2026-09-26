@@ -335,7 +335,7 @@ _Q1_CAVES: tuple[tuple[int, int, str, str, str, str, int], ...] = (
     (0x1D, CAVE_WARP, "warp_n2", "warp", OPEN_PUSH_ROCK, EVIDENCE_SOURCE, 0),
     (0x1E, CAVE_DOOR_REPAIR, "door_repair_o2", "pay_20", OPEN_BOMB, EVIDENCE_SOURCE, 0),
     (0x1F, CAVE_GAMBLE, "gamble_p2", "gamble", OPEN_OPEN, EVIDENCE_SOURCE, 0),
-    (0x21, CAVE_MAGICAL_SWORD, "magical_sword", "magical_sword", OPEN_PUSH_GRAVE, EVIDENCE_SOURCE, 0),
+    (0x21, CAVE_MAGICAL_SWORD, "magical_sword", "magical_sword", OPEN_PUSH_GRAVE, EVIDENCE_VERIFIED, 0),
     (0x22, CAVE_DUNGEON_6, "dungeon_6", "dungeon_6", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
     (0x23, CAVE_WARP, "warp_d3", "warp", OPEN_PUSH_ROCK, EVIDENCE_SOURCE, 0),
     (0x25, CAVE_SHOP_ARROWS, "shop_f3", "shop", OPEN_OPEN, EVIDENCE_SOURCE, 3),
@@ -344,7 +344,7 @@ _Q1_CAVES: tuple[tuple[int, int, str, str, str, str, int], ...] = (
     (0x28, CAVE_RUPEES_30, "rupees_i3", "rupees_30", OPEN_BURN, EVIDENCE_VERIFIED, 0),
     (0x2C, CAVE_TAKE_ANY, "heart_m3", "heart_container", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
     (0x2D, CAVE_RUPEES_30, "rupees_n3", "rupees_30", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
-    (0x2F, CAVE_TAKE_ANY, "raft_heart", "heart_container", OPEN_RAFT, EVIDENCE_SOURCE, 0),
+    (0x2F, CAVE_TAKE_ANY, "raft_heart", "heart_container", OPEN_RAFT, EVIDENCE_VERIFIED, 0),
     (0x33, CAVE_POTION, "potion_d4", "potion", OPEN_BOMB, EVIDENCE_VERIFIED, 0),
     (0x34, CAVE_SHOP_SPECIAL, "special_shop_e4", "bait_or_blue_ring", OPEN_ARMOS, EVIDENCE_SOURCE, 3),
     (0x37, CAVE_DUNGEON_1, "dungeon_1", "dungeon_1", OPEN_OPEN, EVIDENCE_VERIFIED, 0),
@@ -391,7 +391,7 @@ _Q1_CAVES: tuple[tuple[int, int, str, str, str, str, int], ...] = (
 # Not in AttrsB (cave_id 0): Armos / ladder / fairy. Still rando-relevant.
 _Q1_EXTRAS: tuple[OwLocation, ...] = (
     OwLocation("bracelet_armos", 0x24, CAVE_NONE, "armos_item", "bracelet", OPEN_ARMOS, EVIDENCE_SOURCE),
-    OwLocation("ladder_heart", 0x5F, CAVE_NONE, "ladder_item", "heart_container", OPEN_LADDER, EVIDENCE_SOURCE),
+    OwLocation("ladder_heart", 0x5F, CAVE_NONE, "ladder_item", "heart_container", OPEN_LADDER, EVIDENCE_VERIFIED),
     OwLocation("fairy_j4", 0x39, CAVE_NONE, "fairy", "fairy", OPEN_OPEN, EVIDENCE_SOURCE),
     OwLocation("fairy_d5", 0x43, CAVE_NONE, "fairy", "fairy", OPEN_OPEN, EVIDENCE_SOURCE),
 )
