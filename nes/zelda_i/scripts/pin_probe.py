@@ -8,10 +8,13 @@ policy, no writes except ``--fixture``::
     uv run python nes/zelda_i/scripts/pin_probe.py BlueRingFull3_fail --tiles
     uv run python nes/zelda_i/scripts/pin_probe.py BlueRingFull3_fail --press DOWN:40 LEFT:12
     uv run python nes/zelda_i/scripts/pin_probe.py BlueRingFull3_fail --items
+    uv run python nes/zelda_i/scripts/pin_probe.py C8d_level6_clear_0x09 --doors
     uv run python nes/zelda_i/scripts/pin_probe.py BlueRingFull3_fail --fixture --note "why"
 
 ``--press DIR:N`` holds DIR (or ``NONE``) for N frames and reprints Link and
 the objects after each; the pose after a press is what the ROM allows there.
+``--doors`` prints the ROM door type of each side of this dungeon room and
+its neighbours: an ``open`` exit means the room needs no clear to leave.
 ``--fixture`` writes ``tests/fixtures/room_tiles_l<level>_0x<room>.json`` for
 ``tests/ram_helpers.room_tile_env``. One emulator per process.
 """
@@ -37,6 +40,7 @@ from zelda_i.dungeon.tilemap import (
     has_room_tile_map,
     ow_walkable_nodes,
     read_room_tiles,
+    room_door_types,
 )
 from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.ram import (
@@ -92,6 +96,22 @@ def tile_lines(ram, overworld: bool) -> list[str]:
     return lines
 
 
+def door_lines(ram, room: int) -> list[str]:
+    step = {"N": -16, "S": 16, "W": -1, "E": 1}
+    lines = []
+    for r in (room, *(room + d for d in step.values())):
+        if not 0 <= r < 128:
+            continue
+        doors = room_door_types(ram, r)
+        exits = "  ".join(
+            f"{side}={kind}->0x{r + step[side]:02x}"
+            for side, kind in doors.items()
+            if kind != "wall"
+        )
+        lines.append(f"doors 0x{r:02x}: {exits or 'walled'}")
+    return lines
+
+
 def item_lines(ram) -> list[str]:
     lines = []
     for level, tag in ((0, "overworld"), (1, "L1-6"), (7, "L7-9")):
@@ -126,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("state", help="save-state name (BlueRingFull3_fail) or a .state path")
     parser.add_argument("--tiles", action="store_true", help="print $6530 and the walk lattice")
     parser.add_argument("--items", action="store_true", help="print item-taken world flags")
+    parser.add_argument("--doors", action="store_true", help="print ROM door types around this room")
     parser.add_argument("--press", nargs="*", default=(), metavar="DIR:N")
     parser.add_argument("--fixture", action="store_true", help="write the room tile fixture")
     parser.add_argument("--note", default="", help="fixture note")
@@ -143,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
     overworld = int(read_snapshot(ram).level) == 0
     if args.tiles and has_room_tile_map(ram):
         print("\n".join(tile_lines(ram, overworld)))
+    if args.doors and not overworld and has_room_tile_map(ram):
+        print("\n".join(door_lines(ram, int(read_snapshot(ram).screen))))
     if args.items:
         print("\n".join(item_lines(ram)))
     if args.fixture:

@@ -17,7 +17,6 @@ from zelda_i.level6.dungeon import (
     ROOM_29_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
-    clear29_handoff_ok,
     ROOM_L6_COMPASS,
     ROOM_L6_DARK_29,
     ROOM_L6_EAST_KEY,
@@ -529,14 +528,3 @@ def test_clear29_plus_seed_paths_around_to_south_door() -> None:
     assert not ctl.success
     assert act.reason == "leftover_clip"
     assert list(act.action) == list(nes_action("RIGHT", "DOWN"))
-
-
-def test_clear29_spine_success_requires_handoff_pose() -> None:
-    ram = _ram(room=ROOM_L6_DARK_29, x=120, y=189, rod=1, triforce=0x1F)
-    assert clear29_handoff_ok(read_snapshot(ram))
-    ram[ADDR_LINK_X] = 63
-    ram[ADDR_LINK_Y] = 133
-    assert not clear29_handoff_ok(read_snapshot(ram))
-    ram[ADDR_LINK_X] = 56
-    ram[ADDR_LINK_Y] = 157
-    assert not clear29_handoff_ok(read_snapshot(ram))

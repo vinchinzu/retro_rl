@@ -16,15 +16,7 @@ from zelda_i.level6.door_hop import (
     WEST19_SPEC,
     WEST2D_SPEC,
 )
-from zelda_i.level6.dungeon import (
-    LEVEL6_MAP_BIT,
-    ROOM_09_SPEC,
-    ROOM_19_SPEC,
-    ROOM_29_SPEC,
-    ROOM_39_SPEC,
-    ROOM_3A_SPEC,
-    clear29_handoff_ok,
-)
+from zelda_i.level6.dungeon import ROOM_09_SPEC, ROOM_39_SPEC, ROOM_3A_SPEC
 from zelda_i.level6.exit75 import make_exit75_controller
 from zelda_i.level6.finish import (
     level6_exit_success,
@@ -52,17 +44,11 @@ from zelda_i.level6.overworld import (
     LEVEL6_BLOCK_3A_ROOM,
     LEVEL6_DARK_29_ROOM,
     LEVEL6_DARK_39_ROOM,
-    LEVEL6_MAP_ROOM,
     LEVEL6_ROD_WIZZ_ROOM,
 )
 from zelda_i.level6.rod import make_rod_75_controller
 from zelda_i.level6.room19 import (
-    make_map19_controller,
-    make_room09_controller,
-    make_room19_controller,
     make_settle_09_controller,
-    make_settle_19_controller,
-    make_settle_29_controller,
     make_settle_39_controller,
     make_settle_3a_controller,
 )
@@ -145,35 +131,6 @@ def l6_suffix_hops(
     rod1f = dict(rod=True, **(dict(tf_eq=0x1F) if require_prior_tf else {}))
     gohma = dict(poke_arrows=poke_arrows)
     return (
-        one_hop(
-            "level6-room19",
-            "level6_room_0x19",
-            make_room19_controller,
-            ok6(screen=LEVEL6_MAP_ROOM, **tf1f),
-        ),
-        settle_fight(
-            "level6-clear19",
-            "level6_clear_0x19",
-            make_settle_19_controller,
-            "level6_settle_0x19",
-            ROOM_19_SPEC,
-            # The fight counts only the west bank (``reachable_only``); an
-            # east-bank body alive at the leave is not a failed clear.
-            success=ok6(screen=ROOM_19_SPEC.room_id, **tf1f),
-        ),
-        one_hop(
-            "level6-map19",
-            "level6_map_0x19",
-            make_map19_controller,
-            ok6(screen=LEVEL6_MAP_ROOM, map_bit=LEVEL6_MAP_BIT, **tf1f),
-            dedicated=True,
-        ),
-        one_hop(
-            "level6-room09",
-            "level6_room_0x09",
-            make_room09_controller,
-            ok6(not_screen=LEVEL6_MAP_ROOM, **tf1f),
-        ),
         settle_fight(
             "level6-clear09",
             "level6_clear_0x09",
@@ -206,15 +163,8 @@ def l6_suffix_hops(
         ),
         door_row("level6-south09", SOUTH09_SPEC),
         door_row("level6-south19", SOUTH19_SPEC),
-        settle_fight(
-            "level6-clear29",
-            "level6_clear_0x29",
-            make_settle_29_controller,
-            "level6_settle_0x29",
-            ROOM_29_SPEC,
-            success=clear29_handoff_ok,
-        ),
         door_row("level6-east29", EAST29_SPEC, dedicated=True),
+        # 0x29's S door is open in the ROM door table: walk it, no clear.
         door_row("level6-south29", SOUTH29_SPEC),
         one_hop(
             "level6-settle39",

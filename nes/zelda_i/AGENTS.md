@@ -36,6 +36,7 @@ uv run python nes/zelda_i/scripts/run_survival_spine.py --through level9-credits
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7 --save-points R25 --resume level7_post_l6_overworld --no-video --trace /tmp/tape.json  # one level from a save point, per-frame tape
 uv run python nes/zelda_i/scripts/run_metrics.py nes/zelda_i/recordings/<tag>.json   # docs/RUN_METRICS.md row
 uv run python nes/zelda_i/scripts/pin_probe.py <state> --tiles --items --press DOWN:40   # pose, objects, $6530 + lattice, item flags; --fixture writes tests/fixtures
+uv run python nes/zelda_i/scripts/pin_probe.py <state> --doors   # ROM door type per side (open/bomb/key/shutter) for this dungeon room and its neighbours
 uv run python nes/zelda_i/scripts/stage_replay.py <state> zelda_i.level6.dungeon:ROOM_29_SPEC --assist --window A-B   # one controller/spec from a save point; --idle N = RNG offset
 uv run python nes/zelda_i/scripts/run_survival_spine.py --clean --through level9-credits --save-points CL1 --no-video --trials 1   # real Clean: no refill, no pokes; dies in the gathering today
 uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 ...        # refill at the last heart only: refills = deaths prevented
@@ -90,6 +91,7 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Darknut rooms opt into `CombatTuning.flank_shielded`: stand 16 px off a side the shield is not on, commit to the pick (`FLANK_COMMIT_FRAMES`); a per-frame re-pick flipped 2 px for 28000 frames.
 - Boss loops that step the env themselves (L3 suffix `_tick` / `_drive_hop`, L4 Gleeok) sit outside `run_controller_stage`'s potion guard: call `dungeon.pause_select.drink_if_low` every frame. `--save-points` writes `<prefix>_level3_manhandla` for `scratch/mh_eval.py`.
 - Offset pins (`scratch/offset_pins.py`) must sit after any settle that waits for a game event: idle frames before the L3 TF settle came out as one tape shifted by a frame.
+- Read the door table (`pin_probe.py --doors`) before adding a dungeon clear. An `open` or `key` exit needs no fight, while a shutter or a push block needs every enemy dead (L6 0x38/0x09 blocks do not move otherwise). L6 fought 0x78, 0x28 and the 0x18 Gleeok for exits that were open or reachable by bomb.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers
