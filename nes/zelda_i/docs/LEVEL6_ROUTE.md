@@ -59,12 +59,19 @@ only where a shutter or a push block gates the exit:
 | 0x3a | W open; block (stairs warp) | clear, push |
 
 Gohma's wing (0x1d, 0x2d, 0x2c, 0x1c, 0x0c) connects only through the 0x3a
-warp. Route: 0x79 → 0x7a key → 0x78 → 0x68 → 0x58 → 0x48 → 0x38 → 0x28
-bomb E → 0x29 N key → 0x19 → 0x09 N key → Rod → 0x09 S → 0x19 S → 0x29 S →
-0x39 → 0x3a → cellar. Keys: 4 in, 3 left at 0x09 (4 with the island key).
-One extra bomb (0x28). Resumed Clean from `C8c_enter_level6`
-(`c8d_l6_reroute`, `s8d_l6_budget`): the Rod is taken, then the return dies
-in 0x29 with 28.3h spent (0x09 13.0, 0x38 6.0).
+warp. Route (c903cb4b): 0x79 → key W → 0x78 → 0x68 → 0x58 → 0x48 → 0x38 →
+0x28 bomb E → 0x29 N key → 0x19 (clear) → 0x09 N key → Rod → 0x09 S → 0x19 S
+→ 0x29 straight DOWN x=120 (stepladder over both moats, island key) → 0x39 →
+0x3a → cellar. 0x7a's key fight is skipped: keys 4 in, 3 at the Triforce.
+One bomb (0x28).
+
+The White Sword with 10 containers could not afford it (28.3h spent by the
+0x29 return, `s8d_l6_budget`); a what-if pin with 12 containers and the
+Magical Sword finished. The spine now takes the coast hearts after L4 and
+the 0x21 grave on the L6 walk (`overworld/magical_sword.py`).
+`clean_poweron82` (fresh power-on) entered L6 with 12 HC and sword 3 and took
+the Rod. A resume from its L6 entry on c903cb4b (`c11_l6_no7a`) reached
+TF 0x3F with 6.24h left. That resume does not promote Clean.
 
 Assisted (`UnlimitedHealthAssist`). Evidence: `recordings/l6_entry_recon.json`,
 `recordings/level6_east_key_assisted_isolated.json`,

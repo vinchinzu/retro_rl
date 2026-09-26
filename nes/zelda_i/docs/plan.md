@@ -6,59 +6,16 @@ Goal: power-on to credits, Clean (no RAM write, no state load), zero deaths.
 Inventory is already natural (run 53: zero pokes); only the health refill is
 left, so every remaining item below is a death point, not a resource.
 
-### C8 residual (2026-09-25, later)
+### C8 green (2026-09-25, late)
 
-The verified gate is still C7 (`clean_poweron76`). `clean_poweron81` was a
-continuous Clean tape with natural 0x51/0x67 rupees and wooden arrows bought
-at 0x25; it reached TF `0x1F` and died in L6 0x38. The new 0x33 potion detour
-is proved only from the saved post-arrow pose: `c8_potion_33_drink2` drank the
-carried blue dose for 4.51 hearts, bombed the 0x33 cave, bought red for 68R,
-and entered L6 with two charges and no inventory writes. The pin continuation
-`c8_potion_7a_detour` cleared 0x7a through 0x28, then died in 0x18; later
-room-specific pin trials reached 0x19 and 0x09. `c8_l6_19_scoped` clears 0x19
-in 644 frames, then dies in 0x09 at 2.1 hearts of damage. These are resumed
-development tapes (`set_state_count=1`), not a Clean C8 result.
-
-Next: start at `C8c_level6_clear_0x09.state` for combat work, then compose
-from `C8c_level6_west_clear_0x78.state` to check the preceding health budget.
-Only a fresh `--clean --through level6` power-on with TF `0x3F`, Rod, zero
-state loads, zero assists and zero writes can promote C8. Bead `rr-d6v` stays
-open. The saved pins were overwritten by later trials, so inspect each pin's
-inventory and health before using it.
-
-### What sets the plan (measured on d1c42958)
-
-- `clean_poweron60` (`--clean`): dies in `white` on 0x18 at 40,801f, the same
-  tape as CL45. Pond 0x39 (4/4) to 0x0A spends 5.5h and heals 1 (the 0x2C
-  container). 7 of the 11 hits are 0x2B blue leevers and 0x1E tektites.
-- `lasth_poweron60` (`--engage-hearts 1 --observed-damage-guard --no-pokes`,
-  from a worktree snapshot): the death map. Each last-heart refill is one
-  Clean death. Gathering: 2 (walk_28 before White Sword; the ring road, then
-  0x34 on `rupees_62`). L1, L2 and L4: **0**. L3: enters at 4/8 after a 2.8h
-  walk, then refills at 0x69 and the raft/boss rooms. Stopped at L5 0x66 on
-  `bombs=0` (a bomb budget miss under a reshuffled tape, not health).
-- Survival damage by level (run 53, beam always on): OW 61h, L1 3, L2 7,
-  L3 12, L4 11, L5 40, L6 57, L7 19, L8 57, L9 71. L5+ are unmapped for
-  last-heart; expect the next death points there.
-
-### Re-think
-
-1. **The unit is the segment between full refills**: pond fairy (0x39,
-   0x43), potion drink, Triforce. A segment survives when the hearts it
-   starts with plus what it heals inside beat its damage. Per-room combat
-   tuning chased damage everywhere; most rooms are already inside budget.
-2. **Heal before you fight.** For each death point, first try a heal on the
-   route (take-any potion, pond, potion shop), then combat. A heal is one
-   stage; a combat fix reshuffles every later room.
-3. **Last-heart refills are the death map.** Run it from a worktree snapshot
-   so the main tree stays editable (`PYTHONPATH=$W:$W/snes:$W/nes`).
-4. **Not Clean:** `--rollout` (it `set_state`s the played emulator), any
-   heart write. A game-over Continue writes nothing, but the target stays
-   zero deaths.
-5. The White Sword beam needs full hearts. Healing to full is worth more
-   than the hearts: it turns the beam back on.
-
-### Ladder (each rung is a `--clean` power-on, no resume)
+`clean_poweron83` (c903cb4b) is the C8 gate: power-on → L6 Triforce, 235,596f,
+TF `0x3F`, Rod and Magical Sword, 13 containers, 0 loads, 0 writes. The levers,
+in payoff order: the ROM door table (0x78/0x28/Gleeok/0x7a/0x29 clears were
+optional), the Magical Sword (coast hearts 0x5F/0x2F after L4 + the 0x21
+grave; a what-if pin sized it first), and skipping 0x13's rock when the
+wallet already pays. Next is C9 (L7). Re-run the zero-poke Survival credits
+run first: L6 now spends one bomb at 0x28, skips 0x7a's key, and the L5/L6
+walks carry the coast and grave detours.
 
 | rung | stop | now |
 |---|---|---|
@@ -69,7 +26,8 @@ inventory and health before using it.
 | C5 | L3 Triforce | **green** (`clean_poweron69`, 121,388f) |
 | C6 | L4 Triforce | **green** (`clean_poweron74`, 152,416f) |
 | C7 | L5 Triforce | **green** (`clean_poweron76`, 190,444f, TF `0x1F`) |
-| C8-C11 | L6, L7, L8, L9 + credits | – |
+| C8 | L6 Triforce | **green** (`clean_poweron83`, 235,596f, TF `0x3F`) |
+| C9-C11 | L7, L8, L9 + credits | – |
 
 A rung is green once one power-on `--clean` run reaches it (C5 also on
 committed HEAD alone: `clean_poweron_h1`, L3 at 126,643f). Keep the zero-poke

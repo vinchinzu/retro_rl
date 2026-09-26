@@ -56,6 +56,7 @@ measurement. Compare a row against the row above it only when the code changed.
 | **clean_poweron74 (L4 potion before arrows, Gleeok drinks)** | **arrow_restock_l4 (off: Clean), L4 TF 0x0F** | level9-credits | **155195** | 10027 | 60/130 | 15 | 0 / 0 | **0 / 0 / 0** | 4:20 4794f | 40.91 | 1:43=map 1:44=boomerang |
 | **clean_poweron76 (L5 0x26 ladder step-off latch, Digdogger)** | **ok (off: Clean), L5 TF 0x1F** | level5 | **190444** | 11115 | 72/148 | 16 | 0 / 0 | **0 / 0 / 0** | 4:20 6938f | 58.5 | 1:43=map 1:44=boomerang 5:26=key 5:27=key 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 |
 | **clean_poweron82 (coast hearts, Magical Sword, L6 door-table reroute)** | **level6_south_0x29 (off: Clean), Rod taken** | level6 | 235873 | 15052 | 103/196 | 24 | 0 / 0 | **0 / 0 / 0** | 4:20 7410f | 101.29 | 1:43=map 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:28=rupee5 |
+| **clean_poweron83 (c903cb4b: 0x13 wallet gate, 0x29 straight walk, no 0x7a)** | **ok (off: Clean), L6 TF 0x3F** | level6 | **235596** | 14696 | 106/200 | 24 | 0 / 0 | **0 / 0 / 0** | 4:20 7410f | 99.06 | 1:43=map 5:37=compass 5:47=key 5:56=bombs 5:57=rupee5 6:28=rupee5 6:2d=key |
 | clean_poweron_h1 (HEAD edf97dd6 alone) | level4_triforce_0x08 (off: Clean) | level9-credits | 157393 | – | – | – | 0 / 0 | 0 / 0 / 0 | – | – | L3 TF at 126,643f |
 | natural_credits_poweron67 (edf97dd6: Dodongo stand, restock letter) | level8_return_passage_bomb_north_4c (unlimited_health) | level9-credits | 251358 | 9105 | 75/189 | 39 | 106 / 371 | 0 / 0 / 0 | 8:3e 8667f | 211.89 | see report |
 
