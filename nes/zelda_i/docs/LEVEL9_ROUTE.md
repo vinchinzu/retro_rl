@@ -28,8 +28,10 @@ continuous credits claim.
 
 
 
-**Status:** backward endgame recon is live; the natural Level 9 route is still
-unbuilt. Spectacle Rock is overworld `0x05`, the settled entrance is room
+**Status:** Level 9 hops are wired. Clean verification is `rr-npv.5`
+(`--clean --through level9-credits`), blocked on Level 8. The 2026-09-24
+bomb-budget note above is the wallet plan, not a Clean claim. Spectacle
+Rock is overworld `0x05`, the settled entrance is room
 `0x76`, the final Patra room is `0x52`, Ganon is `0x42`, and Zelda is `0x32`.
 The preserved endgame states are explicitly composed, route-ineligible
 fixtures—not Clean or Survival route evidence.

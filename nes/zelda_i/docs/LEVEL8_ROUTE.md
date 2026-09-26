@@ -9,7 +9,10 @@ Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L
 
 
 
-Status: **SPINE-GREEN FROM POWER-ON (2026-09-05).** `--through level8` 1/1,
+Status: **Survival history only (2026-09-05).** Clean STATUS stops at
+Level 6. The next Clean Level 8 check is `rr-npv.4`, blocked on Level 7
+(`rr-rgum`) and on the 0x3E/0x4C bomb patch (`rr-awh6`). The 2026-09-05
+`--through level8` 1/1 below was Survival:
 `set_state=0`, first quest: entry (`rr-6o7.1`), Magical Key (`rr-6o7.2`,
 power-on 2/2) and the four-head Gleeok suffix (`rr-6o7.3`) all pass.  Link
 settles OW `0x6D` `(96,93)` mode 5, TF `0xFF`, Magical Key 1, heart

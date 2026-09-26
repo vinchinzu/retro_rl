@@ -38,7 +38,7 @@ uv run python nes/zelda_i/scripts/run_metrics.py nes/zelda_i/recordings/<tag>.js
 uv run python nes/zelda_i/scripts/pin_probe.py <state> --tiles --items --press DOWN:40   # pose, objects, $6530 + lattice, item flags; --fixture writes tests/fixtures
 uv run python nes/zelda_i/scripts/pin_probe.py <state> --doors   # ROM door type per side (open/bomb/key/shutter) for this dungeon room and its neighbours
 uv run python nes/zelda_i/scripts/stage_replay.py <state> zelda_i.level6.dungeon:ROOM_29_SPEC --assist --window A-B   # one controller/spec from a save point; --idle N = RNG offset
-uv run python nes/zelda_i/scripts/run_survival_spine.py --clean --through level9-credits --save-points CL1 --no-video --trials 1   # real Clean: no refill, no pokes; dies in the gathering today
+uv run python nes/zelda_i/scripts/run_survival_spine.py --clean --through level7 --save-points C9 --no-video --trials 1   # C9: Clean power-on through L7 (rr-rgum). The gate today is L6.
 uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 ...        # refill at the last heart only: refills = deaths prevented
 uv run python nes/zelda_i/scripts/run_survival_spine.py --engage-hearts 1 --observed-damage-guard ...  # keep last-heart target; safety refill after larger observed hits
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through gather --no-video --trials 1

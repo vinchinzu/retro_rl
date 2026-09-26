@@ -47,11 +47,8 @@ class Level7StopSpec:
 # / ``l7entry_warp_v5.json``, ``set_state=0``): warp 7 blows / 1982f, drain
 # 466f on stair candidate 0, leftover L7 0x79 (120,205), ``writes=0``.
 #
-# SURVIVAL SCOPE, NOT A CLEAN CLAIM. ``food >= 1`` here is still satisfied by
-# the disclosed ``ADDR_FOOD`` write in ``SurvivalBaitPurchaseController`` --
-# the natural 60R bait shop is bead ``rr-8t4.4`` and the L6->shop overworld
-# route is still unmapped. This flag makes the Survival spine green to 0x79;
-# it does not make L7 entry Clean, and ``docs/STATUS.md`` is the planner's.
+# Food is already 1 from the gather buy. The spine does not poke ADDR_FOOD.
+# Clean Level 7 is still unproven (rr-rgum). docs/STATUS.md is the planner's.
 LEVEL7_ENTRY_STOP = Level7StopSpec(
     "level7_entry",
     LEVEL7,

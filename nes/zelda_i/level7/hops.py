@@ -4,12 +4,11 @@ The public surface has three chapters plus dedicated ``level7-bait-shop``.
 Internal stage names provide precise handoffs without exposing room-level
 ``--through`` targets.
 
-``MEASURED_POST_L6_EXIT.verified`` is True. Survival ``--through level7``
-is spine-green from power-on (Recorder warp to pond ``0x42``, drain into
-entry ``0x79``, disclosed Food poke). Clean ``survival=False`` /
-``allow_pokes=False`` never writes ``ADDR_FOOD``. Natural 60R bait shop is
-``rr-8t4.4`` (``--through level7-bait-shop``). Do not wire the recon
-``ADDR_WHISTLE`` poke.
+``MEASURED_POST_L6_EXIT.verified`` is True. The gather already buys
+Food, and ``level7_bait_purchase`` is ``NaturalBaitPurchaseController``
+on both spines. ``survival=True`` does not poke ``ADDR_FOOD``.
+Do not wire the recon ``ADDR_WHISTLE`` poke. Clean Level 7 is bead
+``rr-rgum``.
 """
 
 from __future__ import annotations
@@ -463,8 +462,7 @@ def level7_bait_shop_chapter_stages(
     """Post-L6 OW -> Recorder warp -> peel at 0x54 north to shop 0x34.
 
     Dedicated ``--through level7-bait-shop`` (rr-8t4.4). No Food write.
-    Clean ``survival=False`` keeps ``NaturalBaitPurchaseController``. Survival
-    ``level7-entry`` still uses the disclosed Food fixture until ``rr-8t4.4``.
+    Both spines use ``NaturalBaitPurchaseController``.
     """
     post = make_post_l6_overworld_controller(
         handoff=handoff, hops=post_l6_hops, dest_screen=warp_launch

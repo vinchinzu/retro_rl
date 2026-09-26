@@ -51,11 +51,11 @@ def test_blocked_rows_are_never_spine_green() -> None:
         assert not step.proven
 
 
-def test_tip_is_l1_tf_after_natural_entry_triforce() -> None:
-    """M5 measured 2/2 2026-09-14, triforce=0x01, end 18909."""
+def test_tip_is_l6_tf_on_the_gathered_power_on() -> None:
+    """clean_poweron83 reaches the Level 6 Triforce. The wooden 18909f oracle is historical."""
     top = tip()
     assert top is not None
-    assert top.id == "l1_tf"
+    assert top.id == "l6_tf"
     assert top.rung is Rung.SPINE_GREEN
     assert top.blocker is Blocker.NONE
 
@@ -63,13 +63,13 @@ def test_tip_is_l1_tf_after_natural_entry_triforce() -> None:
 def test_next_open_is_the_first_unproven_row() -> None:
     nxt = next_open()
     assert nxt is not None
-    assert nxt.id == "pre_l1"
+    assert nxt.id == "l7_tf"
     assert nxt.open
-    assert nxt.blocker is Blocker.INVENTORY_GAP
+    assert nxt.blocker is Blocker.NONE
 
 
 def test_render_names_the_l1_tip() -> None:
-    assert "clean tip: l1_tf" in render()
+    assert "clean tip: l6_tf" in render()
 
 
 def test_shared_blocker_classes_are_visible() -> None:
@@ -92,7 +92,7 @@ def test_invalid_pin_rows_quote_the_byte() -> None:
 
 def test_render_mentions_the_next_hop_and_blockers() -> None:
     text = render()
-    assert "next open: pre_l1" in text
+    assert "next open: l7_tf" in text
     assert "blockers by class:" in text
 
 

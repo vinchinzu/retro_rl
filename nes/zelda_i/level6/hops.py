@@ -52,7 +52,6 @@ from zelda_i.level6.overworld import (
     Level6WestKeyDoorController,
     OverworldToLevel6Controller,
     PostL5TriforceSettleController,
-    make_post_l5_level6_controller,
 )
 from zelda_i.level6.path import (
     Level6North68Controller,

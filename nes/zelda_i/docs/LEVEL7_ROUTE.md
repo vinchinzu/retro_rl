@@ -9,11 +9,11 @@ Route notes for this dungeon. The live sitting is the gathering prefix in [PRE_L
 
 
 
-**Status (2026-09-05):** Survival `--through level7` is **spine-green 2/2
-from power-on**. Leftover OW `0x42` `(96,93)` TF `0x7F`. Living residual
-is L8-A: [`tasks/rr-npv.3-residual.md`](tasks/rr-npv.3-residual.md).
-Sections below still describe the Phase 1 recon; they are not the live
-spine. Do not STATUS.
+**Status (2026-09-25):** Clean stops at the Level 6 Triforce. The next
+check is bead `rr-rgum` (`--clean --through level7`). Food is bought on
+the gather walk and carried. The spine does not poke `ADDR_FOOD`.
+Sections below are older recon, including any paragraph that still
+writes Food or calls the pond unreached. Do not STATUS from them.
 
 **Status:** Phase 1 (2026-09-02). The **L6 leave is measured and verified**:
 `--through level6-exit` 2/2 → OW `0x22` `(112,125)` TF `0x3F`, keys 2 bombs 8

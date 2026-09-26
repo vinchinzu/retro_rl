@@ -1,18 +1,11 @@
 """Level 6 (Dragon) dungeon room specs and stop predicates.
 
-Owned by L6 pure wave — do not put these specs into ``dungeon.py``.
-Import ``GenericDungeonRoomController`` / dataclasses from ``dungeon`` only.
+Owned by L6 pure wave. Import ``GenericDungeonRoomController`` from ``dungeon``.
 
-Live recon (2026-08-06 / 2026-08-07)::
-
-    Entry **0x79** (empty combat, RoomItemId 0x03).
-    East **0x7a**: 5× type 0x24 (orange wizzrobe-correlated) + key 0x19.
-    RIGHT from entry: wall-first y≈157 → x≈208 → y≈144–149 (see
-    ``level6_overworld.Level6EntryRightController``; no A while aligning).
-    West **0x78**: key-LEFT from 0x79 (fire-bypass y≈157→141); 5× type 0x24.
-    Trap: UP from 0x7a spends key on Old Man **0x6a** — do not.
-
-Wizzrobe backstep combat lives in ``level6_wizzrobe`` (re-exported here).
+The spine enters 0x79 and leaves west through the key door into 0x78.
+0x7a is not on the route. Wizzrobe backstep for the old 0x7a and 0x78
+clears still lives in ``level6.wizzrobe`` for the tests that pin it.
+The spine itself walks 0x78 and bombs 0x28 east.
 """
 
 from __future__ import annotations
@@ -56,12 +49,6 @@ from zelda_i.level6.overworld import (
     LEVEL6_WIZZROBE_38_ROOM,
     WIZZROBE_ORANGE_TYPE,
 )
-from zelda_i.level6.wizzrobe import (
-    Level6EastKeyController,
-    Level6WestWizzrobeController,
-    make_east_key_controller,
-    make_west_wizzrobe_controller,
-)
 from zelda_i.ram import PLAY_MODE, read_snapshot
 
 # Re-export for runners / docs.
@@ -72,15 +59,12 @@ ROOM_L6_COMPASS = LEVEL6_COMPASS_ROOM  # 0x68
 ROOM_L6_KEESE = LEVEL6_KEESE_ROOM  # 0x58
 ROOM_L6_HARD_38 = LEVEL6_WIZZROBE_38_ROOM  # 0x38
 ROOM_L6_WIZZROBE_28 = LEVEL6_WIZZROBE_28_ROOM  # 0x28
-ROOM_L6_MAP = LEVEL6_MAP_ROOM  # 0x19 east of Gleeok
-ROOM_L6_ROD_WIZZ = LEVEL6_ROD_WIZZ_ROOM  # 0x09 north of Map; skip-Map KEY-UP
+ROOM_L6_MAP = LEVEL6_MAP_ROOM  # 0x19, cleared from the south mouth
+ROOM_L6_ROD_WIZZ = LEVEL6_ROD_WIZZ_ROOM  # 0x09 north of 0x19
 ROOM_L6_DARK_29 = LEVEL6_DARK_29_ROOM  # 0x29 south of Map; dark wizzrobes
 ROOM_L6_DARK_39 = LEVEL6_DARK_39_ROOM  # 0x39 south of 0x29; live 5× Vire 0x12
-# After clear of 0x78, open_doorway_mask includes UP (0x08) → compass room 0x68.
-ROOM_78_UP_DOOR_BIT = 0x08
-# ADDR_COMPASS / ADDR_MAP bitfield: one bit per dungeon (L6 → bit5 → 0x20).
+# ADDR_COMPASS bitfield: one bit per dungeon (L6 → bit5 → 0x20).
 LEVEL6_COMPASS_BIT = 1 << (LEVEL6 - 1)
-LEVEL6_MAP_BIT = 1 << (LEVEL6 - 1)
 _OCC_BOUNDS = (16, 216, 77, 205)
 
 
@@ -746,16 +730,6 @@ def level6_room_09_clear_success(ram: np.ndarray) -> bool:
     return _l6_enemies_dead(ram, LEVEL6_ROD_WIZZ_ROOM, ROOM_09_SPEC)
 
 
-def level6_room_29_clear_success(ram: np.ndarray) -> bool:
-    """Isolated pure: 0x29 no live wizzrobes. Ignore 0x2b/0x40. No stairs."""
-    return _l6_enemies_dead(ram, LEVEL6_DARK_29_ROOM, ROOM_29_SPEC)
-
-
-def level6_room_39_clear_success(ram: np.ndarray) -> bool:
-    """Isolated pure: 0x39 no live Vires. Ignore 0x2b/0x40. No Gohma."""
-    return _l6_enemies_dead(ram, LEVEL6_DARK_39_ROOM, ROOM_39_SPEC)
-
-
 __all__ = [
     "ROOM_L6_ENTRY", "ROOM_L6_EAST_KEY", "ROOM_L6_WEST_WIZZROBE",
     "ROOM_L6_COMPASS", "ROOM_L6_KEESE", "ROOM_L6_HARD_38", "ROOM_L6_WIZZROBE_28",
@@ -763,12 +737,9 @@ __all__ = [
     "ROOM_79_SPEC", "ROOM_7A_SPEC", "ROOM_78_SPEC", "ROOM_68_SPEC",
     "ROOM_58_SPEC", "ROOM_38_SPEC", "ROOM_28_SPEC", "ROOM_19_SPEC",
     "ROOM_09_SPEC", "ROOM_29_SPEC", "ROOM_39_SPEC", "ROOM_3A_SPEC",
-    "ROOM_78_UP_DOOR_BIT", "LEVEL6_COMPASS_BIT", "LEVEL6_MAP_BIT",
-    "Level6EastKeyController", "Level6WestWizzrobeController",
-    "make_east_key_controller", "make_west_wizzrobe_controller",
+    "LEVEL6_COMPASS_BIT",
     "level6_room_7a_key_success", "level6_room_78_clear_success",
     "level6_room_68_compass_success", "level6_room_58_clear_success",
     "level6_room_38_clear_success", "level6_room_28_clear_success",
     "level6_room_19_clear_success", "level6_room_09_clear_success",
-    "level6_room_29_clear_success", "level6_room_39_clear_success",
 ]

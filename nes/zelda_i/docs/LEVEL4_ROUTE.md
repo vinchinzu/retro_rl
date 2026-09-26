@@ -310,7 +310,7 @@ remains (head kite dies Clean; south stand clears faster/safer). Evidence:
 **Natural-entry compose PARTIAL (rr-zavx 2026-08-10):** Clean dual-green
 **Entrance → skip-compass NaturalKey** (no compass KEY-RIGHT; keys≥1 for
 map KEY-UP) **2/2** ~45.8k f/trial. Runner:
-`scripts/run_level4_entrance_tf.py --to-natural-key-only`. Evidence:
+`level4.spine.run_level4_entrance_tf` (the `scripts/run_level4_entrance_tf.py` CLI is pruned) `--to-natural-key-only`. Evidence:
 `recordings/l4_zavx_natkey_dual.json`. Spine segments pure:
 `chain_to_key` → `clear_50` → `north_40` → `key_40` (ALIGN to path anchor
 before maze; skip-compass clear pose ~(72,125) was missing key) →
@@ -318,8 +318,8 @@ before maze; skip-compass clear pose ~(72,125) was missing key) →
 health≈103).
 
 **Continuous Entrance→TF Clean residual (rr-gjey PARTIAL 2026-08-10):** full
-compose runner wired (`run_level4_entrance_tf.py` without
-`--to-natural-key-only`) but **not dual-green** from natural health.
+compose runner wired (`level4.spine.run_level4_entrance_tf` without
+`--to-natural-key-only`; the script is pruned) but **not dual-green** from natural health.
 
 Lab cliffs (7 containers, full health byte `0x6F=111`):
 

@@ -1,6 +1,6 @@
-"""Shared Gleeok sensors + south-stand helpers (L4 0x43 and L6 0x44).
+"""Shared Gleeok sensors + south-stand helpers (L4 0x43 and L8).
 
-Body type is dungeon-specific (L4 ``0x43``, L6 ``0x44``). Detached head
+Body type is dungeon-specific (L4 ``0x43``; Level 8 uses the same sensors). Detached head
 ``0x46`` and fireball residual ``0x56`` are shared. Fight controllers and
 TF suffixes stay on the owning level module.
 """

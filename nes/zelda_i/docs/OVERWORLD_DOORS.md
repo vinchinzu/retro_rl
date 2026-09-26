@@ -73,16 +73,16 @@ are later OW shortcuts. **Do not grant.**
 |------------|--------------|----------|----------|-------------|
 | Wooden sword cave | `0x77` | **verified** | none | start screen NW cave; `ADDR_SWORD` → 1 |
 | White sword cave | **`0x0A`** | **verified** live detour from L9 approach | 5 heart containers | plateau; `ADDR_SWORD` → 2 |
-| Magical sword grave | `0x21` | source path via bracelet Armos — **TBD live** | 12 hearts; push 3rd-from-left middle gravestone | graveyard; `ADDR_SWORD` → 3 |
+| Magical sword grave | `0x21` | **live** on the L6 walk (`overworld/magical_sword.py`) | 12 containers; push the gravestone at (144,144) UP from (144,157) | `clean_poweron83` leaves sword 3 |
 | Power Bracelet Armos | `0x24` | source (10 Armos, top-right) — **TBD live** | none | `ADDR_BRACELET` `0x0665`; unlocks boulder warps |
 | Blue candle shop(s) | **`0x5E`** O-6 cave (`CandleShop5E`) | **verified** assisted OW path `CANDLE_SHOP_HOPS` + cave UP@x112; fixture-tested buy; **not spliced onto any spine hop table** (blocks heart_h5 0x47) | rupees **60** | `ADDR_CANDLE` `0x065B`; buy touch≈(152,149); L8 bush residual |
 | Bait / Food special shop | `0x34` | source Armos top-middle — **TBD live** | 60R | `ADDR_FOOD` `0x065D`; required for L7 Hungry Goriya |
 | Whistle pond (L7 mouth) | `0x42` | source — **TBD live** | Whistle | drains water → L7 stairs |
-| Raft dock (east heart) | `0x3F` | source path →×8 ↑×4 — **TBD live**; rr-ps7.4.1 walked post-L3 `0x74`→`0x66` (`overworld.raft_heart`) and blocked at `0x66` | Raft | raft↑ optional Heart Container island `0x2F` (`overworld.locations.raft_heart`); dock/launch/pickup still unverified |
+| Raft dock (east heart) | `0x3F` | **live** after L4 (`overworld/magical_sword.py` stage `raft_heart_2f`) | Raft | island heart is screen `0x2F`; `raft_heart.py` is gone |
 | Raft dock (L4 island) | `0x55` → `0x45` | **live** assisted rr-0fx (`level4.overworld`) | Raft | only two first-quest raft docks |
-| Ladder heart (coast) | `0x5F` | source — **TBD live** | Stepladder | water platform Heart Container (`overworld.locations.ladder_heart`); Stepladder owned end of L4, unused on OW today |
-| Heart container (bomb) | `0x2C` | source — **TBD live** | Bombs | secret take-any cave (`overworld.locations.heart_m3`) |
-| Heart container (bomb) | `0x7B` | source — **TBD live** | Bombs | secret take-any cave (`overworld.locations.heart_l8`) |
+| Ladder heart (coast) | `0x5F` | **live** after L4 (`overworld/magical_sword.py` stage `ladder_heart_5f`) | Stepladder | taken with the raft heart before the 0x21 grave |
+| Red potion (take-any) | `0x2C` | **live** on the gather (`potion_2c`, left item) | Bombs | the other item in the cave is a heart; the route takes the potion |
+| Heart container (bomb) | `0x7B` | **live** on the gather (`heart_7b`, right item) | Bombs | counted in the 13 containers at the Level 6 Triforce |
 | Heart container (burn) | `0x47` | source — **TBD live** | Candle | secret take-any cave (`overworld.locations.heart_h5`); ZD Gathering third HC, see `docs/PRE_L1.md` |
 | Lost Hills maze | **`0x1B`** | **verified** assisted; enter from `0x1C` W@y140; pocket free then ↑×4 | none | 4th UP → door `0x0B`; see LEVEL5_ROUTE |
 | L8 candle bush | **`0x6D`** | **verified** bush pocket; candle buy residual | Candle | burn then enter; see LEVEL8_ROUTE |

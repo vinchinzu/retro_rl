@@ -2,11 +2,9 @@
 
 Live recon (assisted, 2026-08-06)::
 
-    OW door screen **0x22** (west near graveyard). Enter UP @ x≈24–56
-    (prefer ~48). Entry room **0x79** (level==6, mode 5, xy≈(120, 205)).
-    East of entry **0x7a**: 5× object type 0x24 + RoomItemId 0x19 key.
-    RIGHT from entry needs wall-first y≈157 then y≈138 (fire solids at
-    center y≈141 stick x≈128).
+    OW door screen **0x22** (west near graveyard). Enter UP. Entry room
+    **0x79** (level==6, mode 5). The spine leaves west through the key
+    door into 0x78. The old RIGHT walk into 0x7a is not on the route.
 
 Post-L5 walk (source, OVERWORLD_DOORS): from L5 door ``0x0B``
 ``↓ ←×7 ↓ ← ↓ ← ↑`` onto door ``0x22``. Lost Hills ``0x1B`` only LEFT
@@ -23,8 +21,6 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
 
-import numpy as np
-
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.hop_controller import ow_edge_band_step
@@ -38,7 +34,7 @@ from zelda_i.overworld.settle import (
     PostL5TriforceSettleController,
     settle_ready,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 # --- Live-verified geometry; entrance from anchors ---
 from zelda_i.anchors import (
@@ -68,22 +64,14 @@ LEVEL6_GOHMA_WING_2D_ROOM = 0x2D  # DOWN of 0x1D; leftover (120,77); west open
 LEVEL6_GOHMA_WING_2C_ROOM = 0x2C  # LEFT of 0x2D; N=key, E=open; not Gohma
 LEVEL6_GOHMA_ROOM = 0x1C  # KEY-UP of 0x2C; ROM N=shutter S=key item=heart; TF 0x0C north
 LEVEL6_TF_ROOM = 0x0C  # north shutter of 0x1C; shard bit 0x20
-LEVEL6_OLD_MAN_ROOM = 0x6A  # UP key door from 0x7a — DO NOT spend first key
 # Door mouth is wide: south-path enter works ~x112; mid-screen band ~24–56.
 LEVEL6_DOOR_X = 112  # preferred for south-path fixture L6Probe_22
 LEVEL6_DOOR_X_LO = 24
 LEVEL6_DOOR_X_HI = 120
 LEVEL6 = 6
-WIZZROBE_ORANGE_TYPE = 0x24  # walkthrough-correlated; live on 0x7a / 0x78
+WIZZROBE_ORANGE_TYPE = 0x24  # walkthrough-correlated; live on 0x78
 
-# Entry RIGHT door (fire-block bypass)
-ENTRY_RIGHT_WALL_Y = 157
-ENTRY_RIGHT_DOOR_Y = 141  # channel ~136–152 live (wall blocks tighter y)
-ENTRY_RIGHT_DOOR_Y_LO = 136
-ENTRY_RIGHT_DOOR_Y_HI = 152
-ENTRY_RIGHT_WALL_X = 200  # need x≥200 before y-slide; x~192 y-stuck at 149
-
-# Entry LEFT key door (fire-block bypass) — same wall y as RIGHT path.
+# Entry LEFT key door (fire-block bypass).
 # Naive y≈141 LEFT from east/center sticks on fire solids (x≈208 / x≈112).
 ENTRY_LEFT_WALL_Y = 157
 ENTRY_LEFT_DOOR_Y = 141  # key-door channel; y≈143 live after slide
@@ -377,177 +365,12 @@ class OverworldToLevel6Controller(OverworldPathController):
         return out
 
 
-class EntryRightPhase(Enum):
-    TO_WALL_Y = auto()
-    TO_WALL_X = auto()
-    HUG_AND_SLIDE = auto()  # x→208 then y→144 then RIGHT
-    DONE = auto()
-    FAILED = auto()
-
-
-@dataclass
-class Level6EntryRightController:
-    """From entry 0x79, wall-first RIGHT into 0x7a (fire-block bypass).
-
-    Live policy (no A): y≈157 → x≈200 → x≈208 → y≈144 → RIGHT → 0x7a.
-    """
-
-    phase: EntryRightPhase = EntryRightPhase.TO_WALL_Y
-    frames: int = 0
-    phase_frames: int = 0
-    stuck: int = 0
-    last_x: int = -1
-    last_y: int = -1
-    last_screen: int = -1
-    success: bool = False
-    notes: list[str] = field(default_factory=list)
-    max_frames: int = 4000
-    door_y_target: int = 144
-
-    def reset(self) -> None:
-        self.phase = EntryRightPhase.TO_WALL_Y
-        self.frames = 0
-        self.phase_frames = 0
-        self.stuck = 0
-        self.last_x = -1
-        self.last_y = -1
-        self.last_screen = -1
-        self.success = False
-        self.notes.clear()
-
-    def _move(self, direction: str, reason: str) -> FrameAction:
-        # No sword pulse: A-frames block the sub-pixel door channel at x≈200.
-        return FrameAction(nes_action(direction), reason)
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        self.phase_frames += 1
-        self.stuck, self.last_x, self.last_y, self.last_screen = track_stuck(
-            snap,
-            last_x=self.last_x,
-            last_y=self.last_y,
-            last_screen=self.last_screen,
-            stuck=self.stuck,
-        )
-        if self.frames >= self.max_frames:
-            self.phase = EntryRightPhase.FAILED
-            self.notes.append("timeout")
-            return FrameAction(nes_idle_action(), "timeout")
-        if snap.mode == 17:
-            self.phase = EntryRightPhase.FAILED
-            return FrameAction(nes_idle_action(), "link_death")
-        if snap.level == LEVEL6 and snap.screen == LEVEL6_EAST_KEY_ROOM:
-            if snap.mode == PLAY_MODE or snap.transitioning or snap.mode in (2, 3, 4):
-                if snap.mode == PLAY_MODE:
-                    self.success = True
-                    self.phase = EntryRightPhase.DONE
-                    self.notes.append("east_key_room")
-                    return FrameAction(nes_idle_action(), "done")
-                return FrameAction(nes_idle_action(), "east_settle")
-        if snap.transitioning or snap.mode not in (PLAY_MODE, 8):
-            return FrameAction(nes_idle_action(), "wait")
-        if self.stuck > STUCK_THRESHOLD:
-            wiggle = ("UP", "DOWN", "LEFT", "RIGHT")[self.stuck % 4]
-            self.stuck = 0 if self.stuck > 140 else self.stuck
-            return FrameAction(nes_action(wiggle), "unstick")
-
-        if self.phase is EntryRightPhase.TO_WALL_Y:
-            if snap.link_y <= ENTRY_RIGHT_WALL_Y + 2:
-                self.phase = EntryRightPhase.TO_WALL_X
-                self.phase_frames = 0
-                self.notes.append("at_wall_y")
-            else:
-                return self._move("UP", "to_wall_y")
-
-        if self.phase is EntryRightPhase.TO_WALL_X:
-            if snap.link_x >= 198:
-                self.phase = EntryRightPhase.HUG_AND_SLIDE
-                self.phase_frames = 0
-                self.notes.append("at_wall_x")
-            elif abs(snap.link_y - ENTRY_RIGHT_WALL_Y) > 8:
-                btn = "UP" if snap.link_y > ENTRY_RIGHT_WALL_Y else "DOWN"
-                return self._move(btn, "hold_wall_y")
-            else:
-                return self._move("RIGHT", "to_wall_x")
-
-        # HUG_AND_SLIDE: x to ≥206, then RIGHT while y≤152 (channel ~144–149).
-        if snap.link_x < 206:
-            if abs(snap.link_y - ENTRY_RIGHT_WALL_Y) > 10 and snap.link_x < 190:
-                btn = "UP" if snap.link_y > ENTRY_RIGHT_WALL_Y else "DOWN"
-                return self._move(btn, "reband")
-            return self._move("RIGHT", "hug_wall")
-        # Prefer a bit north of 149 when possible, but do not softlock on UP.
-        if snap.link_y > 152:
-            return self._move("UP", "slide_door_y")
-        if snap.link_y < 136:
-            return self._move("DOWN", "slide_door_y")
-        if snap.link_y > 146 and self.phase_frames < 40:
-            return self._move("UP", "nudge_door_y")
-        return self._move("RIGHT", "push_right")
-
-    def report(self) -> dict[str, Any]:
-        return {
-            "success": self.success,
-            "phase": self.phase.name,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "stuck": self.stuck,
-        }
-
-
 def make_post_l5_level6_controller() -> OverworldToLevel6Controller:
     """L5 door 0x0B → 0x1B y=141 LEFT → Dragon 0x79. Not bracelet warp."""
     return OverworldToLevel6Controller(
         hops=POST_L5_TO_LEVEL6_HOPS,
         require_dungeon=True,
         max_frames=POST_L5_PATH_MAX_FRAMES,
-    )
-
-
-def level6_hops_from(screen: int) -> tuple[ScreenHop, ...]:
-    """Remaining post-L5 hops after ``screen``."""
-    if screen == SCREEN_POST_L5_RETURN:
-        return POST_L5_TO_LEVEL6_HOPS
-    targets = [h.target for h in POST_L5_TO_LEVEL6_HOPS]
-    if screen in targets:
-        return POST_L5_TO_LEVEL6_HOPS[targets.index(screen) + 1 :]
-    return POST_L5_TO_LEVEL6_HOPS
-
-
-def level6_screen_reached(ram: np.ndarray) -> bool:
-    snap = read_snapshot(ram)
-    return (
-        snap.level == 0
-        and snap.mode == PLAY_MODE
-        and snap.screen == SCREEN_LEVEL6_ENTRANCE
-    )
-
-
-def level6_entrance_success(ram: np.ndarray) -> bool:
-    """Room-ready inside Dragon entry: level 6, play mode, room 0x79."""
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_ENTRY_ROOM
-    )
-
-
-def level6_east_key_room(ram: np.ndarray) -> bool:
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_EAST_KEY_ROOM
-    )
-
-
-def level6_west_wizzrobe_room(ram: np.ndarray) -> bool:
-    snap = read_snapshot(ram)
-    return (
-        snap.level == LEVEL6
-        and snap.mode == PLAY_MODE
-        and snap.screen == LEVEL6_WEST_WIZZROBE_ROOM
     )
 
 
@@ -696,7 +519,6 @@ __all__ = [
     "LEVEL6_TRAPS_ROOM",
     "LEVEL6_WIZZROBE_38_ROOM",
     "LEVEL6_WIZZROBE_28_ROOM",
-    "LEVEL6_OLD_MAN_ROOM",
     "LEVEL6_DOOR_X",
     "LEVEL6_DOOR_X_LO",
     "LEVEL6_DOOR_X_HI",
@@ -721,13 +543,7 @@ __all__ = [
     "OverworldToLevel6Controller",
     "PostL5SettlePhase",
     "PostL5TriforceSettleController",
-    "Level6EntryRightController",
     "Level6WestKeyDoorController",
-    "level6_screen_reached",
-    "level6_entrance_success",
-    "level6_east_key_room",
-    "level6_west_wizzrobe_room",
-    "level6_hops_from",
     "make_post_l5_level6_controller",
     "post_l5_overworld_ready",
 ]
