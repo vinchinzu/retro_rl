@@ -5,16 +5,38 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M5 |
-| Best verified result | Clean power-on through the **Level 5 Triforce** on the gathered route: triforce `0x1F`, L1 at 76,579f, L2 at 97,634f, L3 at 126,566f, L4 at 152,416f, L5 at 190,444f, one continuous run, 0 state loads, 0 writes |
+| Best verified result | Clean power-on through the **Level 6 Triforce** on the gathered route: triforce `0x3F`, Magical Rod and Magical Sword, 13 containers; L1 at 77,177f, L2 at 98,090f, L3 at 121,400f, L4 at 157,020f, L5 at 211,047f, L6 at 235,596f, one continuous run, 0 state loads, 0 writes |
 | Last verification | 2026-09-25 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Evidence | [clean_poweron76.json](../recordings/clean_poweron76.json) (`run_survival_spine.py --clean --through level5`); 190,444 frames continuous power-on, 0 state loads, 0 writes. Earlier today: [clean_poweron74.json](../recordings/clean_poweron74.json) through L4. |
+| Evidence | [clean_poweron83.json](../recordings/clean_poweron83.json) (`run_survival_spine.py --clean --through level6`, code c903cb4b); 235,596 frames continuous power-on, `resumed_from` null, 0 state loads, no assist, 0 position/progression writes, 0 inventory writes between frames. Previous gate: [clean_poweron76.json](../recordings/clean_poweron76.json) through L5. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
 
 The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone
 recheck (`run_level1_complete.py --natural-entry`) is red at L1 0x33
 (`0x33_needs_heart`, 2026-09-24); the gathered route above replaces it.
+
+## 2026-09-25 (late): Clean power-on through L6 (Level 6 Triforce)
+
+`clean_poweron83`: power-on → Level 6 Triforce (235,596f), no refill, no load,
+no write, zero deaths, mode 18 in 0x0C with six shards (TF `0x3F`), Rod and
+Magical Sword owned. What changed since the L5 gate:
+
+1. **L6 reroute from the ROM door table** (`pin_probe.py --doors`): 0x78 and
+   0x28 are walked (their exits are open), 0x28's east bomb wall reaches 0x29
+   and the 0x19/0x09 key doors without the 0x18 Gleeok, 0x7a's key fight is
+   skipped, and the post-Rod 0x29 walk goes straight down x=120 on the
+   stepladder. 0x38, 0x09 and 0x3a blocks need every enemy dead (measured).
+2. **Magical Sword before L6** (`overworld/magical_sword.py`): the ladder
+   heart 0x5F and the raft heart 0x2F after L4's 0x67 rock (9 → 11
+   containers), L5's heart makes 12, and the 0x21 grave (144,144) on the L6
+   walk gives the sword. A what-if pin had shown the White Sword with 10
+   containers cannot pay for L6, and the Magical Sword with 12 can.
+3. **0x13's rupee rock only when short**: skipped at 153R (it cost 5.5h).
+
+The L5 Triforce falls at 211,047f inside the same tape, so the Level 5 gate
+holds on this code; a separate `--through level5` run was not made.
+Worst Clean rooms left in L6: 0x3a (10h), 0x09 (5h), 0x19 (3.5h), 0x2c (3h).
 
 ## 2026-09-25: Clean power-on through L5 (Level 5 Triforce)
 
