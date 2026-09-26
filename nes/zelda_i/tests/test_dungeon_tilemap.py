@@ -37,6 +37,7 @@ from zelda_i.dungeon.tilemap import (
     has_room_tile_map,
     link_cell,
     read_room_tiles,
+    room_door_types,
     stair_cells,
     tile_at,
     tile_at_screen,
@@ -96,6 +97,17 @@ def test_tile_classes_do_not_overlap() -> None:
     # A closed leaf is geometry: the walker must refuse it.
     assert not DOOR_LEAF_TILES & LINK_WALKABLE_TILES
     assert BOMB_HOLE_TILES <= LINK_WALKABLE_TILES
+
+
+def test_room_door_types_decode_the_level_block() -> None:
+    # Live L6 bytes (C8d pins): 0x79 A=0x22 B=0xa3, 0x28 A=0x1e B=0x32.
+    ram = _blank_ram()
+    wram = WRAM_RAM_OFFSET - WRAM_BASE
+    for room, a, b in ((0x79, 0x22, 0xA3), (0x28, 0x1E, 0x32)):
+        ram[wram + 0x687E + room] = a
+        ram[wram + 0x68FE + room] = b
+    assert room_door_types(ram, 0x79) == {"N": "wall", "S": "open", "W": "key", "E": "open"}
+    assert room_door_types(ram, 0x28) == {"N": "open", "S": "shutter", "W": "wall", "E": "bomb"}
 
 
 def test_short_ram_has_no_tile_map() -> None:

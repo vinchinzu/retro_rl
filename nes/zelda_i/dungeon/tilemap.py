@@ -60,6 +60,10 @@ __all__ = [
     "tile_at",
     "tile_at_screen",
     "ADDR_FIRST_UNWALKABLE",
+    "ADDR_LEVEL_BLOCK_ATTRS_A",
+    "ADDR_LEVEL_BLOCK_ATTRS_B",
+    "DOOR_TYPE_NAMES",
+    "room_door_types",
     "OW_LATTICE_X",
     "OW_LATTICE_Y",
     "OW_WALKABLE_EXTRA",
@@ -154,6 +158,32 @@ def read_room_tiles(ram: np.ndarray) -> np.ndarray:
     flat = np.asarray(ram[start : start + _MAP_LEN], dtype=np.uint8)
     # Stored column-major with stride TILE_ROWS.
     return flat.reshape(TILE_COLS, TILE_ROWS).T.copy()
+
+
+# The current level block's room attribute tables, 128 rooms each, in cart
+# WRAM (L1-6 share one 16x8 grid, L7-9 the other). A: bits 7-5 north door,
+# 4-2 south. B: bits 7-5 west, 4-2 east. Matched live on L6: 0x79 W key,
+# 0x7a N key (Old Man), 0x58 N shutter, 0x28 E bomb. A room whose exit is
+# "open" needs no clear: L6 0x78 and 0x28 were fought for nothing.
+ADDR_LEVEL_BLOCK_ATTRS_A = 0x687E
+ADDR_LEVEL_BLOCK_ATTRS_B = 0x68FE
+DOOR_TYPE_NAMES = (
+    "open", "wall", "false_wall", "false_wall", "bomb", "key", "key", "shutter",
+)
+
+
+def room_door_types(ram: np.ndarray, room: int) -> dict[str, str]:
+    """``{"N"|"S"|"W"|"E": door type}`` for dungeon ``room`` of the loaded level."""
+    _require(ram)
+    base = WRAM_RAM_OFFSET - WRAM_BASE
+    a = int(ram[base + ADDR_LEVEL_BLOCK_ATTRS_A + (int(room) & 0x7F)])
+    b = int(ram[base + ADDR_LEVEL_BLOCK_ATTRS_B + (int(room) & 0x7F)])
+    return {
+        "N": DOOR_TYPE_NAMES[a >> 5],
+        "S": DOOR_TYPE_NAMES[(a >> 2) & 7],
+        "W": DOOR_TYPE_NAMES[b >> 5],
+        "E": DOOR_TYPE_NAMES[(b >> 2) & 7],
+    }
 
 
 def tile_at(ram: np.ndarray, col: int, row: int) -> int:

@@ -39,6 +39,33 @@ Scaffold: `level6/overworld.py` (`LEVEL6_DOOR_X`, entry room constant, door-hunt
 
 ## Interior (live recon + assisted pure)
 
+### ROM door table and the C8d route (2026-09-25)
+
+`pin_probe.py <pin> --doors` reads the level block's door types
+(`dungeon.tilemap.room_door_types`, `$687E`/`$68FE`). A clear is required
+only where a shutter or a push block gates the exit:
+
+| Room | Doors (ROM) | On the route |
+|------|-------------|--------------|
+| 0x78 | N open, E key | walk N, **no clear** (was 6.5h) |
+| 0x58 | N shutter | clear (Keese) |
+| 0x38 | N/S shutter; block needs every enemy dead | clear, push |
+| 0x28 | N open, S shutter, E bomb | **bomb E to 0x29, no clear** (was 3-5h) |
+| 0x18 | S/E shutter (Gleeok) | **off route** (was 4.3-5.4h) |
+| 0x29 | N key (= 0x19 S), S open, W bomb | walk; island key via stepladder |
+| 0x19 | N key, S key, W/E open | clear from the S mouth (0.9h mean) |
+| 0x09 | S key; block (stairs) needs every enemy dead | clear, push |
+| 0x39 | N/E shutter | clear |
+| 0x3a | W open; block (stairs warp) | clear, push |
+
+Gohma's wing (0x1d, 0x2d, 0x2c, 0x1c, 0x0c) connects only through the 0x3a
+warp. Route: 0x79 → 0x7a key → 0x78 → 0x68 → 0x58 → 0x48 → 0x38 → 0x28
+bomb E → 0x29 N key → 0x19 → 0x09 N key → Rod → 0x09 S → 0x19 S → 0x29 S →
+0x39 → 0x3a → cellar. Keys: 4 in, 3 left at 0x09 (4 with the island key).
+One extra bomb (0x28). Resumed Clean from `C8c_enter_level6`
+(`c8d_l6_reroute`, `s8d_l6_budget`): the Rod is taken, then the return dies
+in 0x29 with 28.3h spent (0x09 13.0, 0x38 6.0).
+
 Assisted (`UnlimitedHealthAssist`). Evidence: `recordings/l6_entry_recon.json`,
 `recordings/level6_east_key_assisted_isolated.json`,
 `recordings/level6_west_wizzrobes_assisted_isolated.json`,
@@ -56,7 +83,7 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
               ──UP KEY──► 0x6a Old Man ⚠ WASTE (do not)
               RIGHT/DOWN sealed post-clear
 
-0x78 west wizzrobes ──clear──► UP (mask 0x09) → 0x68 compass Zols
+0x78 west wizzrobes ──UP (ROM: open, no clear needed)──► 0x68 compass Zols
                     RIGHT free → 0x79
 
 0x68 (5× 0x13 Zols, RoomItemId 0x16 compass) ──UP──► 0x58
@@ -64,9 +91,9 @@ OW 0x22 ──UP (south lane x~112)──► 0x79 entry (empty combat)
 0x58 (8× Keese 0x1b; key drop live) ──UP──► 0x48
 0x48 (blade traps 0x49 — run through) ──UP──► 0x38
 0x38 (hard multi-wizzrobe / Like-Like / Bubble) ──left 0x68 UP then west-aisle──► 0x28
-0x28 (2× orange 0x24; diamond floor) ──LEFT+UP then RIGHT+UP──► 0x18 Gleeok 0x44 live
-0x18 ──y=141 occupancy RIGHT──► 0x19 (2× Zol + 2× Like-Like; Map optional skip)
-0x19 ──KEY-UP x=136 then occupancy──► 0x09 (3× blue + 2× orange; left 0x68 pushes, stairs residual)
+0x28 (2× orange 0x24; diamond floor) ──bomb E (208,141)──► 0x29 ──N key──► 0x19
+0x19 (2× Zol + 2× Like-Like; Map skipped) ──N key──► 0x09 (3× blue + 2× orange; left 0x68 pushes → stairs)
+(historical: 0x28 ──UP──► 0x18 Gleeok ──E shutter──► 0x19; the per-hop 0x18 notes below are that route)
 ```
 
 | Room | Role | Enemies (live) | RoomItemId | Notes |

@@ -1,4 +1,4 @@
-"""L6 Survival hop helpers + first-half rows (entry through stairs18)."""
+"""L6 Survival hop helpers + first-half rows (entry through the 0x09 key door)."""
 
 from __future__ import annotations
 
@@ -7,22 +7,15 @@ from dataclasses import dataclass, field
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import SCREEN_BRACELET_ARMOS, TF_BIT_L5
-from zelda_i.dungeon.gleeok import gleeok_heads_live
 from zelda_i.dungeon.door_hop import DoorHopSpec, door_hop_stages, door_hop_success
 from zelda_i.level6.dungeon import (
     LEVEL6_COMPASS_BIT,
-    ROOM_28_SPEC,
+    ROOM_19_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
     ROOM_7A_SPEC,
-)
-from zelda_i.level6.gleeok18 import (
-    east_door_open,
-    gleeok_3head_live,
-    make_gleeok_18_controller,
-    make_postgleeok_18_controller,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.overworld.gather_segments import (
@@ -42,7 +35,9 @@ from zelda_i.level6.overworld import (
     LEVEL6_COMPASS_ROOM,
     LEVEL6_EAST_KEY_ROOM,
     LEVEL6_ENTRY_ROOM,
-    LEVEL6_GLEEOK_ROOM,
+    LEVEL6_DARK_29_ROOM,
+    LEVEL6_MAP_ROOM,
+    LEVEL6_ROD_WIZZ_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_TRAPS_ROOM,
     LEVEL6_WIZZROBE_28_ROOM,
@@ -57,18 +52,16 @@ from zelda_i.level6.overworld import (
     make_post_l5_level6_controller,
 )
 from zelda_i.level6.path import (
-    SETTLE_18_MAX_FRAMES,
     Level6North68Controller,
-    make_north_18_controller,
+    make_bomb_east_28_controller,
+    make_north_09_controller,
+    make_north_19_controller,
     make_north_28_controller,
     make_north_38_controller,
     make_north_48_controller,
     make_north_58_controller,
-    make_settle_18_controller,
 )
-from zelda_i.dungeon.engine import GenericDungeonRoomController
 from zelda_i.level6.room19 import SETTLE_19_MAX_FRAMES
-from zelda_i.level6.stairs18 import make_stairs_18_controller
 from zelda_i.level6.wizzrobe import make_east_key_controller
 from zelda_i.ram import (
     ADDR_WHISTLE,
@@ -174,27 +167,6 @@ def rod_cellar_ok(snap: ZeldaSnapshot, *, require_prior_tf: bool = True, **_) ->
     if require_prior_tf:
         kw["tf_eq"] = 0x1F
     return play_ready(snap, **kw)
-
-
-def _gleeok18_ok(snap: ZeldaSnapshot, *, require_prior_tf: bool = True, **_) -> bool:
-    kw = dict(level=LEVEL6, screen=LEVEL6_GLEEOK_ROOM)
-    if require_prior_tf:
-        kw["tf_eq"] = 0x1F
-    return play_ready(snap, **kw) and not gleeok_3head_live(snap)
-
-
-def _postgleeok18_ok(snap: ZeldaSnapshot, *, require_prior_tf: bool = True, **_) -> bool:
-    if snap.level != LEVEL6:
-        return False
-    if require_prior_tf and snap.triforce != 0x1F:
-        return False
-    if gleeok_3head_live(snap):
-        return False
-    if snap.mode == PASSAGE_MODE:
-        return True
-    if not play_ready(snap, level=LEVEL6, screen=LEVEL6_GLEEOK_ROOM):
-        return False
-    return (not gleeok_heads_live(snap)) or east_door_open(snap)
 
 
 def one_hop(through, stop, factory, success, *, dedicated=False, name=None):
@@ -467,16 +439,13 @@ def _east_key_stages():
 
 
 def _west_stages():
+    """0x79 -> key door -> 0x78. Its N door is open in the ROM door table:
+    the compass hop walks through, and the 6.5-heart clear is skipped."""
     back = Level6Return79Controller()
     door = Level6WestKeyDoorController()
-    # The generic controller (lattice walls, beam) cleared 0x78 from the
-    # gathered spine in ~130f; the backstep controller timed out at 12000f
-    # under 206 hearts of refilled damage (2026-09-22).
-    fight = GenericDungeonRoomController(spec=ROOM_78_SPEC)
     return (
         ("level6_return_0x79", back, back.max_frames),
         ("level6_west_key_0x78", door, door.max_frames),
-        ("level6_west_clear_0x78", fight, ROOM_78_SPEC.max_frames),
     )
 
 
@@ -498,7 +467,7 @@ def l6_prefix(env, *, require_prior_tf: bool = True) -> tuple[SpineHop, ...]:
             "level6-west",
             "level6_west_0x78",
             _west_stages,
-            ok6(screen=ROOM_78_SPEC.room_id, spec=ROOM_78_SPEC, **tf5),
+            ok6(screen=ROOM_78_SPEC.room_id, **tf5),
         ),
         one_hop(
             "level6-compass",
@@ -544,49 +513,28 @@ def l6_prefix(env, *, require_prior_tf: bool = True) -> tuple[SpineHop, ...]:
             ok6(screen=LEVEL6_WIZZROBE_28_ROOM, **tf5),
             name="level6_north_0x28",
         ),
-        fight_hop("level6-clear28", "level6_clear_0x28", ROOM_28_SPEC, **tf5),
+        # 0x28's N door is open and 0x18's E shutter waits on the Gleeok;
+        # the east bomb wall reaches 0x19 through 0x29 with neither fight.
         one_hop(
-            "level6-room18",
-            "level6_room_0x18",
-            make_north_18_controller,
-            ok6(screen=LEVEL6_GLEEOK_ROOM, **tf5),
-            name="level6_north_0x18",
-        ),
-        SpineHop(
-            "level6-settle18",
-            "level6_settle_0x18",
-            lambda: (
-                (
-                    "level6_settle_0x18",
-                    make_settle_18_controller(),
-                    SETTLE_18_MAX_FRAMES,
-                ),
-            ),
-            ok6(screen=LEVEL6_GLEEOK_ROOM, **tf1f),
+            "level6-bomb28",
+            "level6_bomb_east_0x28",
+            make_bomb_east_28_controller,
+            ok6(screen=LEVEL6_DARK_29_ROOM, **tf5),
         ),
         one_hop(
-            "level6-gleeok18",
-            "level6_gleeok_0x18",
-            make_gleeok_18_controller,
-            lambda snap, r=require_prior_tf, **_: _gleeok18_ok(
-                snap, require_prior_tf=r
-            ),
+            "level6-room19",
+            "level6_north_0x19",
+            make_north_19_controller,
+            ok6(screen=LEVEL6_MAP_ROOM, **tf1f),
         ),
+        # Clear 0x19's west bank from the south mouth (0.9h mean, 6 offsets):
+        # the post-Rod walk back to 0x29 met a live Like-Like and stood
+        # engulfed for 4000 frames.
+        fight_hop("level6-clear19", "level6_clear_0x19", ROOM_19_SPEC, **tf1f),
         one_hop(
-            "level6-postgleeok18",
-            "level6_postgleeok_0x18",
-            make_postgleeok_18_controller,
-            lambda snap, r=require_prior_tf, **_: _postgleeok18_ok(
-                snap, require_prior_tf=r
-            ),
-        ),
-        one_hop(
-            "level6-stairs18",
-            "level6_stairs_0x18",
-            make_stairs_18_controller,
-            lambda snap, r=require_prior_tf, **_: stairs_or_play(
-                snap, not_screen=LEVEL6_GLEEOK_ROOM, require_prior_tf=r
-            ),
-            dedicated=True,
+            "level6-room09",
+            "level6_north_0x09",
+            make_north_09_controller,
+            ok6(screen=LEVEL6_ROD_WIZZ_ROOM, **tf1f),
         ),
     )

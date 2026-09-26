@@ -62,8 +62,7 @@ from zelda_i.level6.wizzrobe import (
     make_east_key_controller,
     make_west_wizzrobe_controller,
 )
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
-from zelda_i.spine.hops import play_ready
+from zelda_i.ram import PLAY_MODE, read_snapshot
 
 # Re-export for runners / docs.
 ROOM_L6_ENTRY = LEVEL6_ENTRY_ROOM  # 0x79
@@ -583,26 +582,6 @@ ROOM_29_SPEC = DungeonRoomSpec(
 register_room_spec(ROOM_29_SPEC)
 
 
-def clear29_handoff_ok(snap: ZeldaSnapshot, **_: object) -> bool:
-    """Spine stop: cleared 0x29 at the south door leftover (120,189).
-
-    The fight clears the bank Link can walk (``reachable_only``); a body
-    left across the moat is not a failed stop.
-    """
-    target = ROOM_29_SPEC.reward.target
-    if target is None:
-        return False
-    return play_ready(
-        snap,
-        level=LEVEL6,
-        screen=LEVEL6_DARK_29_ROOM,
-        rod=True,
-        tf_eq=0x1F,
-    ) and abs(int(snap.link_x) - target[0]) <= 2 and abs(
-        int(snap.link_y) - target[1]
-    ) <= 2
-
-
 # South of 0x29: dark leftover north mouth (120,93). Live census (settle39 v1):
 # 5× Vire 0x12 HP64. Ignore 0x2b / Bubble 0x40 / split 0x1c HP0. Do not
 # invent Gohma. East PNG lock; dest after clear is RAM.
@@ -784,7 +763,6 @@ __all__ = [
     "ROOM_79_SPEC", "ROOM_7A_SPEC", "ROOM_78_SPEC", "ROOM_68_SPEC",
     "ROOM_58_SPEC", "ROOM_38_SPEC", "ROOM_28_SPEC", "ROOM_19_SPEC",
     "ROOM_09_SPEC", "ROOM_29_SPEC", "ROOM_39_SPEC", "ROOM_3A_SPEC",
-    "clear29_handoff_ok",
     "ROOM_78_UP_DOOR_BIT", "LEVEL6_COMPASS_BIT", "LEVEL6_MAP_BIT",
     "Level6EastKeyController", "Level6WestWizzrobeController",
     "make_east_key_controller", "make_west_wizzrobe_controller",
