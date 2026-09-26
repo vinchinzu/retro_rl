@@ -12,7 +12,6 @@ from zelda_i.level6.door_hop import (
     SOUTH18_SPEC,
     SOUTH19_SPEC,
     SOUTH1D_SPEC,
-    SOUTH29_SPEC,
     WEST19_SPEC,
     WEST2D_SPEC,
 )
@@ -40,6 +39,7 @@ from zelda_i.level6.hops import (
 )
 from zelda_i.level6.inland29 import level6_inland29_success, make_inland29_controller
 from zelda_i.level6.north39 import make_north39_controller
+from zelda_i.level6.path import make_south_39_controller
 from zelda_i.level6.overworld import (
     LEVEL6_BLOCK_3A_ROOM,
     LEVEL6_DARK_29_ROOM,
@@ -164,8 +164,14 @@ def l6_suffix_hops(
         door_row("level6-south09", SOUTH09_SPEC),
         door_row("level6-south19", SOUTH19_SPEC),
         door_row("level6-east29", EAST29_SPEC, dedicated=True),
-        # 0x29's S door is open in the ROM door table: walk it, no clear.
-        door_row("level6-south29", SOUTH29_SPEC),
+        # 0x29's S door is open in the ROM door table: walk it, no clear,
+        # straight down x=120 over both moats (stepladder; takes the key).
+        one_hop(
+            "level6-south29",
+            "level6_south_0x29",
+            make_south_39_controller,
+            ok6(screen=LEVEL6_DARK_39_ROOM, **rod1f),
+        ),
         one_hop(
             "level6-settle39",
             "level6_settle_0x39",

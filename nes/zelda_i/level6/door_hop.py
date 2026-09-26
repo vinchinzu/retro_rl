@@ -1,6 +1,6 @@
 """L6 occupancy dest-hop rows.
 
-Ten leftover geometries as ``DoorHopSpec`` rows over the shared engine in
+Nine leftover geometries as ``DoorHopSpec`` rows over the shared engine in
 ``zelda_i.dungeon.door_hop``.  Observe + replan + stand; do not fail the hop
 on occupancy miss.
 """
@@ -31,7 +31,7 @@ EAST_DOOR_X, EAST_DOOR_Y, EAST_DOOR_TOL = 208, 141, 4
 WEST_DOOR_X, WEST_DOOR_Y, WEST_SPAWN_XMIN = 32, 141, 16
 NORTH_DOOR_X, NORTH_DOOR_Y, EAST_SPAWN_XMAX = 120, 93, 232
 NORTH_HALT_Y, CLIP_Y = 109, 141
-SOUTH09_MAX_FRAMES = SOUTH19_MAX_FRAMES = SOUTH29_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
+SOUTH09_MAX_FRAMES = SOUTH19_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
 EAST29_MAX_FRAMES = EAST39_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
 WEST19_MAX_FRAMES = SOUTH18_MAX_FRAMES = SOUTH1D_MAX_FRAMES = WEST2D_MAX_FRAMES = NORTH2C_MAX_FRAMES = DOOR_HOP_MAX_FRAMES
 
@@ -43,7 +43,6 @@ __all__ = [
     "SOUTH09_SPEC",
     "SOUTH18_MAX_FRAMES", "SOUTH18_SPEC", "SOUTH19_MAX_FRAMES", "SOUTH19_SPEC",
     "SOUTH1D_MAX_FRAMES", "SOUTH1D_SPEC",
-    "SOUTH29_MAX_FRAMES", "SOUTH29_SPEC",
     "SOUTH_BAND_Y", "SOUTH_DOOR_TOL", "SOUTH_DOOR_X", "SOUTH_DOOR_Y",
     "WEST19_MAX_FRAMES", "WEST19_SPEC", "WEST2D_MAX_FRAMES", "WEST2D_SPEC",
     "WEST_DOOR_X", "WEST_DOOR_Y", "WEST_SPAWN_XMIN",
@@ -69,13 +68,6 @@ SOUTH19_SPEC = _spec(
     "level6_south_0x19", LEVEL6_MAP_ROOM, (SOUTH_DOOR_X, SOUTH_DOOR_Y),
     "DOWN", "occupancy to (120,189) then DOWN; never UP; dest is RAM",
     south_band=True, forbid_up=True,
-)
-# Waist leftover (120,141). Occupancy DOWN like SOUTH19. Do not clip
-# RIGHT+DOWN; that was the (63,133) tile-244 face. Do not retry y=157.
-SOUTH29_SPEC = _spec(
-    "level6_south_0x29", LEVEL6_DARK_29_ROOM, (SOUTH_DOOR_X, SOUTH_DOOR_Y),
-    "DOWN", "occupancy to (120,189) then DOWN; never UP; dest 0x39",
-    dest_room=LEVEL6_DARK_39_ROOM, south_band=True, forbid_up=True,
 )
 EAST29_SPEC = _spec(
     "level6_east_0x29", LEVEL6_DARK_29_ROOM, (EAST_DOOR_X, EAST_DOOR_Y),
@@ -160,7 +152,7 @@ NORTH2C_SPEC = _spec(
     key_from="2c",
 )
 L6_DOOR_HOPS: tuple[DoorHopSpec, ...] = (
-    SOUTH09_SPEC, SOUTH19_SPEC, SOUTH29_SPEC, EAST29_SPEC, EAST39_SPEC,
+    SOUTH09_SPEC, SOUTH19_SPEC, EAST29_SPEC, EAST39_SPEC,
     WEST19_SPEC, SOUTH18_SPEC, SOUTH1D_SPEC, WEST2D_SPEC, NORTH2C_SPEC,
 )
 # NOTE: room 0x29's south-mouth -> north-door hop is NOT expressed as a

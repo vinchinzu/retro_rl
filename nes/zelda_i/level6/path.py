@@ -20,6 +20,7 @@ from zelda_i.level6.overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
     LEVEL6_DARK_29_ROOM,
+    LEVEL6_DARK_39_ROOM,
     LEVEL6_KEESE_ROOM,
     LEVEL6_MAP_ROOM,
     LEVEL6_ROD_WIZZ_ROOM,
@@ -29,7 +30,7 @@ from zelda_i.level6.overworld import (
     LEVEL6_WIZZROBE_38_ROOM,
 )
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
-from zelda_i.dungeon.hop_controller import LatticeDoorWalker
+from zelda_i.dungeon.hop_controller import LatticeDoorWalker, deployed_ladder
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
 from zelda_i.walk.physics import OccupancyWalker
@@ -42,10 +43,12 @@ __all__ = [
     "Level6North68Controller",
     "Level6Push38Controller",
     "BombWall28East",
+    "Level6DoorWalkController",
     "left_block_0x68",
     "make_bomb_east_28_controller",
     "make_north_09_controller",
     "make_north_19_controller",
+    "make_south_39_controller",
     "make_north_28_controller",
     "make_north_38_controller",
     "make_north_48_controller",
@@ -566,6 +569,8 @@ def make_north_28_controller() -> Level6Push38Controller:
 # (4.3-5.4 hearts in C8 resumes) and spends the key the return path spent
 # on 0x19 S anyway.
 BOMB_28_EAST_STAND = (208, 141)
+# Link's pose range on a dungeon room's walkable ring (x lo/hi, y lo/hi).
+INTERIOR_BOUNDS = (32, 208, 93, 189)
 ENTRY_SETTLE_FRAMES = 20
 
 
@@ -610,4 +615,101 @@ def make_north_09_controller() -> Level6North68Controller:
         source_room=LEVEL6_MAP_ROOM,
         dest_room=LEVEL6_ROD_WIZZ_ROOM,
         spec_id="level6_north_0x09",
+    )
+
+
+@dataclass
+class Level6DoorWalkController:
+    """ROM-lattice walk to one door of ``source_room`` and through it.
+
+    ``LatticeDoorWalker`` routes on the live ``$6530`` lattice (around a
+    moat, not into it) and owns the stepladder release. No combat.
+    """
+
+    source_room: int
+    dest_room: int
+    direction: str
+    spec_id: str
+    max_frames: int = NORTH_68_MAX_FRAMES
+    frames: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    inside: bool = False
+    # Hold ``direction`` down this door column instead of routing: 0x29's
+    # stepladder bridges both 16 px moats at x=120 and the island between.
+    straight_x: int | None = None
+    _env: Any = field(default=None, repr=False)
+    _door: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+
+    def _inland(self, snap: ZeldaSnapshot) -> str | None:
+        """Out of the entry doorway first: a sideways press there is solid.
+
+        0x29's north mouth parked Link at (120,82) pressing LEFT for 650
+        frames. Latches once Link is on the interior ring.
+        """
+        if self.inside:
+            return None
+        x, y = int(snap.link_x), int(snap.link_y)
+        lo_x, hi_x, lo_y, hi_y = INTERIOR_BOUNDS
+        if y < lo_y:
+            return "DOWN"
+        if y > hi_y:
+            return "UP"
+        if x < lo_x:
+            return "RIGHT"
+        if x > hi_x:
+            return "LEFT"
+        self.inside = True
+        return None
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if snap.level == LEVEL6 and snap.screen == self.dest_room and snap.mode == PLAY_MODE and not snap.transitioning:
+            self.success = True
+            self.notes.append(f"arrived_{self.dest_room:02x}_{snap.link_x}_{snap.link_y}")
+            return FrameAction(nes_idle_action(), f"arrived_{self.dest_room:02x}")
+        if snap.mode == 17 or self.frames >= self.max_frames:
+            self.failed = True
+            self.notes.append(f"failed_{snap.screen:02x}_{snap.link_x}_{snap.link_y}_mode{snap.mode}")
+            return FrameAction(nes_idle_action(), "door_walk_failed")
+        if snap.transitioning or snap.mode != PLAY_MODE or snap.screen != self.source_room:
+            return FrameAction(nes_action(self.direction), "door_walk_scroll")
+        if self.straight_x is not None:
+            x = int(snap.link_x)
+            if x != self.straight_x and deployed_ladder(snap) is None:
+                side = "RIGHT" if x < self.straight_x else "LEFT"
+                return FrameAction(nes_action(side), "door_walk_column")
+            return FrameAction(nes_action(self.direction), "door_walk_straight")
+        if (inland := self._inland(snap)) is not None:
+            return FrameAction(nes_action(inland), "door_walk_inland")
+        door = self._door.action(self._env, snap, self.direction, "door_walk")
+        return door or FrameAction(nes_action(self.direction), "door_walk_push")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "notes": list(self.notes),
+            "spec_id": self.spec_id,
+        }
+
+
+def make_south_39_controller() -> Level6DoorWalkController:
+    """Post-Rod 0x29 north mouth -> DOWN x=120 over both moats -> open S door.
+
+    The old occupancy door hop (``SOUTH29_SPEC``, removed) walked into
+    the moat, dropped the stepladder, then refused UP (``forbid_up``) and
+    stood 800 frames among the Wizzrobes (c9_from_coast, 7.75h).
+    """
+    return Level6DoorWalkController(
+        source_room=LEVEL6_DARK_29_ROOM,
+        dest_room=LEVEL6_DARK_39_ROOM,
+        direction="DOWN",
+        spec_id="level6_south_0x29",
+        straight_x=120,
     )

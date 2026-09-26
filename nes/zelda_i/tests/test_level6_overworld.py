@@ -14,20 +14,16 @@ from zelda_i.level6.overworld import (
     LEVEL6_POST_L5_SCREENS,
     POST_L5_TO_LEVEL6_HOPS,
     SCREEN_POST_L5_RETURN,
-    WIZZROBE_ORANGE_TYPE,
     lost_hills_west_dir,
     make_post_l5_level6_controller,
 )
 from zelda_i.level6.path import Level6North68Controller
 from zelda_i.level6.spine import (
-    level6_east_key_success,
     level6_entry_success,
 )
 from zelda_i.overworld.graph import neighbor_screens
 from zelda_i.ram import (
     ADDR_LADDER,
-    ADDR_OBJ_HP,
-    ADDR_OBJ_TYPE,
     ADDR_RAFT,
     ADDR_SCREEN,
     ADDR_TRIFORCE,
@@ -81,32 +77,6 @@ def test_post_l5_path_is_contiguous_and_skips_lost_hills_south() -> None:
     assert len(POST_L5_TO_LEVEL6_HOPS) == len(LEVEL6_POST_L5_SCREENS) - 1
     for before, after in zip(LEVEL6_POST_L5_SCREENS, LEVEL6_POST_L5_SCREENS[1:]):
         assert after in neighbor_screens(before).values(), f"{before:02x}->{after:02x}"
-
-
-def test_clean_entrance_east_key_success_skips_prior_tf() -> None:
-    from zelda_i.level6.hops import l6_prefix
-    from zelda_i.ram import read_snapshot
-    from zelda_i.tests.ram_helpers import make_ram
-
-    ram = make_ram(
-        {},
-        mode=PLAY_MODE,
-        level=6,
-        screen=0x7A,
-        x=120,
-        y=137,
-        keys=1,
-        triforce=0,
-    )
-    snap = read_snapshot(ram)
-    survival = next(h for h in l6_prefix(None) if h.through == "level6-east-key")
-    clean = next(
-        h
-        for h in l6_prefix(None, require_prior_tf=False)
-        if h.through == "level6-east-key"
-    )
-    assert not survival.success(snap, keys_before=0)
-    assert clean.success(snap, keys_before=0)
 
 
 def test_level6_entry_stop_requires_l5_inventory() -> None:
@@ -188,13 +158,8 @@ def test_lost_hills_west_channel_gates_burned_leftovers() -> None:
     assert act.reason.startswith("ow15_south")
 
 
-def test_level6_compass_fails_closed_and_east_key_live_enemies() -> None:
+def test_level6_compass_fails_closed() -> None:
     ctl = Level6North68Controller()
     act = ctl.step(read_snapshot(_ram(level=6, screen=0x79, x=32, y=141)))
     assert ctl.failed
     assert act.reason == "left_0x78"
-
-    ram = _ram(level=6, screen=0x7A, x=120, y=141, keys=6)
-    ram[ADDR_OBJ_TYPE + 1] = WIZZROBE_ORANGE_TYPE
-    ram[ADDR_OBJ_HP + 1] = 64
-    assert not level6_east_key_success(read_snapshot(ram), keys_before=5)

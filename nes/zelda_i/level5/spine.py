@@ -64,6 +64,7 @@ from zelda_i.overworld.gather_segments import (
     make_secret_rupee_controller,
 )
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_SCREEN, bomb_restock_stages
+from zelda_i.overworld.magical_sword import coast_heart_stages
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, ow_secret_taken, read_snapshot
 from zelda_i.spine.hops import SpineHop, attach_hops, fight_stage, play_ready
 
@@ -178,7 +179,7 @@ class _ReturnFromRupees67(HopWalkController):
 
 
 def rupees_67_stages() -> tuple[tuple[str, Any, int], ...]:
-    """0x45 or 0x4A → 0x67's 30R rock → 0x4A, after the L5 bomb check."""
+    """0x45 or 0x4A → 0x67's 30R rock → coast hearts → 0x4A, after the L5 bomb check."""
     return (
         ("walk_67", _WalkToRupees67(max_frames=RUPEES_67_WALK_FRAMES), RUPEES_67_WALK_FRAMES),
         ("select_bombs_67", _SelectBombs67(), 600),
@@ -190,6 +191,9 @@ def rupees_67_stages() -> tuple[tuple[str, Any, int], ...]:
             5000,
         ),
         ("exit_cave_67", CaveExitController(clear=16), 600),
+        # Ladder heart 0x5F and raft heart 0x2F for the Magical Sword's 12
+        # containers; they end on 0x4A, so ``return_4a`` is then a no-op.
+        *coast_heart_stages(),
         (
             "return_4a",
             _ReturnFromRupees67(max_frames=RUPEES_67_RETURN_FRAMES),

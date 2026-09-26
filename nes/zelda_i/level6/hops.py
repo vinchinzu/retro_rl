@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
@@ -15,7 +15,6 @@ from zelda_i.level6.dungeon import (
     ROOM_58_SPEC,
     ROOM_68_SPEC,
     ROOM_78_SPEC,
-    ROOM_7A_SPEC,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.overworld.gather_segments import (
@@ -24,16 +23,21 @@ from zelda_i.overworld.gather_segments import (
     HopWalkController,
     make_secret_rupee_controller,
 )
-from zelda_i.overworld.arrow_shop import SHOP_F3_SCREEN, arrow_restock_stages
+from zelda_i.overworld.arrow_shop import (
+    ARROW_SHOP_PRICE,
+    SHOP_F3_SCREEN,
+    arrow_restock_stages,
+)
 from zelda_i.overworld.cave_shop import (
+    RED_POTION_PRICE,
     make_potion_restock_controller,
     restock_item,
 )
 from zelda_i.overworld.graph import ScreenHop
+from zelda_i.overworld.magical_sword import magical_sword_stages
 from zelda_i.level6.overworld import (
     LEVEL6,
     LEVEL6_COMPASS_ROOM,
-    LEVEL6_EAST_KEY_ROOM,
     LEVEL6_ENTRY_ROOM,
     LEVEL6_DARK_29_ROOM,
     LEVEL6_MAP_ROOM,
@@ -45,7 +49,6 @@ from zelda_i.level6.overworld import (
     POST_L5_PATH_MAX_FRAMES,
     POST_L5_SETTLE_MAX_FRAMES,
     POST_L5_TO_LEVEL6_HOPS,
-    Level6EntryRightController,
     Level6WestKeyDoorController,
     OverworldToLevel6Controller,
     PostL5TriforceSettleController,
@@ -62,7 +65,6 @@ from zelda_i.level6.path import (
     make_north_58_controller,
 )
 from zelda_i.level6.room19 import SETTLE_19_MAX_FRAMES
-from zelda_i.level6.wizzrobe import make_east_key_controller
 from zelda_i.ram import (
     ADDR_WHISTLE,
     CAVE_MODE,
@@ -72,10 +74,9 @@ from zelda_i.ram import (
     read_snapshot,
     read_u8,
 )
-from zelda_i.spine.hops import SpineHop, fight_stage, play_ready, ready
+from zelda_i.spine.hops import SpineHop, fight_stage, gated_stages, play_ready, ready
 
 __all__ = [
-    "Level6Return79Controller",
     "l6_prefix",
     "ok6",
     "one_hop",
@@ -85,55 +86,6 @@ __all__ = [
     "stairs_or_play",
     "rod_cellar_ok",
 ]
-
-
-@dataclass
-class Level6Return79Controller:
-    """Free LEFT 0x7a → 0x79. Never UP (Old Man wastes the key)."""
-
-    max_frames: int = 4000
-    frames: int = 0
-    success: bool = False
-    failed: bool = False
-    notes: list[str] = field(default_factory=list)
-
-    def report(self) -> dict:
-        return {
-            "success": self.success,
-            "failed": self.failed,
-            "frames": self.frames,
-            "notes": list(self.notes),
-            "spec_id": "level6_return_0x79",
-        }
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        self.frames += 1
-        if self.success:
-            return FrameAction(nes_idle_action(), "done")
-        if self.failed or self.frames >= self.max_frames:
-            self.failed = True
-            return FrameAction(nes_idle_action(), "timeout")
-        if snap.mode == 17:
-            self.failed = True
-            self.notes.append("link_death")
-            return FrameAction(nes_idle_action(), "link_death")
-        if (
-            snap.level == LEVEL6
-            and snap.screen == LEVEL6_ENTRY_ROOM
-            and snap.mode == PLAY_MODE
-            and not snap.transitioning
-        ):
-            self.success = True
-            self.notes.append("arrived_79")
-            return FrameAction(nes_idle_action(), "arrived_79")
-        if snap.transitioning or snap.mode in (2, 3, 4, 6, 7):
-            return FrameAction(nes_action("LEFT"), "return_scroll")
-        if snap.level != LEVEL6 or snap.screen != LEVEL6_EAST_KEY_ROOM:
-            return FrameAction(nes_idle_action(), f"wait_room_0x{snap.screen:02x}")
-        if abs(snap.link_y - 141) > 4:
-            btn = "DOWN" if snap.link_y < 141 else "UP"
-            return FrameAction(nes_action(btn), "return_ay")
-        return FrameAction(nes_action("LEFT"), "return_left")
 
 
 def ok6(**kw):
@@ -245,6 +197,9 @@ def _entry_ok(env):
 
     return ok
 
+
+# The walk's two buys: 0x25's arrows for Gohma, then 0x33's red potion.
+L6_WALK_BUYS = ARROW_SHOP_PRICE + RED_POTION_PRICE
 
 # The 80R arrows for Gohma: 0x25's shop is one screen east of the walk's
 # 0x24, after 0x13's 30R. A wallet still short skips the stop.
@@ -370,10 +325,28 @@ def _potion_33_stages(rem_hops: tuple[ScreenHop, ...]):
     )
 
 
+@dataclass
+class _Rupees13Plan:
+    """0x13's 30R rock only when the wallet cannot cover the L6 walk's buys.
+
+    It cost 5.5 hearts in 917 frames on c9_from_coast, whose wallet reached
+    L6 with 36R after both buys: the coast hearts' drops had already paid.
+    """
+
+    active: bool | None = None
+    reason: str = ""
+
+    def decide(self, snap: ZeldaSnapshot) -> bool:
+        if self.active is None:
+            if int(snap.rupees) >= L6_WALK_BUYS:
+                self.reason = f"wallet_{int(snap.rupees)}"
+            self.active = not self.reason
+        return bool(self.active)
+
+
 def _entry_stages():
-    hops_to_13 = POST_L5_TO_LEVEL6_HOPS[:8] + (
-        ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),
-    )
+    hops_to_14 = POST_L5_TO_LEVEL6_HOPS[:8]
+    assert hops_to_14[-1].target == 0x14
     rem_hops = POST_L5_TO_LEVEL6_HOPS[8:]
     return (
         (
@@ -382,40 +355,44 @@ def _entry_stages():
             POST_L5_SETTLE_MAX_FRAMES,
         ),
         (
-            "walk_to_cave_13",
+            "walk_to_0x14",
             OverworldToLevel6Controller(
-                hops=hops_to_13, max_frames=POST_L5_PATH_MAX_FRAMES
+                hops=hops_to_14, max_frames=POST_L5_PATH_MAX_FRAMES
             ),
             POST_L5_PATH_MAX_FRAMES,
         ),
-        (
-            "select_bombs_for_13",
-            PauseSelectController(want=B_SLOT_BOMBS, name="bombs"),
-            600,
-        ),
-        (
-            "rupees_13",
-            make_secret_rupee_controller(0x13),
-            5000,
-        ),
-        (
-            "exit_cave_13",
-            CaveExitController(clear=0),
-            600,
-        ),
-        (
-            "return_14_from_13",
-            HopWalkController(
-                hops=(ScreenHop(0x14, "RIGHT", align_y=165),),
-                max_frames=5000,
+        *gated_stages(
+            _Rupees13Plan(),
+            (
+                (
+                    "walk_to_cave_13",
+                    HopWalkController(
+                        hops=(ScreenHop(0x13, "LEFT", y_band_lo=165, y_band_hi=189),),
+                        max_frames=5000,
+                    ),
+                ),
+                (
+                    "select_bombs_for_13",
+                    PauseSelectController(want=B_SLOT_BOMBS, name="bombs", max_frames=600),
+                ),
+                ("rupees_13", make_secret_rupee_controller(0x13, max_frames=5000)),
+                ("exit_cave_13", CaveExitController(clear=0)),
+                (
+                    "return_14_from_13",
+                    HopWalkController(
+                        hops=(ScreenHop(0x14, "RIGHT", align_y=165),),
+                        max_frames=5000,
+                    ),
+                ),
             ),
-            5000,
         ),
         *arrow_restock_stages(
             L6_ARROW_HOPS, "l5", screen=SHOP_F3_SCREEN, skip_short=True
         ),
         ("return_24_from_25", _BackFromArrowShop(max_frames=5000), 5000),
         *_potion_33_stages(rem_hops),
+        # 12 containers (coast hearts + L5): the 0x21 grave's Magical Sword.
+        *magical_sword_stages(),
         (
             "enter_level6",
             OverworldToLevel6Controller(
@@ -429,24 +406,13 @@ def _entry_stages():
     )
 
 
-def _east_key_stages():
-    right = Level6EntryRightController()
-    fight = make_east_key_controller()
-    return (
-        ("level6_right_0x7a", right, right.max_frames),
-        ("level6_east_key_0x7a", fight, ROOM_7A_SPEC.max_frames),
-    )
-
-
 def _west_stages():
-    """0x79 -> key door -> 0x78. Its N door is open in the ROM door table:
-    the compass hop walks through, and the 6.5-heart clear is skipped."""
-    back = Level6Return79Controller()
+    """0x79 spawn -> key door -> 0x78. Its N door is open in the ROM door table:
+    the compass hop walks through, and the 6.5-heart clear is skipped. 0x7a's
+    key fight (2-6h) is skipped too: L6 still ends with the old route's 2 keys
+    (0x58's drop and 0x29's island key pay the 0x29/0x19/0x2c doors)."""
     door = Level6WestKeyDoorController()
-    return (
-        ("level6_return_0x79", back, back.max_frames),
-        ("level6_west_key_0x78", door, door.max_frames),
-    )
+    return (("level6_west_key_0x78", door, door.max_frames),)
 
 
 def l6_prefix(env, *, require_prior_tf: bool = True) -> tuple[SpineHop, ...]:
@@ -455,13 +421,6 @@ def l6_prefix(env, *, require_prior_tf: bool = True) -> tuple[SpineHop, ...]:
     return (
         SpineHop(
             "level6-entry", "level6_entry_0x79", _entry_stages, _entry_ok(env)
-        ),
-        SpineHop(
-            "level6-east-key",
-            "level6_east_key_0x7a",
-            _east_key_stages,
-            ok6(screen=LEVEL6_EAST_KEY_ROOM, spec=ROOM_7A_SPEC, keys_cmp="gt", **tf5),
-            capture_keys=True,
         ),
         SpineHop(
             "level6-west",

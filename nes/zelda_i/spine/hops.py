@@ -170,3 +170,53 @@ def attach_hops(
             return
         if through == hop.through:
             return
+
+
+class GatedLeg:
+    """One stage of a detour that runs or skips as a unit.
+
+    ``plan.decide(snap)`` is called on the leg's first frame and must latch:
+    the first leg decides for all of them, so a skip leaves every leg done
+    on frame one and a detour is never half-walked.
+    """
+
+    def __init__(self, plan: Any, inner: Any) -> None:
+        self.plan = plan
+        self.inner = inner
+        self.max_frames = int(getattr(inner, "max_frames", 0))
+        self.skipped = False
+        self.frames = 0
+
+    def bind_env(self, env: Any) -> None:
+        if hasattr(self.inner, "bind_env"):
+            self.inner.bind_env(env)
+
+    @property
+    def success(self) -> bool:
+        return self.skipped or bool(getattr(self.inner, "success", False))
+
+    @property
+    def failed(self) -> bool:
+        return not self.skipped and bool(getattr(self.inner, "failed", False))
+
+    def step(self, snap: ZeldaSnapshot) -> Any:
+        from retro_harness.input_script import FrameAction
+        from retro_harness.nes import nes_idle_action
+
+        self.frames += 1
+        if not self.plan.decide(snap):
+            self.skipped = True
+            return FrameAction(nes_idle_action(), f"skip_{self.plan.reason}")
+        return self.inner.step(snap)
+
+    def report(self) -> dict[str, Any]:
+        base = self.inner.report() if hasattr(self.inner, "report") else {}
+        return {**base, "skipped": self.skipped, "plan": self.plan.reason}
+
+
+def gated_stages(plan: Any, legs: Sequence[tuple[str, Any]]) -> Stages:
+    """``(name, GatedLeg, max_frames)`` rows sharing one ``plan``."""
+    return tuple(
+        (name, GatedLeg(plan, ctl), int(getattr(ctl, "max_frames", 0)))
+        for name, ctl in legs
+    )
