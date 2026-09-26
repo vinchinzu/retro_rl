@@ -524,8 +524,9 @@ def test_0x4e_without_keys_fails_closed() -> None:
     assert list(act.action) == list(nes_idle_action())
 
 
-def test_0x3e_cleared_emits_bomb_approach() -> None:
+def test_0x3e_bypasses_live_darknuts_through_north_bomb_wall() -> None:
     ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=205, bombs=7)
+    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
     ctl = make_darknut_key_controller()
     act = _step(ctl, ram)
     assert not ctl.failed
@@ -613,7 +614,7 @@ def test_unit_walk_records_semantic_reasons() -> None:
         "combat_flank",
     } or ("combat" in by_room["0x5e_live"] or "leave_wall" in by_room["0x5e_live"])
     assert "key_north_0x4e" in by_room["0x4e"]
-    assert "combat" in by_room["0x3e_live"] or "leave_wall" in by_room["0x3e_live"]
+    assert by_room["0x3e_live"].startswith("approach_")
     assert "combat" in by_room["0x2e_live"] or "leave_wall" in by_room["0x2e_live"]
     assert "map_skip" in by_room["0x2e_skip"]
     assert by_room["0x1e"] == "arrived_0x1e"
@@ -636,70 +637,6 @@ def test_candle_leftover_pause_selects_bombs_before_place() -> None:
     assert ctl._wall.select_item == 1
 
 
-@pytest.mark.parametrize(
-    "y,reason,action",
-    [
-        pytest.param(205, "combat_door_enter", "UP", id="door_entry_steps_up"),
-        pytest.param(189, "column_peel", "LEFT", id="south_band_peels_west"),
-    ],
-)
-def test_0x3e_entry_column_reasons(y: int, reason: str, action: str) -> None:
-    """Link at south door (120,205) steps UP into room 0x3E; on the south band
-    (120,189) he peels LEFT off the center column toward the west aisle."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=y, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
-    ctl = make_darknut_key_controller()
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == reason
-    assert list(act.action) == list(nes_action(action))
-
-
-def test_0x3e_statues_are_blocked_in_grid() -> None:
-    """0x3E statue locations (96, 141) and (144, 141) are marked impassable."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=120, y=189, health=0x22)
-    _put_obj(ram, 1, TYPE_0C, 128, 80, 141)
-    ctl = make_darknut_key_controller()
-    _step(ctl, ram)
-    assert not ctl._walker.grid.passable(96, 141)
-    assert not ctl._walker.grid.passable(144, 141)
-    assert ctl._walker.grid.passable(120, 141)  # center aisle is passable
-    assert ctl._walker.grid.passable(64, 141)   # west aisle is passable
-
-
-@pytest.mark.parametrize(
-    "x,y,ox,oy,facing,reason,action",
-    [
-        pytest.param(
-            64, 165, 64, 135, 0x04, "threat_bomb_up", ("UP", "B"),
-            id="tactical_bomb_against_approaching_darknut",
-        ),
-        pytest.param(
-            50, 140, 64, 140, 0x04, "combat_slash", ("RIGHT", "A"),
-            id="flank_slash",
-        ),
-        pytest.param(
-            120, 105, 180, 140, 0x01, "bomb_north_wall", ("UP", "B"),
-            id="bomb_north_wall_at_stand",
-        ),
-    ],
-)
-def test_0x3e_combat_reasons(
-    x: int, y: int, ox: int, oy: int, facing: int, reason: str, action: tuple[str, ...]
-) -> None:
-    """0x3E combat reasons keyed on Link's position vs. the Darknut: bomb an
-    approaching Darknut from the west aisle, slash an adjacent flank, or bomb
-    the north wall once Link reaches the north bomb stand (120,105)."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=x, y=y, health=0x22, bombs=7)
-    _put_obj(ram, 1, TYPE_0C, 128, ox, oy, facing=facing)
-    ctl = make_darknut_key_controller()
-    ctl._3e_peeled = True
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == reason
-    assert list(act.action) == list(nes_action(*action))
-
-
 def test_0x3e_keeps_two_bombs_for_its_wall_and_0x4c() -> None:
     """No top-up: a tactical throw at 0x3E must leave its wall and 0x4C's."""
     ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=2)
@@ -710,19 +647,6 @@ def test_0x3e_keeps_two_bombs_for_its_wall_and_0x4c() -> None:
     assert not ctl.failed
     assert act.reason != "threat_bomb_up"
     assert list(act.action) != list(nes_action("UP", "B"))
-
-
-def test_0x3e_advance_north_when_clear() -> None:
-    """Link advances UP the west corridor toward the north wall when corridor is clear."""
-    ram = _ram(screen=ROOM_BLUE_DARKNUTS, x=64, y=165, health=0x22, bombs=7)
-    # Darknut is far off on the east side
-    _put_obj(ram, 1, TYPE_0C, 128, 180, 140, facing=0x01)
-    ctl = make_darknut_key_controller()
-    ctl._3e_peeled = True
-    act = _step(ctl, ram)
-    assert not ctl.failed
-    assert act.reason == "advance_north"
-    assert list(act.action) == list(nes_action("UP"))
 
 
 def test_0x2e_advance_north_when_manhandla_off_corridor() -> None:

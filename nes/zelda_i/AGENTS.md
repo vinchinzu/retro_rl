@@ -1,7 +1,7 @@
 # Agent Instructions — zelda_i
 
-NES Legend of Zelda. The verified Clean power-on gate is the L6 Triforce
-(`clean_poweron83`); L7 is the active frontier (`docs/plan.md` ladder).
+NES Legend of Zelda. The verified Clean power-on gate is the L8 Triforce
+(`clean_poweron98`); L9 / credits is the active frontier (`docs/plan.md` ladder).
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/PRE_L1.md`.
 Session: `.grok/skills/zelda-session/SKILL.md`.
 Tracker: `bd ready -l zelda_i -l spine`. Living residual: `docs/PRE_L1.md`.

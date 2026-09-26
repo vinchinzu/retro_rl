@@ -21,6 +21,7 @@ def test_factory_walks_the_south_band_then_faces_the_east_wall() -> None:
     """The factory's controller walks (96,189) -> (208,189) -> (208,141)
     and faces RIGHT at the stand: the measured approach, not the centre."""
     ctl = make_room29_east_bomb_controller()
+    ctl.wave_settle_frames = 0  # Test geometry after the live wave has settled.
 
     def press(x: int, y: int) -> list[str]:
         ram = make_ram(

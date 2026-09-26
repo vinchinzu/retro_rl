@@ -6,7 +6,15 @@ Goal: power-on to credits, Clean (no RAM write, no state load), zero deaths.
 Inventory is already natural (run 53: zero pokes); only the health refill is
 left, so every remaining item below is a death point, not a resource.
 
-### C8 green (2026-09-25, late)
+### C10 green (2026-09-26)
+
+`clean_poweron98` is the current gate: power-on → Level 8 Triforce, 296,423f,
+TF `0xFF`, Magic Key, 15 containers, 0 loads, 0 writes, 0 deaths. The route
+funds a natural Level 8 blue potion through the 0x13 rupee cave and returns
+through the Level 4 Recorder door. The active frontier is Level 9 / credits;
+see `docs/WIP.md` for the resumed diagnostic and next action.
+
+### Earlier C8 green (2026-09-25, late)
 
 `clean_poweron83` (c903cb4b) is the C8 gate: power-on → L6 Triforce, 235,596f,
 TF `0x3F`, Rod and Magical Sword, 13 containers, 0 loads, 0 writes. The levers,

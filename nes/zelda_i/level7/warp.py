@@ -126,6 +126,7 @@ class RecorderWarpController:
     facing: str = WARP_FACING
     max_blows: int = MAX_BLOWS
     max_frames: int = WARP_MAX_FRAMES
+    leave_intermediate_doors: bool = False
     phase: WarpPhase = WarpPhase.SELECT
     frames: int = 0
     phase_frames: int = 0
@@ -349,6 +350,15 @@ class RecorderWarpController:
                 return self._finish(f"warp_landed_0x{screen:02x}")
             if self.blows >= self.max_blows:
                 return self._fail(f"warp_target_unreached_0x{screen:02x}")
+            if self.leave_intermediate_doors and screen in WARP_DOOR_LEVELS:
+                # A blow on a completed dungeon's doorway is suppressed.
+                # Walk to a neighbouring overworld screen before cycling.
+                self._leave_from = screen
+                self._leave_dir = 0
+                self._walk_in = 0
+                self._leave = LatticeDoorWalker()
+                self._set_phase(WarpPhase.LEAVE, "warp_leave_door")
+                return self._run_leave(snap)
             return self._to_face("warp_next_blow")
         return FrameAction(nes_idle_action(), "done")
 
