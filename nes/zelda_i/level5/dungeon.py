@@ -334,7 +334,18 @@ ROOM_26_SPEC = DungeonRoomSpec(
         patrol_attack_hold=3,
         contact_backstep=16,
     ),
-    reward=RewardSpec(kind=RewardKind.CLEAR_ONLY),
+    reward=RewardSpec(
+        kind=RewardKind.FIXED_INVENTORY,
+        inventory_field="keys",
+        target=(120, 141),
+        waypoints=(
+            (120, 141),
+            (96, 141),
+            (144, 141),
+            (120, 157),
+            (120, 125),
+        ),
+    ),
     room_item_id=ROOM_ITEM_SMALL_KEY,
     exit_routes=(
         DoorRoute("LEFT", ((120, 141), (32, 141))),

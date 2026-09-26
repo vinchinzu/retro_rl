@@ -22,6 +22,7 @@ from zelda_i.walk.physics import lattice_starts
 from zelda_i.walk import live_env
 from zelda_i.dungeon.engine import DungeonPhase, DungeonRoomSpec, GenericDungeonRoomController
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
+from zelda_i.overworld.common import walk_or_swing
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
 
 BOMB_N_STAND_TOL = 4
@@ -318,23 +319,25 @@ class BombWallController:
                     if any(n in nodes for n in lattice_starts(wx, wy)):
                         step = room_step(snap, (wx, wy), tol=atol, env=env)
                         if step is not None:
-                            return FrameAction(nes_action(step), "approach_lattice")
+                            return walk_or_swing(
+                                self.phase_frames, step, "approach_lattice", snap
+                            )
                 # First waypoint is south-band (y-first); later wps keep x locked.
                 y_first = self.approach_index == 0
                 if y_first and abs(snap.link_y - wy) > atol:
-                    return FrameAction(
-                        nes_action("DOWN" if snap.link_y < wy else "UP"),
-                        "approach_y",
+                    btn = "DOWN" if snap.link_y < wy else "UP"
+                    return walk_or_swing(
+                        self.phase_frames, btn, "approach_y", snap
                     )
                 if abs(snap.link_x - wx) > atol:
-                    return FrameAction(
-                        nes_action("RIGHT" if snap.link_x < wx else "LEFT"),
-                        "approach_x",
+                    btn = "RIGHT" if snap.link_x < wx else "LEFT"
+                    return walk_or_swing(
+                        self.phase_frames, btn, "approach_x", snap
                     )
                 if abs(snap.link_y - wy) > atol:
-                    return FrameAction(
-                        nes_action("DOWN" if snap.link_y < wy else "UP"),
-                        "approach_y",
+                    btn = "DOWN" if snap.link_y < wy else "UP"
+                    return walk_or_swing(
+                        self.phase_frames, btn, "approach_y", snap
                     )
                 return FrameAction(nes_idle_action(), "approach_hold")
             # Only dive south from a north pocket. Mid-y (96,141) is already

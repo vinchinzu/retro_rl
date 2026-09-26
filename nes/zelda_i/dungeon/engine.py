@@ -1017,6 +1017,15 @@ class GenericDungeonRoomController(EntryRouteWalker):
             face = "DOWN" if dy > 0 else "UP"
         if not _combat.in_sword_hitbox(lx, ly, face, target.x, target.y):
             return None
+        if self.spec.combat.flank_shielded and int(target.type_id) in SHIELDED_TYPES:
+            tf = int(target.facing)
+            if (
+                (face == "RIGHT" and tf == 2)
+                or (face == "LEFT" and tf == 1)
+                or (face == "UP" and tf == 4)
+                or (face == "DOWN" and tf == 8)
+            ):
+                return None
         if self.spec.combat.occupancy_patrol:
             self.walker.last_dir = None
         if int(snap.facing) != _combat.direction_to_facing(face):

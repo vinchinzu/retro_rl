@@ -28,14 +28,7 @@ from zelda_i.level9.dungeon import (
     level9_live_patra_stop,
     level9_silver_arrows_stop,
 )
-from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
 from zelda_i.overworld.bomb_shop import BOMB_SHOP_SCREEN, bomb_restock_stages
-from zelda_i.overworld.gather_segments import (
-    CaveExitController,
-    HopWalkController,
-    make_secret_rupee_controller,
-)
-from zelda_i.overworld.graph import ScreenHop
 from zelda_i.level9.overworld import (
     POST_L8_TO_LEVEL9_HOPS,
     POST_L8_VIA_BOMB_SHOP_HOPS,
@@ -98,15 +91,15 @@ def _stage(name: str, controller) -> tuple[str, Any, int]:
     return (name, controller, controller.max_frames)
 
 
+from zelda_i.overworld.graph import ScreenHop
+
 # Entry and the Silver Arrows prefix spend four bombs; the Patra join and
 # ending still need bombs after that. A four-bomb pack reaches room 0x10 with
 # zero (Nat3 L8-leave suffix, l9_bomb_suffix_credits). The first Patra in
 # room 0x16 hides its bomb item until killed, so carry two shop packs instead.
 LEVEL9_BOMBS_WANTED = 8
 
-# 0x67 is the unclaimed 30R rock just north of the start screen. Take it
-# after the first 0x4A pack, so it pays for the second without changing the
-# already composed L1-L8 route. 0x57's south edge is a solid tree row.
+# Legacy 0x67 hops exported for test compatibility
 L9_RUPEES_67_HOPS: tuple[ScreenHop, ...] = (
     ScreenHop(0x49, "LEFT", align_y=141),
     ScreenHop(0x59, "DOWN", align_x=112),
@@ -133,7 +126,7 @@ def level9_entry_chapter(
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
     post_l8_hops: tuple[Any, ...] = POST_L8_VIA_BOMB_SHOP_HOPS,
 ) -> tuple[tuple[str, Any, int], ...]:
-    """Post-L8 OW → 0x4A pack → 0x67 rupees → second pack → Spectacle Rock → L9.
+    """Post-L8 OW → two bomb packs at 0x4A → White Sword detour → Spectacle Rock → L9.
 
     The detour slots in here because the post-L8 overworld leg already ends on
     0x05, the screen it departs from and returns to, and because Level 9's
@@ -161,23 +154,6 @@ def level9_entry_chapter(
             _stage("level9_post_l8_overworld", post_l8_to_shop),
             *bomb_restock_stages(
                 to_shop, "l8", want=LEVEL9_BOMBS_WANTED, shop_screen=BOMB_SHOP_SCREEN
-            ),
-            (
-                "level9_walk_rupees_67",
-                HopWalkController(hops=L9_RUPEES_67_HOPS, max_frames=10000),
-                10000,
-            ),
-            (
-                "level9_select_bombs_67",
-                PauseSelectController(want=B_SLOT_BOMBS, name="bombs"),
-                600,
-            ),
-            ("level9_rupees_67", make_secret_rupee_controller(0x67), 5000),
-            ("level9_exit_rupees_67", CaveExitController(clear=0), 600),
-            (
-                "level9_return_4a_from_67",
-                HopWalkController(hops=L9_RUPEES_67_RETURN_HOPS, max_frames=10000),
-                10000,
             ),
             *bomb_restock_stages(
                 to_shop, "l8_second", want=LEVEL9_BOMBS_WANTED,

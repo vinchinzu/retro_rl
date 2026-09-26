@@ -41,14 +41,17 @@ STAIRS_3F_DEST_MODE = 9
 # K1/K2: visual stairs are tile 0x77 (decorative hole). Live CheckWarp
 # is tile 0x71 at (193,141). x-first RIGHT along y=141 toward (208,93)
 # crosses it and idles. Dest is RAM.
-STAIRS_3F_HYP_XY = (208, 93)
+STAIRS_3F_HYP_XY = (208, 141)
 STAIRS_TILES = range(0x70, 0x74)
 _SAMPLE_PERIOD = 12
 _MAX_FRAMES = 4000
 
 
-def stairs_3f_step(snap: ZeldaSnapshot) -> FrameAction:
-    """Walk to (208,93), idle on 0x70-0x73. Exact CheckWarp. No occupancy."""
+from zelda_i.overworld.common import walk_or_swing
+
+
+def stairs_3f_step(snap: ZeldaSnapshot, frames: int = 0) -> FrameAction:
+    """Walk to (208,141), idle on 0x70-0x73. Exact CheckWarp. No occupancy."""
     x, y = int(snap.link_x), int(snap.link_y)
     tile = int(snap.colliding_tile)
     if tile in STAIRS_TILES:
@@ -56,10 +59,10 @@ def stairs_3f_step(snap: ZeldaSnapshot) -> FrameAction:
     gx, gy = STAIRS_3F_HYP_XY
     if x != gx:
         btn = "RIGHT" if x < gx else "LEFT"
-        return FrameAction(nes_action(btn), "stairs_x")
+        return walk_or_swing(frames, btn, "stairs_x", snap)
     if y != gy:
         btn = "DOWN" if y < gy else "UP"
-        return FrameAction(nes_action(btn), "stairs_y")
+        return walk_or_swing(frames, btn, "stairs_y", snap)
     return FrameAction(nes_idle_action(), "stairs_exact")
 
 
@@ -94,6 +97,9 @@ class Level8Stairs3FController(RoomHopController):
     """0x3F leftover → east stairs walk-on. Dest is RAM; fail 0x0F / 0x3C."""
 
     spec: RoomHopSpec = STAIRS_3F_GATE
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        return stairs_3f_step(snap, self.frames)
 
 
 def make_stairs_3f_controller(

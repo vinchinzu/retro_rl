@@ -13,6 +13,9 @@ from __future__ import annotations
 
 from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.passage import passage_step
+from zelda_i.dungeon.threat import ReactiveEvader
+from zelda_i.dungeon.tracking import ObjectTracker
+from zelda_i.overworld.common import walk_or_swing
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -159,6 +162,13 @@ class Level7ForcedDigdoggerController(HopController):
     _env: Any = field(default=None, init=False, repr=False)
     _select: PauseSelectController = field(init=False, repr=False)
     _stand_bound: bool = field(default=False, init=False, repr=False)
+    _tracker: ObjectTracker = field(default_factory=ObjectTracker, init=False, repr=False)
+    _evader: ReactiveEvader = field(
+        default_factory=lambda: ReactiveEvader(bounds=(56, 200, 93, 173)),
+        init=False,
+        repr=False,
+    )
+    tracked: tuple[Any, ...] = field(default=(), init=False, repr=False)
 
     def __post_init__(self) -> None:
         self._select = PauseSelectController(
@@ -181,6 +191,7 @@ class Level7ForcedDigdoggerController(HopController):
                 self._note(note)
 
     def _observe(self, snap: ZeldaSnapshot) -> None:
+        self.tracked = self._tracker.observe(snap)
         types = _boss_types(snap)
         if DIGDOGGER_TYPE in types:
             self.saw_boss = True
@@ -241,6 +252,9 @@ class Level7ForcedDigdoggerController(HopController):
 
     def _sword(self, snap: ZeldaSnapshot) -> FrameAction:
         self.sword_frames += 1
+        evade = self._evader.decide(snap, self.tracked)
+        if evade is not None and getattr(evade, "source_type", None) == 0x55:
+            return FrameAction(nes_action(evade.direction), "sword_evade_fb")
         live = _shrunk_live(snap)
         if not live:
             if _large(snap):
@@ -258,14 +272,24 @@ class Level7ForcedDigdoggerController(HopController):
         hint = engagement_hint(EnemyKind.DIGDOGGER, snap, target)
         if should_swing_at(
             snap.link_x, snap.link_y, hint.face, (target,), hint=hint
-        ) and (self.sword_frames % 8) < 4:
-            return FrameAction(nes_action(hint.face, "A"), "sword_swing")
+        ):
+            if (self.sword_frames % 8) < 4:
+                return FrameAction(nes_action(hint.face, "A"), "sword_swing")
+            return FrameAction(nes_idle_action(), "sword_hold")
         if hint.retreat:
             back = OPPOSITE.get(hint.face, "DOWN")
             return FrameAction(nes_action(back), "sword_retreat")
+        if (self.sword_frames % 8) < 4:
+            return FrameAction(nes_action(hint.face, "A"), "sword_chase_swing")
         return FrameAction(nes_action(hint.face), "sword_chase")
 
     def _exit_north(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.link_y >= 100:
+            evade = self._evader.decide(snap, self.tracked)
+            if evade is not None and evade.direction != "UP":
+                return FrameAction(
+                    nes_action(evade.direction), f"north_evade_{evade.reason}"
+                )
         return dungeon_align_then_push(
             snap,
             push_dir="UP",
@@ -606,7 +630,7 @@ def east_of_room1b_ram_id() -> int | None:
     return LEVEL7_ROOM_BY_ID[FORCED_DIGDOGGER].ram_id
 
 
-def room_1b_key_east_step(snap: ZeldaSnapshot) -> FrameAction:
+def room_1b_key_east_step(snap: ZeldaSnapshot, frames: int = 0) -> FrameAction:
     """One-frame 0x1B y=141 KEY-RIGHT. Goriyas are tanked, not cleared."""
     x, y = int(snap.link_x), int(snap.link_y)
     if abs(y - EAST_DOOR_Y) > DOOR_Y_TOL:
@@ -614,7 +638,7 @@ def room_1b_key_east_step(snap: ZeldaSnapshot) -> FrameAction:
             nes_action("UP" if y > EAST_DOOR_Y else "DOWN"), "keyeast_align_y"
         )
     if x < EAST_DOOR_X - 2:
-        return FrameAction(nes_action("RIGHT"), "keyeast_approach")
+        return walk_or_swing(frames, "RIGHT", "keyeast_approach", snap)
     return FrameAction(nes_action("RIGHT"), "keyeast_push")
 
 
@@ -661,7 +685,7 @@ class Room1BKeyEastController(HopController):
             if self.dest is not None and snap.screen == self.dest:
                 return FrameAction(nes_idle_action(), "wait_dest")
             return self.mark_fail(f"unexpected_room_0x{snap.screen:02x}")
-        return room_1b_key_east_step(snap)
+        return room_1b_key_east_step(snap, self.frames)
 
     def report(self) -> dict[str, Any]:
         return {

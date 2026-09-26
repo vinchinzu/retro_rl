@@ -588,6 +588,9 @@ def _clear_1f_spec() -> DungeonRoomSpec:
             patrol_attack_hold=3,
             engage_attack_period=5,
             engage_attack_hold=3,
+            flank_shielded=True,
+            evade=True,
+            contact_backstep=16,
         ),
         reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=0),
         max_frames=_CLEAR_1F_FRAMES,
@@ -617,7 +620,6 @@ class Level8MagicKeyStairsController(HopController):
     block_xy0: tuple[int, int] | None = None
     push_frames: int = 0
     cellar_frames: int = 0
-    cellar_entry_x: int | None = None
     leftover: dict[str, Any] = field(default_factory=dict)
     _env: Any = field(default=None, init=False, repr=False)
     _clear: GenericDungeonRoomController | None = field(
@@ -910,30 +912,22 @@ class Level8MagicKeyStairsController(HopController):
         # tile -- staying on them re-triggers back to play 0x1F.  The pad at
         # x=136 has brick to its south, so a straight edge-east stalls and
         # the key never spawns.  Walk the full DOWN->RIGHT->UP->LEFT loop
-        # around the pit, mirroring probe_l8_1f_magic_key._cellar_walk
-        # (E2 recording: MK 0->1 at f567, key at ~(141,141)).
-        if self.cellar_entry_x is None:
-            self.cellar_entry_x = int(snap.link_x)
-        waypoints = (
-            (self.cellar_entry_x, MK_CELLAR_FLOOR_Y),
-            (MK_CELLAR_EAST_X, MK_CELLAR_FLOOR_Y),
-            (MK_CELLAR_EAST_X, MK_CELLAR_PEDESTAL[1]),
-            MK_CELLAR_PEDESTAL,
-        )
-        wp_i = min(self.cellar_frames // 180, len(waypoints) - 1)
-        wx, wy = waypoints[wp_i]
+        # around the pit to pedestal at (136, 141).
         x, y = int(snap.link_x), int(snap.link_y)
-        if abs(x - wx) <= 5 and abs(y - wy) <= 5:
-            wp_i = min(wp_i + 1, len(waypoints) - 1)
-            wx, wy = waypoints[wp_i]
-        if abs(y - wy) > 4:
-            return FrameAction(
-                nes_action("UP" if y > wy else "DOWN"), "cellar_pickup_y"
-            )
-        if abs(x - wx) > 4:
-            return FrameAction(
-                nes_action("RIGHT" if x < wx else "LEFT"), "cellar_pickup_x"
-            )
+        # 1. On entry (stairs / west ladder): descend DOWN to floor y=189
+        if (x <= 52 or int(snap.colliding_tile) in range(0x70, 0x74)) and y < MK_CELLAR_FLOOR_Y:
+            return FrameAction(nes_action("DOWN"), "cellar_entry_down")
+        # 2. On floor (y=189): walk RIGHT to east ladder x=176
+        if y >= MK_CELLAR_FLOOR_Y - 4 and x < MK_CELLAR_EAST_X:
+            return FrameAction(nes_action("RIGHT"), "cellar_floor_to_east")
+        # 3. At east ladder (x=176): climb UP to ledge y=141
+        if x >= MK_CELLAR_EAST_X - 4 and y > MK_CELLAR_PEDESTAL[1]:
+            return FrameAction(nes_action("UP"), "cellar_east_climb")
+        # 4. On ledge (y=141): walk LEFT to Magical Key pedestal at x=136
+        if x > MK_CELLAR_PEDESTAL[0]:
+            return FrameAction(nes_action("LEFT"), "cellar_to_pedestal")
+        if not self.mk_gained:
+            return FrameAction(nes_action("LEFT"), "cellar_pickup_touch")
         return FrameAction(nes_idle_action(), "cellar_pickup_wait")
 
     def guard(self, snap: ZeldaSnapshot) -> FrameAction | None:

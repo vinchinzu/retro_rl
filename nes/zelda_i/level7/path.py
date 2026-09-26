@@ -48,6 +48,8 @@ from zelda_i.dungeon.hop_controller import (
     room_step,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
+from zelda_i.dungeon.threat import ReactiveEvader
+from zelda_i.dungeon.tracking import ObjectTracker
 from zelda_i.level7.graph import (
     CANDLE_PUSH,
     DIGDOGGER_1,
@@ -407,12 +409,29 @@ def _goriya_fight(
     ):
         if frames % _SWING_PERIOD < _SWING_HOLD:
             return FrameAction(nes_action(hint.face, "A"), "goriya_slash")
-        return FrameAction(nes_action(hint.face), "goriya_face")
+        return FrameAction(nes_idle_action(), "goriya_face")
     leave = _leave_wall(snap, inland_x=inland_x, inland_y=inland_y)
     if leave is not None:
         return leave
     if hint.retreat:
-        return FrameAction(nes_action(OPPOSITE[hint.face]), "goriya_retreat")
+        ret_dir = OPPOSITE[hint.face]
+        x, y = int(snap.link_x), int(snap.link_y)
+        into_wall = (
+            (ret_dir == "LEFT" and x <= inland_x[0])
+            or (ret_dir == "RIGHT" and x >= inland_x[1])
+            or (ret_dir == "UP" and y <= inland_y[0])
+            or (ret_dir == "DOWN" and y >= inland_y[1])
+        )
+        if not into_wall:
+            return FrameAction(nes_action(ret_dir), "goriya_retreat")
+        if ret_dir in ("LEFT", "RIGHT"):
+            perp = "UP" if y > 141 else "DOWN"
+            if (perp == "UP" and y > inland_y[0]) or (perp == "DOWN" and y < inland_y[1]):
+                return FrameAction(nes_action(perp), "goriya_dodge")
+        elif ret_dir in ("UP", "DOWN"):
+            perp = "LEFT" if x > 120 else "RIGHT"
+            if (perp == "LEFT" and x > inland_x[0]) or (perp == "RIGHT" and x < inland_x[1]):
+                return FrameAction(nes_action(perp), "goriya_dodge")
     # Chase into a block: lattice to the goriya instead (0x38, power-on
     # gathered spine: 13891f of goriya_chase at (96,141)).
     tx, ty = int(target.x), int(target.y)
@@ -883,6 +902,12 @@ class Room69WestBombController:
     _preselect: PauseSelectController | None = field(
         default=None, init=False, repr=False
     )
+    _tracker: ObjectTracker | None = field(
+        default=None, init=False, repr=False
+    )
+    _evader: ReactiveEvader | None = field(
+        default=None, init=False, repr=False
+    )
     _env: Any = field(default=None, init=False, repr=False)
 
     @property
@@ -933,6 +958,16 @@ class Room69WestBombController:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
 
         if snap.screen == ROOM_69:
+            if self._tracker is None:
+                self._tracker = ObjectTracker()
+            if self._evader is None:
+                self._evader = ReactiveEvader(bounds=(56, 200, 109, 173))
+            tracked = self._tracker.observe(snap)
+            evade = self._evader.decide(snap, tracked)
+            if evade is not None and evade.reason.startswith("evade"):
+                return FrameAction(
+                    nes_action(evade.direction), f"goriya_evade_{evade.reason}"
+                )
             live = live_goriyas(snap)
             if live:
                 self.saw_goriya = True
