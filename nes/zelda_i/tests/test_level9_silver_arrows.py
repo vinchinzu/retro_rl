@@ -167,14 +167,14 @@ def test_silver_arrows_chapter_wiring():
     assert len(stages) == 1
     name, ctrl, max_f = stages[0]
     assert name == "level9_natural_silver_arrows"
-    assert isinstance(ctrl, NaturalSilverArrowsController)
+    assert isinstance(ctrl.inner, NaturalSilverArrowsController)
     assert max_f == 44000
 
     # With unmeasured handoff
     unmeasured_stages = level9_silver_arrows_chapter(handoff=UNMEASURED_POST_L8_HANDOFF)
     assert len(unmeasured_stages) == 1
     _, u_ctrl, u_max = unmeasured_stages[0]
-    assert isinstance(u_ctrl, NaturalSilverArrowsController)
+    assert isinstance(u_ctrl.inner, NaturalSilverArrowsController)
     assert u_max == 1
 
     # When silver arrow room is None, returns unavailable controller

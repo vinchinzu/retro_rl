@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from zelda_i.dungeon.shot_guard import GuardedController
 from zelda_i.level9.dungeon import (
     L9_CREDITS_ENDPOINT,
     L9_ENTRY_ENDPOINT,
@@ -185,7 +186,10 @@ def level9_silver_arrows_chapter(
         controller = make_silver_arrows_unavailable_controller()
         controller.reason = "silver_arrow_room_not_selected"
         return (_stage("level9_natural_silver_arrows", controller),)
-    return (_stage("level9_natural_silver_arrows", make_natural_silver_arrows_controller(handoff=handoff)),)
+    controller = GuardedController(
+        make_natural_silver_arrows_controller(handoff=handoff)
+    )
+    return (_stage("level9_natural_silver_arrows", controller),)
 
 
 def level9_patra_chapter(
@@ -195,7 +199,8 @@ def level9_patra_chapter(
         controller = make_patra_join_unavailable_controller()
         controller.reason = "natural_suffix_join_not_selected"
         return (_stage("level9_natural_patra_join", controller),)
-    return (_stage("level9_natural_patra_join", make_natural_patra_join_controller()),)
+    controller = GuardedController(make_natural_patra_join_controller())
+    return (_stage("level9_natural_patra_join", controller),)
 
 
 def level9_credits_chapter() -> tuple[tuple[str, Any, int], ...]:
@@ -205,9 +210,9 @@ def level9_credits_chapter() -> tuple[tuple[str, Any, int], ...]:
     through the pause-menu cursor; never ``ADDR_SELECTED_ITEM`` assign.
     """
     select_arrows = NaturalSelectSilverArrowsController()
-    patra = NaturalFinalPatraController()
+    patra = GuardedController(NaturalFinalPatraController())
     enter_ganon = NaturalPatraToGanonController()
-    ganon = NaturalGanonController()
+    ganon = GuardedController(NaturalGanonController())
     power = NaturalPowerTriforceController()
     enter_zelda = NaturalEnterZeldaController()
     rescue = NaturalRescueZeldaController()

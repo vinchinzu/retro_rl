@@ -6,6 +6,8 @@ hearts. This plays the same controllers hop by hop (entry chapter, the 17
 prefix hops, the Patra join, the credits chapter), prints hearts in/out and
 damage by room per hop, and with ``--pins P`` writes ``P_<step>`` at every
 hop start for ``--from``.
+The dungeon shot guard defaults on, matching the spine; ``--no-guard``
+selects the unguarded baseline. ``--guard`` remains accepted.
 
     QT_QPA_PLATFORM=offscreen uv run python nes/zelda_i/scratch/l9_probe.py \
         C11Evalo0_level9_post_l8_overworld --pins L9P0 --out /tmp/l9p0.json
@@ -22,6 +24,7 @@ from retro_harness.env import make_env, read_state_bytes, state_path, write_stat
 from retro_harness.nes import nes_idle_action
 from retro_harness.segment_runner import configure_headless
 from zelda_i.assist import UnlimitedHealthAssist
+from zelda_i.dungeon.shot_guard import GuardedController, ShotGuard
 from zelda_i.level9.dungeon import MEASURED_POST_L8_HANDOFF
 from zelda_i.level9.hops import level9_credits_chapter, level9_entry_chapter
 from zelda_i.level9.natural_path import (
@@ -33,17 +36,23 @@ from zelda_i.ram import hearts_held, read_snapshot
 from zelda_i.route.chain import run_controller_stage
 
 
-def steps():
+def steps(*, guard=True):
     out = []
     for name, ctl, cap in level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF):
         out.append((name, ctl, cap))
     silver = NaturalSilverArrowsController(handoff=MEASURED_POST_L8_HANDOFF)
+    # Keep prefix hysteresis/history across hops, as the chapter wrapper does.
+    prefix_guard = ShotGuard()
     for hop in silver._hops:
-        out.append((getattr(hop, "spec_id", type(hop).__name__), hop, int(hop.max_frames)))
+        name = getattr(hop, "spec_id", type(hop).__name__)
+        out.append((name, GuardedController(hop, prefix_guard) if guard else hop, int(hop.max_frames)))
     join = make_natural_patra_join_controller()
     join.start_checked = True
-    out.append(("level9_natural_patra_join", join, join.max_frames))
-    out.extend(level9_credits_chapter())
+    out.append(("level9_natural_patra_join", GuardedController(join) if guard else join, join.max_frames))
+    for name, ctl, cap in level9_credits_chapter():
+        if not guard and isinstance(ctl, GuardedController):
+            ctl = ctl.inner
+        out.append((name, ctl, cap))
     return [(f"s{i:02d}_{name}", ctl, cap) for i, (name, ctl, cap) in enumerate(out)]
 
 
@@ -57,7 +66,8 @@ def main() -> int:
     ap.add_argument("--assist", action="store_true", help="Survival refill (measure damage)")
     ap.add_argument("--set", action="append", default=[], metavar="ADDR=VAL", help="what-if write at load")
     ap.add_argument("--out", default=None)
-    ap.add_argument("--guard", action="store_true", help="wrap every step in dungeon.shot_guard")
+    ap.add_argument("--guard", action=argparse.BooleanOptionalAction, default=True,
+                    help="Level 9 dungeon shot guard (default on, as in the spine)")
     a = ap.parse_args()
 
     configure_headless()
@@ -77,7 +87,7 @@ def main() -> int:
     rows = []
     started = False
     frame = 0
-    for sid, ctl, cap in steps():
+    for sid, ctl, cap in steps(guard=a.guard):
         if not started:
             if not sid.startswith(a.start):
                 continue
@@ -86,10 +96,7 @@ def main() -> int:
             write_state_bytes(
                 state_path(GAME_DIR, GAME, f"{a.pins}_{sid}"), env.em.get_state()
             )
-        if a.guard:
-            from zelda_i.dungeon.shot_guard import GuardedController
-
-            ctl = GuardedController(ctl)
+        prior_overrides = ctl.guard.overrides if isinstance(ctl, GuardedController) else 0
         obs, res = run_controller_stage(
             env, obs, name=sid, controller=ctl, max_frames=cap, assist=assist, frame_base=frame
         )
@@ -113,7 +120,7 @@ def main() -> int:
         }
         c0 = rep.get("controller") or {}
         if isinstance(c0, dict) and c0.get("shot_guard"):
-            row["guard"] = c0["shot_guard"]["overrides"]
+            row["guard"] = c0["shot_guard"]["overrides"] - prior_overrides
         if not res.success:
             c = rep.get("controller") or {}
             row["notes"] = (c.get("notes") or [])[-3:] if isinstance(c, dict) else None

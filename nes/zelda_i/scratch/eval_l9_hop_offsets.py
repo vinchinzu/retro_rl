@@ -9,6 +9,7 @@ guard overrides / damage / hits by cause per run and a mean per step.
 
 Uses this interpreter and inherits ``PYTHONPATH``, so it runs a worktree's
 code when launched with ``PYTHONPATH=$W:$W/snes:$W/nes``.
+The guard defaults on; use ``--no-guard`` for the A/B baseline.
 """
 from __future__ import annotations
 
@@ -31,7 +32,8 @@ def main() -> int:
     ap.add_argument("prefix")
     ap.add_argument("steps", nargs="+")
     ap.add_argument("--offsets", type=int, nargs="+", default=[0, 3, 7, 11])
-    ap.add_argument("--guard", action="store_true")
+    ap.add_argument("--guard", action=argparse.BooleanOptionalAction, default=True,
+                    help="Level 9 shot guard (default on; --no-guard for the baseline)")
     ap.add_argument("--hearts", type=int, default=10)
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--to", default=None, help="stop after this step (default: the start step)")
@@ -48,8 +50,7 @@ def main() -> int:
             sys.executable, str(PROBE), pin, "--from", step, "--to", a.to or step,
             "--idle", str(off), "--set", f"0x066F={hv}", "--set", "0x0670=0xFF",
         ]
-        if a.guard:
-            cmd.append("--guard")
+        cmd.append("--guard" if a.guard else "--no-guard")
         cmd.extend(a.extra)
         env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
         proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True)

@@ -296,7 +296,7 @@ def test_credits_hop_does_not_write_inventory_or_load_fixture() -> None:
     select = stages[0][1]
     assert isinstance(select, NaturalSelectSilverArrowsController)
     ganon = next(c for n, c, _ in stages if n == "level9_ganon")
-    assert isinstance(ganon, NaturalGanonController)
+    assert isinstance(ganon.inner, NaturalGanonController)
     for _name, controller, _max in stages:
         report = controller.report()
         assert report["fixture_loaded"] is False
