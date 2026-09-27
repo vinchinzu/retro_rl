@@ -30,6 +30,7 @@ axis keeps him moving the way he faces until he reaches the 8 px grid line.
 from __future__ import annotations
 
 import math
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
@@ -298,6 +299,11 @@ class LinkModel:
             move = "LEFT" if off < 4 or (off == 4 and facing == "LEFT") else "RIGHT"
         dx, dy = DIRS[move]
         nx, ny = x + dx * LINK_SPEED, y + dy * LINK_SPEED
+        if self.in_room:
+            # A fractional step can overshoot a legal boundary node before
+            # the next-node floor check runs (e.g. x=207 -> 208.5).
+            nx = max(INTERIOR_X[0], min(nx, INTERIOR_X[1]))
+            ny = max(INTERIOR_Y[0], min(ny, INTERIOR_Y[1]))
         if move != press:
             # The slide stops on the grid line (then the press turns him).
             if dy:
@@ -404,7 +410,9 @@ def _cut(forecast: Forecast, snap: ZeldaSnapshot) -> Forecast:
                 continue
         keep.append(m)
     return Forecast(keep, forecast.shooters, forecast.frame_counter, forecast.link_invincible)
-_DEBUG = bool(__import__("os").environ.get("SHOT_GUARD_DEBUG"))
+
+
+_DEBUG = bool(os.environ.get("SHOT_GUARD_DEBUG"))
 HOLDS = (4, 8, 12, 16, 24)
 
 
@@ -590,6 +598,8 @@ class GuardedController:
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         act = self.inner.step(snap)
+        if self.inner.success or self.inner.failed:
+            return act
         env = self.__dict__.get("_env")
         if env is None:
             from zelda_i.walk import live_env
