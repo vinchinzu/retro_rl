@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 
 from retro_harness.nes import nes_action
+from zelda_i.combat import BOMB_DROP_OBJECT_TYPE, BOMB_DROP_STATE
 from zelda_i.door_graph import (
     DoorDir,
     InventoryCaps,
@@ -36,6 +37,7 @@ from zelda_i.level9.dungeon import (
 )
 from zelda_i.level9.ganon import MODE_ENDING
 from zelda_i.level9.hops import (
+    LEVEL9_BOMBS_WANTED,
     Level9NaturalRouteSelection,
     SELECTED_NATURAL_ROUTE,
     l9_hops,
@@ -436,6 +438,41 @@ def test_post_l8_overworld_screens_5a_59_58_navigation() -> None:
     # Once cleared, the wall check never re-arms even if y dips back under
     # 149 from a single UP tap (the ping-pong this latch exists to avoid).
     assert ctl.step(_snap(level=0, screen=0x58, link_x=112, link_y=145)).action == nes_action("UP")
+
+
+def test_post_l8_5a_recovers_from_south_wall_with_lattice(monkeypatch) -> None:
+    ctl = Level9PostL8OverworldController(handoff=MEASURED_POST_L8_HANDOFF)
+    ctl._handoff_checked = True
+    ctl.hop_index = 4
+    calls = []
+
+    def route(_env, _snap, direction, lo, hi):
+        calls.append((direction, lo, hi))
+        return "UP"
+
+    monkeypatch.setattr("zelda_i.level9.overworld.ow_edge_band_step", route)
+    action = ctl.step(_snap(level=0, screen=0x5A, link_x=112, link_y=205))
+    assert action.action == nes_action("UP")
+    assert action.reason == "5a_recover_west_lattice"
+    assert calls == [("LEFT", 137, 145)]
+
+
+def test_post_l8_banks_natural_5d_bombs_before_shop() -> None:
+    stages = level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF)
+    ctl = stages[0][1]
+    assert ctl.bomb_goal == LEVEL9_BOMBS_WANTED == 8
+    assert stages[5][1].bomb_goal == 0  # the return walk has no shop target
+    ctl._handoff_checked = True
+    ctl.hop_index = 1
+    drop = ZeldaObject(
+        slot=1, type_id=BOMB_DROP_OBJECT_TYPE, x=32, y=141,
+        facing=0, hp=0, state=BOMB_DROP_STATE,
+    )
+    snap = _snap(level=0, screen=0x5D, link_x=48, link_y=141, bombs=4, objects=(drop,))
+    action = ctl.step(snap)
+    assert action.action == nes_action("LEFT")
+    assert action.reason == "5d_scoop_bomb"
+    assert ctl.step(_snap(level=0, screen=0x5D, link_x=48, link_y=141, bombs=8, objects=(drop,))).reason != "5d_scoop_bomb"
 
 
 def test_post_l8_overworld_screen_38_bridge_latch() -> None:

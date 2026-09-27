@@ -15,6 +15,7 @@ from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.combat import BOMB_DROP_OBJECT_TYPE, BOMB_DROP_STATES
 from zelda_i.dungeon.hop_controller import ow_edge_band_step
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.dungeon import (
@@ -25,6 +26,7 @@ from zelda_i.level9.dungeon import (
     UNMEASURED_POST_L8_HANDOFF,
 )
 from zelda_i.overworld.graph import ScreenHop, path_screens_from_hops
+from zelda_i.overworld.common import scoop_floor_drop
 from zelda_i.overworld.path import OverworldPathController, PathNavPhase
 from zelda_i.ram import (
     ADDR_MAGIC_KEY,
@@ -589,6 +591,7 @@ class Level9PostL8OverworldController(OverworldPathController):
     reverse_maze_waypoints: tuple[tuple[int, int], ...] = REVERSE_5C_MAZE_WAYPOINTS
     reverse_maze_wp_index: int = 0
     stop_screen: int = SCREEN_LEVEL9_ROCK_HYP
+    bomb_goal: int = 0
     check_handoff: bool = True
     _handoff_checked: bool = field(default=False, init=False, repr=False)
     failed: bool = field(default=False, init=False, repr=False)
@@ -655,6 +658,21 @@ class Level9PostL8OverworldController(OverworldPathController):
     def _extra_hop_action(
         self, snap: ZeldaSnapshot, hop: ScreenHop
     ) -> FrameAction | None:
+        if snap.screen == 0x5D and self.bomb_goal and snap.bombs < self.bomb_goal:
+            # Blue Moblins on the first leg can drop a natural four-bomb
+            # pack. Bank it before the west scroll; the 0x4A shop then skips
+            # only when the unchanged eight-bomb target is already met.
+            pickup = scoop_floor_drop(
+                snap,
+                types=(BOMB_DROP_OBJECT_TYPE,),
+                states=BOMB_DROP_STATES,
+                travel_dir=hop.direction,
+                radius=48,
+                reason="5d_scoop_bomb",
+                want=True,
+            )
+            if pickup is not None:
+                return pickup
         if snap.screen == 0x6D and hop.target == 0x5D:
             if abs(snap.link_x - 48) > 4:
                 btn = "LEFT" if snap.link_x > 48 else "RIGHT"
@@ -700,6 +718,12 @@ class Level9PostL8OverworldController(OverworldPathController):
         if snap.screen == 0x5A and hop.target == 0x59:
             if snap.link_y < 140:
                 return self._swing("DOWN", "5a_step_down_y140")
+            if snap.link_y > 145:
+                # A hit can knock Link below the west passage. At (112,205),
+                # blindly pressing LEFT holds against the south wall forever.
+                step = ow_edge_band_step(None, snap, "LEFT", 137, 145)
+                if step is not None:
+                    return self._swing(step, "5a_recover_west_lattice")
             return self._swing("LEFT", "5a_walk_left_0x59")
 
         if snap.screen == 0x59 and hop.target == 0x58:

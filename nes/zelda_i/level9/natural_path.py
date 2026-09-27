@@ -151,11 +151,13 @@ def make_post_l8_overworld_controller(
     hops: tuple[Any, ...] = (),
     stop_screen: int | None = None,
     resumed: bool = False,
+    bomb_goal: int = 0,
 ) -> Level9PostL8OverworldController:
     kwargs: dict[str, Any] = {
         "handoff": handoff,
         "check_handoff": not resumed,
         "resume_on_screen": resumed,
+        "bomb_goal": bomb_goal,
     }
     if hops:
         kwargs["hops"] = hops
