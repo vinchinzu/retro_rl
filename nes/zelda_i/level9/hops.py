@@ -142,6 +142,7 @@ def level9_entry_chapter(
             handoff=handoff,
             hops=to_shop,
             stop_screen=BOMB_SHOP_SCREEN,
+            bomb_goal=LEVEL9_BOMBS_WANTED,
         )
         from_shop = post_l8_hops[shop_idx + 1 :]
         post_l8_to_rock = make_post_l8_overworld_controller(
