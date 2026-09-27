@@ -29,6 +29,13 @@ from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
 
 OBJ_PATRA = 0x47
 OBJ_PATRA_EYE = 0x25
+# The first Patra (L9 0x16, 0x27) is type $48 with $26 eyes: a 24 px small
+# circle and a wider one, $60 of angle a frame against the $25 eyes' $70
+# (Z_04.asm ``UpdatePatraChild``). Every helper below reads both kinds.
+OBJ_PATRA_2 = 0x48
+OBJ_PATRA_EYE_2 = 0x26
+PATRA_BODY_TYPES = (OBJ_PATRA, OBJ_PATRA_2)
+PATRA_EYE_TYPES = (OBJ_PATRA_EYE, OBJ_PATRA_EYE_2)
 PATRA_BODY_HP_START = 0xB0
 PATRA_EYE_HP_START = 0x60
 PATRA_EYE_COUNT = 8
@@ -72,7 +79,7 @@ def patra_body(snap: ZeldaSnapshot) -> ZeldaObject | None:
         (
             obj
             for obj in snap.objects
-            if 1 <= obj.slot <= 12 and obj.type_id == OBJ_PATRA
+            if 1 <= obj.slot <= 12 and obj.type_id in PATRA_BODY_TYPES
         ),
         None,
     )
@@ -82,7 +89,7 @@ def patra_eyes(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
     return tuple(
         obj
         for obj in snap.objects
-        if 1 <= obj.slot <= 12 and obj.type_id == OBJ_PATRA_EYE
+        if 1 <= obj.slot <= 12 and obj.type_id in PATRA_EYE_TYPES
     )
 
 
@@ -700,7 +707,11 @@ __all__ = [
     "FinalPatraFightController",
     "NORTH_DOOR",
     "OBJ_PATRA",
+    "OBJ_PATRA_2",
     "OBJ_PATRA_EYE",
+    "OBJ_PATRA_EYE_2",
+    "PATRA_BODY_TYPES",
+    "PATRA_EYE_TYPES",
     "PATRA_ATTACK_COOLDOWN",
     "PATRA_BODY_HP_START",
     "PATRA_EYE_COUNT",

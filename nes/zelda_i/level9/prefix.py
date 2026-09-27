@@ -23,7 +23,14 @@ from zelda_i.dungeon.hop_controller import (
     stairs_step,
 )
 from zelda_i.dungeon.ops import DOOR_TARGETS
-from zelda_i.level9.patra import PATRA_ROOM_FULL, PATRA_STAND_DY, patra_action, patra_melee_action
+from zelda_i.level9.patra import (
+    PATRA_ROOM_FULL,
+    PATRA_STAND_DY,
+    patra_action,
+    patra_body,
+    patra_eyes,
+    patra_melee_action,
+)
 from zelda_i.level9.dungeon import LEVEL9, ROOM_LEVEL9_ENTRY, ROOM_OLD_MAN_TF, ROOM_RED_RING_HYP, SILVER_ARROWS
 from zelda_i.dungeon.engine import (
     AliveRule,
@@ -225,6 +232,15 @@ class Level9PrefixHopController(HopController):
     origin: int = 0
     dest_hyp: int = 0
     door_dir: str = "UP"
+    # A door hop may opt in: a boxed hand walk (a knock onto a moat lip)
+    # then falls back to the ROM-lattice route to this hop's door. Not for a
+    # Like-Like room (0x14): an engulfed Link reads as boxed, and the lattice
+    # press replaced the slash that frees him (4000-frame timeout).
+    door_hop: bool = False
+
+    def __post_init__(self) -> None:
+        if self.door_hop and self.exit_dir is None:
+            self.exit_dir = self.door_dir
 
     @property
     def stage_id(self) -> str:
@@ -823,6 +839,7 @@ class Level9East15Controller(Level9PrefixHopController):
     origin: int = EAST_15_ORIGIN
     dest_hyp: int = EAST_15_DEST_HYP
     door_dir: str = "RIGHT"
+    door_hop: bool = True
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
@@ -1451,6 +1468,83 @@ class Level9Stairs61Controller(Level9StairsHopController):
         rep.update({"pushed": self._pushed, "stairs": [STAIRS_61_STAIR_X, STAIRS_61_STAIR_Y]})
         return rep
 
+# 0x16's first Patra ($48, eyes $26) guards the room's bomb item (128,144),
+# which appears once the Patra dies. Killing it pays for the Level 9 walls
+# the two shop packs used to: Link leaves Level 8 with 4 bombs and 2R, so
+# the 0x4A packs cannot be bought (rr-npv.5). The melee stand is the 0x61
+# one's shape: an edge node, facing in, the eyes lapping into the blade.
+PATRA_16_MELEE_STAND = (192, 149)
+PATRA_16_MELEE_FACING = "LEFT"
+ROOM_16_SWEEP_SPEC = replace(
+    ROOM_10_WIZZROBES_SPEC,
+    spec_id="level9_room16_sweep",
+    source_room=0x15,
+    room_id=NORTH_16_ORIGIN,
+    entry=DoorRoute("RIGHT", ((32, 141),)),
+    enemy_types=(0x48, 0x26),
+    expected_enemy_count=0,
+    max_frames=900,
+)
+
+
+@dataclass(kw_only=True)
+class Level9Patra16Controller(Level9PrefixHopController):
+    """0x16 leftover -> kill Patra -> take the bomb item -> north to 0x06."""
+
+    spec_id: str = "level9_patra_16"
+    done_reason: str = "left_0x16_north"
+    origin: int = NORTH_16_ORIGIN
+    dest_hyp: int = NORTH_16_DEST_HYP
+    door_dir: str = "UP"
+    max_frames: int = 20_000
+    stand: tuple[int, int] = PATRA_16_MELEE_STAND
+    facing: str = PATRA_16_MELEE_FACING
+    _seen: bool = False
+    _cleared: bool = False
+    _cooldown: int = 0
+    _sweep: RoomFight = field(
+        default_factory=lambda: RoomFight(ROOM_16_SWEEP_SPEC), repr=False
+    )
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != self.origin:
+            return FrameAction(nes_action("UP"), "north_settle")
+        if not self._cleared:
+            # The body spawns a frame after the room loads and the eyes two
+            # later (0x61's spawn race): trust "no Patra" only once seen.
+            alive = bool(patra_eyes(snap)) or patra_body(snap) is not None
+            self._seen |= alive
+            if self._seen and not alive:
+                self._cleared = True
+            else:
+                action, reason, self._cooldown = patra_melee_action(
+                    snap, cooldown=self._cooldown, stand=self.stand,
+                    facing=self.facing, room=PATRA_ROOM_FULL,
+                )
+                return FrameAction(action, f"patra16_{reason}")
+        if not self._sweep.done and (
+            self._sweep._ctl is None or self._sweep._ctl.phase is not DungeonPhase.FAILED
+        ):
+            return self._sweep.step(snap)
+        # The ROM lattice to the north door: the hand walk pressed RIGHT into
+        # the (88,141) pillar for ~150 frames with the eyes sweeping past.
+        step = lattice_door_step(None, snap, "UP")
+        if step is not None:
+            return FrameAction(nes_action(step), "patra16_north_lattice")
+        return north_16_step(snap)
+
+    def report(self) -> dict[str, Any]:
+        rep = super().report()
+        rep.update({"patra_cleared": self._cleared})
+        return rep
+
+
+def make_patra_16_controller(*, dest: int | None = None) -> Level9Patra16Controller:
+    return Level9Patra16Controller(dest=dest)
+
+
 def make_stairs_61_controller(*, dest: int | None = None) -> Level9Stairs61Controller:
     return Level9Stairs61Controller(dest=dest)
 
@@ -1500,6 +1594,7 @@ __all__ = [
     "make_bomb_north_20_controller", "make_bomb_north_65_controller", "make_bomb_west_06_controller",
     "make_cellar_60_controller", "make_cellar_70_controller", "make_cellar_75_controller",
     "make_east_14_controller", "make_east_15_controller", "make_north_16_controller",
+    "make_patra_16_controller",
     "make_north_76_controller", "make_room10_silver_arrows_controller",
     "make_stairs_05_controller", "make_stairs_55_controller",
     "make_stairs_61_controller", "make_west_62_controller", "make_west_63_controller",
