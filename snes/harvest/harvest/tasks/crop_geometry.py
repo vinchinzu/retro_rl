@@ -421,12 +421,12 @@ def detect_plots(
     return refined
 
 
-def _count_crop_tiles(ram: np.ndarray, cx: int, cy: int) -> int:
-    """Count crop-stage tiles in the 8 surrounding tiles of a candidate center."""
+def _count_crop_tiles(ram: np.ndarray, cx: int, cy: int, *, include_center: bool = True) -> int:
+    """Count crop-stage tiles in the 3x3 surrounding tiles of a candidate center."""
     count = 0
     for dy in range(-1, 2):
         for dx in range(-1, 2):
-            if dx == 0 and dy == 0:
+            if not include_center and dx == 0 and dy == 0:
                 continue
             if is_crop_tile(get_tile_at(ram, cx + dx, cy + dy)):
                 count += 1

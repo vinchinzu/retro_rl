@@ -473,6 +473,23 @@ def get_walkable_tiles(tilemap_id: int) -> FrozenSet[int]:
     return FARM_WALKABLE
 
 
+# Town (0x04) shop doorstep. The RAM tilemap reads these three tiles as 0xFF
+# (the same id the viewport loader leaves for unloaded cells, so 0xFF stays in
+# STALE_TILE_IDS), but they are the real walkway to the door at (37, 13):
+# the farmer walks them (Y1 D13: DOWN from (598,230) reached (601,250)).
+# Without this the BFS has no path out of the doorstep and exit_to_farm
+# pixel-sticks there for good.
+_TOWN_DOORSTEP_WALKWAY: FrozenSet[Tuple[int, int]] = frozenset({(37, 14), (37, 15), (37, 16)})
+WALKABLE_COORDS_BY_TILEMAP: Dict[int, FrozenSet[Tuple[int, int]]] = {
+    0x04: _TOWN_DOORSTEP_WALKWAY,
+}
+
+
+def get_walkable_coords(tilemap_id: int) -> FrozenSet[Tuple[int, int]]:
+    """Coordinate-specific walkable tiles whose tile id the catalog rejects."""
+    return WALKABLE_COORDS_BY_TILEMAP.get(tilemap_id, frozenset())
+
+
 def get_no_go_tiles(tilemap_id: int) -> FrozenSet[Tuple[int, int]]:
     """Return coordinate-specific blocked tiles for a map."""
     return NO_GO_TILES_BY_TILEMAP.get(tilemap_id, frozenset())
@@ -554,6 +571,8 @@ __all__ = [
     "MAP_REGISTRY",
     "get_walkable_tiles",
     "get_no_go_tiles",
+    "get_walkable_coords",
+    "WALKABLE_COORDS_BY_TILEMAP",
     "get_map_name",
     "get_landmarks",
     "find_landmark",

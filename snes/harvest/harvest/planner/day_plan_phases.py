@@ -16,6 +16,7 @@ from harvest.planner.day_plan_status import (
     COOP_TILEMAP,
     is_farm_tilemap,
     is_house_tilemap,
+    SHOP_CLOSED_WEEKDAYS,
     SUNDAY_WEEKDAY,
 )
 from harvest.core.ram_catalog import read_ram_u8
@@ -294,7 +295,7 @@ def build_day_phases(
 
     is_sunday = weekday == SUNDAY_WEEKDAY
     is_fest = bool(is_festival and policy.include_festivals)
-    shops_closed = is_sunday or is_fest
+    shops_closed = is_sunday or is_fest or weekday in SHOP_CLOSED_WEEKDAYS
     late_day = hour >= policy.late_water_hour
     oversupplied_chickens = _chicken_oversupplied(adult_chickens, policy)
     berry_phases = _berry_run_phases(
@@ -516,7 +517,7 @@ def build_outdoor_day_phases(
     if is_festival is None:
         is_festival = is_festival_day(season, day)
     is_fest = bool(is_festival and policy.include_festivals)
-    shops_closed = is_sunday or is_fest
+    shops_closed = is_sunday or is_fest or weekday in SHOP_CLOSED_WEEKDAYS
     late_day = hour >= policy.late_water_hour
     berry_phases = _berry_run_phases(
         is_sunday=shops_closed,
@@ -712,9 +713,10 @@ def build_day_phases_from_ram(
         return [GO_TO_SLEEP_PHASE]
     adult_chickens = probe.chicken_counts()[0]
     oversupplied_chickens = _chicken_oversupplied(adult_chickens, policy)
-    is_sunday = probe.weekday() == SUNDAY_WEEKDAY
+    probe_weekday = probe.weekday()
+    is_sunday = probe_weekday == SUNDAY_WEEKDAY
     is_fest = probe.is_festival() and policy.include_festivals
-    shops_closed = is_sunday or is_fest
+    shops_closed = is_sunday or is_fest or probe_weekday in SHOP_CLOSED_WEEKDAYS
     cows_need_chores = policy.include_cows and not late_day and probe.needs_cow_chores()
     chickens_need_chores = (
         policy.include_chickens and not late_day and probe.needs_chicken_chores()

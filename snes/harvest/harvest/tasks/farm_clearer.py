@@ -67,6 +67,7 @@ from harvest.tasks.nav import (  # noqa: F401
     manhattan,
     tile_dist,
 )
+from harvest.tasks.travel_walk import PUSH_HOLD_FRAMES
 
 # Hammer/axe hits cost 2 stamina; do not start a multi-hit below this.
 # Lifts may continue at 1. The 8-swing start budget is Stamina.can_finish_multi_hit.
@@ -166,7 +167,7 @@ class FarmClearer(Task):
         self.startup_tasks = []
         self.prefer_lift_for_weeds = self._lift_weeds
         self.prefer_lift_for_stones = self._lift_stones
-        self.max_stasis, self.max_nav_no_progress = 120, 360
+        self.max_stasis, self.max_nav_no_progress = PUSH_HOLD_FRAMES, 360
         self.debug_interval, self.min_stamina = 300, MIN_CLEAR_STAMINA
         self.max_scan_misses = 90
         self._pending_finish_reason = ""

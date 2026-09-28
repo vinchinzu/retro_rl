@@ -63,6 +63,24 @@ _UNFETCHABLE_TOOL_TAGS = frozenset({"seed"})
 # One external step used to recurse. Cap the loop so a repeated D2 child
 # cannot spin the stack or the frame.
 _STEP_BUDGET = 128
+# Hard ceiling on one looping phase. A weekday is ~12.8k frames and the worst
+# healthy CROP_WATER on record is 13.6k, so this only ever fires on a stuck
+# loop. run25 D30: a pond-refill retry loop with no cap ran ~560k frames with
+# the game clock frozen, and the whole run died in it.
+_PHASE_WATCHDOG_KINDS = (PhaseKind.CROP, PhaseKind.HARVEST)
+_PHASE_WATCHDOG_FRAMES = 24_000
+
+
+def _phase_watchdog_frames(spec: PhaseSpec) -> int:
+    """Frame budget for ``spec``, or 0 when the phase owns its own timeout."""
+    explicit = spec.params.get("watchdog_frames")
+    if explicit is not None:
+        return int(explicit)
+    if spec.params.get("d2_expanded"):
+        return 0
+    if isinstance(spec.kind, PhaseKind) and spec.kind in _PHASE_WATCHDOG_KINDS:
+        return _PHASE_WATCHDOG_FRAMES
+    return 0
 
 
 def _tag_d2_spec(spec: PhaseSpec) -> PhaseSpec:
@@ -134,6 +152,7 @@ class DayPlanTask(Task):
     _phase_index: int = field(default=0, init=False)
     _current_task: Optional[Task] = field(default=None, init=False)
     _step_count: int = field(default=0, init=False)
+    _phase_started_at: int = field(default=0, init=False)
     _skip_map_lock: bool = field(default=False, init=False)
     _map_lock_exits: set = field(default_factory=set, init=False)
     _extra_establishes: int = field(default=0, init=False)
@@ -1029,6 +1048,7 @@ class DayPlanTask(Task):
             return self._handle_failed_phase(spec, TaskStatus.FAILURE, reason, world)
         task.reset(world)
         self._current_task = task
+        self._phase_started_at = self._step_count
         self._skip_map_lock = (
             isinstance(spec.kind, PhaseKind) and spec.kind in SKIP_MAP_LOCK_KINDS
         )
@@ -1087,6 +1107,15 @@ class DayPlanTask(Task):
                 stalled_result = self._d2_stall(spec, world, status)
                 if stalled_result is not None:
                     return stalled_result
+
+            budget = _phase_watchdog_frames(spec)
+            if budget and self._step_count - self._phase_started_at > budget:
+                reason = f"phase watchdog: {spec.phase} exceeded {budget} frames"
+                print(f"[DAY_PLAN] Phase {spec.phase} FAILURE: {reason}")
+                failed = self._handle_failed_phase(spec, TaskStatus.FAILURE, reason, world)
+                if failed is None:
+                    continue
+                return failed
 
             result = self._current_task.step(world)
             if result.status == TaskStatus.SUCCESS:

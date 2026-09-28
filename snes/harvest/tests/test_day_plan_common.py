@@ -620,6 +620,46 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertIn("required phase CROP_WATER failed: no task", result.reason)
         self.assertEqual(plan.phase_text, "CROP_WATER")
 
+    def test_phase_watchdog_fails_a_stuck_crop_phase(self) -> None:
+        """run25 D30: CROP_WATER's pond-refill retry loop had no cap and ran
+        ~560k frames with the clock frozen. A looping phase must fail at the
+        watchdog so recovery and the rest of the day can run."""
+        from harvest.planner import day_plan_orchestrator as orch
+        from retro_harness import ActionResult, Task, TaskResult
+
+        class Spinner(Task):
+            name = "spinner"
+
+            def reset(self, world) -> None:
+                pass
+
+            def can_start(self, world) -> bool:
+                return True
+
+            def step(self, world):
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                )
+
+        class SpinPlan(DayPlanTask):
+            def _make_task(self, spec, world):
+                return Spinner()
+
+        plan = SpinPlan(phase_sequence=[PhaseSpec("CROP_WATER", "crop", {"watchdog_frames": 50})])
+        world = make_world(0x00)
+        plan.reset(world)
+        status = TaskStatus.RUNNING
+        for _ in range(200):
+            result = plan.step(world)
+            status = result.status
+            if status != TaskStatus.RUNNING:
+                break
+        self.assertIn(status, (TaskStatus.FAILURE, TaskStatus.BLOCKED))
+        self.assertIn("phase watchdog", result.reason)
+        self.assertEqual(orch._phase_watchdog_frames(PhaseSpec("CROP_WATER", "crop")), 24_000)
+        self.assertEqual(orch._phase_watchdog_frames(PhaseSpec("NAV_CROP", "nav")), 0)
+
     def test_day_plan_defers_the_animal_block_instead_of_losing_the_day(self) -> None:
         """run16 D26/D27: the cow-purchase day replaced the income plan with
         required phases, NAV_TO_ANIMAL_SHOP failed, and both days earned

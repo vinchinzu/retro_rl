@@ -539,7 +539,7 @@ class CropWaterTask(Task):
             plots = _merge_plot_centers(resume_plots, detect_plots(ram, self.bounds))
         else:
             plots = detect_plots(ram, self.bounds)
-        if not plots and self._is_water_only and self._dry_crop_tiles_at_start > 0:
+        if not plots and (self._is_water_only or self._count_dry_crop_tiles(ram) > 0 or self._dry_crop_tiles_at_start > 0):
             plots = detect_crop_resume_plots(ram, self.bounds, min_count=1)
         if not plots:
             return []

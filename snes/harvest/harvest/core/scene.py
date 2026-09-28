@@ -299,9 +299,12 @@ def _classify(facts: _SceneFacts) -> Scene:
     elif facts.input_lock != 1:
         mode = SceneMode.INPUT_LOCKED
         reason = f"input_lock={facts.input_lock}"
-    elif location == SceneLocation.FESTIVAL and (
-        _looks_like_dialogue(facts) or facts.player_state not in {0, 1}
-    ):
+    elif location == SceneLocation.FESTIVAL and facts.player_state not in {0, 1}:
+        # The festival "location" comes from the tomorrow-weather byte, so it
+        # is true the whole eve of a festival. Stale dialogue registers
+        # (text_id left over from an earlier chat) must not turn a free
+        # farmer (input_lock == 1) into a cutscene: run24 D22 mashed A for
+        # 241f x 12 in town and lost the day and the run.
         mode = SceneMode.CUTSCENE_EVENT
         reason = (
             f"festival event_code={facts.event_code} "

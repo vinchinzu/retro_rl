@@ -139,6 +139,15 @@ class Pathfinder:
         except Exception:
             return self.walkable_tiles
 
+    def base_walkable_coords(self, ram: np.ndarray) -> Set[Tuple[int, int]]:
+        try:
+            from harvest.maps.map_config import get_walkable_coords
+
+            tilemap_id = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0x00
+            return set(get_walkable_coords(tilemap_id))
+        except Exception:
+            return set()
+
     def base_no_go_tiles(self, ram: np.ndarray) -> Set[Tuple[int, int]]:
         try:
             from harvest.maps.map_config import get_no_go_tiles
@@ -159,6 +168,8 @@ class Pathfinder:
         if is_travel_occupied(ram, tx, ty):
             return False
         if tile_id in self.base_walkable_tiles(ram):
+            return True
+        if (tx, ty) in self.base_walkable_coords(ram):
             return True
         if (tx, ty) in self.extra_walkable:
             return True

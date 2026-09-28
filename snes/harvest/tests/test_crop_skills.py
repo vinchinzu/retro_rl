@@ -39,6 +39,7 @@ from harvest.tasks.crop_skills import (
     pocket_hoe_ring_skills,
     pocket_water_ring_skills,
     remap_pocket_hoe_stand,
+    water_until_wet_skill,
 )
 from harvest.tasks.skills import (
     farm_nav_pocket_hoe_stand_skill,
@@ -100,6 +101,84 @@ class SelectCarryTests(unittest.TestCase):
 
 
 class UseToolUntilTileTests(unittest.TestCase):
+    def _edge_world(self, *, py: int, facing: int) -> WorldState:
+        """Can selected at the south edge of stand (20,26) facing the crop below."""
+        ram = _ram(tile=(20, 26), tid=0x58, selected=int(Tool.WATERING_CAN))
+        ram[ADDR_Y] = py & 0xFF
+        ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+        ram[ADDR_DIR] = facing
+        ram[ADDR_MAP + 27 * MAP_WIDTH + 20] = 0x58
+        return WorldState(frame=0, ram=ram, info={}, obs=None)
+
+    def test_water_backs_off_the_edge_before_face_tap(self) -> None:
+        """run25 D30: stand (20,26) reached at y=431; a 1f DOWN tap crosses
+        into the target tile (y=432), 'step off target' flips the face, and
+        the pair loops to the timeout. Back off the shared edge first."""
+        world = self._edge_world(py=431, facing=1)
+        skill = water_until_wet_skill(target_tile=(20, 27), face="down", timeout=1200)
+        skill.reset(world)
+        result = skill.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("nudge off down edge", result.reason)
+        self.assertEqual(set(action_names(result.action.action)), {"UP"})
+
+    def test_water_taps_face_when_there_is_room(self) -> None:
+        world = self._edge_world(py=424, facing=1)
+        skill = water_until_wet_skill(target_tile=(20, 27), face="down", timeout=1200)
+        skill.reset(world)
+        result = skill.step(world)
+        self.assertIn("tap face down", result.reason)
+
+    def test_water_repeats_the_y_window_when_the_first_press_is_swallowed(self) -> None:
+        """run26 D6: player_state was busy for 100+ frames after nav, the one
+        20f Y window was eaten, and the skill idled to the 1200-step timeout.
+        The window must recur until the tile flips."""
+        ram = _ram(tile=(19, 30), tid=0x01, selected=int(Tool.WATERING_CAN))
+        ram[ADDR_MAP + 29 * MAP_WIDTH + 19] = 0x5A
+        ram[ADDR_DIR] = 1  # already facing up
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = water_until_wet_skill(target_tile=(19, 29), face="up", timeout=1200)
+        skill.reset(world)
+        y_steps = []
+        for i in range(1, 260):
+            result = skill.step(world)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            if "Y" in set(action_names(result.action.action)):
+                y_steps.append(i)
+        windows = sum(1 for a, b in zip(y_steps, y_steps[1:]) if b - a > 1) + 1
+        self.assertGreaterEqual(windows, 3)
+
+    def test_x_swap_pulses_instead_of_holding(self) -> None:
+        """run27 D6: the can was in the backpack slot; a held X has a single
+        rising edge, the farmer was busy for it, and the swap never came."""
+        ram = _ram(tile=(19, 30), tid=0x01, selected=int(Tool.HOE), backpack=int(Tool.WATERING_CAN))
+        ram[ADDR_MAP + 29 * MAP_WIDTH + 19] = 0x5A
+        ram[ADDR_DIR] = 1
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = water_until_wet_skill(target_tile=(19, 29), face="up", timeout=1200)
+        skill.reset(world)
+        pressed = []
+        for _ in range(30):
+            result = skill.step(world)
+            self.assertIn("x-swap", result.reason)
+            pressed.append("X" in set(action_names(result.action.action)))
+        self.assertTrue(any(pressed))
+        self.assertTrue(any(not p for p in pressed))
+        edges = sum(1 for a, b in zip(pressed, pressed[1:]) if b and not a)
+        self.assertGreaterEqual(edges, 3)
+
+    def test_water_gives_up_when_the_face_never_lands(self) -> None:
+        world = self._edge_world(py=424, facing=1)
+        skill = water_until_wet_skill(target_tile=(20, 27), face="down", timeout=1200)
+        skill.reset(world)
+        result = None
+        for _ in range(80):
+            result = skill.step(world)
+            if result.status != TaskStatus.RUNNING:
+                break
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("cannot face down", result.reason)
+
     def test_hoe_already_tilled_is_success(self) -> None:
         world = WorldState(
             frame=0,

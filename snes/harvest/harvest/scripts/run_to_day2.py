@@ -1126,9 +1126,12 @@ def main() -> int:
                 post_success_neutral_frames=presentation_settle_frames,
             )
 
-        if args.save_end_state and success:
+        if args.save_end_state:
+            # A failed run saves `<name>_FAIL` so the stall is a pin, not a
+            # 7-minute re-run.
+            state_name = args.save_end_state if success else f"{args.save_end_state}_FAIL"
             try:
-                out_state = _save_emulator_state(env, args.save_end_state)
+                out_state = _save_emulator_state(env, state_name)
                 print(f"[RUN] Saved end state -> {out_state}", flush=True)
             except Exception as exc:
                 print(f"[RUN] Could not save end state: {exc}", flush=True)

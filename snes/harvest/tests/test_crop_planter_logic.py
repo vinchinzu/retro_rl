@@ -16,6 +16,7 @@ if str(_TESTS_DIR) not in sys.path:
 from crop_planter_test_helpers import blank_ram, set_player_tile, set_tile
 
 from harvest.tasks.crop_planter import (
+    CropState,
     CropWaterTask,
     build_water_steps,
     carry_pair_items,
@@ -265,6 +266,30 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING, msg=result.reason)
         self.assertGreaterEqual(task._dry_crop_tiles_at_start, 2)
         self.assertTrue(task._plots, msg="sparse dry tiles must yield water plots")
+
+    def test_water_only_operates_sparse_one_cell_plot(self) -> None:
+        """rr-rzpd: a single dry crop tile at (13,28) must be detected as a work plot and watered."""
+        ram = blank_ram()
+        set_tile(ram, 13, 28, 0x54)  # single dry potato tile
+        ram[ADDR_TOOL] = 0x10
+        ram[0x0923] = 0x00
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[0x0926] = 20  # full can
+        px, py = 13 * 16 + 8, 29 * 16 + 8
+        ram[ADDR_X] = px & 0xFF
+        ram[ADDR_X + 1] = (px >> 8) & 0xFF
+        ram[ADDR_Y] = py & 0xFF
+        ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", bounds=(3, 14, 40, 50))
+        task.reset(world)
+
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING, msg=result.reason)
+        self.assertEqual(task._dry_crop_tiles_at_start, 1)
+        self.assertEqual(task._plots, [(13, 28)])
+        self.assertNotEqual(task._state, CropState.DONE)
 
     def test_merge_plot_centers_keeps_far_supplemental_plots(self) -> None:
         merged = _merge_plot_centers(

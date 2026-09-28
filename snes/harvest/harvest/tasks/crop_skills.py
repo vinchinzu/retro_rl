@@ -48,6 +48,32 @@ HOE_BLOCKED_TILES: FrozenSet[int] = (
 )
 # RAM player_direction: 0 down, 1 up, 2 right, 3 left.
 _FACE_CODE = {"down": 0, "up": 1, "right": 2, "left": 3}
+# Pixels the farmer needs between himself and the tile edge nearest the target
+# so a 1f face tap cannot cross into the target tile.
+_MIN_FACE_ROOM = 3
+_MAX_EDGE_NUDGES = 12
+# One Y press window is 6 idle + 20 held; the water/hoe animation then plays
+# out (~74f). Repeat the window on this period so a press swallowed by a busy
+# player_state (run26 D6: state 5 for 100+ frames after nav) is retried.
+_USE_TOOL_PERIOD = 100
+# Past this many steps a face that never landed is a failure, not a reason to
+# keep using the tool in the wrong direction.
+_FACE_GIVE_UP_STEPS = 60
+
+
+def _room_toward_target(pos, player_tile: Tuple[int, int], face: Optional[str]) -> int:
+    """Pixels left inside the stand tile before the edge shared with the target."""
+    x, y = int(pos.x), int(pos.y)
+    tx, ty = player_tile
+    if face == "down":
+        return (ty + 1) * TILE_SIZE - 1 - y
+    if face == "up":
+        return y - ty * TILE_SIZE
+    if face == "right":
+        return (tx + 1) * TILE_SIZE - 1 - x
+    if face == "left":
+        return x - tx * TILE_SIZE
+    return TILE_SIZE
 
 # Potato dry/wet pair from the tape (0x54 → 0x55).
 PLANTED_DRY = 0x54
@@ -140,11 +166,13 @@ class UseToolUntilTileSkill(Task):
     _steps: int = field(default=0, init=False)
     _saw_tool: bool = field(default=False, init=False)
     _face_ok_step: int = field(default=0, init=False)
+    _edge_nudges: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._steps = 0
         self._saw_tool = False
         self._face_ok_step = 0
+        self._edge_nudges = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -239,9 +267,15 @@ class UseToolUntilTileSkill(Task):
                 )
         if sel != wanted:
             if back == wanted:
+                # Pulse, never hold: a held X has one rising edge, and if the
+                # farmer is busy (player_state 5 right after nav) that edge is
+                # swallowed and the swap never happens (run27 D6: 1200 steps
+                # of held X, can never selected). Same cadence as
+                # SelectCarrySkill.
+                tap = self._steps % 6 == 1
                 return TaskResult(
                     status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action(x=True)),
+                    action=ActionResult(make_action(x=True) if tap else make_action()),
                     reason="x-swap before tool use",
                 )
             return TaskResult(
@@ -249,6 +283,37 @@ class UseToolUntilTileSkill(Task):
                 reason=f"tool 0x{wanted:02X} not selected",
             )
         wanted_face = _FACE_CODE.get(self.face) if self.face else None
+        if (
+            wanted_face is not None
+            and facing != wanted_face
+            and self._edge_nudges < _MAX_EDGE_NUDGES
+            and _room_toward_target(pos, player_tile, self.face) < _MIN_FACE_ROOM
+        ):
+            # Nav arrives anywhere within +-7px of the stand centre. On the
+            # edge nearest the target, the 1f face tap walks the farmer INTO
+            # the target tile; "step off target" then flips the facing away
+            # and the two undo each other until the timeout (run25 D30:
+            # (20,26) at y=431, 1176 steps, wrong-way waterings). Back off
+            # the shared edge first.
+            self._edge_nudges += 1
+            away = {"up": "down", "down": "up", "left": "right", "right": "left"}
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(**{away[self.face]: True})),
+                reason=f"nudge off {self.face} edge of stand {player_tile}",
+            )
+        if (
+            wanted_face is not None
+            and facing != wanted_face
+            and self._steps > _FACE_GIVE_UP_STEPS
+        ):
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"{self.name} cannot face {self.face} (ram={facing}) "
+                    f"tid=0x{tid:02X} at {tile} pos={player_tile}"
+                ),
+            )
         if (
             wanted_face is not None
             and self._face_ok_step == 0
@@ -269,7 +334,7 @@ class UseToolUntilTileSkill(Task):
             )
         if self._face_ok_step == 0:
             self._face_ok_step = self._steps
-        wait = self._steps - self._face_ok_step
+        wait = (self._steps - self._face_ok_step) % _USE_TOOL_PERIOD
         if wait < 6:
             action = make_action()
         elif wait < 26:
@@ -634,9 +699,10 @@ class PlantPlotSkill(Task):
             )
         if sel != wanted:
             if back == wanted:
+                tap = self._steps % 6 == 1  # pulse: a held X has one edge
                 return TaskResult(
                     status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action(x=True)),
+                    action=ActionResult(make_action(x=True) if tap else make_action()),
                     reason="x-swap before plant",
                 )
             return TaskResult(
@@ -761,9 +827,10 @@ class EnsureCanFilledTask(Task):
             if sel != int(Tool.WATERING_CAN):
                 back = int(backpack_tool(world.ram))
                 if back == int(Tool.WATERING_CAN):
+                    tap = self._steps % 6 == 1  # pulse: a held X has one edge
                     return TaskResult(
                         status=TaskStatus.RUNNING,
-                        action=ActionResult(make_action(x=True)),
+                        action=ActionResult(make_action(x=True) if tap else make_action()),
                         reason="x-swap can before fill",
                     )
                 return TaskResult(

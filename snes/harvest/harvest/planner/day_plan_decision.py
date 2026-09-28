@@ -25,6 +25,7 @@ from harvest.planner.world_probe import WorldProbe
 from harvest.planner.day_plan_status import (
     BARN_TILEMAP,
     COOP_TILEMAP,
+    SATURDAY_WEEKDAY,
     SUNDAY_WEEKDAY,
     is_farm_tilemap,
     is_house_tilemap,
@@ -318,6 +319,8 @@ def collect_deferred_plans(
             deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "shop_closed_festival"))
         elif facts.is_sunday:
             deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "shop_closed_sunday"))
+        elif facts.weekday == SATURDAY_WEEKDAY:
+            deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "shop_closed_saturday"))
         elif facts.hour > policy.buy_seed_hour:
             deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "seed_shop_cutoff"))
     return _dedupe_deferred(deferred)
@@ -424,6 +427,8 @@ def _omission_reason(facts: PlanningFacts, policy: DayPlannerPolicy, category: s
         return "shop_closed_festival"
     if category == "cow_purchase" and facts.is_sunday:
         return "shop_closed_sunday"
+    if category == "cow_purchase" and facts.weekday == SATURDAY_WEEKDAY:
+        return "shop_closed_saturday"
     if category == "water" and facts.is_rainy:
         return "rainy_day"
     if category == "seeds" and facts.is_rainy:

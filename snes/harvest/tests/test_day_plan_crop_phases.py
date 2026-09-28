@@ -592,7 +592,7 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         then potato, with a bail hour that still starts loop 2 after 10:00."""
         for day in range(3, 31):
             weekday = (1 + day - 1) % 7
-            if weekday == 0 or is_festival_day(0, day):
+            if weekday in (0, 6) or is_festival_day(0, day):
                 continue
             phases = build_outdoor_day_phases(
                 weekday=weekday,
@@ -616,6 +616,25 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
             self.assertLess(
                 names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"), f"D{day}"
             )
+
+    def test_saturday_never_schedules_the_shop(self) -> None:
+        """ROM: the seed shop door is shut Saturday (weekday 6) as well as
+        Sunday; a Saturday trip walks to a door that refuses UP (Y1 D13)."""
+        for day in (6, 13, 20, 27):
+            phases = build_outdoor_day_phases(
+                weekday=6,
+                hour=6,
+                has_harvest=False,
+                has_waterable=True,
+                has_seeds=False,
+                has_debris=False,
+                season=0,
+                day=day,
+                money=250,
+            )
+            names = self._phase_names(phases)
+            self.assertNotIn("BUY_SEEDS", names, f"D{day}")
+            self.assertNotIn("NAV_FARM_EXIT", names, f"D{day}")
 
     def test_spring_festival_days_schedule_festival_instead_of_shop(self) -> None:
         for day in (8, 23):

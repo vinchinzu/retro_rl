@@ -95,6 +95,11 @@ SEED_COUNT_ADDR_BY_TYPE = {
 }
 ADDR_MONEY = field_spec("money").address
 SUNDAY_WEEKDAY = 0
+# ROM building-hours check (bank_80 ~$809BAE): the seed shop and animal shop
+# are shut Sunday (0) and Saturday (6). Measured: Y1 D13 (weekday 6), the
+# town shop door tile 0xC3 refuses UP for good, so a Saturday trip is wasted.
+SATURDAY_WEEKDAY = 6
+SHOP_CLOSED_WEEKDAYS = (SUNDAY_WEEKDAY, SATURDAY_WEEKDAY)
 COW_PURCHASE_COST = 5000
 RAINY_WEATHER_CODES = frozenset({1, 2, 3})
 RAINY_WEATHER_FLAG_MASK = 0x0002 | 0x0008 | 0x0010
@@ -259,7 +264,7 @@ def ram_should_buy_cow(ram: np.ndarray) -> bool:
         return False
     if read_ram_value(ram, "money") < COW_PURCHASE_COST:
         return False
-    return read_world_weekday(ram) != SUNDAY_WEEKDAY
+    return read_world_weekday(ram) not in SHOP_CLOSED_WEEKDAYS
 
 
 def state_should_buy_cow(state_name: Optional[str]) -> bool:
@@ -386,6 +391,8 @@ __all__ = [
     "CHICKEN_SLOT_SIZE",
     "CHICKEN_SLOT_COUNT",
     "INCUBATOR_BIT",
+    "SATURDAY_WEEKDAY",
+    "SHOP_CLOSED_WEEKDAYS",
     "SUNDAY_WEEKDAY",
     "COW_PURCHASE_COST",
     "RAINY_WEATHER_CODES",

@@ -157,12 +157,27 @@ class SceneClassifierTests(unittest.TestCase):
         self.assertEqual(scene.mode, SceneMode.NORMAL)
         self.assertEqual(scene.location, SceneLocation.FESTIVAL)
 
-    def test_classifies_festival_dialogue_as_cutscene_event(self) -> None:
+    def test_festival_eve_with_stale_dialogue_and_free_player_is_normal(self) -> None:
+        """ROM pin (run24 D22): tomorrow-weather 6 marks the festival EVE, and
+        text_id/mode were stale while input_lock == 1 and the farmer walked
+        freely. Classifying that as a cutscene sent the mash-through recovery
+        into 12 x 241f timeouts."""
         ram = _ram()
         ram[field_spec("tilemap").address] = 0x04
         ram[field_spec("weather_tomorrow").address + _live_base(ram)] = 6
         _write_u16(ram, field_spec("dialog_text_id").address, 0x0316)
         ram[field_spec("dialog_text_mode").address] = 0x02
+
+        scene = classify_scene_from_ram(ram)
+
+        self.assertNotEqual(scene.mode, SceneMode.CUTSCENE_EVENT)
+        self.assertFalse(scene.needs_input_dismiss)
+
+    def test_classifies_festival_event_player_state_as_cutscene_event(self) -> None:
+        ram = _ram()
+        ram[field_spec("tilemap").address] = 0x04
+        ram[field_spec("weather_tomorrow").address + _live_base(ram)] = 6
+        ram[field_spec("player_state").address + _live_base(ram)] = 0x05
 
         scene = classify_scene_from_ram(ram)
 

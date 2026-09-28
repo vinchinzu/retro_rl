@@ -407,6 +407,7 @@ class CarryToPondStand:
                     )
             self._stand = None
             self._navigator.path = []
+            self._navigator.stasis = 0
             if not self._choose_stand(world, farm_toss_stands(player)):
                 return TaskResult(status=TaskStatus.RUNNING, reason="repath around farm solid")
 
