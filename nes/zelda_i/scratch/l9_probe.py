@@ -36,11 +36,11 @@ from zelda_i.ram import hearts_held, read_snapshot
 from zelda_i.route.chain import run_controller_stage
 
 
-def steps(*, guard=True):
+def steps(*, guard=True, red_ring=False):
     out = []
     for name, ctl, cap in level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF):
         out.append((name, ctl, cap))
-    silver = NaturalSilverArrowsController(handoff=MEASURED_POST_L8_HANDOFF)
+    silver = NaturalSilverArrowsController(handoff=MEASURED_POST_L8_HANDOFF, red_ring=red_ring)
     # Keep prefix hysteresis/history across hops, as the chapter wrapper does.
     prefix_guard = ShotGuard()
     for hop in silver._hops:
@@ -77,6 +77,8 @@ def main() -> int:
     ap.add_argument("--assist", action="store_true", help="Survival refill (measure damage)")
     ap.add_argument("--set", action="append", default=[], metavar="ADDR=VAL", help="what-if write at load")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--red-ring", action="store_true",
+                    help="insert the Red Ring detour (s14r) after the 0x16 kill")
     ap.add_argument("--guard", action=argparse.BooleanOptionalAction, default=True,
                     help="Level 9 dungeon shot guard (default on, as in the spine)")
     a = ap.parse_args()
@@ -98,7 +100,7 @@ def main() -> int:
     rows = []
     started = False
     frame = 0
-    for sid, ctl, cap in steps(guard=a.guard):
+    for sid, ctl, cap in steps(guard=a.guard, red_ring=a.red_ring):
         if not started:
             if not sid.startswith(a.start):
                 continue

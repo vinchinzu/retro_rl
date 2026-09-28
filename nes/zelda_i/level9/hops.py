@@ -201,7 +201,9 @@ def level9_silver_arrows_chapter(
         controller.reason = "silver_arrow_room_not_selected"
         return (_stage("level9_natural_silver_arrows", controller),)
     controller = GuardedController(
-        make_natural_silver_arrows_controller(handoff=handoff)
+        make_natural_silver_arrows_controller(
+            handoff=handoff, red_ring=route.red_ring_included
+        )
     )
     return (_stage("level9_natural_silver_arrows", controller),)
 
