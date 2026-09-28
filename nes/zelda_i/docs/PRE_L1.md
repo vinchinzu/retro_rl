@@ -4,10 +4,12 @@ Lane A from Claude's interrupted session is complete and on main at
 `a686cce2`, based on `ff66c93a`.
 Bead `rr-npv.5` stays in progress: Clean power-on credits is still unproved.
 The user authorized completing the five other worktrees with new sub-agents
-and landing every lane on main. The stall lane is now complete; hazards and
-the Red Ring remain active. The bomb-budget lane is next, followed by the
-overworld lane as a sub-agent slot opens.
-Claude's partial edits were preserved. No STATUS change or push.
+and landing every lane on main. Lane C is now on main at `6c5eced9`.
+The user then requested a graceful stop and handoff. The hazards and Red Ring
+agents hit a usage limit before completing validation; their changes remain
+uncommitted in their original worktrees. Bomb-budget and overworld agents
+were not launched. Claude's partial edits were preserved. No STATUS change
+or push. No takeover eval processes remain running at handoff.
 
 The current-main real-C10 resume `codex_all_baseline` fails
 `bomb_restock_l8` at 3008 frames with 4 bombs and 2R. It has one state load,
@@ -15,6 +17,77 @@ no heart assist, no inventory pokes, and confirms the shop shortfall.
 The Red Ring's reciprocal ROM-door graph requires three extra bomb walls;
 the bomb-budget lane must guarantee the 0x16 item and save another bomb,
 for example by avoiding 0x31W. Existing lane-A verification follows.
+
+## Resume the remaining lanes
+
+All paths below are relative to `.claude/worktrees/`. The unfinished trees
+are based on lane A (`a686cce2`), so bring them forward to current main while
+preserving their dirty changes before continuing. Do not land either WIP
+without fixing the failures and repeating its ROM matrix.
+
+| Lane | Worktree | Checkpoint / next action |
+|---|---|---|
+| B: hazards | `agent-a936abbf5e5d1f561` | Dirty `dungeon/shot_guard.py` (staged Claude trap draft plus new unstaged changes), new `tests/test_shot_guard_hazards.py`. Fix 0x04 trap deadlock and 0x20 bomb-wall recovery before landing. |
+| C: stalls | `agent-ac061e44b550e7c0a` | Clean agent commit `b97d30c7`; integrated on main as `6c5eced9`, including bead export and this living handoff. |
+| D: bombs | `agent-a5e5e888637a7a237` | Original dirty one-line `natural_path.py` Patra16 substitution only; new agent never launched. Start this lane next. |
+| E: overworld | `agent-ad65a8b9932b58953` | Clean lane-A base; new agent never launched. Reduce Death Mountain approach damage after hazard integration. |
+| F: Red Ring | `agent-a6cbaad37898ea620` | Dirty route/controller/probe/tests, no commit. Detour passes 4/4 loaded offsets, whole L9 fails 0/4; finish D's guaranteed bomb budget before landing F. |
+
+B's latest matrix (`logs/codex_lane_b/after15_v2.txt`) clears the Patra join
+3/4 at 10927–14043f and 5.27–6.02h on the successful offsets. Offset 3
+stalls at 24000f in 0x04, `(184,108)`. The 0x20 north bomb also clears 3/4,
+mean 0.88h, but offset 3 ends `push_timeout` at `(80,129)` after a guard dodge.
+The existing `BombWallController._push_dir` blind alignment walks into a
+pillar; replace recovery with the existing lattice path to the mouth.
+That scoped shared-helper fix was authorized but not implemented before
+the usage limit. Verify another bomb-wall consumer as well. The last B unit
+gate passed 2129 tests, 4 skipped, 41 deselected; it does not establish the
+subsequent runtime changes or route regressions as safe.
+
+F follows `0x16→0x26→0x27→0x17→0x07→cellar 0x00`, then returns to 0x16.
+The three forward bomb walls consume exactly three bombs; reverse travel
+uses the holes already opened. Its loaded, no-refill 10h measurements at
+offsets 0/3/7/11 all naturally acquire ring 2 and return, taking
+5582/5413/5430/5615f and 4.88/8.38/8.13/6.26h. These are heart writes at
+load, not Clean proof. The tapes retain the live 0x16 Patra, so D's prior
+kill will change timing. F's whole assisted L9 matrix fails all four offsets
+(0x51 stall, final wall bomb failures, and the pre-C 0x10 stall).
+Its full unit gate has one missing gitignored input failure:
+`recordings/l9_room51_dump.json`; link the existing main input before rerun.
+Logs and screenshots are under `logs/codex_lane_f/` in F's worktree.
+
+The required chapter order is `East15 → Patra16 kill/item → RedRing →
+North16`. D must retain skill ID `level9_patra_16` for stable probe alias
+`s14b`; F uses `level9_red_ring` / `s14r`; the existing north walk remains
+`s15`. The old Patra16 factory kills **and exits north**, so it cannot simply
+be placed before the detour. Implement a kill-only/item controller and
+move it out of `prefix.py` into an existing owning module without a circular
+import. Keep `prefix.py` at or below its 1603-line base.
+
+Natural C10 carries 4 bombs / 2R. Rock and 0x65 north cost two before 0x16;
+the guaranteed Patra item adds four, and the ring detour spends three.
+The remaining old route costs four, leaving a one-bomb deficit. Avoid 0x31W
+via cleared 0x51's west shutter, then 0x50→0x40→0x30, or prove another
+guaranteed natural source. Do not rely on random bomb drops. Make the L9
+post-L8 shops skip an unaffordable purchase with an L9-only opt-in, preserving
+other levels' fail-closed behavior. Verify the real C10 predecessor again.
+
+Original lane briefs are preserved in main's
+`nes/zelda_i/logs/codex_takeover/agent-*_brief.md`. Exact dirty tracked patches
+and new tests are also snapshotted in `paused_lane_b`, `paused_lane_d`, and
+`paused_lane_f` there. Artifacts are gitignored; the worktrees remain intact.
+Use `PYTHONPATH="$PWD:$PWD/snes:$PWD/nes"`,
+`UV_PROJECT_ENVIRONMENT=/home/v/01_projects/11_games/retro_rl/.venv`, and
+`QT_QPA_PLATFORM=offscreen uv run --no-sync` from each worktree. Limit each
+matrix to three jobs and never edit its runtime while its ROM eval runs.
+Final main gate: `QT_QPA_PLATFORM=offscreen uv run --no-sync python -m pytest
+nes/zelda_i/tests tests/test_docs.py -q` passes **2136 tests**, 41 ROM tests
+deselected. Main's integrated guarded ROM checks reproduce s24 offset 0 at
+3582f / 1.75h and s21 offset 0 at 7264f / 0h. Logs are
+`logs/codex_takeover/main_handoff_checks.txt` and `main_lane_c_s{24,21}.txt`.
+Next action: start a fresh D agent with the bomb budget and kill-only order
+above, then resume B/F and launch E as slots open; integrate validated commits
+on main with bead exports, finally run composed ROM and main test gates.
 
 ## Room-stall lane verified
 
