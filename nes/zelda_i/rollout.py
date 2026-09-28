@@ -765,9 +765,13 @@ class PolicyGuard:
         self.frames_rolled = 0
         self._env: Any = None
         self._queue: list[Frame] = []
+        self._last_reason = ""
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.__dict__["inner"], name)
+        inner = self.__dict__.get("inner")
+        if inner is None:
+            raise AttributeError(name)
+        return getattr(inner, name)
 
     def bind_env(self, env: Any) -> None:
         self._env = env
@@ -826,36 +830,50 @@ class PolicyGuard:
             em.set_state(state)
         return None
 
+    def _inner_step(self, snap: ZeldaSnapshot) -> Any:
+        act = self.inner.step(snap)
+        self._last_reason = str(act.reason)
+        return act
+
     def step(self, snap: ZeldaSnapshot) -> Any:
         from retro_harness.input_script import FrameAction
+        from zelda_i.dungeon.shot_guard import ROM_CHECKED
 
+        detour = f"{ROM_CHECKED}policy_guard_detour"
         if self._queue and in_play(snap) and not (self.success or self.failed):
             self.detour_frames += 1
-            return FrameAction(list(self._queue.pop(0)), "policy_guard_detour")
+            return FrameAction(list(self._queue.pop(0)), detour)
         self._queue.clear()
-        if self._env is None or not in_play(snap) or self.success or self.failed:
-            return self.inner.step(snap)
+        # Mid-plan: a committed rollout plan (PatraBlade, room04_west_plan)
+        # already answered this frame on the ROM.
+        if ROM_CHECKED in self._last_reason:
+            return self._inner_step(snap)
+        # No core to roll (unbound, or a test double without ``em``).
+        if getattr(self._env, "em", None) is None:
+            return self._inner_step(snap)
+        if not in_play(snap) or self.success or self.failed:
+            return self._inner_step(snap)
         self.checks += 1
         base = self._contact(())
         if base is None:
-            return self.inner.step(snap)
+            return self._inner_step(snap)
         best: tuple[tuple[int, int], tuple[Frame, ...]] | None = None
         for k in self.detours:
             for d in self.directions:
-                detour = (press(d),) * k
-                hit = self._contact(detour)
+                presses = (press(d),) * k
+                hit = self._contact(presses)
                 key = (self.horizon + 1 if hit is None else hit, -k)
                 if best is None or key > best[0]:
-                    best = (key, detour)
+                    best = (key, presses)
             if best is not None and best[0][0] > self.horizon:
                 break
         assert best is not None
         if best[0][0] <= base:
-            return self.inner.step(snap)
+            return self._inner_step(snap)
         self.detours_taken += 1
         self._queue = list(best[1][1:])
         self.detour_frames += 1
-        return FrameAction(list(best[1][0]), "policy_guard_detour")
+        return FrameAction(list(best[1][0]), detour)
 
     def report(self) -> dict[str, Any]:
         rep = self.inner.report() if callable(getattr(self.inner, "report", None)) else {}

@@ -163,7 +163,7 @@ def test_patra_chapter_wiring():
     assert len(stages) == 1
     name, ctrl, max_f = stages[0]
     assert name == "level9_natural_patra_join"
-    assert isinstance(ctrl.inner, NaturalPatraJoinController)
+    assert isinstance(ctrl.inner.inner, NaturalPatraJoinController)
     assert max_f == 24000
 
     # When suffix join room is None, returns fail-closed unavailable controller

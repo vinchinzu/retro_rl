@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
+from zelda_i.dungeon.hop_controller import lattice_door_step
 from zelda_i.level9.ganon import LEVEL9
 from zelda_i.level9.path import NORTH_DOOR_X
 from zelda_i.level9.stairs import (
@@ -78,6 +79,15 @@ def room51_to_41_step(snap: ZeldaSnapshot, frame_i: int = 0) -> FrameAction:
             nes_idle_action(),
             f"unexpected_room_0x{snap.screen:02x}",
         )
+    # ROM lattice first. The hand thread below presses UP from any pose it
+    # was not tuned on: after rollout-guard detours it pinned Link under the
+    # statue diamond at (112,109) for 20000 frames (C11 offset 6). Keep the
+    # thread's A cadence: 0x51's $17 Like Likes engulf Link, and only a
+    # slash frees him (a bare lattice walk stood swallowed at (48,181)).
+    step = lattice_door_step(None, snap, "UP")
+    if step is not None:
+        act = nes_action(step, "A") if frame_i % 4 == 0 else nes_action(step)
+        return FrameAction(act, "room51_lattice")
     x = int(snap.link_x)
     y = int(snap.link_y)
 

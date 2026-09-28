@@ -777,7 +777,12 @@ class GuardedController:
     guard: ShotGuard = field(default_factory=ShotGuard)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.inner, name)
+        # ``copy.deepcopy`` builds the copy empty and asks for
+        # ``__setstate__`` before ``inner`` exists (``rollout.PolicyGuard``).
+        inner = self.__dict__.get("inner")
+        if inner is None:
+            raise AttributeError(name)
+        return getattr(inner, name)
 
     def bind_env(self, env: Any) -> None:
         self._env = env

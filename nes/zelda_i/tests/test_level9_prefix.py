@@ -604,7 +604,7 @@ def test_bomb_north_20_policy_and_factory() -> None:
     "factory, wrong_screen, note",
     [
         (make_stairs_55_controller, 0x65, "unexpected_play_0x65"),
-        (make_stairs_05_controller, 0x06, "unexpected_play_0x06"),
+        (make_stairs_05_controller, 0x04, "unexpected_play_0x04"),
         (make_cellar_60_controller, CELLAR_60_SOURCE_RETURN, "returned_source_0x55"),
         (make_cellar_60_controller, 0x65, "unexpected_dest_0x65"),
         (make_cellar_70_controller, CELLAR_70_SOURCE_RETURN, "returned_source_0x05"),
@@ -626,3 +626,20 @@ def test_prefix_hop_fails_closed_on_red_ring_and_wrong_room(factory, wrong_scree
     _step(wrong, _ram(mode=PLAY_MODE, screen=wrong_screen, x=120, y=141))
     assert not wrong.success and wrong.failed
     assert note in wrong.notes
+
+
+def test_stairs_05_walks_back_from_a_knock_into_0x06_a_bounded_number_of_times() -> None:
+    ctl = make_stairs_05_controller()
+    ctl.MAX_REENTRIES = 1
+    act = _step(ctl, _ram(screen=0x06, x=32, y=141))
+    assert not ctl.failed and list(act.action) == LEFT
+    _step(ctl, _ram(screen=0x05, x=208, y=141))
+    assert ctl.reentries == 1
+    _step(ctl, _ram(screen=0x06, x=32, y=141))
+    assert ctl.failed and "unexpected_play_0x06" in ctl.notes
+
+
+def test_stairs_55_has_no_reentry_and_still_fails_off_its_room() -> None:
+    ctl = make_stairs_55_controller()
+    _step(ctl, _ram(screen=0x65, x=120, y=93))
+    assert ctl.failed

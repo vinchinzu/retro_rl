@@ -9,7 +9,7 @@ doors, rooms, progression, or capacity.
 from __future__ import annotations
 
 from zelda_i.dungeon.shot_guard import ROM_CHECKED
-from zelda_i.rollout import Rollout
+from zelda_i.rollout import PolicyGuard, Rollout
 from zelda_i.walk import live_env
 from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.hop_controller import room_step
@@ -266,7 +266,7 @@ class NaturalSilverArrowsController(_NaturalEndingController):
             ring = (make_red_ring_controller(),) if self.red_ring else ()
             self._hops = (
                 make_north_76_controller(), make_west_66_controller(),
-                make_bomb_north_65_controller(), make_stairs_55_controller(),
+                make_bomb_north_65_controller(), PolicyGuard(make_stairs_55_controller()),
                 make_cellar_60_controller(), make_east_14_controller(),
                 make_east_15_controller(), make_patra_16_controller(), *ring,
                 make_north_16_controller(), make_bomb_west_06_controller(),
@@ -274,7 +274,7 @@ class NaturalSilverArrowsController(_NaturalEndingController):
                 make_west_63_controller(), make_west_62_controller(),
                 make_stairs_61_controller(), make_cellar_75_controller(),
                 make_bomb_north_20_controller(),
-                make_room10_silver_arrows_controller(),
+                PolicyGuard(make_room10_silver_arrows_controller()),
             )
         # Each hop owns a finite budget (stairs_05 and room 0x10 fight live
         # Wizzrobes for up to 12000f, the 0x16 Patra 20000f). The chapter
@@ -352,8 +352,11 @@ def make_natural_silver_arrows_controller(
 # West end of 0x04's north aisle, clear of the (32,93) corner blade trap.
 # Only the fallback walk uses it: ``room04_west_plan`` baits the traps first.
 ROOM04_NORTH_AISLE_WEST = (56, 93)
-# A committed 0x04 plan that ends off the stand (a knock) is replanned.
-ROOM04_MAX_PLANS = 3
+# A committed 0x04 plan that ends off the stand (a knock) is replanned, and
+# a pose with no clean crossing yet holds and asks again: offset 1 spent all
+# three one-shot attempts on a trap still charging and fell to the old walk.
+ROOM04_MAX_PLANS = 10
+ROOM04_REPLAN_FRAMES = 30
 
 
 class PatraJoinPhase(Enum):
@@ -509,6 +512,7 @@ class NaturalPatraJoinController(_NaturalEndingController):
     _fights: dict[PatraJoinPhase, RoomFight] = field(init=False, repr=False)
     _plan_04: list[list[int]] = field(default_factory=list, repr=False)
     _plans_04: int = 0
+    _replan_04: int = 0
 
     def __post_init__(self) -> None:
         self._fights = {phase: RoomFight(spec) for phase, spec in JOIN_CLEAR_SPECS.items()}
@@ -891,11 +895,18 @@ class NaturalPatraJoinController(_NaturalEndingController):
                 return self._action(self._plan_04.pop(0), f"{ROM_CHECKED}nav_bomb_04_plan")
             env = live_env.current()
             if self._plans_04 < ROOM04_MAX_PLANS and env is not None and (x > 48 or y < 141):
+                if self._replan_04 > 0:
+                    self._replan_04 -= 1
+                    return self._action(nes_idle_action(), "nav_bomb_04_replan_wait")
                 self._plans_04 += 1
                 plan = room04_west_plan(Rollout(env), snap)
                 if plan:
                     self._plan_04 = plan[1:]
                     return self._action(plan[0], f"{ROM_CHECKED}nav_bomb_04_plan")
+                # No clean crossing from here yet (a trap still charging):
+                # hold and ask again, never the trapped hand walk below.
+                self._replan_04 = ROOM04_REPLAN_FRAMES
+                return self._action(nes_idle_action(), "nav_bomb_04_replan_wait")
             if y > 95 and x > 52:
                 # The aisle's west end on the lattice: a bare UP from under
                 # the centre block diamond ((152,165)) pressed stone for

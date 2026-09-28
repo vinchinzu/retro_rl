@@ -439,3 +439,30 @@ def test_policy_guard_detours_without_stepping_the_inner_when_its_plan_is_hit() 
     assert tuple(act.action) == UP and guard.inner.steps == 0
     assert len(guard._queue) == 3 and guard.detours_taken == 1
     assert em.ram is em.base
+
+
+def test_policy_guard_and_shot_guard_deep_copy_through_each_other() -> None:
+    import copy
+
+    from zelda_i.dungeon.shot_guard import GuardedController
+    from zelda_i.rollout import PolicyGuard
+
+    guard = PolicyGuard(GuardedController(_Walker()))
+    twin = copy.deepcopy(guard)
+    assert isinstance(twin.inner.inner, _Walker) and twin.inner.inner is not guard.inner.inner
+    assert twin.max_frames == 50
+
+
+def test_policy_guard_detour_frames_carry_a_rom_checked_reason() -> None:
+    from zelda_i.dungeon.shot_guard import ROM_CHECKED
+    from zelda_i.ram import read_snapshot
+    from zelda_i.rollout import PolicyGuard
+
+    env, _ = _env({RIGHT: [_ram(x=102), _hit_ram()], UP: [_ram(y=98)] * 6})
+    guard = PolicyGuard(_Walker(), horizon=6, detours=(4,), directions=("UP",))
+    guard.bind_env(env)
+    first = guard.step(read_snapshot(env.get_ram()))
+    queued = guard.step(read_snapshot(env.get_ram()))
+    assert tuple(first.action) == UP and guard.inner.steps == 0
+    assert isinstance(first.reason, str) and ROM_CHECKED in first.reason
+    assert tuple(queued.action) == UP and ROM_CHECKED in queued.reason

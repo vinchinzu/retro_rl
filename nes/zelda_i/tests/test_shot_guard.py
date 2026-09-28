@@ -167,6 +167,13 @@ def test_completed_stage_keeps_its_terminal_action_even_in_danger(terminal):
     assert getattr(controller, terminal)
 
 
+def _shot_guarded(controller):
+    """The ShotGuard layer, under an optional ROM ``PolicyGuard`` wrapper."""
+    from zelda_i.rollout import PolicyGuard
+
+    return controller.inner if isinstance(controller, PolicyGuard) else controller
+
+
 def test_level9_chapters_guard_dungeon_stages_and_delegate_reports():
     from zelda_i.level9.dungeon import MEASURED_POST_L8_HANDOFF
     from zelda_i.level9.hops import (
@@ -184,17 +191,17 @@ def test_level9_chapters_guard_dungeon_stages_and_delegate_reports():
     silver.inner.notes.append("delegated")
     assert silver.notes == ["delegated"]
     assert silver.report()["shot_guard"]["overrides"] == 0
-    assert isinstance(level9_patra_chapter()[0][1], GuardedController)
+    assert isinstance(_shot_guarded(level9_patra_chapter()[0][1]), GuardedController)
 
     credits = {name: controller for name, controller, _ in level9_credits_chapter()}
     for name in ("level9_final_patra", "level9_ganon"):
-        assert isinstance(credits[name], GuardedController)
-        assert not isinstance(credits[name].inner, GuardedController)
+        assert isinstance(_shot_guarded(credits[name]), GuardedController)
+        assert not isinstance(_shot_guarded(credits[name]).inner, GuardedController)
     # The pause-menu controller must receive its environment through the
     # same runner, and Ganon's bound environment must survive the wrapper.
     env = object()
     credits["level9_ganon"].bind_env(env)
-    assert credits["level9_ganon"].inner.env is env
+    assert _shot_guarded(credits["level9_ganon"]).inner.env is env
 
 
 def test_probe_guard_scope_matches_spine_without_double_wrapping():
@@ -205,13 +212,16 @@ def test_probe_guard_scope_matches_spine_without_double_wrapping():
         sid = name.split("_", 1)[0]
         if not (sid in ("s14b", "s14r") or 8 <= int(sid[1:]) <= 25):
             continue
-        assert isinstance(controller, GuardedController)
-        assert not isinstance(controller.inner, GuardedController)
+        assert isinstance(_shot_guarded(controller), GuardedController)
+        assert not isinstance(_shot_guarded(controller).inner, GuardedController)
     by_name = {name: controller for name, controller, _ in guarded}
     assert "s14b_level9_patra_16" in by_name
     assert isinstance(by_name["s27_level9_final_patra"], GuardedController)
-    assert isinstance(by_name["s29_level9_ganon"], GuardedController)
-    assert all(not isinstance(controller, GuardedController) for _, controller, _ in steps(guard=False))
+    assert isinstance(_shot_guarded(by_name["s29_level9_ganon"]), GuardedController)
+    assert all(
+        not isinstance(_shot_guarded(controller), GuardedController)
+        for _, controller, _ in steps(guard=False)
+    )
     # A wrapped probe stage still refuses a wrong-room Ganon contract and
     # keeps the refusal's idle input even when a magic shot is imminent.
     ram = object_ram(room_ram(), type_id=0x58, x=100, state=0x10)

@@ -510,6 +510,19 @@ def make_bomb_north_20_controller(*, dest: int | None = None) -> Level9BombNorth
 class Level9StairsHopController(Level9PrefixHopController):
     """Base controller for underworld cellar stairs hops (0x55 -> 0x60, 0x05 -> 0x70)."""
 
+    # A knock back through the door Link came in by: (room, door back),
+    # walked on the ROM lattice at most ``MAX_REENTRIES`` times.
+    reentry: tuple[tuple[int, str], ...] = ()
+    reentries: int = 0
+    MAX_REENTRIES = 2
+
+    def reentry_step(self, snap: ZeldaSnapshot) -> FrameAction | None:
+        back = dict(self.reentry).get(int(snap.screen))
+        if back is None:
+            return None
+        step = lattice_door_step(self._env, snap, back)
+        return FrameAction(nes_action(step or back), f"reenter_0x{self.origin:02x}")
+
     def arrived(self, snap: ZeldaSnapshot) -> bool:
         if snap.mode != PASSAGE_MODE or snap.transitioning:
             return False
@@ -537,6 +550,8 @@ class Level9StairsHopController(Level9PrefixHopController):
             and not snap.transitioning
             and snap.screen != self.origin
         ):
+            if int(snap.screen) in dict(self.reentry) and self.reentries < self.MAX_REENTRIES:
+                return None
             return self.mark_fail(f"unexpected_play_0x{snap.screen:02x}")
         if (
             snap.mode == PASSAGE_MODE
@@ -995,6 +1010,8 @@ class Level9Stairs05Controller(Level9StairsHopController):
     # (UnlimitedHealthAssist prevents death, not knockback). The clear now
     # runs on the generic engine (``ROOM_05_WIZZROBES_SPEC``).
     max_frames: int = 12_000
+    # A Wizzrobe knock through the east bomb hole (C11 offset 7).
+    reentry: tuple[tuple[int, str], ...] = ((BOMB_WEST_06_ORIGIN, "LEFT"),)
     _cleared: bool = False
     _pushed: bool = False
     _fight: RoomFight = field(
@@ -1007,12 +1024,20 @@ class Level9Stairs05Controller(Level9StairsHopController):
     _recenter_stuck_frames: int = 0
     _recenter_escape_frames: int = 0
     _recenter_escape_dir: str = "LEFT"
+    _reentering: bool = False
 
     def policy(self, snap: ZeldaSnapshot) -> FrameAction:
         if snap.mode != PLAY_MODE:
             return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
         if snap.screen != self.origin:
+            back = self.reentry_step(snap)
+            if back is not None:
+                self._reentering = True
+                return back
             return FrameAction(nes_idle_action(), f"unexpected_screen_0x{snap.screen:02x}")
+        if self._reentering:
+            self._reentering = False
+            self.reentries += 1
 
         # Step off the door row before anything else, and latch it.
         # bomb_west_06 now drops Link at (208,141), standing *in* the hole it

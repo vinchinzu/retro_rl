@@ -155,11 +155,15 @@ def test_room04_plan_waits_after_the_bait_until_the_crossing_is_clean() -> None:
 
 
 def test_room04_plan_refuses_when_no_crossing_is_clean() -> None:
-    from zelda_i.level9.stairs import ROOM04_WAITS, room04_west_plan
+    from zelda_i.level9.stairs import ROOM04_BAIT_WAITS, ROOM04_WAITS, room04_west_plan
 
-    answers = [(True, None)] + [(True, 12)] * len(ROOM04_WAITS)
-    assert room04_west_plan(_ScriptedRollout(answers), _snap((168, 124), screen=0x04)) is None
-    assert room04_west_plan(_ScriptedRollout([(True, 5)]), _snap((168, 124), screen=0x04)) is None
+    per_bait = [(True, None)] + [(True, 12)] * len(ROOM04_WAITS)
+    rollout = _ScriptedRollout(per_bait * len(ROOM04_BAIT_WAITS))
+    assert room04_west_plan(rollout, _snap((168, 124), screen=0x04)) is None
+    assert not rollout.answers
+    hit_baits = _ScriptedRollout([(True, 5)] * len(ROOM04_BAIT_WAITS))
+    assert room04_west_plan(hit_baits, _snap((168, 124), screen=0x04)) is None
+    assert hit_baits.prefixes == list(ROOM04_BAIT_WAITS)
 
 
 def test_blade_stage_stays_inside_its_room_box() -> None:
