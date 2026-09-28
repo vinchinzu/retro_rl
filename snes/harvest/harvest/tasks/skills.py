@@ -24,6 +24,7 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.planner.day_plan_status import tilemaps_match
 from harvest.planner.tasks.navigation import NavTask
 from harvest.tasks.nav import Point, make_action
 from harvest.tasks.primitives import (
@@ -95,7 +96,9 @@ class NavSkill(Task):
             tilemap = (
                 int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else -1
             )
-            if tilemap != int(self.require_tilemap):
+            # Seasonal farm maps (0x00-0x03) are one place: Summer's farm is
+            # 0x01, and a strict compare failed every farm skill on Summer D1.
+            if not tilemaps_match(tilemap, int(self.require_tilemap)):
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason=(
@@ -241,6 +244,54 @@ class SkillSequence(TaskSequence):
             details=(("skill_count", len(self.tasks)),),
             child=child,
         )
+
+
+@dataclass
+class BestEffortSkill(Task):
+    """Run ``tasks`` in order; a failure skips the group instead of failing.
+
+    A strict chain of per-tile skills lets one unreachable stand (a weed grown
+    on it, a pinned pose) abort every tile behind it. ``skipped`` tells the
+    caller how many groups did not complete so credit stays honest.
+    """
+
+    name: str = "best_effort"
+    tasks: Tuple[Task, ...] = ()
+    skipped: bool = field(default=False, init=False)
+    skip_reason: str = field(default="", init=False)
+    _inner: Optional[SkillSequence] = field(default=None, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self.skipped = False
+        self.skip_reason = ""
+        self._inner = SkillSequence(name=self.name, tasks=tuple(self.tasks), idle_between_tasks=True)
+        self._inner.reset(world)
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    @property
+    def current_task(self) -> Optional[Task]:
+        return self._inner.current_task if self._inner is not None else None
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        child = task_progress_snapshot(self._inner) if self._inner is not None else None
+        return ProgressSnapshot(task_name=self.name, phase_text="best_effort", child=child)
+
+    def step(self, world: WorldState) -> TaskResult:
+        if self._inner is None:
+            self.reset(world)
+        result = self._inner.step(world)
+        if result.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+            self.skipped = True
+            self.skip_reason = result.reason or ""
+            print(f"[SKILL] {self.name} skipped: {self.skip_reason}")
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                action=result.action,
+                reason=f"{self.name} skipped: {self.skip_reason}",
+            )
+        return result
 
 
 def sequence_skills(name: str, *skills: Task, idle_between: bool = True) -> SkillSequence:

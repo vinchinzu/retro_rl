@@ -277,6 +277,10 @@ _EXIT_ROUTE_TILEMAPS = frozenset({0x0C, 0x04, 0x05, 0x10})
 _BUILDING_EXIT_TILEMAPS = frozenset({SHED_TILEMAP, BARN_TILEMAP, COOP_TILEMAP})
 
 
+# Measured (Summer D1 exit pin): first pixel of movement 64f after the flip.
+FARM_FADE_IN_FRAMES = 72
+
+
 @dataclass
 class ExitToFarmTask(Task):
     """Exit the current farm building without assuming a house-only opener."""
@@ -300,6 +304,12 @@ class ExitToFarmTask(Task):
     _dismiss_mash_count: int = field(default=0, init=False)
     # Cumulative frames spent off known exit routes (sticky; rr-uru1).
     _offroute_stuck_frames: int = field(default=0, init=False)
+    # A building->farm warp fades in for ~64 frames AFTER player_state and
+    # input_lock read "free": buttons are dropped, so the next nav sees zero
+    # movement and blacklists free tiles ((9,21) (8,22) (7,21) at the house
+    # door, every day) until its own budgets run out. Idle through it here.
+    _warped: bool = field(default=False, init=False)
+    _fade_wait: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._blocked_reason = ""
@@ -307,7 +317,9 @@ class ExitToFarmTask(Task):
         self._cutscene_mash_count = 0
         self._dismiss_mash_count = 0
         self._offroute_stuck_frames = 0
+        self._fade_wait = 0
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        self._warped = not is_farm_tilemap(tilemap)
         if is_farm_tilemap(tilemap):
             self._task = None
             return
@@ -449,6 +461,17 @@ class ExitToFarmTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return True
 
+    def _farm_fade_wait(self) -> Optional[TaskResult]:
+        """Neutral frames while the warp fade-in still drops buttons."""
+        if not self._warped or self._fade_wait >= FARM_FADE_IN_FRAMES:
+            return None
+        self._fade_wait += 1
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason=f"farm fade-in {self._fade_wait}/{FARM_FADE_IN_FRAMES}",
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -471,6 +494,9 @@ class ExitToFarmTask(Task):
             self._offroute_stuck_frames = 0
             self._dismiss_mash_count = 0
             self._cutscene_mash_count = 0
+            fade = self._farm_fade_wait()
+            if fade is not None:
+                return fade
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilemap=0x{tilemap:02X}")
 
         # Drop stale child routes when the live tilemap left their origin
@@ -529,6 +555,10 @@ class ExitToFarmTask(Task):
                 # Mid-warp finished enough to count as on-farm.
                 self._offroute_stuck_frames = 0
                 self._task = None
+                self._warped = True
+                fade = self._farm_fade_wait()
+                if fade is not None:
+                    return fade
                 return TaskResult(
                     status=TaskStatus.SUCCESS,
                     reason=f"tilemap=0x{tilemap:02X} mid-warp settle y={pos_y}",

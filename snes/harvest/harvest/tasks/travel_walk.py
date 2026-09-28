@@ -14,7 +14,7 @@ from typing import Tuple
 
 import numpy as np
 
-from harvest.core.ram_catalog import field_spec
+from harvest.core.ram_catalog import field_spec, read_ram_value
 from harvest.core.tile_catalog import (
     LARGE_ROCK_DAMAGE_TILES,
     LARGE_ROCK_TL,
@@ -56,6 +56,28 @@ DIR_DELTA = {
 # Must beat MultiNav's 48f pixel-stuck, but 2f false-triggers on waypoint
 # L/R centering and map-settle (D2 path 0x0C (232,128) sealed mountain).
 PUSH_HOLD_FRAMES = 20
+
+
+# player_state 0/1 honour buttons. Right after a warp or nav settle the farmer
+# sits in another state (5 was measured) for 100+ frames with input_lock
+# already 1: every button is dropped. Zero movement then says nothing about
+# the tile ahead, and counting it poisoned temp_blocked with free tiles
+# ((9,21) (8,22) (7,21) at the house door, every day) and burned the
+# pixel-stuck / stasis budgets. Suppression is capped so a state that never
+# clears cannot mask a real wall.
+PLAYER_STATES_FREE = frozenset({0, 1})
+MAX_BUSY_SUPPRESS_FRAMES = 240
+# Frames of "holding a direction while player_direction never turns" that are
+# still read as dropped input rather than a wall (Summer D1 event: ~150f).
+MAX_IGNORED_HOLD_FRAMES = 240
+
+
+def player_is_busy(ram: np.ndarray) -> bool:
+    """True while the farmer is in an animation that drops button presses."""
+    try:
+        return int(read_ram_value(ram, "player_state") or 0) not in PLAYER_STATES_FREE
+    except Exception:
+        return False
 
 
 def is_travel_solid(tile_id: int) -> bool:

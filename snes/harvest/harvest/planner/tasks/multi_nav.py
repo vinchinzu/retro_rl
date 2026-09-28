@@ -250,6 +250,8 @@ class MultiMapNavTask(NavCorridor, Task):
         """Count frames with no real movement. Tile-stasis misses L/R wiggle."""
         if self._phase != "nav":
             return
+        if self._navigator.busy:
+            return  # buttons dropped, not a wall
         cur = self._navigator.current_pos
         anchor = self._pixel_anchor
         if (

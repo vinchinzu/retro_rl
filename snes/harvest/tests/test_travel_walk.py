@@ -86,6 +86,7 @@ class TravelWalkPushFacingTests(unittest.TestCase):
     def test_navigator_marks_facing_after_hold_not_on_first_charge(self) -> None:
         ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
         ram[ADDR_PLAYER_ACTION] = PLAYER_ACTION_IDLE
+        ram[ADDR_PLAYER_DIRECTION] = 2  # facing right: a live farmer turns into the wall
         nav = Navigator(Pathfinder(TileScanner()))
         nav.update(ram)
         nav.path = [(14, 8)]
@@ -101,6 +102,19 @@ class TravelWalkPushFacingTests(unittest.TestCase):
         self.assertIn((14, 8), nav.pathfinder.temp_blocked)
         self.assertEqual(nav.path, [])
         self.assertIsNone(later)
+
+    def test_navigator_does_not_block_when_the_farmer_is_not_turning(self) -> None:
+        """Dropped input (scripted event, fade-in) leaves player_direction on
+        the old way. A wall makes the farmer turn; a dead pad does not."""
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        ram[ADDR_PLAYER_ACTION] = PLAYER_ACTION_IDLE
+        ram[ADDR_PLAYER_DIRECTION] = PLAYER_DIR_LEFT  # holding right, still facing left
+        nav = Navigator(Pathfinder(TileScanner()))
+        nav.update(ram)
+        nav.path = [(14, 8)]
+        for _ in range(PUSH_HOLD_FRAMES * 3):
+            nav.follow_path(ram)
+        self.assertNotIn((14, 8), nav.pathfinder.temp_blocked)
 
     def test_navigator_does_not_block_when_pixels_move(self) -> None:
         ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
@@ -118,6 +132,7 @@ class TravelWalkPushFacingTests(unittest.TestCase):
     def test_multinav_safe_walk_refuses_push_facing(self) -> None:
         ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
         ram[ADDR_PLAYER_ACTION] = PLAYER_ACTION_IDLE
+        ram[ADDR_PLAYER_DIRECTION] = 2  # facing right: a live farmer turns into the wall
         world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
         task = MultiMapNavTask(
             waypoints=[Waypoint(tilemap=0x00, target_px=(20 * 16 + 8, 8 * 16 + 8), radius=12)],
@@ -135,6 +150,7 @@ class TravelWalkPushFacingTests(unittest.TestCase):
     def test_navtask_fallback_idles_instead_of_b_charge_into_push(self) -> None:
         ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
         ram[ADDR_PLAYER_ACTION] = PLAYER_ACTION_IDLE
+        ram[ADDR_PLAYER_DIRECTION] = 2  # facing right: a live farmer turns into the wall
         world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
         task = NavTask(target_px=Point(20 * 16 + 8, 8 * 16 + 8))
         task.reset(world)

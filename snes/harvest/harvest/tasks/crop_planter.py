@@ -262,6 +262,7 @@ class CropWaterTask(Task):
     # Skill sequence for establish / water / full. Refill phases do not use it.
     _child: Optional[Task] = field(default=None, init=False)
     _armed_water_tiles: int = field(default=0, init=False)
+    _water_pairs: List[Task] = field(default_factory=list, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -357,6 +358,7 @@ class CropWaterTask(Task):
         self._rejected_plan_centers = set()
         self._child = None
         self._armed_water_tiles = 0
+        self._water_pairs = []
         self._clear_crop_walkable()
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
@@ -423,6 +425,7 @@ class CropWaterTask(Task):
         self._rejected_plan_centers = set()
         self._child = None
         self._armed_water_tiles = 0
+        self._water_pairs = []
         print(f"[CROP] Hot-swap resume: re-scan crops/refill state can={self._water_level(world.ram)}")
 
     def can_start(self, world: WorldState) -> bool:
@@ -569,8 +572,9 @@ class CropWaterTask(Task):
 
     def _water_skill(self, ram: np.ndarray) -> Optional[Task]:
         from harvest.tasks.crop_skills import water_until_wet_skill
-        from harvest.tasks.skills import NavSkill, sequence_skills
+        from harvest.tasks.skills import BestEffortSkill, NavSkill, sequence_skills
 
+        pairs: List[Task] = []
         plots = self._detect_work_plots(ram)
         if not plots:
             return None
@@ -593,26 +597,29 @@ class CropWaterTask(Task):
                 skip_tiles=set(self.skip_water_tiles),
             )
             for index, (target, stand, face) in enumerate(steps):
-                skills.append(
-                    NavSkill(
-                        name=f"nav_water_{center[0]}_{center[1]}_{index}",
-                        target_px=(stand[0] * TILE_SIZE + 8, stand[1] * TILE_SIZE + 8),
-                        radius=7,
-                        soft_radius=7,
-                        timeout=timeout,
-                        require_tilemap=0x00,
-                    )
+                nav = NavSkill(
+                    name=f"nav_water_{center[0]}_{center[1]}_{index}",
+                    target_px=(stand[0] * TILE_SIZE + 8, stand[1] * TILE_SIZE + 8),
+                    radius=7,
+                    soft_radius=7,
+                    timeout=timeout,
+                    require_tilemap=0x00,
                 )
-                skills.append(
-                    water_until_wet_skill(
-                        target_tile=target,
-                        face=face,
-                        timeout=timeout,
-                    )
+                wet = water_until_wet_skill(
+                    target_tile=target,
+                    face=face,
+                    timeout=timeout,
                 )
-        self._armed_water_tiles = sum(
-            1 for skill in skills if str(getattr(skill, "name", "")).startswith("water")
-        )
+                # Best effort per tile: one unreachable stand (Summer weeds on
+                # (20,26) etc.) must not abort the tiles behind it.
+                pair = BestEffortSkill(
+                    name=f"nav_water_pair_{center[0]}_{center[1]}_{index}",
+                    tasks=(nav, wet),
+                )
+                pairs.append(pair)
+                skills.append(pair)
+        self._water_pairs = pairs
+        self._armed_water_tiles = len(pairs)
         if not skills:
             return None
         return sequence_skills("crop_water", *skills)
@@ -685,7 +692,8 @@ class CropWaterTask(Task):
             and self._armed_water_tiles
             and self.watered_count == 0
         ):
-            self.watered_count = self._armed_water_tiles
+            skipped = sum(1 for pair in self._water_pairs if getattr(pair, "skipped", False))
+            self.watered_count = max(self._armed_water_tiles - skipped, 0)
 
     def _step_mode_skill(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)

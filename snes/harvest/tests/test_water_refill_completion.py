@@ -122,7 +122,9 @@ class CropCompletionTests(unittest.TestCase):
         task.reset(world)
 
         result = None
-        for _ in range(80):
+        # The blank RAM never turns the farmer, so wall verdicts wait out the
+        # dropped-input cap (MAX_IGNORED_HOLD_FRAMES) before they land.
+        for _ in range(900):
             result = task.step(world)
             if result.status != TaskStatus.RUNNING:
                 break

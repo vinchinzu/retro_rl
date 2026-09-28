@@ -68,6 +68,11 @@ class MultiDayPlannerTask(Task):
     _day_journal: list[dict[str, object]] = field(default_factory=list, init=False)
     _return_home_retries: int = field(default=0, init=False)
     _was_storm_yesterday: bool = field(default=False, init=False)
+    # The cow-purchase route is unproven on the ROM. Once the planner is rich
+    # it re-plans it every morning; each failed try costs frames and buys
+    # nothing. Count runtime failures per season and stop after a few.
+    _cow_route_failures: int = field(default=0, init=False)
+    _cow_failure_season: int = field(default=-1, init=False)
     # A stranded return_home is the dominant terminal killer of long runs. Give
     # it a few fresh attempts (nav state is rebuilt each time) before failing.
     max_return_home_retries: int = 3
@@ -147,6 +152,12 @@ class MultiDayPlannerTask(Task):
             season,
             replace(self.policy, include_end_day=False),
         )
+        if (
+            self._cow_failure_season == int(season)
+            and self._cow_route_failures >= COW_ROUTE_MAX_FAILURES
+            and day_policy.include_cows
+        ):
+            day_policy = replace(day_policy, include_cows=False)
         # Determine target seed for the season
         target_seed = None
         if self.crop_rotation and season in self.crop_rotation:
@@ -382,6 +393,19 @@ class MultiDayPlannerTask(Task):
             else []
         )
         deferred = _merge_deferred_rows(planned_deferred, self._last_day_deferred)
+        if any(
+            str(row.get("phase")) in _COW_ROUTE_PHASES
+            and not str(row.get("reason", "")).startswith("shop_closed")
+            for row in self._last_day_deferred
+        ):
+            if self._cow_failure_season != int(season):
+                self._cow_failure_season = int(season)
+                self._cow_route_failures = 0
+            self._cow_route_failures += 1
+            print(
+                f"[MULTI_DAY] Cow route failed ({self._cow_route_failures}/"
+                f"{COW_ROUTE_MAX_FAILURES} this season)"
+            )
         planned = []
         if self._last_day_decision is not None:
             planned = [p.phase for p in self._last_day_decision.phases]
@@ -690,6 +714,10 @@ class MultiDayPlannerTask(Task):
             return self._handle_result(world, self._start_phase(world))
 
         return self._handle_result(world, self._current_task.step(world))
+
+
+COW_ROUTE_MAX_FAILURES = 3
+_COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
 
 
 def _merge_deferred_rows(

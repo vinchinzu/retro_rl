@@ -31,8 +31,12 @@ from harvest.core.tile_catalog import (
 from harvest.tasks.travel_walk import (
     PUSH_HOLD_FRAMES,
     block_push_facing,
+    MAX_BUSY_SUPPRESS_FRAMES,
+    MAX_IGNORED_HOLD_FRAMES,
     is_travel_occupied,
+    player_is_busy,
     read_player_action,
+    read_player_direction,
 )
 
 # Re-export map constants used by nav consumers.
@@ -377,9 +381,22 @@ class Navigator:
         self._push_tile: Optional[Tuple[int, int]] = None
         self._push_px: Optional[Tuple[int, int]] = None
         self._push_hold: int = 0
+        self._busy_frames: int = 0
+        self._ignored_hold: int = 0
+        self.busy: bool = False
 
     def update(self, ram: np.ndarray):
         new_pos = get_pos_from_ram(ram)
+        if player_is_busy(ram) and self._busy_frames < MAX_BUSY_SUPPRESS_FRAMES:
+            # Buttons are being dropped (see travel_walk.player_is_busy): not
+            # evidence of a wall, so neither stasis nor push-hold may grow.
+            self._busy_frames += 1
+            self.busy = True
+            self.current_pos = new_pos
+            return
+        self.busy = False
+        if not player_is_busy(ram):
+            self._busy_frames = 0
         new_tile = (new_pos.x // TILE_SIZE, new_pos.y // TILE_SIZE)
         old_tile = (self.current_pos.x // TILE_SIZE, self.current_pos.y // TILE_SIZE)
         # Reset stasis only on tile-level movement, not 1px oscillation
@@ -391,10 +408,36 @@ class Navigator:
             self.stasis += 1
         self.current_pos = new_pos
 
+    def _input_ignored(self, ram: np.ndarray, facing: Tuple[int, int]) -> bool:
+        """True when the farmer is not even turning toward ``facing``.
+
+        A live farmer pushing a wall still turns to face it. If the facing byte
+        disagrees with the direction we are holding, buttons are being dropped
+        (scripted event pending, fade-in): no evidence about the tile. Summer
+        D1: holding UP at the door front for 150f left player_direction on
+        LEFT, then a dialogue opened; the stall had already blacklisted (8,25)
+        and (7,26) and NAV_CROP never recovered.
+        """
+        cur = self.current_tile
+        dx, dy = facing[0] - cur[0], facing[1] - cur[1]
+        want = {(0, 1): 0, (0, -1): 1, (1, 0): 2, (-1, 0): 3}.get((dx, dy))
+        if want is None:
+            return False
+        return read_player_direction(ram) != want
+
     def note_push_facing(self, ram: np.ndarray, facing: Tuple[int, int]) -> bool:
         """True when ``facing`` is (now) a push no-go. Call while charging it."""
         if facing in self.pathfinder.temp_blocked:
             return True
+        if self.busy or self._input_ignored(ram, facing):
+            # Bounded: a farmer that never turns for this long is not waiting
+            # on an event, so fall back to treating the stall as a wall.
+            self._ignored_hold += 1
+            if self._ignored_hold <= MAX_IGNORED_HOLD_FRAMES:
+                self._push_hold = 0
+                return False
+        else:
+            self._ignored_hold = 0
         px = (self.current_pos.x, self.current_pos.y)
         if facing != self._push_tile or px != self._push_px:
             self._push_tile = facing
