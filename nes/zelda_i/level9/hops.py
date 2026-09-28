@@ -215,7 +215,7 @@ def level9_patra_chapter(
         controller = make_patra_join_unavailable_controller()
         controller.reason = "natural_suffix_join_not_selected"
         return (_stage("level9_natural_patra_join", controller),)
-    controller = GuardedController(make_natural_patra_join_controller())
+    controller = PolicyGuard(GuardedController(make_natural_patra_join_controller()))
     return (_stage("level9_natural_patra_join", controller),)
 
 
@@ -228,7 +228,7 @@ def level9_credits_chapter() -> tuple[tuple[str, Any, int], ...]:
     select_arrows = NaturalSelectSilverArrowsController()
     patra = GuardedController(NaturalFinalPatraController())
     enter_ganon = NaturalPatraToGanonController()
-    ganon = GuardedController(NaturalGanonController())
+    ganon = PolicyGuard(GuardedController(NaturalGanonController()))
     power = NaturalPowerTriforceController()
     enter_zelda = NaturalEnterZeldaController()
     rescue = NaturalRescueZeldaController()

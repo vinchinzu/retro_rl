@@ -33,6 +33,7 @@ from zelda_i.level9.natural_path import (
 )
 from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.ram import hearts_held, read_snapshot
+from zelda_i.rollout import PolicyGuard
 from zelda_i.route.chain import run_controller_stage
 
 
@@ -48,10 +49,16 @@ def steps(*, guard=True, red_ring=False):
         out.append((name, GuardedController(hop, prefix_guard) if guard else hop, int(hop.max_frames)))
     join = make_natural_patra_join_controller()
     join.start_checked = True
-    out.append(("level9_natural_patra_join", GuardedController(join) if guard else join, join.max_frames))
+    out.append((
+        "level9_natural_patra_join",
+        PolicyGuard(GuardedController(join) if guard else join),
+        join.max_frames,
+    ))
     for name, ctl, cap in level9_credits_chapter():
         if not guard and isinstance(ctl, GuardedController):
             ctl = ctl.inner
+        elif not guard and isinstance(ctl, PolicyGuard) and isinstance(ctl.inner, GuardedController):
+            ctl = PolicyGuard(ctl.inner.inner)
         out.append((name, ctl, cap))
     # Keep the s00-s33 pins valid: the 0x16 bomb-item kill and the Red Ring
     # detour follow s14 (East15) under their own stable labels.

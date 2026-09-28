@@ -1,9 +1,42 @@
 # Zelda I sitting residual — Level 9 lane integration (2026-09-28)
 
-Lanes A (`a686cce2`) and C (`6c5eced9`) are on main. On 2026-09-28 a single
-Claude thread took over the remaining lanes in the main tree, landing them one
-commit each; lane D (bombs) is the first. Bead `rr-npv.5` stays in progress:
-Clean power-on credits is still unproved. No STATUS change or push.
+Lanes A (`a686cce2`) and C (`6c5eced9`) were on main at the handoff. On
+2026-09-28 a single Claude thread landed D, B, E and F in the main tree (one
+commit each), then made Level 9 survivable Clean from real entries (below).
+Bead `rr-npv.5` stays in progress until a continuous power-on tape reaches
+the credits. No STATUS change or push.
+
+## Clean Level 9 from real entries: 8 of 8 offsets reach the credits
+
+Each run below starts from a real Clean Spectacle Rock state (`E2C11Evalo<n>
+_s07`: the C10 predecessor, offset n, carried through the new entry chapter)
+and plays to `level9_wait_credits` with no assist: `l9_probe.py
+E2C11Evalo<n>_s07_level9_spectacle_rock_bomb --from s07`. Step pins are
+`W1o<n>_*` (first pass) and `W2o<n>_*` (second).
+
+First pass (lanes A-F): 4/8 credits. Deaths in the join (0x30), at Ganon (x2),
+and 0x05's stairs hop failed on a knock back into 0x06. Per-step A/B from the
+`W1` pins, `PolicyGuard` on vs off (8 offsets; total hearts lost):
+
+| Step | Off | On |
+|---|---|---|
+| s11 0x55 stairs | 8/8, 13.0h | 8/8, 0.0h |
+| s24 room 0x10 | 7/7, 23.8h | 7/7, 20.0h (two offsets worse) |
+| s25 Patra join | 6/7, 36.8h | 6/7, 5.0h (o6 0x51 stall, fixed below) |
+| s29 Ganon | 4/6, 14.9h | 6/6, 0.0h |
+
+Second pass, with those four wrapped, `stairs_05` walking back from 0x06
+(`reentry`, at most twice) and 0x51's walk lattice-first: 5/8 credits with
+9.2-13.0 hearts left. The three failures were one bug: the lattice walk had
+dropped the hand thread's A cadence, and a $17 Like Like swallowed Link at
+(48,181) until the 24000f cap. With the cadence back, reruns from `W2o3` and
+`W2o6` reach the credits with 12.0 and 10.2 hearts. `W2o1` then stalled in
+0x04: all three one-shot crossing plans came back empty while a trap was still
+charging, and the join fell to the trapped row-93 walk. 0x04 now also waits
+before the bait and holds to replan every 30 frames (up to ten); the rerun
+reaches the credits with 10.5 hearts. Every offset 0-7 has reached the
+credits from its real Clean L9 entry (hearts left 9.2-13.0). Room 0x10 is now the
+largest cost (0.25-8.25h; Wizzrobe magic $58/$59 and Bubble contacts).
 
 ## Red Ring detour on main, opt-in (F)
 
@@ -110,76 +143,23 @@ ends with 6 (drops) -> credits 6. That run's damage is 17.5h (join 6.27h,
 room 0x10 3.75h, final Patra 2h, Ganon 2h): refill evidence, not Clean.
 Logs: `logs/lane_d/`.
 
-## Resume the remaining lanes
+## All six lanes landed; worktrees removed
 
-All paths below are relative to `.claude/worktrees/`. The unfinished trees
-are based on lane A (`a686cce2`), so bring them forward to current main while
-preserving their dirty changes before continuing. Do not land either WIP
-without fixing the failures and repeating its ROM matrix.
+| Lane | Status on main |
+|---|---|
+| A: shot guard | `a686cce2` |
+| B: hazards | landed with the 0x04 bait crossing and 0x20 push recovery |
+| C: stalls | `6c5eced9` (same tree as the agent's `b97d30c7`) |
+| D: bombs | landed; the worktree's one-line Patra16 substitution was superseded |
+| E: overworld | landed with `PolicyGuard` |
+| F: Red Ring | landed opt-in (`red_ring=True`, `--red-ring`) |
 
-| Lane | Worktree | Checkpoint / next action |
-|---|---|---|
-| B: hazards | main | Landed (above) with the 0x04 and 0x20 fixes. |
-| C: stalls | `agent-ac061e44b550e7c0a` | Clean agent commit `b97d30c7`; integrated on main as `6c5eced9`, including bead export and this living handoff. |
-| D: bombs | main | Landed (above). The worktree's one-line Patra16 substitution is superseded. |
-| E: overworld | main | Landed (above). |
-| F: Red Ring | main | Landed opt-in (above). |
-
-B's latest matrix (`logs/codex_lane_b/after15_v2.txt`) clears the Patra join
-3/4 at 10927–14043f and 5.27–6.02h on the successful offsets. Offset 3
-stalls at 24000f in 0x04, `(184,108)`. The 0x20 north bomb also clears 3/4,
-mean 0.88h, but offset 3 ends `push_timeout` at `(80,129)` after a guard dodge.
-The existing `BombWallController._push_dir` blind alignment walks into a
-pillar; replace recovery with the existing lattice path to the mouth.
-That scoped shared-helper fix was authorized but not implemented before
-the usage limit. Verify another bomb-wall consumer as well. The last B unit
-gate passed 2129 tests, 4 skipped, 41 deselected; it does not establish the
-subsequent runtime changes or route regressions as safe.
-
-F follows `0x16→0x26→0x27→0x17→0x07→cellar 0x00`, then returns to 0x16.
-The three forward bomb walls consume exactly three bombs; reverse travel
-uses the holes already opened. Its loaded, no-refill 10h measurements at
-offsets 0/3/7/11 all naturally acquire ring 2 and return, taking
-5582/5413/5430/5615f and 4.88/8.38/8.13/6.26h. These are heart writes at
-load, not Clean proof. The tapes retain the live 0x16 Patra, so D's prior
-kill will change timing. F's whole assisted L9 matrix fails all four offsets
-(0x51 stall, final wall bomb failures, and the pre-C 0x10 stall).
-Its full unit gate has one missing gitignored input failure:
-`recordings/l9_room51_dump.json`; link the existing main input before rerun.
-Logs and screenshots are under `logs/codex_lane_f/` in F's worktree.
-
-The required chapter order is `East15 → Patra16 kill/item → RedRing →
-North16`. D must retain skill ID `level9_patra_16` for stable probe alias
-`s14b`; F uses `level9_red_ring` / `s14r`; the existing north walk remains
-`s15`. The old Patra16 factory kills **and exits north**, so it cannot simply
-be placed before the detour. Implement a kill-only/item controller and
-move it out of `prefix.py` into an existing owning module without a circular
-import. Keep `prefix.py` at or below its 1603-line base.
-
-Natural C10 carries 4 bombs / 2R. Rock and 0x65 north cost two before 0x16;
-the guaranteed Patra item adds four, and the ring detour spends three.
-The remaining old route costs four, leaving a one-bomb deficit. Avoid 0x31W
-via cleared 0x51's west shutter, then 0x50→0x40→0x30, or prove another
-guaranteed natural source. Do not rely on random bomb drops. Make the L9
-post-L8 shops skip an unaffordable purchase with an L9-only opt-in, preserving
-other levels' fail-closed behavior. Verify the real C10 predecessor again.
-
-Original lane briefs are preserved in main's
-`nes/zelda_i/logs/codex_takeover/agent-*_brief.md`. Exact dirty tracked patches
-and new tests are also snapshotted in `paused_lane_b`, `paused_lane_d`, and
-`paused_lane_f` there. Artifacts are gitignored; the worktrees remain intact.
-Use `PYTHONPATH="$PWD:$PWD/snes:$PWD/nes"`,
-`UV_PROJECT_ENVIRONMENT=/home/v/01_projects/11_games/retro_rl/.venv`, and
-`QT_QPA_PLATFORM=offscreen uv run --no-sync` from each worktree. Limit each
-matrix to three jobs and never edit its runtime while its ROM eval runs.
-Final main gate: `QT_QPA_PLATFORM=offscreen uv run --no-sync python -m pytest
-nes/zelda_i/tests tests/test_docs.py -q` passes **2136 tests**, 41 ROM tests
-deselected. Main's integrated guarded ROM checks reproduce s24 offset 0 at
-3582f / 1.75h and s21 offset 0 at 7264f / 0h. Logs are
-`logs/codex_takeover/main_handoff_checks.txt` and `main_lane_c_s{24,21}.txt`.
-Next action: start a fresh D agent with the bomb budget and kill-only order
-above, then resume B/F and launch E as slots open; integrate validated commits
-on main with bead exports, finally run composed ROM and main test gates.
+The six `.claude/worktrees/agent-*` trees and their branches were removed on
+2026-09-28 after their content was on main. Their final dirty patches and
+untracked tests are in `logs/codex_takeover/final_worktree_patches/`, their
+gitignored lane logs in `logs/codex_takeover/worktree_logs/`, and their 21
+unique save states (`CodexLA_*`, `LF*`, `CodexB_room04`) were copied into
+`custom_integrations/`. The original briefs stay in `logs/codex_takeover/`.
 
 ## Room-stall lane verified
 
@@ -298,14 +278,14 @@ the existing main-tree artifacts restored those inputs before the green run.
 
 ## Assumed
 
-The full guard budget still exceeds the hearts available on the real Clean
-predecessor. No continuous power-on run was performed. Trap/orange-shot,
-0x10/0x61 stall, bomb-budget, overworld, and Red Ring work remain in their
-separate lanes; none were incorporated here.
+The Clean L9 numbers above come from resumed pins (each a real Clean C10
+successor state plus one probe load), not a continuous power-on tape.
+`rr-npv.5` closes only on `run_survival_spine.py --clean --through
+level9-credits` from power-on with 0 loads.
 
 ## Plan
 
-Review/cherry-pick this lane into the integrator tree, then finish the next
-selected lane. Keep `rr-npv.5` open and remeasure the combined route before
-attempting the continuous Clean credits gate. Do not claim Clean from these
-pins or promote STATUS from this replay.
+Run the continuous Clean power-on credits tape on this tree. If it is red,
+fix from its `C11P_<stage>` save point and rerun power-on. The next Clean
+costs to cut are room 0x10 (Wizzrobe magic, up to 8h) and the Spectacle
+Rock bomb (0-3h); the Red Ring and the 0x4A-detour skip stay optional.

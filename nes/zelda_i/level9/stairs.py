@@ -191,6 +191,8 @@ ROOM04_CROSS = (
     BOMB_WEST_STAND,
 )
 ROOM04_WAITS = tuple(range(0, 241, 20))
+# A trap still charging after the clear can meet the bait itself: wait first.
+ROOM04_BAIT_WAITS = (0, 30, 60)
 # West of the centre blocks already (a knock, a replan): walk straight down.
 ROOM04_WEST_OF_BLOCKS_X = 104
 
@@ -207,13 +209,14 @@ def room04_west_plan(rollout: Any, snap: ZeldaSnapshot) -> list[list[int]] | Non
     if int(snap.link_x) <= ROOM04_WEST_OF_BLOCKS_X:
         plan, out, reached = rollout.walk(((48, 109), BOMB_WEST_STAND))
         return [list(f) for f in plan] if reached and out.contact_frame is None else None
-    bait, out, reached = rollout.walk(ROOM04_BAIT)
-    if not reached or out.contact_frame is not None:
-        return None
-    for wait in ROOM04_WAITS:
-        plan, out, reached = rollout.walk(ROOM04_CROSS, prefix=bait + hold(None, wait))
-        if reached and out.contact_frame is None:
-            return [list(f) for f in plan]
+    for pre in ROOM04_BAIT_WAITS:
+        bait, out, reached = rollout.walk(ROOM04_BAIT, prefix=hold(None, pre))
+        if not reached or out.contact_frame is not None:
+            continue
+        for wait in ROOM04_WAITS:
+            plan, out, reached = rollout.walk(ROOM04_CROSS, prefix=bait + hold(None, wait))
+            if reached and out.contact_frame is None:
+                return [list(f) for f in plan]
     return None
 
 
