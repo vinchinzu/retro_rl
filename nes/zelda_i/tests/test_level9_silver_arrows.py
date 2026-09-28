@@ -168,7 +168,10 @@ def test_silver_arrows_chapter_wiring():
     name, ctrl, max_f = stages[0]
     assert name == "level9_natural_silver_arrows"
     assert isinstance(ctrl.inner, NaturalSilverArrowsController)
-    assert max_f == 44000
+    assert max_f == sum(hop.max_frames for hop in ctrl.inner._hops)
+    hop_ids = [hop.spec_id for hop in ctrl.inner._hops]
+    assert hop_ids[hop_ids.index("level9_east_15") + 1] == "level9_patra_16"
+    assert hop_ids[hop_ids.index("level9_patra_16") + 1] == "level9_north_16"
 
     # With unmeasured handoff
     unmeasured_stages = level9_silver_arrows_chapter(handoff=UNMEASURED_POST_L8_HANDOFF)

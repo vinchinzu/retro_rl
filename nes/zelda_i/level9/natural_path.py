@@ -74,6 +74,7 @@ from zelda_i.level9.patra import (
     PATRA_ROOM,
     patra_melee_action,
     final_patra_north_door_earned,
+    make_patra_16_controller,
 )
 from zelda_i.level9.room51 import room51_to_41_step
 from zelda_i.level9.stairs import (
@@ -234,11 +235,11 @@ class _NaturalEndingController:
 
 @dataclass
 class NaturalSilverArrowsController(_NaturalEndingController):
-    """Sequential controller connecting 0x76 through all 17 prefix hops to Silver Arrows 0x10.
+    """Sequential controller connecting 0x76 through the prefix hops to Silver Arrows 0x10.
 
-    Traverses 17 natural hops without memory writes or state loads:
-    0x76 -> 0x66 -> 0x65 -> 0x55 -> cellar 0x60 -> 0x14 -> 0x15 -> 0x16 ->
-    0x06 -> 0x05 -> cellar 0x70 -> 0x63 -> 0x62 -> 0x61 -> cellar 0x75 ->
+    Traverses the natural hops without memory writes or state loads:
+    0x76 -> 0x66 -> 0x65 -> 0x55 -> cellar 0x60 -> 0x14 -> 0x15 -> 0x16
+    (kill its Patra for the bomb item) -> 0x06 -> 0x05 -> cellar 0x70 -> 0x63 -> 0x62 -> 0x61 -> cellar 0x75 ->
     0x20 -> 0x10, then the in-room 0x10 statue-band thread onto the Silver
     Arrows item itself (rr-sz8.6, 2026-09-06: room 0x10 is not a dest hop
     stop, the arrows were never actually collected until this 17th hop).
@@ -252,31 +253,26 @@ class NaturalSilverArrowsController(_NaturalEndingController):
     _hops: tuple[Any, ...] = field(default_factory=tuple, repr=False)
 
     def __post_init__(self) -> None:
-        if self.handoff.complete():
-            # Fixture-live hops sum to ~6900f (rr-sz8.6 residual doc); 16000
-            # was a ~2x margin. Power-on evidence (2026-09-06) shows at least
-            # one hop (stairs_05, live Wizzrobe chase) needs its own budget
-            # bumped 4000->12000 for RNG-variance combat -- give the whole
-            # chapter matching headroom rather than let the outer cap fail
-            # first. See level9_stairs_05's own max_frames comment. The new
-            # 17th hop (room10_silver_arrows) shares that same live-Wizzrobe
-            # combat profile and its own 12000f budget -- bump the chapter
-            # total accordingly.
-            self.max_frames = 44000
-        else:
-            self.max_frames = 1
         if not self._hops:
             self._hops = (
                 make_north_76_controller(), make_west_66_controller(),
                 make_bomb_north_65_controller(), make_stairs_55_controller(),
                 make_cellar_60_controller(), make_east_14_controller(),
-                make_east_15_controller(), make_north_16_controller(),
-                make_bomb_west_06_controller(), make_stairs_05_controller(),
-                make_cellar_70_controller(), make_west_63_controller(),
-                make_west_62_controller(), make_stairs_61_controller(),
-                make_cellar_75_controller(), make_bomb_north_20_controller(),
+                make_east_15_controller(), make_patra_16_controller(),
+                make_north_16_controller(), make_bomb_west_06_controller(),
+                make_stairs_05_controller(), make_cellar_70_controller(),
+                make_west_63_controller(), make_west_62_controller(),
+                make_stairs_61_controller(), make_cellar_75_controller(),
+                make_bomb_north_20_controller(),
                 make_room10_silver_arrows_controller(),
             )
+        # Each hop owns a finite budget (stairs_05 and room 0x10 fight live
+        # Wizzrobes for up to 12000f, the 0x16 Patra 20000f). The chapter
+        # allows their sum rather than an unrelated shorter cap.
+        self.max_frames = (
+            sum(int(hop.max_frames) for hop in self._hops)
+            if self.handoff.complete() else 1
+        )
 
     def _fail(self, reason: str) -> FrameAction:
         self.blocked_reason = reason

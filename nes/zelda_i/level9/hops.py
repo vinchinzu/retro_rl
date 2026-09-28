@@ -94,10 +94,12 @@ def _stage(name: str, controller) -> tuple[str, Any, int]:
 
 from zelda_i.overworld.graph import ScreenHop
 
-# Entry and the Silver Arrows prefix spend four bombs; the Patra join and
-# ending still need bombs after that. A four-bomb pack reaches room 0x10 with
-# zero (Nat3 L8-leave suffix, l9_bomb_suffix_credits). The first Patra in
-# room 0x16 hides its bomb item until killed, so carry two shop packs instead.
+# Level 9's walls: Spectacle Rock and 0x65 north before room 0x16, then
+# 0x06 west, 0x20 north, 0x31 west and 0x04 west. Clean Link leaves Level 8
+# with 4 bombs and 2R, and 0x16's Patra item (+4, ``level9_patra_16``) pays
+# for the four walls after it. The two 0x4A packs are headroom: bought when
+# the wallet can pay, skipped when it cannot, and skipped when a natural
+# drop on 0x5D already filled the bag to this count.
 LEVEL9_BOMBS_WANTED = 8
 
 # Legacy 0x67 hops exported for test compatibility
@@ -129,6 +131,8 @@ def level9_entry_chapter(
 ) -> tuple[tuple[str, Any, int], ...]:
     """Post-L8 OW → two bomb packs at 0x4A → White Sword detour → Spectacle Rock → L9.
 
+    The packs are skipped when the wallet is short (``LEVEL9_BOMBS_WANTED``).
+
     The detour slots in here because the post-L8 overworld leg already ends on
     0x05, the screen it departs from and returns to, and because Level 9's
     ending contracts need a sword upgrade Link does not otherwise have: the
@@ -155,11 +159,12 @@ def level9_entry_chapter(
         walk = (
             _stage("level9_post_l8_overworld", post_l8_to_shop),
             *bomb_restock_stages(
-                to_shop, "l8", want=LEVEL9_BOMBS_WANTED, shop_screen=BOMB_SHOP_SCREEN
+                to_shop, "l8", want=LEVEL9_BOMBS_WANTED,
+                shop_screen=BOMB_SHOP_SCREEN, skip_unaffordable=True,
             ),
             *bomb_restock_stages(
                 to_shop, "l8_second", want=LEVEL9_BOMBS_WANTED,
-                shop_screen=BOMB_SHOP_SCREEN,
+                shop_screen=BOMB_SHOP_SCREEN, skip_unaffordable=True,
             ),
             _stage("level9_post_l8_to_rock", post_l8_to_rock),
         )

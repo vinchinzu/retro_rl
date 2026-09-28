@@ -378,6 +378,13 @@ def simulate(
     return PlanResult(None, clearance, (x, y))
 
 
+# A frame the inner controller already checked against the ROM itself (a
+# savestate rollout, ``zelda_i.rollout``) carries this in its reason. The
+# guard's straight-line and orbit model cannot improve on that answer, and
+# replacing the frame would fire or walk into the hit the rollout avoided.
+ROM_CHECKED = "rom_checked:"
+
+
 def _pressed_dir(action: list[int]) -> str | None:
     names = ("B", "", "SELECT", "START", "UP", "DOWN", "LEFT", "RIGHT", "A")
     for i, name in enumerate(names):
@@ -507,6 +514,9 @@ class ShotGuard:
     def filter(self, snap: ZeldaSnapshot, ram: np.ndarray, inner: FrameAction) -> FrameAction:
         self.frames += 1
         if snap.mode != PLAY_MODE or snap.transitioning or not snap.level or not self.relevant(ram):
+            self._last = None
+            return inner
+        if ROM_CHECKED in inner.reason:
             self._last = None
             return inner
         patra = self._patra_movers(ram)

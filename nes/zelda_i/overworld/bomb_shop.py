@@ -112,6 +112,7 @@ def make_bomb_shop_controller(
     restock_farm: bool = True,
     want: int | None = None,
     resume_on_screen: bool = False,
+    skip_unaffordable: bool = False,
 ) -> CaveShopBuyController:
     """0x37 (or leftover) -> 0x4A cave -> bombs mid pedestal (20R). No poke.
 
@@ -141,7 +142,11 @@ def make_bomb_shop_controller(
     kind: type[CaveShopBuyController] = CaveShopBuyController
     extra: dict[str, Any] = {"min_headroom": 4}
     if want is not None:
-        kind, extra = BombRestockController, {"want": int(want), "min_headroom": 1}
+        kind, extra = BombRestockController, {
+            "want": int(want),
+            "min_headroom": 1,
+            "skip_unaffordable": skip_unaffordable,
+        }
     return kind(
         hops=hops,
         resume_on_screen=resume_on_screen,
@@ -180,14 +185,26 @@ class BombRestockController(CaveShopBuyController):
     Mirrors the potion restock: on its first frame it ends at once, walking
     nowhere, when the carried count already covers ``want``. Short of it, a
     pack that tops out the bag is still a buy (``min_headroom=1``).
+
+    A short wallet fails closed (``shop_need_20_have_N``) unless the leg opts
+    into ``skip_unaffordable``: Level 9 pays its walls from 0x16's bomb item,
+    and Clean Link leaves Level 8 with 2R.
     """
 
     want: int = 0
+    skip_unaffordable: bool = False
 
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.frames == 0 and int(snap.bombs) >= self.want:
             self.frames += 1
             return self._finish("bomb_restock_enough")
+        if (
+            self.frames == 0
+            and self.skip_unaffordable
+            and int(snap.rupees) < self.price
+        ):
+            self.frames += 1
+            return self._finish(f"bomb_restock_unaffordable_{int(snap.rupees)}r")
         return super().step(snap)
 
 
@@ -231,6 +248,7 @@ def bomb_restock_stages(
     *,
     want: int,
     shop_screen: int = SHOP_E5_SCREEN,
+    skip_unaffordable: bool = False,
 ) -> tuple[tuple[str, Any, int], ...]:
     """Spine stages for a bomb buy on a walk that crosses it: buy, exit.
 
@@ -248,6 +266,7 @@ def bomb_restock_stages(
             restock_farm=False,
             want=want,
             resume_on_screen=True,
+            skip_unaffordable=skip_unaffordable,
         )
     else:
         buy = make_bomb_restock_controller(hops=to_shop, want=want)

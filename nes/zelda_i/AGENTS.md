@@ -93,6 +93,7 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Offset pins (`scratch/offset_pins.py`) must sit after any settle that waits for a game event: idle frames before the L3 TF settle came out as one tape shifted by a frame.
 - Read the door table (`pin_probe.py --doors`) before adding a dungeon clear. An `open` or `key` exit needs no fight, while a shutter or a push block needs every enemy dead (L6 0x38/0x09 blocks do not move otherwise). L6 fought 0x78, 0x28 and the 0x18 Gleeok for exits that were open or reachable by bomb.
 - The Magical Sword detour (`overworld/magical_sword.py`: coast hearts 0x5F/0x2F after L4's 0x67 rock, the 0x21 grave on the L6 walk) and 0x13's rupee rock skip as a unit through `spine.hops.GatedLeg`. The grave's Old Man needs 12 containers, so a pin that skipped the coast hearts reaches L6 with the White Sword. Decide a route lever with a what-if pin first (`--set` RAM at load, a measurement only), and delete those pins afterwards.
+- Only the sword hurts a Patra: body and eyes carry ObjInvincibilityMask $FE (`$04B2+slot`), so the rod's shot is parried. 0x16's kill (`level9/patra.py` `PatraBlade`) commits swings a savestate rollout proved hit with Link untouched; those frames carry `ROM_CHECKED`, which `ShotGuard` passes through.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

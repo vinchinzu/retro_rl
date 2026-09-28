@@ -177,9 +177,10 @@ def test_level9_chapters_guard_dungeon_stages_and_delegate_reports():
     silver = level9_silver_arrows_chapter(handoff=MEASURED_POST_L8_HANDOFF)[0][1]
     assert isinstance(silver, GuardedController)
     assert isinstance(silver.inner, NaturalSilverArrowsController)
-    assert len(silver.inner._hops) == 17
+    assert any(hop.spec_id == "level9_patra_16" for hop in silver.inner._hops)
     assert all(not isinstance(hop, GuardedController) for hop in silver.inner._hops)
-    assert silver.max_frames == 44000 and not silver.success and not silver.failed
+    assert silver.max_frames == sum(hop.max_frames for hop in silver.inner._hops)
+    assert not silver.success and not silver.failed
     silver.inner.notes.append("delegated")
     assert silver.notes == ["delegated"]
     assert silver.report()["shot_guard"]["overrides"] == 0
@@ -200,11 +201,16 @@ def test_probe_guard_scope_matches_spine_without_double_wrapping():
     from zelda_i.scratch.l9_probe import steps
 
     guarded = steps()
-    for _, controller, _ in guarded[8:26]:  # 17 prefix hops and the join.
+    for name, controller, _ in guarded:  # The prefix hops and the join.
+        sid = name.split("_", 1)[0]
+        if not (sid in ("s14b", "s14r") or 8 <= int(sid[1:]) <= 25):
+            continue
         assert isinstance(controller, GuardedController)
         assert not isinstance(controller.inner, GuardedController)
-    assert isinstance(guarded[27][1], GuardedController)  # Final Patra.
-    assert isinstance(guarded[29][1], GuardedController)  # Ganon.
+    by_name = {name: controller for name, controller, _ in guarded}
+    assert "s14b_level9_patra_16" in by_name
+    assert isinstance(by_name["s27_level9_final_patra"], GuardedController)
+    assert isinstance(by_name["s29_level9_ganon"], GuardedController)
     assert all(not isinstance(controller, GuardedController) for _, controller, _ in steps(guard=False))
     # A wrapped probe stage still refuses a wrong-room Ganon contract and
     # keeps the refusal's idle input even when a magic shot is imminent.
@@ -214,7 +220,7 @@ def test_probe_guard_scope_matches_spine_without_double_wrapping():
         def get_ram(self):
             return ram
 
-    ganon = guarded[29][1]
+    ganon = by_name["s29_level9_ganon"]
     ganon.bind_env(Env())
     assert ganon.step(read_snapshot(ram)).action == nes_idle_action()
     assert ganon.failed and not ganon.success
