@@ -5,6 +5,19 @@ Claude thread took over the remaining lanes in the main tree, landing them one
 commit each; lane D (bombs) is the first. Bead `rr-npv.5` stays in progress:
 Clean power-on credits is still unproved. No STATUS change or push.
 
+## Red Ring detour on main, opt-in (F)
+
+Lane F's `Level9RedRingController` (`level9/stairs.py`, probe alias `s14r`)
+is on main but off the route: `NaturalSilverArrowsController(red_ring=True)`
+or `l9_probe.py --red-ring` inserts it after the 0x16 kill, and
+`SELECTED_NATURAL_ROUTE.red_ring_included` stays False. It follows
+0x16->0x26->0x27->0x17->0x07->cellar 0x00 and back through three bomb walls
+it opens. F measured the detour 4/4 at 10 hearts (4.9-8.4h, 5400-5600
+frames) with 0x16's Patra still alive; that Patra now dies first. Wiring it
+needs a ninth bomb: the join still spends one on 0x31 west (reroute via
+0x51's west shutter -> 0x50 -> 0x40 -> 0x30), and the Clean runs below
+reach the credits without the ring, so it waits on their failures.
+
 ## Overworld lane verified (E): Link reaches Level 9 with 12-15 hearts
 
 The real C10 Clean resume (`CL9A`, copied from `CodexAllBase`) died in L9
@@ -110,7 +123,7 @@ without fixing the failures and repeating its ROM matrix.
 | C: stalls | `agent-ac061e44b550e7c0a` | Clean agent commit `b97d30c7`; integrated on main as `6c5eced9`, including bead export and this living handoff. |
 | D: bombs | main | Landed (above). The worktree's one-line Patra16 substitution is superseded. |
 | E: overworld | main | Landed (above). |
-| F: Red Ring | `agent-a6cbaad37898ea620` | Dirty route/controller/probe/tests, no commit. Detour passes 4/4 loaded offsets, whole L9 fails 0/4; finish D's guaranteed bomb budget before landing F. |
+| F: Red Ring | main | Landed opt-in (above). |
 
 B's latest matrix (`logs/codex_lane_b/after15_v2.txt`) clears the Patra join
 3/4 at 10927–14043f and 5.27–6.02h on the successful offsets. Offset 3

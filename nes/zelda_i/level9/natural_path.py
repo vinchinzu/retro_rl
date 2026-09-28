@@ -94,6 +94,7 @@ from zelda_i.level9.stairs import (
     ROOM51,
     ROOM61,
     pushable_block,
+    make_red_ring_controller,
     room03_stairs_step,
     room04_west_plan,
     room30_stairs_step,
@@ -255,15 +256,19 @@ class NaturalSilverArrowsController(_NaturalEndingController):
     hop_i: int = 0
     start_checked: bool = False
     blocked_reason: str = ""
+    # The 0x16 -> Red Ring cellar 0x00 -> 0x16 detour (three bomb walls).
+    # Opt-in: the join must first stop spending a bomb on 0x31 west.
+    red_ring: bool = False
     _hops: tuple[Any, ...] = field(default_factory=tuple, repr=False)
 
     def __post_init__(self) -> None:
         if not self._hops:
+            ring = (make_red_ring_controller(),) if self.red_ring else ()
             self._hops = (
                 make_north_76_controller(), make_west_66_controller(),
                 make_bomb_north_65_controller(), make_stairs_55_controller(),
                 make_cellar_60_controller(), make_east_14_controller(),
-                make_east_15_controller(), make_patra_16_controller(),
+                make_east_15_controller(), make_patra_16_controller(), *ring,
                 make_north_16_controller(), make_bomb_west_06_controller(),
                 make_stairs_05_controller(), make_cellar_70_controller(),
                 make_west_63_controller(), make_west_62_controller(),
@@ -338,8 +343,10 @@ class NaturalSilverArrowsController(_NaturalEndingController):
 
 def make_natural_silver_arrows_controller(
     handoff: PostLevel8Handoff = UNMEASURED_POST_L8_HANDOFF,
+    *,
+    red_ring: bool = False,
 ) -> NaturalSilverArrowsController:
-    return NaturalSilverArrowsController(handoff=handoff)
+    return NaturalSilverArrowsController(handoff=handoff, red_ring=red_ring)
 
 
 # West end of 0x04's north aisle, clear of the (32,93) corner blade trap.

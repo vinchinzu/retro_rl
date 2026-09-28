@@ -11,12 +11,14 @@ drops into live final Patra.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.bomb_wall import BOMB_N_WAIT_BLAST, BombWallController
+from zelda_i.dungeon.hop_controller import HopController, LatticeDoorWalker, WAIT_SCROLL_B, stairs_step
+from zelda_i.dungeon.passage import passage_step
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS
 from zelda_i.dungeon.ids import object_name
 from zelda_i.level2.puzzles import BombWall, DOOR_RIGHT
@@ -708,3 +710,191 @@ def take_stairs_step(
     if frame.reason == "walk_arrived":
         return FrameAction(nes_action("UP"), "stand_on_stairs")
     return frame
+
+
+# The reciprocal ROM door table has no 0x06 east door. The minimum-cost
+# Red Ring path leaves 0x16 south and opens these three bomb walls. They
+# remain open for the return, so the detour consumes exactly three bombs.
+RED_RING_DOORS = (
+    (0x16, 0x26, "DOWN"),
+    (0x26, 0x27, "RIGHT"),
+    (0x27, 0x17, "UP"),
+    (0x17, 0x07, "UP"),
+    (0x07, 0x17, "DOWN"),
+    (0x17, 0x27, "DOWN"),
+    (0x27, 0x26, "LEFT"),
+    (0x26, 0x16, "UP"),
+)
+RED_RING_BOMB_WALLS = (
+    BombWall(room=0x26, stand=(208, 141), face="RIGHT", opens_to=0x27, live=True),
+    BombWall(room=0x27, stand=(120, 93), face="UP", opens_to=0x17, live=True),
+    BombWall(room=0x17, stand=(120, 93), face="UP", opens_to=0x07, live=True),
+)
+def _red_ring_fight(room: int) -> Any:
+    # prefix imports door_graph, which exposes the stair topology during
+    # module initialization. Import the combat adapter only when instantiated.
+    from zelda_i.level9.prefix import ROOM_10_WIZZROBES_SPEC, RoomFight
+
+    spec = replace(
+        ROOM_10_WIZZROBES_SPEC, spec_id=f"level9_red_ring_clear{room:02x}",
+        source_room=0x27 if room == 0x17 else 0x17, room_id=room,
+        enemy_types=(0x17, 0x23, 0x24) if room == 0x17 else (0x23, 0x24),
+        expected_enemy_count=7 if room == 0x17 else 5,
+    )
+    if room == 0x17:
+        spec = replace(spec, combat=replace(spec.combat, patrol=((72, 157), (168, 157))))
+    return RoomFight(spec)
+
+
+@dataclass(kw_only=True)
+class Level9RedRingController(HopController):
+    """0x16 → Red Ring cellar 0x00 → 0x16, through natural bomb holes.
+
+    The block enclosing 0x07's visible stairs cannot move until its five
+    Wizzrobes are dead (the other three bodies are invulnerable movers).
+    Room 0x17 is cleared before its north bomb approach,
+    whose block layout otherwise traps Link. The same owned inventory comes
+    back to 0x16, with the Red Ring earned and three bombs spent.
+    """
+
+    spec_id: str = "level9_red_ring"
+    require_level: int | None = LEVEL9
+    max_frames: int = 26000
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    phase: str = "door"
+    door_i: int = 0
+    start_checked: bool = False
+    cellar_floor_seen: bool = False
+    ring_acquired: bool = False
+    walker: LatticeDoorWalker = field(default_factory=LatticeDoorWalker)
+    bomb: BombWallController | None = field(default=None, repr=False)
+    fight17: Any = field(default_factory=lambda: _red_ring_fight(0x17), repr=False)
+    fight07: Any = field(default_factory=lambda: _red_ring_fight(0x07), repr=False)
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return (
+            self.door_i == len(RED_RING_DOORS)
+            and snap.mode == PLAY_MODE and not snap.transitioning
+            and snap.screen == 0x16 and snap.ring == 2 and self.ring_acquired
+        )
+
+    def scroll_action(self, snap: ZeldaSnapshot) -> FrameAction:
+        if self.phase in ("stairs", "cellar"):
+            return FrameAction(nes_idle_action(), "red_ring_stairs_transition")
+        direction = RED_RING_DOORS[min(self.door_i, len(RED_RING_DOORS) - 1)][2]
+        return FrameAction(nes_action(direction), "red_ring_door_scroll")
+
+    def _advance(self) -> FrameAction:
+        self.door_i += 1
+        self.walker = LatticeDoorWalker()
+        self.bomb = None
+        self.phase = "clear17" if self.door_i == 3 else "clear07" if self.door_i == 4 else "door"
+        return FrameAction(nes_idle_action(), f"red_ring_door_{self.door_i}_arrived")
+
+    def _cellar_step(self, snap: ZeldaSnapshot) -> FrameAction:
+        # This is the same chamber geometry as Silver Arrows 0x4F: entry
+        # ladder x48, floor y189, shaft x176, item on the y141 chamber ledge.
+        if snap.ring == 2:
+            self.ring_acquired = True
+            return passage_step(snap, east_x=176, both_ways=True)
+        x, y = int(snap.link_x), int(snap.link_y)
+        if not self.cellar_floor_seen:
+            if y < 186:
+                return FrameAction(nes_action("DOWN"), "red_ring_cellar_drop")
+            self.cellar_floor_seen = True
+        if y > 144:
+            if abs(x - 176) > 3:
+                if y < 186:
+                    return FrameAction(nes_action("DOWN"), "red_ring_cellar_regain_floor")
+                direction = "RIGHT" if x < 176 else "LEFT"
+                return FrameAction(nes_action(direction), "red_ring_cellar_to_shaft")
+            return FrameAction(nes_action("UP"), "red_ring_cellar_climb")
+        if abs(x - 128) > 3:
+            direction = "LEFT" if x > 128 else "RIGHT"
+            return FrameAction(nes_action(direction), "red_ring_cellar_to_item")
+        return FrameAction(nes_idle_action(), "red_ring_cellar_wait_item")
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if not self.start_checked:
+            self.start_checked = True
+            if snap.mode != PLAY_MODE or snap.screen != 0x16 or snap.triforce != 0xFF:
+                return self.mark_fail("red_ring_predecessor_contract_miss")
+            if snap.ring == 2:
+                self.ring_acquired = True
+                self.door_i = len(RED_RING_DOORS)
+                return self.mark_done(snap, "red_ring_already_owned")
+            if snap.bombs < len(RED_RING_BOMB_WALLS):
+                return self.mark_fail("red_ring_needs_three_bombs")
+
+        if self.phase == "cellar":
+            if snap.mode == PLAY_MODE and snap.screen == 0x07:
+                if not self.ring_acquired or snap.ring != 2:
+                    return self.mark_fail("red_ring_cellar_return_without_ring")
+                self.phase = "door"
+                return FrameAction(nes_idle_action(), "red_ring_cellar_returned")
+            if snap.screen != 0x00:
+                return self.mark_fail(f"red_ring_wrong_cellar_0x{snap.screen:02x}")
+            if snap.mode == CELLAR_MODE:
+                return self._cellar_step(snap)
+            return FrameAction(nes_idle_action(), f"red_ring_wait_cellar_mode_{snap.mode}")
+
+        if self.phase in ("clear17", "clear07"):
+            room = 0x17 if self.phase == "clear17" else 0x07
+            if snap.mode != PLAY_MODE or snap.screen != room:
+                return self.mark_fail(f"red_ring_clear_wrong_room_0x{snap.screen:02x}")
+            fight = self.fight17 if room == 0x17 else self.fight07
+            if not fight.done:
+                return fight.step(snap)
+            self.phase = "door" if room == 0x17 else "stairs"
+
+        if self.phase == "stairs":
+            if snap.screen == 0x00 and snap.mode == CELLAR_MODE:
+                self.phase = "cellar"
+                return FrameAction(nes_idle_action(), "red_ring_cellar_entered")
+            if snap.mode != PLAY_MODE:
+                return FrameAction(nes_idle_action(), f"red_ring_wait_stairs_mode_{snap.mode}")
+            if snap.screen != 0x07:
+                return self.mark_fail(f"red_ring_stairs_wrong_room_0x{snap.screen:02x}")
+            step = stairs_step(self._env, snap)
+            if step is None:
+                return self.mark_fail("red_ring_stairs_unreachable")
+            return FrameAction(nes_action(step), "red_ring_rom_stairs")
+
+        if self.door_i >= len(RED_RING_DOORS):
+            return self.mark_fail("red_ring_return_contract_miss")
+        origin, dest, direction = RED_RING_DOORS[self.door_i]
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"red_ring_wait_mode_{snap.mode}")
+        if snap.screen == dest:
+            return self._advance()
+        if snap.screen != origin:
+            return self.mark_fail(f"red_ring_door_wrong_room_0x{snap.screen:02x}")
+        if self.door_i in (1, 2, 3):
+            if self.bomb is None:
+                self.bomb = BombWallController(
+                    wall=RED_RING_BOMB_WALLS[self.door_i - 1], level=LEVEL9,
+                    select_item=B_SLOT_BOMBS, face_frames=4, step_back=6,
+                    approach_waypoints=(((120, 101),), ((48, 141),), ((120, 181),))[self.door_i - 1],
+                    wait_blast=100, max_frames=6000,
+                )
+                self.bomb.bind_env(self._env)
+            action = self.bomb.step(snap)
+            if self.bomb.phase.name == "FAILED":
+                return self.mark_fail(self.bomb.notes[-1] if self.bomb.notes else "red_ring_bomb_failed")
+            return action
+        action = self.walker.action(self._env, snap, direction, "red_ring_rom_door")
+        return action or self.mark_fail("red_ring_door_unreachable")
+
+    def report(self) -> dict[str, object]:
+        report = super().report()
+        report.update({
+            "phase": self.phase, "door_i": self.door_i,
+            "ring_acquired": self.ring_acquired, "required_bombs": 3,
+            "controller_memory_writes": 0, "progression_writes": 0,
+            "capacity_writes": 0, "inventory_writes": 0,
+        })
+        return report
+
+
+def make_red_ring_controller() -> Level9RedRingController:
+    return Level9RedRingController()
