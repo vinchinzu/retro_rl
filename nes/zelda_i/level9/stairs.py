@@ -12,6 +12,7 @@ drops into live final Patra.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
@@ -174,6 +175,46 @@ BOMB_WALL_04_WEST = BombWall(
     live=True,
     notes="LIVE: west bomb (48,141) LEFT opens 0x03 east hole (rr-sz8.3).",
 )
+# 0x04's centre blocks leave two east-west crossings, rows 85/93 and 181/189,
+# and both are the corner blade traps' sensing rows (|dy| < 14): the old
+# north-aisle walk along row 93 cost 2 hearts at every wait, and a straight
+# crossing from (144,93) to (112,109) half a heart (LB04o7_nav, 2026-09-28).
+# Stepping into the band at (144,93) and back arms both top traps; once they
+# turn for home (0.5 px/f, >= 100 frames later) the crossing is clean. The
+# shot guard, which holds every inner press to its horizon, stood still at
+# (168,107) for 15000 frames rather than walk it.
+ROOM04_BAIT = ((144, 109), (144, 93), (144, 109))
+ROOM04_CROSS = (
+    (144, 101), (144, 93), (112, 93), (112, 101), (112, 109), (48, 109),
+    BOMB_WEST_STAND,
+)
+ROOM04_WAITS = tuple(range(0, 241, 20))
+# West of the centre blocks already (a knock, a replan): walk straight down.
+ROOM04_WEST_OF_BLOCKS_X = 104
+
+
+def room04_west_plan(rollout: Any, snap: ZeldaSnapshot) -> list[list[int]] | None:
+    """Presses for a ROM-checked walk to 0x04's west bomb stand, or None.
+
+    Every candidate is a rollout (``Rollout.walk``): the bait, a wait, then
+    the crossing. The first one that reaches the stand with Link untouched
+    is returned, and replays exactly.
+    """
+    from zelda_i.rollout import hold
+
+    if int(snap.link_x) <= ROOM04_WEST_OF_BLOCKS_X:
+        plan, out, reached = rollout.walk(((48, 109), BOMB_WEST_STAND))
+        return [list(f) for f in plan] if reached and out.contact_frame is None else None
+    bait, out, reached = rollout.walk(ROOM04_BAIT)
+    if not reached or out.contact_frame is not None:
+        return None
+    for wait in ROOM04_WAITS:
+        plan, out, reached = rollout.walk(ROOM04_CROSS, prefix=bait + hold(None, wait))
+        if reached and out.contact_frame is None:
+            return [list(f) for f in plan]
+    return None
+
+
 BOMB_WALL_31_WEST = BombWall(
     room=ROOM31,
     stand=BOMB_WEST_STAND,

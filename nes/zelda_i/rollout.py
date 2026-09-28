@@ -281,6 +281,48 @@ class Rollout:
 
     # --- the question the evader actually asks -------------------------- #
 
+    def walk(
+        self,
+        waypoints: Sequence[tuple[int, int]],
+        *,
+        prefix: Sequence[Frame] = (),
+        frames: int = 300,
+        tol: int = 2,
+    ) -> tuple[Plan, Outcome, bool]:
+        """Roll ``prefix`` then a lattice walk through ``waypoints``; restore.
+
+        The walk's presses are ``room_step``'s on the rolled frames, and the
+        emulator is deterministic, so replaying the returned script live
+        walks the same path into the same outcome. ``reached`` is whether the
+        last waypoint was met inside ``frames``.
+        """
+        from zelda_i.dungeon.hop_controller import room_step
+
+        state = self.em.get_state()
+        script = [tuple(int(v) for v in f) for f in prefix]
+        i = 0
+        try:
+            for frame in script:
+                self.em.set_button_mask(np.asarray(frame, dtype=np.uint8), 0)
+                self.em.step()
+            for _ in range(int(frames)):
+                snap = read_snapshot(self.env.get_ram())
+                while i < len(waypoints) and chebyshev(
+                    snap.link_x, snap.link_y, *waypoints[i]
+                ) <= tol:
+                    i += 1
+                if i >= len(waypoints):
+                    break
+                step = room_step(snap, waypoints[i], tol=tol, env=self.env)
+                frame = press(step) if step else press()
+                script.append(frame)
+                self.em.set_button_mask(np.asarray(frame, dtype=np.uint8), 0)
+                self.em.step()
+        finally:
+            self.em.set_state(state)
+        plan = tuple(script)
+        return plan, self.run("walk", plan), i >= len(waypoints)
+
     def first_contact(self, plan: Sequence[Frame]) -> int | None:
         """Frames until Link is harmed under ``plan``, or None inside it.
 

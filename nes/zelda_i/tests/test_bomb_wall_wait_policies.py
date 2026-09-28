@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from retro_harness.nes import nes_action
+
 from zelda_i.dungeon.bomb_wall import (
     PLACE_RETRIES,
     BOMB_N_STEP_BACK,
@@ -252,3 +254,27 @@ def test_place_allows_the_face_presses_walking_link_toward_the_wall() -> None:
     act = ctrl.step(_snap(x=sx, y=sy - 9, bombs=4))
     assert ctrl.phase is BombWallPhase.WAIT
     assert list(act.action) == list(nes_action("UP", "B"))
+
+
+def test_push_near_the_stand_keeps_the_straight_push(monkeypatch) -> None:
+    from zelda_i.dungeon import bomb_wall
+
+    monkeypatch.setattr(bomb_wall, "lattice_door_step", lambda *a: "LEFT")
+    ctrl = make_bomb_north_controller()
+    act = ctrl._push_dir(_snap(x=ctrl.stand[0] + 2, y=ctrl.stand[1] + 9))
+    assert act.action == nes_action("UP")
+
+
+def test_push_knocked_off_the_stand_walks_the_lattice_to_the_hole(monkeypatch) -> None:
+    from zelda_i.dungeon import bomb_wall
+
+    calls = []
+    monkeypatch.setattr(
+        bomb_wall, "lattice_door_step", lambda env, snap, face: calls.append(face) or "DOWN"
+    )
+    ctrl = make_bomb_north_controller()
+    far = _snap(x=ctrl.stand[0] - 40, y=ctrl.stand[1] + 36)
+    act = ctrl._push_dir(far)
+    assert (act.action, calls) == (nes_action("DOWN"), ["UP"])
+    monkeypatch.setattr(bomb_wall, "lattice_door_step", lambda *a: None)
+    assert ctrl._push_dir(far).action == nes_action("RIGHT")

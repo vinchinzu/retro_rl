@@ -5,6 +5,38 @@ Claude thread took over the remaining lanes in the main tree, landing them one
 commit each; lane D (bombs) is the first. Bead `rr-npv.5` stays in progress:
 Clean power-on credits is still unproved. No STATUS change or push.
 
+## Hazard lane verified (B) and every Patra on rollout-checked swings
+
+Lane B's blade-trap model (`ShotGuard` steps each $49 trap as Z_01.asm
+`UpdateTrap_Full` does, with a 64-frame horizon while traps are in the room)
+landed with its two failures fixed. 0x04: the centre blocks leave only rows
+85/93 and 181/189 as east-west crossings, both inside the corner traps'
+14 px sensing band, so the old north-aisle walk paid 2 hearts and the guard
+stood still at (168,107) for 15000 frames rather than walk it.
+`room04_west_plan` (`level9/stairs.py`) now rolls the walk on the ROM
+(`Rollout.walk`): step into the band at (144,93) and back to arm both top
+traps, wait until they head home (>= 100 frames), then cross to the stand;
+the first clean candidate is committed as `ROM_CHECKED` frames. 0x20:
+`BombWallController._push_dir` takes `lattice_door_step` to the opened hole
+once Link is more than 12 px across the face from the stand (a dodge left
+him at (80,129)); nearer pushes are unchanged for all 28 call sites.
+
+`PatraBlade` now also fights the final Patra (0x52, below full hearts; box
+x <= 192 off the stairs) and 0x61's; `PatraMelee` is deleted. Plans that
+leave the room or play mode are rejected.
+
+| Step | Hearts | Before (main) | After |
+|---|---:|---|---|
+| s23 bomb north 0x20 | 15 | 3/4, 0.88h (o3 push_timeout) | 4/4, 1.12h |
+| s25 Patra join | 15 | 3/4, 6.71h (o7 0x04 stall) | 4/4, 6.83h |
+| s21 0x61 Patra | 10 | 4/4, 0h, 4335-7264f | 4/4, 0h, 882-1140f |
+| s27 final Patra | 10 | 4/4, 3.75h, 1249-4701f | 4/4 (+o1/o5 6/6), 0h, ~375f |
+| s10 / s14 / s17 | 10 | 0.5 / 0 / 0.5h | 0.5 / 0 / 0.5h |
+
+Offsets 0/3/7/11 from the `L9S5_*` pins with hearts written at load; logs
+`logs/lane_b/`, `logs/lane_g/`. The join is now L9's largest cost (0x2B,
+0x17, 0x1B and Wizzrobe contacts across 0x20/0x41/0x31/0x30/0x04).
+
 ## Bomb budget lane verified (D)
 
 0x16's Patra ($48, eyes $26) now dies for its BOMBS item (+4) in hop
@@ -45,7 +77,7 @@ without fixing the failures and repeating its ROM matrix.
 
 | Lane | Worktree | Checkpoint / next action |
 |---|---|---|
-| B: hazards | `agent-a936abbf5e5d1f561` | Dirty `dungeon/shot_guard.py` (staged Claude trap draft plus new unstaged changes), new `tests/test_shot_guard_hazards.py`. Fix 0x04 trap deadlock and 0x20 bomb-wall recovery before landing. |
+| B: hazards | main | Landed (above) with the 0x04 and 0x20 fixes. |
 | C: stalls | `agent-ac061e44b550e7c0a` | Clean agent commit `b97d30c7`; integrated on main as `6c5eced9`, including bead export and this living handoff. |
 | D: bombs | main | Landed (above). The worktree's one-line Patra16 substitution is superseded. |
 | E: overworld | `agent-ad65a8b9932b58953` | Clean lane-A base; new agent never launched. Reduce Death Mountain approach damage after hazard integration. |

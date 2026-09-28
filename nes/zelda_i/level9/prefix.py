@@ -26,7 +26,7 @@ from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level9.patra import (
     PATRA_ROOM_FULL,
     PATRA_STAND_DY,
-    PatraMelee,
+    PatraBlade,
     patra_action,
     patra_body,
     patra_eyes,
@@ -1334,7 +1334,9 @@ class Level9Stairs61Controller(Level9StairsHopController):
     _stage: int = 0
     _patra_cooldown: int = 0
     _patra_melee: bool = False
-    _melee: PatraMelee = field(default_factory=PatraMelee, repr=False)
+    _blade: PatraBlade = field(
+        default_factory=lambda: PatraBlade(box=PATRA_ROOM_FULL), repr=False
+    )
     _stuck_xy: tuple[int, int] | None = None
     _stuck_frames: int = 0
     _stuck_escape_frames: int = 0
@@ -1365,8 +1367,9 @@ class Level9Stairs61Controller(Level9StairsHopController):
                 # melee arm once entered so a mid-fight heart pickup cannot
                 # move Link between two unrelated stands.
                 self._patra_melee |= not snap.health_is_full
-                if self._patra_melee:
-                    action, reason = self._melee.step(snap)
+                env = live_env.current()
+                if self._patra_melee and env is not None:
+                    action, reason = self._blade.step(snap, env)
                     return FrameAction(action, reason)
                 # Same south-stand-and-pulse policy proven live for the final
                 # Patra (room 0x52, patra.py): distance-gated mash-A here

@@ -8,6 +8,9 @@ doors, rooms, progression, or capacity.
 
 from __future__ import annotations
 
+from zelda_i.dungeon.shot_guard import ROM_CHECKED
+from zelda_i.rollout import Rollout
+from zelda_i.walk import live_env
 from zelda_i.walk.physics import OPPOSITE
 from zelda_i.dungeon.hop_controller import room_step
 
@@ -71,6 +74,7 @@ from zelda_i.level9.path import (
 from zelda_i.level9.patra import (
     PATRA_STAND_DY,
     PatraAim,
+    PatraBlade,
     PATRA_ROOM,
     patra_melee_action,
     final_patra_north_door_earned,
@@ -91,6 +95,7 @@ from zelda_i.level9.stairs import (
     ROOM61,
     pushable_block,
     room03_stairs_step,
+    room04_west_plan,
     room30_stairs_step,
     stair_transition_modes,
 )
@@ -338,7 +343,10 @@ def make_natural_silver_arrows_controller(
 
 
 # West end of 0x04's north aisle, clear of the (32,93) corner blade trap.
+# Only the fallback walk uses it: ``room04_west_plan`` baits the traps first.
 ROOM04_NORTH_AISLE_WEST = (56, 93)
+# A committed 0x04 plan that ends off the stand (a knock) is replanned.
+ROOM04_MAX_PLANS = 3
 
 
 class PatraJoinPhase(Enum):
@@ -492,6 +500,8 @@ class NaturalPatraJoinController(_NaturalEndingController):
     _bomb_31: BombWallController = field(init=False, repr=False)
     _bomb_04: BombWallController = field(init=False, repr=False)
     _fights: dict[PatraJoinPhase, RoomFight] = field(init=False, repr=False)
+    _plan_04: list[list[int]] = field(default_factory=list, repr=False)
+    _plans_04: int = 0
 
     def __post_init__(self) -> None:
         self._fights = {phase: RoomFight(spec) for phase, spec in JOIN_CLEAR_SPECS.items()}
@@ -870,6 +880,15 @@ class NaturalPatraJoinController(_NaturalEndingController):
         # 18. NAV_BOMB_04
         if self.phase == PatraJoinPhase.NAV_BOMB_04:
             x, y = snap.link_x, snap.link_y
+            if self._plan_04:
+                return self._action(self._plan_04.pop(0), f"{ROM_CHECKED}nav_bomb_04_plan")
+            env = live_env.current()
+            if self._plans_04 < ROOM04_MAX_PLANS and env is not None and (x > 48 or y < 141):
+                self._plans_04 += 1
+                plan = room04_west_plan(Rollout(env), snap)
+                if plan:
+                    self._plan_04 = plan[1:]
+                    return self._action(plan[0], f"{ROM_CHECKED}nav_bomb_04_plan")
             if y > 95 and x > 52:
                 # The aisle's west end on the lattice: a bare UP from under
                 # the centre block diamond ((152,165)) pressed stone for
@@ -988,6 +1007,7 @@ class NaturalFinalPatraController(_NaturalEndingController):
     start_checked: bool = False
     stand_dy: int = PATRA_STAND_DY
     aim: PatraAim = field(default_factory=PatraAim)
+    blade: PatraBlade = field(default_factory=lambda: PatraBlade(box=PATRA_ROOM))
     melee: bool = False
     melee_cooldown: int = 0
 
@@ -1003,10 +1023,15 @@ class NaturalFinalPatraController(_NaturalEndingController):
         if final_patra_north_door_earned(snap):
             self.success = True
             return self._action(nes_idle_action(), "patra_north_door_earned")
-        # A sword beam requires full hearts.  The south turn node is within
-        # ordinary blade range of the eye lap without standing in its center.
+        # A sword beam requires full hearts. Below them every swing is checked
+        # against the ROM first (``PatraBlade``); the fixed south-node melee
+        # it replaced paid 2-5 hearts at 10 (offsets 0/3/7/11, L9S5_s27).
         self.melee |= not snap.health_is_full
         if self.melee:
+            env = live_env.current()
+            if env is not None:
+                action, reason = self.blade.step(snap, env)
+                return self._action(action, reason)
             action, reason, self.melee_cooldown = patra_melee_action(
                 snap, cooldown=self.melee_cooldown, stand=(120, 173),
                 facing="UP", room=PATRA_ROOM,

@@ -364,3 +364,28 @@ def test_a_branch_hands_back_a_token_and_not_just_an_outcome() -> None:
         token, outcome = branch.play("a", hold("LEFT", 2))
     assert token is not None
     assert outcome.frames == 2
+
+
+def test_walk_records_the_lattice_presses_and_restores(monkeypatch) -> None:
+    from zelda_i.dungeon import hop_controller
+
+    env, em = _env({LEFT: [_ram(x=98), _ram(x=96), _ram(x=94)]})
+    monkeypatch.setattr(
+        hop_controller, "room_step",
+        lambda snap, goal, tol, env: "LEFT" if snap.link_x > goal[0] + tol else None,
+    )
+    plan, out, reached = Rollout(env).walk([(96, 100)], tol=0)
+    assert reached
+    assert plan == (LEFT, LEFT)
+    assert out.moved == 4 and out.safe
+    assert em.ram is em.base
+
+
+def test_walk_that_runs_out_of_frames_is_not_reached(monkeypatch) -> None:
+    from zelda_i.dungeon import hop_controller
+
+    env, em = _env({LEFT: [_ram(x=98), _ram(x=96)]})
+    monkeypatch.setattr(hop_controller, "room_step", lambda snap, goal, tol, env: "LEFT")
+    plan, _, reached = Rollout(env).walk([(40, 100)], frames=3, tol=0)
+    assert not reached and plan == (LEFT, LEFT, LEFT)
+    assert em.ram is em.base

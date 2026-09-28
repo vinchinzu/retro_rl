@@ -16,7 +16,7 @@ from typing import Any, Callable, Protocol
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
-from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.dungeon.hop_controller import lattice_door_step, room_step
 from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
 from zelda_i.walk.physics import lattice_starts
 from zelda_i.walk import live_env
@@ -43,6 +43,11 @@ class BombWallLike(Protocol):
     stand: tuple[int, int]
     face: str
     opens_to: int
+
+
+# Off the stand this far across the face after the blast, the push walks the
+# ROM lattice to the doorway (``BombWallController._push_dir``).
+PUSH_LATTICE_OFF = 12
 
 
 class BombWallPhase(Enum):
@@ -179,8 +184,20 @@ class BombWallController:
         return FrameAction(nes_action(step), "stand_lattice")
 
     def _push_dir(self, snap: ZeldaSnapshot) -> FrameAction:
-        """Align to stand x (for UP/DOWN faces) or y (for LEFT/RIGHT) then push."""
+        """Align to stand x (for UP/DOWN faces) or y (for LEFT/RIGHT) then push.
+
+        Knocked further than ``PUSH_LATTICE_OFF`` across the face after the
+        blast (an L9 0x20 guard dodge left Link at (80,129) under a (120,93)
+        stand), the one-axis align walks into pillars until ``push_timeout``:
+        take the ROM lattice to the opened doorway instead.
+        """
         face = self.face
+        tx, ty = self.stand
+        across = abs(snap.link_x - tx) if face in ("UP", "DOWN") else abs(snap.link_y - ty)
+        if across > PUSH_LATTICE_OFF:
+            step = lattice_door_step(self._env, snap, face)
+            if step is not None:
+                return FrameAction(nes_action(step), "push_lattice")
         if face in ("UP", "DOWN"):
             cx = self.stand[0]
             x_tol = 3 if (

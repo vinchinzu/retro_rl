@@ -225,11 +225,6 @@ def patra_action(
 # turn-lattice node lands ordinary blade hits as the eyes pass; after they die,
 # the body needs a short chase because it can roam away from the lane.
 PATRA_61_MELEE_STAND = (192, 149)
-# The $25 orbit reaches roughly 52 px east/west of the roaming body.
-# A blade lane 64..72 px away still intersects it, while the old 56 px
-# approach gave the guard no escape during one 13-frame sword pin.
-PATRA_MELEE_CLEAR = 64
-PATRA_MELEE_SLACK = 8
 
 
 def patra_melee_action(
@@ -274,61 +269,6 @@ def patra_melee_action(
     goal = (max(xlo, min(xhi, int(body.x))), max(ylo, min(yhi, int(body.y))))
     step = room_step(snap, goal, tol=12)
     return nes_action(step or direction), "melee_body_chase", next_cd
-
-
-@dataclass
-class PatraMelee:
-    """Follow a reachable blade lane as the body carries its eyes around.
-
-    A fixed east stand cannot reach eyes while the body roams west. A
-    committed side follows the orbit without re-picking when walking turns
-    Link away from it. The ordinary sword, including below full health,
-    reaches the near edge of the $25 eye orbit from 64..72 px off the body.
-    """
-
-    cooldown: int = 0
-    facing: str | None = None
-
-    def step(self, snap: ZeldaSnapshot) -> tuple[list[int], str]:
-        body = patra_body(snap)
-        eyes = tuple(eye for eye in patra_eyes(snap) if eye.hp > 0)
-        if body is None or not eyes:
-            action, reason, self.cooldown = patra_melee_action(snap, cooldown=self.cooldown)
-            return action, reason
-        from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
-        from zelda_i.walk import live_env
-
-        env = live_env.current()
-        ram = env.get_ram() if env is not None else None
-        nodes = ow_walkable_nodes(ram, overworld=False) if ram is not None and has_room_tile_map(ram) else None
-        if nodes is not None:
-            nodes = frozenset(
-                n for n in nodes
-                if max(abs(n[0] - body.x), abs(n[1] - body.y)) >= PATRA_MELEE_CLEAR
-            )
-        stands = _patra_stands(
-            snap, body, PATRA_MELEE_CLEAR + PATRA_MELEE_SLACK // 2,
-            PATRA_ROOM_FULL, prefer=self.facing, nodes=nodes,
-        )
-        stands = [s for s in stands if _lane_offsets(s[1], body, s[2])[0] >= PATRA_MELEE_CLEAR]
-        self.cooldown = max(0, self.cooldown - 1)
-        if not stands:
-            return nes_idle_action(), "melee_no_lane"
-        _, goal, self.facing = stands[0]
-        along, perp = _lane_offsets((int(snap.link_x), int(snap.link_y)), body, self.facing)
-        if not (
-            PATRA_MELEE_CLEAR <= along <= PATRA_MELEE_CLEAR + PATRA_MELEE_SLACK
-            and abs(perp) <= PATRA_LANE_HALF
-        ):
-            step = room_step(snap, goal, tol=2)
-            if step is not None:
-                return nes_action(step), "melee_follow"
-        if int(snap.facing) != direction_to_facing(self.facing):
-            return nes_action(self.facing), "melee_face"
-        if self.cooldown:
-            return nes_idle_action(), "melee_cooldown"
-        self.cooldown = PATRA_ATTACK_COOLDOWN
-        return nes_action("A"), "melee_swing"
 
 
 # --- Eye aim (rr-e59v) ------------------------------------------------------
@@ -755,6 +695,9 @@ class PatraBlade:
     override a frame the ROM already answered.
     """
 
+    # Staging clamp (x lo, x hi, y lo, y hi). 0x52 keeps x <= 192: its east
+    # column holds the stairs to cellar 0x77.
+    box: tuple[int, int, int, int] = _ROOM_16_BOX
     rollout: Any = None
     swings: int = 0
     searches: int = 0
@@ -771,6 +714,8 @@ class PatraBlade:
             script = tuple(press(d) if d else press() for d in presses) + (press("A"),)
             script += hold(None, BLADE_PIN + BLADE_TAIL)
             out = self.rollout.run("swing", script)
+            if out.left_screen or out.snap.mode != PLAY_MODE:
+                continue
             if out.contact_frame is None and patra_hp(out.snap) < hp:
                 return [list(f) for f in script[: len(presses) + 1 + BLADE_PIN]]
         return None
@@ -781,7 +726,7 @@ class PatraBlade:
         x, y = int(snap.link_x), int(snap.link_y)
         dx, dy = x - int(body.x), y - int(body.y)
         norm = max(1.0, (dx * dx + dy * dy) ** 0.5)
-        xlo, xhi, ylo, yhi = _ROOM_16_BOX
+        xlo, xhi, ylo, yhi = self.box
         gx = int(body.x) + round(dx / norm * radius)
         gy = int(body.y) + round(dy / norm * radius)
         gx = max(xlo, min(xhi, gx // 8 * 8))
