@@ -26,6 +26,7 @@ from zelda_i.dungeon.ops import DOOR_TARGETS
 from zelda_i.level9.patra import (
     PATRA_ROOM_FULL,
     PATRA_STAND_DY,
+    PatraMelee,
     patra_action,
     patra_body,
     patra_eyes,
@@ -960,6 +961,8 @@ ROOM_10_WIZZROBES_SPEC = DungeonRoomSpec(
         engage_attack_hold=3,
         occupancy_patrol=True,
         occupancy_from_tilemap=True,
+        # x=32 is the only bridge between this room's horizontal bands.
+        occupancy_bounds=(32, 208, 93, 189),
     ),
     reward=RewardSpec(kind=RewardKind.CLEAR_ONLY, settle_all_dead=1),
     max_frames=12000,
@@ -974,7 +977,7 @@ ROOM_05_WIZZROBES_SPEC = replace(
     source_room=0x06,
     room_id=0x05,
     entry=DoorRoute("LEFT", ((208, 141),)),
-    combat=replace(ROOM_10_WIZZROBES_SPEC.combat, patrol=((176, 173), (128, 181))),
+    combat=replace(ROOM_10_WIZZROBES_SPEC.combat, patrol=((176, 173), (128, 181)), occupancy_bounds=None),
 )
 
 
@@ -1218,10 +1221,13 @@ class Level9Room10SilverArrowsController(HopController):
         return FrameAction(nes_action("RIGHT"), "room10_push_block_east")
 
     def _walk_to_stairs(self, snap: ZeldaSnapshot) -> FrameAction:
+        step = stairs_step(None, snap)
+        if step is not None:
+            return FrameAction(nes_action(step), "room10_stairs_lattice")
         blocked = self._route_to_row(snap, ROOM_10_NORTH_Y, "room10_stairs")
         if blocked is not None:
             return blocked
-        if abs(snap.link_x - ROOM_10_STAIR_X) > _R10_TOL:
+        if snap.link_x != ROOM_10_STAIR_X:
             d = "LEFT" if snap.link_x > ROOM_10_STAIR_X else "RIGHT"
             return FrameAction(nes_action(d), "room10_stairs_east")
         return FrameAction(nes_idle_action(), "room10_stand_on_stairs")
@@ -1322,12 +1328,6 @@ class Level9Stairs61Controller(Level9StairsHopController):
     done_reason: str = "settled_cellar_0x75"
     origin: int = STAIRS_61_ORIGIN
     dest_hyp: int = STAIRS_61_DEST_HYP
-    # Power-on evidence (rr-sz8.6/.7, 2026-09-06): this "other Patra" room has
-    # block/wall geometry the final-Patra room (0x52) doesn't, so the proven
-    # south-stand-and-pulse policy lands hits much slower here (~1 eye per
-    # ~4000f against the real power-on pin L9Room61EntryReal, vs ~180f/eye in
-    # 0x52) -- budget generously (same lesson as stairs_05) rather than
-    # re-tune the policy for speed.
     patra_stand_dy: int = PATRA_STAND_DY
     max_frames: int = 20_000
     _cleared: bool = False
@@ -1335,6 +1335,7 @@ class Level9Stairs61Controller(Level9StairsHopController):
     _stage: int = 0
     _patra_cooldown: int = 0
     _patra_melee: bool = False
+    _melee: PatraMelee = field(default_factory=PatraMelee, repr=False)
     _stuck_xy: tuple[int, int] | None = None
     _stuck_frames: int = 0
     _stuck_escape_frames: int = 0
@@ -1355,19 +1356,8 @@ class Level9Stairs61Controller(Level9StairsHopController):
             patra_body = next((o for o in snap.objects if o.type_id == 0x47 and o.hp > 0), None)
             if patra_eyes or patra_body is not None:
                 self._patra_seen = True
-            # Root cause (rr-sz8.6/.7, 2026-09-06): the real hop-transition
-            # snapshot lands on the exact frame the room loads, before Patra
-            # has spawned (body registers frame 1, eyes 2 frames later --
-            # same spawn race LEVEL9_ROUTE.md documents for room 0x52's
-            # WAIT_PATRA phase). Reading "no live eyes/body" on that very
-            # first frame falsely looked like an already-cleared room, so
-            # this jumped straight to the block push while Patra was still
-            # fully alive -- confirmed via a corrected power-on pin
-            # (L9Room61EntryReal, captured at the true hop-transition frame
-            # instead of 60 frames late) reproducing the exact live failure
-            # (stuck push-looping at (32,93) with all 8 eyes alive). Require
-            # having actually observed Patra at least once before trusting
-            # a "cleared" reading.
+            # The transition precedes the body/eye spawn; no objects alone
+            # cannot prove a clear until Patra has actually been observed.
             if self._patra_seen and not patra_eyes and patra_body is None:
                 self._cleared = True
                 self._stage = 1
@@ -1377,9 +1367,7 @@ class Level9Stairs61Controller(Level9StairsHopController):
                 # move Link between two unrelated stands.
                 self._patra_melee |= not snap.health_is_full
                 if self._patra_melee:
-                    action, reason, self._patra_cooldown = patra_melee_action(
-                        snap, cooldown=self._patra_cooldown
-                    )
+                    action, reason = self._melee.step(snap)
                     return FrameAction(action, reason)
                 # Same south-stand-and-pulse policy proven live for the final
                 # Patra (room 0x52, patra.py): distance-gated mash-A here

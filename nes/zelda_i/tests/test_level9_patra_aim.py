@@ -22,6 +22,7 @@ from zelda_i.level9.patra import (
     OBJ_PATRA_EYE,
     PatraAim,
     PatraEyeModel,
+    PatraMelee,
     _lane_windows,
     beam_hit_frame,
 )
@@ -65,6 +66,41 @@ def _feed(model: PatraEyeModel, frames: range, body, center, r, link=(40, 173)):
         )
         model.observe(snap)
     return snap
+
+
+def test_melee_follows_eyes_that_roam_out_of_blade_reach() -> None:
+    # s21 o7 at frame 5001: a fixed x193 stand cannot hit this west orbit.
+    melee = PatraMelee(facing="LEFT")
+    snap = _snap(
+        (193, 149), FACING_WEST,
+        _obj(OBJ_PATRA, 54, 96, slot=1, hp=0xB0),
+        _obj(OBJ_PATRA_EYE, 104, 108, slot=8, hp=0x20),
+    )
+    _, reason = melee.step(snap)
+    assert reason == "melee_follow"
+
+
+def test_melee_cannot_slash_from_a_beam_only_distance() -> None:
+    melee = PatraMelee(facing="LEFT")
+    snap = _snap(
+        (193, 149), FACING_WEST,
+        _obj(OBJ_PATRA, 99, 149, slot=1, hp=0xB0),
+        _obj(OBJ_PATRA_EYE, 143, 149, slot=4, hp=0x20),
+    )
+    _, reason = melee.step(snap)
+    assert reason == "melee_follow"
+
+
+def test_melee_moves_out_of_the_eye_contact_lane_before_swinging() -> None:
+    melee = PatraMelee(facing="LEFT")
+    snap = _snap(
+        (193, 149), FACING_WEST,
+        _obj(OBJ_PATRA, 138, 149, slot=1, hp=0xB0),
+        _obj(OBJ_PATRA_EYE, 183, 149, slot=4, hp=0x20),
+    )
+    action, reason = melee.step(snap)
+    assert reason == "melee_follow"
+    assert list(action) == list(nes_action("RIGHT"))
 
 
 def test_eye_model_unwraps_an_orbit_across_the_screen_bottom() -> None:
