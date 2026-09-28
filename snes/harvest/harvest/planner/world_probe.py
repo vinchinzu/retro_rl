@@ -128,6 +128,27 @@ class WorldProbe:
         return read_ram_u8(ram, ADDR_WEATHER)
 
     def is_storm(self) -> bool:
+        """True on the hurricane/blizzard day itself (door nailed, farmer confined).
+
+        ROM: SetWeatherFlags (bank_82 $828C09) copies ``weather_tomorrow`` into
+        the today-flags word $0196 at rollover; code 3 sets bit 0x10. Reading
+        the forecast byte instead flags the EVE, when the door is still open,
+        and misses the day that actually traps the farmer (Summer D12 pin:
+        flags 0x10, "I've nailed down the door to prepare for the hurricane").
+        """
+        from harvest.planner.day_plan_status import (
+            ADDR_WEATHER_FLAGS,
+            HURRICANE_FLAG_MASK,
+            read_ram_u16,
+        )
+
+        ram = self._require_ram()
+        if ram is None or ADDR_WEATHER_FLAGS + 1 >= len(ram):
+            return False
+        flags = read_ram_u16(ram, ADDR_WEATHER_FLAGS, live_offset=False)
+        return bool(flags & HURRICANE_FLAG_MASK)
+
+    def is_storm_tomorrow(self) -> bool:
         from harvest.planner.day_phase_calendar import is_storm_weather
 
         season, _day = self.calendar_date()

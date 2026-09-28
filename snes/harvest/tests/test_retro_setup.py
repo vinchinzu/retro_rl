@@ -85,6 +85,27 @@ class RetroSetupTests(unittest.TestCase):
             "Y1_After_Sleep",
         )
 
+    def test_seasonal_tilemaps_are_canonicalized_for_planners_only(self) -> None:
+        import numpy as np
+
+        from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
+
+        idx = field_spec("tilemap").address
+        for live in (False, True):
+            for actual, canon in (
+                (0x01, 0x00), (0x03, 0x00), (0x05, 0x04), (0x07, 0x04),
+                (0x0D, 0x0C), (0x12, 0x10), (0x00, 0x00), (0x04, 0x04),
+                (0x0C, 0x0C), (0x0F, 0x0F), (0x15, 0x15), (0x1C, 0x1C),
+            ):
+                ram = np.zeros(0x30000 if live else 0x2000, dtype=np.uint8)
+                at = idx + (LIVE_RAM_WRAM_OFFSET if live else 0)
+                ram[at] = actual
+                view = retro_setup.canonicalize_ram_tilemap(ram)
+                self.assertEqual(int(view[at]), canon, (live, hex(actual)))
+                self.assertEqual(int(ram[at]), actual)  # source untouched
+                if actual == canon:
+                    self.assertIs(view, ram)
+
     def test_make_harvest_env_delegates_to_shared_game_spec(self) -> None:
         fake_retro = SimpleNamespace(
             data=SimpleNamespace(Integrations=SimpleNamespace(ALL="all")),
@@ -105,7 +126,8 @@ class RetroSetupTests(unittest.TestCase):
                 foo="bar",
             )
 
-        self.assertIs(result, game.make_env.return_value)
+        self.assertIsInstance(result, retro_setup.SeasonalMapEnv)
+        self.assertIs(result._env, game.make_env.return_value)
         register.assert_called_once_with(fake_retro, require_rom=False)
         game.make_env.assert_called_once_with(
             "FirstAction",

@@ -230,6 +230,12 @@ class MultiDayPlannerTask(Task):
         return ReturnHomeTask(tasks_dir=self.tasks_dir)
 
     def _build_sleep_task(self) -> GoToSleepTask:
+        # Hurricane day: the door is nailed and the clock is frozen indoors, so
+        # waiting for the 18:00 bed gate never ends. The bed accepts sleep at
+        # any hour (measured Summer D12: day 12 -> 13 at 06:00).
+        storm = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
+        if storm:
+            return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
     def _continue_d2_clear(self, world: WorldState) -> TaskResult | None:

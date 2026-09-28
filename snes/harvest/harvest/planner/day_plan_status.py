@@ -103,6 +103,8 @@ SHOP_CLOSED_WEEKDAYS = (SUNDAY_WEEKDAY, SATURDAY_WEEKDAY)
 COW_PURCHASE_COST = 5000
 RAINY_WEATHER_CODES = frozenset({1, 2, 3})
 RAINY_WEATHER_FLAG_MASK = 0x0002 | 0x0008 | 0x0010
+# $0196 bit 0x10: hurricane/blizzard TODAY (SetWeatherFlags code 3).
+HURRICANE_FLAG_MASK = 0x0010
 
 
 def _read_state_ram(state_name: Optional[str]) -> Optional[np.ndarray]:
@@ -368,6 +370,7 @@ __all__ = [
     "ADDR_SEASON",
     "ADDR_WEATHER",
     "ADDR_WEATHER_FLAGS",
+    "HURRICANE_FLAG_MASK",
     "ADDR_TOOL_SELECTED",
     "ADDR_TOOL_BACKPACK",
     "ADDR_CORN_SEEDS",

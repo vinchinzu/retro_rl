@@ -144,6 +144,57 @@ def register_harvest_integration(retro_module, *, require_rom: bool = True) -> P
     return rom_path
 
 
+# Seasonal map families (Maps_Graphics_Table order): each outdoor map exists
+# once per season and every route, segment and landmark in this package is
+# keyed on the SPRING id. Planners read a canonical id; the emulator is never
+# written. 0x0F is left alone: it is also the sleep-transition map.
+SEASONAL_TILEMAP_CANON = {
+    0x01: 0x00, 0x02: 0x00, 0x03: 0x00,  # farm
+    0x05: 0x04, 0x06: 0x04, 0x07: 0x04,  # town
+    0x0D: 0x0C, 0x0E: 0x0C,              # path / fork
+    0x11: 0x10, 0x12: 0x10, 0x13: 0x10,  # mountain
+}
+
+
+def canonical_seasonal_tilemap(tilemap: int) -> int:
+    """Spring id for a summer/fall/winter outdoor map; others unchanged."""
+    return SEASONAL_TILEMAP_CANON.get(int(tilemap), int(tilemap))
+
+
+def canonicalize_ram_tilemap(ram):
+    """Return ``ram`` with a seasonal tilemap id rewritten to its spring id.
+
+    Read-side view for the bot only. Returns the same array when no rewrite
+    is needed, so spring costs nothing.
+    """
+    from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
+
+    base = int(field_spec("tilemap").address)
+    for idx in (base, base + LIVE_RAM_WRAM_OFFSET):
+        if idx >= len(ram):
+            continue
+        canon = SEASONAL_TILEMAP_CANON.get(int(ram[idx]))
+        if canon is None:
+            continue
+        view = ram.copy()
+        view[idx] = canon
+        return view
+    return ram
+
+
+class SeasonalMapEnv:
+    """Env proxy whose ``get_ram`` reports canonical (spring) map ids."""
+
+    def __init__(self, env):
+        self._env = env
+
+    def get_ram(self):
+        return canonicalize_ram_tilemap(self._env.get_ram())
+
+    def __getattr__(self, name):
+        return getattr(self._env, name)
+
+
 def make_harvest_env(
     state: str | None = None,
     *,
@@ -158,7 +209,7 @@ def make_harvest_env(
     register_harvest_integration(retro, require_rom=require_rom)
     kwargs.setdefault("inttype", retro.data.Integrations.ALL)
     kwargs.setdefault("use_restricted_actions", retro.Actions.ALL)
-    return HARVEST_GAME.make_env(state, render_mode=render_mode, **kwargs)
+    return SeasonalMapEnv(HARVEST_GAME.make_env(state, render_mode=render_mode, **kwargs))
 
 
 def backup_mutable_start_state(state_name: str | None, record_name: str) -> str | None:

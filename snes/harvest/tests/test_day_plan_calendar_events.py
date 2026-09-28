@@ -93,6 +93,14 @@ def _make_ram(
     if weather == WEATHER_RAIN:
         from harvest.planner.day_plan_status import ADDR_WEATHER_FLAGS
         ram[ADDR_WEATHER_FLAGS] = 0x02
+    if weather == WEATHER_HURRICANE:
+        # Here "weather" means the storm is TODAY: the ROM's today-flags word
+        # ($0196) carries bit 0x10; the forecast byte alone marks the eve.
+        from harvest.planner.day_plan_status import (
+            ADDR_WEATHER_FLAGS,
+            HURRICANE_FLAG_MASK,
+        )
+        ram[ADDR_WEATHER_FLAGS] = HURRICANE_FLAG_MASK
 
     money_spec = field_spec("money")
     storage = money_spec.to_storage(money)
@@ -378,6 +386,13 @@ class StormAndRecoveryTests(unittest.TestCase):
         deferred_reasons = {item.phase: item.reason for item in decision.deferred}
         if "CROP_WATER" in deferred_reasons:
             self.assertEqual(deferred_reasons["CROP_WATER"], "storm_confinement")
+
+    def test_hurricane_forecast_alone_is_the_eve_not_the_storm(self) -> None:
+        """weather_tomorrow == 3 with no today-flag: the door is still open."""
+        ram = _make_ram(season=SEASON_SUMMER, day=11)
+        ram[ADDR_WEATHER + LIVE_RAM_WRAM_OFFSET] = WEATHER_HURRICANE
+        decision = build_day_plan_decision(ram=ram)
+        self.assertFalse(decision.facts.is_storm)
 
     def test_post_storm_recovery_phases(self) -> None:
         phases = build_day_phases(
