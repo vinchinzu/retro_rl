@@ -212,3 +212,31 @@ def test_door_hop_controller_releases_stepladder_toward_goal() -> None:
     act = ctl.step(snap)
     assert act.reason == "east_descend_off_ladder"
     assert list(act.action) == list(nes_action("RIGHT"))
+
+
+def test_room_transit_walks_its_legs_and_stops_in_dest() -> None:
+    """Door to door with the room left alive: done on play in ``dest``, a
+    room off the legs fails closed rather than walking somewhere new."""
+    from retro_harness.nes import nes_action
+    from zelda_i.dungeon.door_hop import RoomTransitController
+    from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+
+    def snap(room: int) -> ZeldaSnapshot:
+        return ZeldaSnapshot(
+            mode=PLAY_MODE, level=1, screen=room, next_screen=room, link_x=120,
+            link_y=141, facing=2, sword=2, bombs=0, rupees=0, keys=1,
+            health=0x44, triforce=0, compass=0, dialog_timer=0,
+            colliding_tile=0, room_item_id=0, room_all_dead=0,
+            room_obj_count=0, cur_opened_doors=0, open_doorway_mask=0,
+            objects=(),
+        )
+
+    ctl = RoomTransitController(level=1, legs=((0x53, "LEFT"),), dest=0x52)
+    act = ctl.step(snap(0x53))
+    assert act.action == nes_action("LEFT") and not ctl.success
+    ctl.step(snap(0x52))
+    assert ctl.success and not ctl.failed
+
+    lost = RoomTransitController(level=1, legs=((0x53, "LEFT"),), dest=0x52)
+    lost.step(snap(0x43))
+    assert lost.failed and not lost.success

@@ -10,6 +10,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from retro_harness.input_script import FrameAction
 from zelda_i.combat import FACING_EAST, should_swing_at
 from zelda_i.dungeon.behaviors import projectile_threats
+from zelda_i.dungeon.door_hop import RoomTransitController
 from zelda_i.dungeon.engine import AQUAMENTUS_OBJECT_TYPE
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, ZeldaObject
 
@@ -676,6 +677,25 @@ class Level1TriforceController:
         }
 
 
+# A Stalfos or Keese this near is worth a rollout.
+L1_GUARD_RADIUS = 64
+
+
+def _entry_phase(ctl: Any, snap: ZeldaSnapshot) -> bool:
+    from zelda_i.dungeon.engine import DungeonPhase
+
+    return getattr(ctl, "phase", None) in (DungeonPhase.ROUTE_ENTRY, DungeonPhase.ENTER)
+
+
+def _guard(ctl: Any, *, entry_only: bool = False) -> Any:
+    """``PolicyGuard`` over a walk through a room left alive (or its walk in)."""
+    from zelda_i.rollout import PolicyGuard
+
+    return PolicyGuard(
+        ctl, trigger_radius=L1_GUARD_RADIUS, when=_entry_phase if entry_only else None
+    )
+
+
 def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
     """L1 west-route suffix through TF 0x01. Survival swaps Wallmaster overlay."""
     from dataclasses import replace
@@ -685,13 +705,11 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         ROOM_23_SPEC,
         ROOM_33_SPEC,
         ROOM_42_SPEC,
-        ROOM_43_SPEC,
         Room42EntryController,
         ROOM_44_SPEC,
         ROOM_44_SURVIVAL_SPEC,
         ROOM_45_SPEC,
         ROOM_45_SURVIVAL_SPEC,
-        ROOM_52_SPEC,
         Room33ScoopController,
     )
     from zelda_i.level1.east_dungeon import Room45SurvivalController
@@ -712,12 +730,20 @@ def level1_triforce_stages(*, natural_entry: bool, survival: bool = False):
         )
         room45 = replace(room45, combat=replace(room45.combat, attack_phase=2))
         boss_entry_delay = 0
+    # 0x52 leaves by its N key door and 0x43 by its open N door, and neither
+    # holds anything the route takes (0x43's is the map): their Keese and
+    # Stalfos stay alive (clean_poweron_c12 spent 814f + 306f clearing them).
+    # 0x53 -> 0x52 is a lattice transit; the next fights' walks in are
+    # guarded, their fights are not.
     return (
-        ("clear52", GenericDungeonRoomController(ROOM_52_SPEC), ROOM_52_SPEC.max_frames),
-        ("clear42", Room42EntryController(ROOM_42_SPEC), ROOM_42_SPEC.max_frames),
+        (
+            "transit52",
+            _guard(RoomTransitController(level=1, legs=((0x53, "LEFT"),), dest=0x52)),
+            4000,
+        ),
+        ("clear42", _guard(Room42EntryController(ROOM_42_SPEC), entry_only=True), ROOM_42_SPEC.max_frames),
         ("exit42", Level1Room42ExitController(), ROOM_42_EXIT_MAX_FRAMES),
-        ("clear43", GenericDungeonRoomController(ROOM_43_SPEC), ROOM_43_SPEC.max_frames),
-        ("clear33_key", Room33ScoopController(room33), room33.max_frames),
+        ("clear33_key", _guard(Room33ScoopController(room33), entry_only=True), room33.max_frames),
         ("clear23_key", GenericDungeonRoomController(room23), room23.max_frames),
         ("backtrack44", Level1BacktrackTo44Controller(), BACKTRACK_TO_44_MAX_FRAMES),
         ("clear44", GenericDungeonRoomController(room44), room44.max_frames),

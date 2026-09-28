@@ -18,6 +18,7 @@ from zelda_i.combat import (
     CONTACT_CHEBYSHEV,
     CONTACT_MANHATTAN,
     HEART_OR_FAIRY_STATES,
+    RUPEE_DROP_STATES,
     chebyshev,
     facing_to_direction,
     in_sword_hitbox,
@@ -716,12 +717,14 @@ def scoop_toward_drop(
     reason: str,
     travel_dir: str | None,
     radius: int,
+    env: object = None,
 ) -> FrameAction | None:
     """Walk onto a nearby floor drop. Contact pickup; no A.
 
     None if ``obj`` is missing, farther than ``radius``, or sitting on the
     opposite scroll edge from ``travel_dir`` (RIGHT refuses a west-edge
-    drop, and so on).
+    drop, and so on). With ``env`` the walk is the ROM lattice route to the
+    drop's nearest nodes, and None where there is none.
     """
     if obj is None:
         return None
@@ -751,9 +754,41 @@ def scoop_toward_drop(
         return _stand_on_drop(snap, reason)
     if max(abs(obj.x - snap.link_x), abs(obj.y - snap.link_y)) <= 2:
         return _stand_on_drop(snap, reason)
+    if env is not None:
+        return _scoop_on_lattice(snap, obj, reason, env)
     # A press Link can take from here: UP off a column slides him sideways,
     # which fought the hunt's scoop frame by frame (live 0x79 x 80<->82).
     direction = lattice_step(snap.link_x, snap.link_y, (obj.x, obj.y))
+    if direction is None:
+        return _stand_on_drop(snap, reason)
+    return FrameAction(nes_action(direction), reason)
+
+
+def _scoop_on_lattice(
+    snap: ZeldaSnapshot, obj: ZeldaObject, reason: str, env: object
+) -> FrameAction | None:
+    """The ROM lattice route to the drop; on its nearest node, stand or step in.
+
+    A drop sits where a body died, rarely on a turn node. The node nearest
+    it is at most 4 px off on each axis, inside the pickup box.
+    """
+    from zelda_i.dungeon.hop_controller import lattice_goto_route
+    from zelda_i.dungeon.tilemap import has_room_tile_map
+
+    x, y = int(snap.link_x), int(snap.link_y)
+    goal = (int(obj.x), int(obj.y))
+    if not has_room_tile_map(env.get_ram()):
+        direction = lattice_step(x, y, goal)
+    else:
+        route = lattice_goto_route(env, snap, goal, slack=0)
+        if route is None:
+            return None
+        if route:
+            direction = lattice_step(x, y, route[0])
+        elif max(abs(goal[0] - x), abs(goal[1] - y)) <= 4:
+            return _stand_on_drop(snap, reason)
+        else:
+            direction = lattice_step(x, y, goal)
     if direction is None:
         return _stand_on_drop(snap, reason)
     return FrameAction(nes_action(direction), reason)
@@ -776,6 +811,108 @@ def _stand_on_drop(snap: ZeldaSnapshot, reason: str) -> FrameAction | None:
     ):
         return None
     return FrameAction(nes_idle_action(), reason)
+
+
+# A floor rupee on a walk. The wallet is the route's clock: every rupee the
+# gathering leaves behind is one a later farm or cave detour has to pay for
+# (clean_poweron_c12 left 16 singles and 4 blues, 36R, in the gathering
+# alone). Reach is per kind, walked on the ROM lattice.
+SCOOP_RUPEE_RADIUS = 64
+SCOOP_FIVE_RUPEE_RADIUS = 112
+# Frames one drop may own before it is written off. An unreachable rupee
+# (0x79's at y=65, above the rock row) held ``scoop_rupee`` for 460 frames
+# and still expired.
+SCOOP_GIVE_UP_FRAMES = 150
+WALLET_CAP = 255
+
+
+class RupeeScoop:
+    """Walk onto the nearest reachable rupee drop worth its distance.
+
+    One per walk controller. It writes off a drop the ROM lattice cannot
+    reach and one that outlasts ``give_up_frames``, so a drop is never a
+    stall. The body checks are ``scoop_toward_drop``'s.
+    """
+
+    def __init__(
+        self,
+        radius: int = SCOOP_RUPEE_RADIUS,
+        radius_five: int = SCOOP_FIVE_RUPEE_RADIUS,
+        give_up_frames: int = SCOOP_GIVE_UP_FRAMES,
+    ) -> None:
+        self.radius = int(radius)
+        self.radius_five = int(radius_five)
+        self.give_up_frames = int(give_up_frames)
+        self.frames = 0
+        self.abandoned = 0
+        self._key: tuple[int, int, int, int] | None = None
+        self._key_frames = 0
+        self._ignored: set[tuple[int, int, int, int]] = set()
+
+    def _reach(self, obj: ZeldaObject) -> int:
+        five = int(obj.state) == _dungeon_ids.FIVE_RUPEE_DROP_STATE
+        return self.radius_five if five else self.radius
+
+    def step(
+        self, snap: ZeldaSnapshot, *, env: object, travel_dir: str | None
+    ) -> FrameAction | None:
+        if int(snap.rupees) + int(snap.rupees_to_add) >= WALLET_CAP:
+            return None
+        screen = int(snap.screen)
+        lx, ly = int(snap.link_x), int(snap.link_y)
+        drops = sorted(
+            (
+                obj
+                for obj in snap.objects
+                if obj.slot >= 1
+                and int(obj.type_id) == _dungeon_ids.RUPEE_DROP_OBJECT_TYPE
+                and int(obj.state) in RUPEE_DROP_STATES
+                and 40 < obj.y < 220
+                and 8 < obj.x < 248
+                and (screen, int(obj.slot), int(obj.x), int(obj.y)) not in self._ignored
+                and manhattan(lx, ly, obj.x, obj.y) <= self._reach(obj)
+            ),
+            key=lambda o: manhattan(lx, ly, o.x, o.y),
+        )
+        for obj in drops:
+            key = (screen, int(obj.slot), int(obj.x), int(obj.y))
+            if key != self._key:
+                self._key, self._key_frames = key, 0
+            self._key_frames += 1
+            if self._key_frames > self.give_up_frames:
+                self._write_off(key)
+                continue
+            act = scoop_toward_drop(
+                snap, obj, reason="scoop_rupee", travel_dir=travel_dir,
+                radius=self._reach(obj), env=env,
+            )
+            if act is None and _unreachable(env, snap, obj):
+                self._write_off(key)
+                continue
+            if act is not None:
+                self.frames += 1
+            return act
+        return None
+
+    def _write_off(self, key: tuple[int, int, int, int]) -> None:
+        self._ignored.add(key)
+        self.abandoned += 1
+        self._key, self._key_frames = None, 0
+
+    def report(self) -> dict[str, int]:
+        return {"frames": self.frames, "abandoned": self.abandoned}
+
+
+def _unreachable(env: object, snap: ZeldaSnapshot, obj: ZeldaObject) -> bool:
+    """True when the ROM lattice has no route to the drop's nearest nodes."""
+    if env is None:
+        return False
+    from zelda_i.dungeon.hop_controller import lattice_goto_route
+    from zelda_i.dungeon.tilemap import has_room_tile_map
+
+    if not has_room_tile_map(env.get_ram()):
+        return False
+    return lattice_goto_route(env, snap, (int(obj.x), int(obj.y)), slack=0) is None
 
 
 def scoop_floor_drop(

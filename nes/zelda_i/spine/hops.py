@@ -220,3 +220,48 @@ def gated_stages(plan: Any, legs: Sequence[tuple[str, Any]]) -> Stages:
         (name, GatedLeg(plan, ctl), int(getattr(ctl, "max_frames", 0)))
         for name, ctl in legs
     )
+
+
+@dataclass
+class LatchedPlan:
+    """A ``GatedLeg`` plan from one predicate, decided once and latched.
+
+    ``skip(snap)`` says why the detour should not run, or ``None`` to run
+    it. The first leg to step decides for every leg that shares the plan.
+    ``otherwise()`` is the same latch read the other way round: the legs
+    that replace a skipped detour (the direct walk beside a pond loop), so
+    exactly one branch plays.
+    """
+
+    name: str
+    skip: Callable[[ZeldaSnapshot], str | None]
+    active: bool | None = None
+    reason: str = ""
+
+    def decide(self, snap: ZeldaSnapshot) -> bool:
+        if self.active is None:
+            self.reason = self.skip(snap) or ""
+            self.active = not self.reason
+        return bool(self.active)
+
+    def otherwise(self) -> "OtherwisePlan":
+        return OtherwisePlan(self)
+
+
+@dataclass
+class OtherwisePlan:
+    """``plan`` negated: runs its legs exactly when ``plan`` skips its own."""
+
+    plan: LatchedPlan
+
+    @property
+    def reason(self) -> str:
+        return f"{self.plan.name}_taken"
+
+    def decide(self, snap: ZeldaSnapshot) -> bool:
+        return not self.plan.decide(snap)
+
+
+def gated(plan: Any, legs: Sequence[tuple[str, Any]]) -> list[tuple[str, Any]]:
+    """``(name, GatedLeg)`` rows for a two-tuple stage list (the gather chain)."""
+    return [(name, GatedLeg(plan, ctl)) for name, ctl in legs]

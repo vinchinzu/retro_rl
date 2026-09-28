@@ -16,7 +16,6 @@ from zelda_i.level4.dungeon import (
     ROOM_31_SPEC,
     ROOM_32_SPEC,
     ROOM_40_SPEC,
-    ROOM_50_SPEC,
     ROOM_51_SPEC,
     ROOM_L4_EAST_31,
     ROOM_L4_EAST_32,
@@ -79,24 +78,23 @@ from zelda_i.level4.path import (
     make_left_50_controller,
     make_room_31_clear_controller,
     make_room_32_clear_controller,
-    make_room_50_clear_controller,
     make_room_51_key_controller,
 )
 from zelda_i.level4.stepladder import (
     make_key_right_31_controller,
-    make_room_30_clear_controller,
     make_stepladder_controller,
 )
 from zelda_i.level4.north30 import make_north_30_controller
 from zelda_i.level4.west31 import level4_west31_stages
 from zelda_i.ram import PASSAGE_MODE, ZeldaSnapshot, ow_secret_taken
+from zelda_i.rollout import PolicyGuard
 from zelda_i.spine.hops import SpineHop, attach_hops, ready
 
 L4_STOPS: dict[str, str] = {
     "level4": "level4_triforce_0x08",
     "level4-entry": "level4_entry_0x71",
     "level4-key": "level4_natural_key_0x51",
-    "level4-clear50": "level4_clear_0x50",
+    "level4-clear50": "level4_left_0x50",
     "level4-room40-key": "level4_natural_key_0x40",
     "level4-room30": "level4_enter_0x30",
     "level4-room31": "level4_enter_0x31",
@@ -141,30 +139,34 @@ def _first_key_stages():
     )
 
 
+# Vires dive ~2 px/f and split into Keese: roll only with one this near.
+TRANSIT_GUARD_RADIUS = 64
+
+
+def _transit(ctl: Any) -> PolicyGuard:
+    """A walk across a room left uncleared, on the ROM's own next frames."""
+    return PolicyGuard(ctl, trigger_radius=TRANSIT_GUARD_RADIUS)
+
+
 def _room50_stages():
-    return (
-        ("level4_left_0x50", make_left_50_controller(), 2500),
-        (
-            "level4_clear_0x50",
-            _as_fight(make_room_50_clear_controller),
-            ROOM_50_SPEC.max_frames,
-        ),
-    )
+    # 0x50's N door is open (``pin_probe.py --doors``) and it holds no item:
+    # its five-Vire clear (1,301f on clean_poweron_c12) bought nothing.
+    return (("level4_left_0x50", make_left_50_controller(), 2500),)
 
 
 def _room40_key_stages():
     return (
-        ("level4_north_0x40", make_north_40_controller(), 10000),
+        ("level4_north_0x40", _transit(make_north_40_controller()), 10000),
         ("level4_key_0x40", make_room_40_key_controller(), 25000),
     )
 
 
 def _key_right_31_stages():
+    # 0x30's E door is a key door: its Vires need not die (494f on c12).
     return (
-        ("level4_clear_0x30", make_room_30_clear_controller(), 20000),
         (
             "level4_key_right_0x31",
-            make_key_right_31_controller(clear_vires=False),
+            _transit(make_key_right_31_controller(clear_vires=False)),
             4000,
         ),
     )
@@ -415,9 +417,9 @@ def l4_hops(*, spine_fields) -> tuple[SpineHop, ...]:
         ),
         SpineHop(
             "level4-clear50",
-            "level4_clear_0x50",
+            "level4_left_0x50",
             _room50_stages,
-            _ok(screen=ROOM_L4_VIRES_50, spec=ROOM_50_SPEC),
+            _ok(screen=ROOM_L4_VIRES_50),
         ),
         SpineHop(
             "level4-room40-key",

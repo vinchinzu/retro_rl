@@ -47,8 +47,10 @@ from zelda_i.level1.path import (
     ROOM_WEST_KEY,
     STALFOS_OBJECT_TYPE,
 )
+from zelda_i.dungeon.hop_controller import room_step
 from zelda_i.dungeon.tilemap import blocked_link_cells, has_room_tile_map
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.walk import live_env
 from zelda_i.walk.physics import DEFAULT_BOUNDS, OccupancyGrid, OccupancyWalker
 
 _STALFOS_PATROL: tuple[tuple[int, int], ...] = (
@@ -265,7 +267,13 @@ _ROOM_52_DIAMOND: frozenset[tuple[int, int]] = frozenset(
 
 
 class Room42EntryController(GenericDungeonRoomController):
-    """0x52 diamond: peel to an aisle, occupancy around, then north door."""
+    """0x52 diamond: the ROM lattice round it to the north door.
+
+    The hand walk below is the fallback with no live tile map. From
+    (136, 181), under the diamond's south-east corner, it flipped UP
+    (to y=179, "on the diamond") and RIGHT (which slides Link back onto
+    the y=181 turn row) for 6000 frames (n2_credits, 2026-09-28).
+    """
 
     def _follow_route(self, snap: ZeldaSnapshot, route: DoorRoute) -> FrameAction:
         if int(snap.screen) != 0x52:
@@ -274,6 +282,11 @@ class Room42EntryController(GenericDungeonRoomController):
         dest = (120, 93)
         if abs(x - dest[0]) <= 2 and abs(y - dest[1]) <= 2:
             return FrameAction(nes_idle_action(), "entry_route_done")
+        env = self._env if self._env is not None else live_env.current()
+        if env is not None and has_room_tile_map(env.get_ram()):
+            step = room_step(snap, dest, tol=2, env=env)
+            if step is not None:
+                return FrameAction(nes_action(step), "entry_route")
         xy = (x, y)
         on_diamond = (
             149 <= y <= 180 and _ROOM_52_AISLE_X < x < 144

@@ -17,8 +17,8 @@ from zelda_i.overworld.magical_sword import (
     GRAVE_STAND,
     LADDER_HEART_SHORE,
     TO_GRAVE_HOPS,
-    CoastHeartPlan,
-    GravePlan,
+    coast_heart_plan,
+    grave_plan,
     GraveSwordController,
     LadderHeartController,
     coast_heart_stages,
@@ -83,7 +83,7 @@ def test_coast_walks_are_grid_paths() -> None:
 def test_coast_plan_gate(screen, containers, raft, active, reason) -> None:
     ram = _ow(screen=screen, containers=containers)
     ram[ADDR_RAFT] = raft
-    plan = CoastHeartPlan()
+    plan = coast_heart_plan()
     assert plan.decide(read_snapshot(ram)) is active
     assert plan.reason == reason
 
@@ -93,7 +93,7 @@ def test_coast_plan_gate(screen, containers, raft, active, reason) -> None:
     [(0x33, 12, 2, True), (0x33, 11, 2, False), (0x33, 12, 3, False), (0x22, 12, 2, False)],
 )
 def test_grave_plan_gate(screen, containers, sword, active) -> None:
-    plan = GravePlan()
+    plan = grave_plan()
     ram = _ow(screen=screen, containers=containers, sword=sword)
     assert plan.decide(read_snapshot(ram)) is active
 

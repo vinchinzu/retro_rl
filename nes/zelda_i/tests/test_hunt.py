@@ -1321,3 +1321,41 @@ def test_a_fresh_body_in_the_same_slot_is_still_struck() -> None:
         facing=0x02, hp=0x10, state=1,
     )
     assert hunter._strike_budget(0x78, other) is True
+
+
+def test_flying_peahat_is_walked_through_while_hearts_allow() -> None:
+    """A Peahat in flight cannot be cut; with three hearts the walk takes its
+    half-heart touch instead of peeling on every pass. A landed one (or a
+    thin Link) is still a body the contact ladder answers."""
+    from zelda_i.dungeon.behaviors import EnemyKind
+    from zelda_i.overworld.hunt import walks_through
+
+    flying = _track_of(speed=1.0)
+    landed = _track_of(speed=0.0)
+    assert walks_through(_hearts(0x44), EnemyKind.PEAHAT, flying)
+    assert not walks_through(_hearts(0x44), EnemyKind.PEAHAT, landed)
+    assert not walks_through(_hearts(0x41), EnemyKind.PEAHAT, flying)
+    assert not walks_through(_hearts(0x44), EnemyKind.TEKTITE, flying)
+
+
+def _track_of(*, speed: float):
+    from zelda_i.dungeon.behaviors import EnemyKind
+    from zelda_i.dungeon.tracking import HazardClass, TrackedObject
+
+    return TrackedObject(
+        slot=1, type_id=0x1A, x=100, y=100, vx=speed, vy=0.0, hp=2, state=0,
+        facing=0, age=5, kind=EnemyKind.PEAHAT, hazard=HazardClass.BODY,
+        blockable=False,
+    )
+
+
+def _hearts(health: int):
+    from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+
+    return ZeldaSnapshot(
+        mode=PLAY_MODE, level=0, screen=0x28, next_screen=0x28, link_x=120,
+        link_y=120, facing=8, sword=2, bombs=0, rupees=0, keys=0, health=health,
+        triforce=0, compass=0, dialog_timer=0, colliding_tile=0, room_item_id=0,
+        room_all_dead=0, room_obj_count=0, cur_opened_doors=0,
+        open_doorway_mask=0, objects=(),
+    )

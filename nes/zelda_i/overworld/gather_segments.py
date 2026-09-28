@@ -18,12 +18,20 @@ from zelda_i.dungeon.pause_select import (
     PauseSelectController,
     b_slot_owned,
 )
+from zelda_i.overworld.bomb_shop import BOMB_SHOP_PRICE
 from zelda_i.overworld.cave_shop import (
+    BLUE_POTION_PRICE,
+    POTION_BUY_BUDGET,
+    POTION_BUY_Y,
     SHOP_34_ARMOS_STAND,
     SHOP_34_ARMOS_TILE,
     SHOP_34_ARMOS_WAIT,
     CaveShopBuyController,
+    CaveShopBuyPhase,
+    PotionShopBuyController,
+    potion_restock_stages,
 )
+from zelda_i.overworld.common import WALLET_CAP
 from zelda_i.overworld.gather_run import (
     PRE_L1_LEAVE,
     pin_pre_l1,
@@ -35,8 +43,12 @@ from zelda_i.overworld.locations import SECRET_RUPEE_CAVES
 from zelda_i.overworld.hunt import link_busy
 from zelda_i.overworld.path import CAVE_EXIT_X, OverworldPathController
 from zelda_i.overworld.white_sword import (
+    LYNEL_WAIT_MAX,
+    MAZE_NORTH_X,
+    MAZE_STAND_Y,
     MIN_HEART_CONTAINERS,
     SCREEN_MAZE_GATE,
+    TOL as MAZE_TOL,
     SCREEN_WHITE_SWORD_CAVE,
     WHITE_SWORD,
     WhiteSwordDetourController,
@@ -44,13 +56,17 @@ from zelda_i.overworld.white_sword import (
 )
 from zelda_i.ram import (
     ADDR_CANDLE,
+    ADDR_POTION,
     ADDR_RING,
     ADDR_SELECTED_ITEM,
     CAVE_MODE,
     PLAY_MODE,
     ZeldaSnapshot,
+    hearts_held,
     read_u8,
 )
+from zelda_i.rollout import PolicyGuard
+from zelda_i.spine.hops import LatchedPlan, gated
 from zelda_i.walk.physics import OPPOSITE, OccupancyGrid, OccupancyWalker
 
 BLAST_FRAMES = 80
@@ -81,11 +97,6 @@ HEART_L8_STALL_DIR = "UP"
 HEART_CAVE_SPRITE = 0x6B
 # Heart is the right-hand item (potion left). Same touch as the candle pedestal.
 HEART_L8_ITEM_XY = (152, 149)
-# The left-hand item: a red potion, two full refills. Clean takes it at 0x2C,
-# where the pond-to-0x0A stretch has no other heal (clean_poweron60 died at
-# 0x18 with 5.5h spent and 1 healed); 0x47's container then makes the five
-# the White Sword needs.
-TAKE_ANY_POTION_XY = (88, 149)
 
 HEART_M3_SCREEN = 0x2C
 # Measured 2026-09-22 by a bomb sweep on BFS_2C: the doorway is on the
@@ -144,6 +155,17 @@ CAVE_X = 128
 CAVE_Y = 96
 BUY_X = 152
 BUY_Y = 165
+
+# 0x0D's potion shop, measured 2026-09-28 (``scratch/probe_0d_potion.py``):
+# the secret rock is slot 11 type 0x63 at (144, 80) and the lattice row
+# under it is y=85, so the stand is (144, 85) facing UP, as 0x2D's. The
+# candle walk crosses 0x0D up the x=208 corridor; the stand is a short
+# step west of it. With 0x2C's container instead of its potion this is
+# the heal the White Sword stretch needs (0x0A's Lynel, 0x1A's tektites
+# and 0x17-0x19's falling boulders: 5.5h on the first heart-first try).
+POTION_0D_SCREEN = 0x0D
+POTION_0D_ROCK = (144, 80)
+POTION_0D_STAND = (144, 85)
 
 # 0x29 and 0x2A are walled on top (2026-09-22 screenshots), so 0x2A UP
 # never reaches 0x1A. Row 2 runs west to 0x27, whose north gap crosses to
@@ -265,6 +287,9 @@ L1_FROM_POND_HOPS = (
     ScreenHop(0x58, "LEFT", align_y=133),
     ScreenHop(0x48, "UP", align_x=120),
 ) + L1_MOUTH_HOPS[1:]
+# The ring return ends on 0x58; without the pond the mouth is straight up
+# the x=120 cut, the pond loop's own last three hops.
+L1_DIRECT_HOPS = L1_FROM_POND_HOPS[3:]
 
 # NE ends in the 0x0F cave. Back down the way NE came up, then the letter.
 LETTER_FROM_0F_HOPS = (
@@ -302,20 +327,24 @@ RING_PRICE = 250
 # chain reached 0x34 with ~73R and a 177R Survival write before these.
 # 0x2D's rock (30R) is where the NE walk starts, a bomb after 0x2C's heart.
 RUPEES_2D_HOPS = NE_HOPS[:1]
-# The white walk comes into 0x28 from 0x29 right beside its tree (30R).
-WHITE_TO_28_HOPS = WHITE_HOPS[:6]
-WHITE_FROM_28_HOPS = WHITE_HOPS[6:]
-# Out of that cave Link stands at (224, 157), beside the stairs the tree
-# left at (208, 160). A lattice walk west crossed that tile and went back
-# down (12000 frames, 2026-09-23): up the x=224 column first, then the
-# east-entry corners, which pass above and left of it.
+# Out of 0x28's tree cave (30R) Link stands at (224, 157), beside the stairs
+# the tree left at (208, 160). A lattice walk west crossed that tile and went
+# back down (12000 frames, 2026-09-23): up the x=224 column first, then the
+# east-entry corners, which pass above and left of it, then the burn walk's
+# x=120 cut down through 0x38 into 0x48.
 WHITE_FROM_28_WAYPOINTS = {0x28: ((224, 133),) + WAYPOINTS[0x28][2:]}
-# 0x47's container comes before the White Sword now (0x2C gave the potion):
-# from 0x28's rupee cave the east corners, then the burn walk's x=120 cut
-# down through 0x38 into 0x48; back up the same cut after 0x47. White then
-# starts on 0x28 from the south and leaves 0x28's corners to the lattice.
 WALK_28_TO_48_HOPS = BURN_WALK_HOPS[-2:]
-WALK_47_TO_28_HOPS = L1_MOUTH_HOPS[:2] + (ScreenHop(0x28, "UP", align_x=120),)
+# With 0x2C's container the White Sword comes first: the candle shop's south
+# stairs, then east-to-west across 0x1C and Lost Hills 0x1B (no enemies on
+# either; LEFT out of 0x1B is not a wrap, the L6 walk takes it) into 0x1A.
+# That skips row 2 and one crossing of 0x17-0x19's falling boulders. Back
+# on 0x1A, row 1 west and 0x27's gap down reach 0x28 from the west.
+WHITE_FROM_0C_HOPS = (
+    WHITE_HOPS[0],
+    ScreenHop(0x1B, "LEFT", align_y=141),
+    ScreenHop(SCREEN_MAZE_GATE, "LEFT", align_y=141),
+)
+WALK_1A_TO_28_HOPS = BURN_WALK_HOPS[:5]
 # After 0x47's heart: east along row 5 to 0x5B's tree (10R) and down the
 # x=48 gap to 0x6B's (100R), back to 0x58, then the ring road with 0x56's
 # tree (10R). That is exactly the 250 (the wallet caps at 255: 0x62's
@@ -459,7 +488,8 @@ class BombWallController(OverworldPathController):
     # Frames from B to walking in. A bomb blasts at ~80. A flame walks 16
     # frames, stands $3F, and the tree reveals once its timer drops below 2.
     use_wait: int = BLAST_FRAMES
-    # "container" or "potion" (take-any), or "rupees" (one-item secret cave).
+    # "container" or "potion" (take-any), "rupees" (one-item secret cave),
+    # or "shop" (a bombed shop: stop on the stairs, the buy is its own stage).
     reward: str = "container"
     reward_rupees: int = 0
     keeper: int = SECRET_MOBLIN
@@ -510,6 +540,9 @@ class BombWallController(OverworldPathController):
             )
         if self.reward == "potion":
             return in_cave and 0 <= self._entry_potion < int(snap.potion)
+        if self.reward == "shop":
+            # A bombed shop: the buy is the next stage's, inside the cave.
+            return in_cave
         return (
             in_cave
             and self._entry_containers >= 0
@@ -739,6 +772,14 @@ class CaveMouthController(OverworldPathController):
         return push("UP", "cave_mouth")
 
 
+# 0x0A's blue Lynel hits for two hearts. With this many, the climb waits
+# at most LYNEL_WAIT_AFFORD frames for its bottom-band window instead of
+# the detour's 900 (the cap on every heart-first try): the guard vetoes an
+# actual contact, and a hit is two hearts against up to 750 frames.
+LYNEL_AFFORD_HEARTS = 4
+LYNEL_WAIT_AFFORD = 150
+
+
 @dataclass
 class GatherWhiteController(OverworldPathController):
     """Hop to 0x1A, then the L9 detour's measured climb, cave and pedestal.
@@ -785,7 +826,24 @@ class GatherWhiteController(OverworldPathController):
                 max_frames=self.max_frames,
                 phase=WhiteSwordPhase.MAZE_NORTH,
                 start_checked=True,
+                lynel_wait_max=(
+                    LYNEL_WAIT_AFFORD if int(snap.whole_hearts) >= LYNEL_AFFORD_HEARTS
+                    else LYNEL_WAIT_MAX
+                ),
             )
+        if (
+            self._detour.phase is WhiteSwordPhase.MAZE_NORTH
+            and not self._detour.maze_lane_done
+            and snap.screen == SCREEN_MAZE_GATE
+            and snap.mode == PLAY_MODE
+            and not snap.transitioning
+        ):
+            # The detour's hand align was measured from the west arrival.
+            # From 0x1B Link comes in on the east edge, and its UP/DOWN press
+            # held a wall for 476 frames. The lattice walks to the stand.
+            step = room_step(snap, (MAZE_NORTH_X, MAZE_STAND_Y), tol=MAZE_TOL, env=self._env)
+            if step is not None:
+                return self._swing(step, "maze_lattice")
         action = self._detour.step(snap)
         if self._detour.failed:
             return self._fail(f"detour_{self._detour.notes[-1]}")
@@ -960,9 +1018,9 @@ def _candle(snap: ZeldaSnapshot) -> int:
     return int(snap.candle)
 
 
-def make_candle_controller() -> CaveShopBuyController:
+def make_candle_controller(hops: tuple[ScreenHop, ...] = CANDLE_HOPS) -> CaveShopBuyController:
     return CaveShopBuyController(
-        hops=CANDLE_HOPS,
+        hops=hops,
         shop_screen=0x0C,
         cave_x=CAVE_X,
         cave_y=CAVE_Y,
@@ -1013,12 +1071,66 @@ def make_heart_m3_controller() -> BombWallController:
     )
 
 
-def make_potion_m3_controller() -> BombWallController:
-    """0x2C's take-any, left item: the red potion instead of the container."""
-    ctl = make_heart_m3_controller()
-    ctl.reward = "potion"
-    ctl.interior_x, ctl.interior_y = TAKE_ANY_POTION_XY
-    return ctl
+def make_bomb_0d_controller() -> BombWallController:
+    """Bomb 0x0D's rock and step onto its stairs; the buy is ``potion_0d``."""
+    return BombWallController(
+        hops=(),
+        max_frames=3000,
+        screen=POTION_0D_SCREEN,
+        bomb_x=POTION_0D_STAND[0],
+        bomb_y=POTION_0D_STAND[1],
+        bomb_face="UP",
+        door_x=POTION_0D_ROCK[0],
+        door_y=POTION_0D_ROCK[1],
+        retreat="DOWN",
+        reward="shop",
+        bomb_fail="rock_0x0d_did_not_open",
+        leave_fail="left_0x0d",
+        b_item=B_SLOT_BOMBS,
+    )
+
+
+def make_potion_0d_controller() -> PotionShopBuyController:
+    """The blue potion inside 0x0D's shop: show the letter, buy, put B back.
+
+    Starts on the stairs (``bomb_0d`` stops there), so the phase is the
+    door's: the first frame in the cave is the buy.
+    """
+    return PotionShopBuyController(
+        hops=(),
+        item="blue",
+        phase=CaveShopBuyPhase.DOOR,
+        shop_screen=POTION_0D_SCREEN,
+        cave_x=POTION_0D_ROCK[0],
+        cave_y=POTION_0D_ROCK[1],
+        mouth_approach_y=POTION_0D_STAND[1],
+        buy_y=POTION_BUY_Y,
+        buy_budget=POTION_BUY_BUDGET,
+        success_getter=lambda snap: int(snap.potion),
+        success_addr=ADDR_POTION,
+        farm_below_hearts=0,
+        evade=False,
+        max_frames=4000,
+    )
+
+
+def potion_0d_plan() -> LatchedPlan:
+    """Buy at 0x0D only with the letter, a bomb, no potion, and the candle paid."""
+
+    def skip(snap: ZeldaSnapshot) -> str | None:
+        if int(snap.potion) > 0:
+            return f"potion_{int(snap.potion)}"
+        if int(snap.letter) < 1:
+            return "no_letter"
+        if int(snap.bombs) < 1:
+            return "no_bomb"
+        if _credited(snap) < BLUE_POTION_PRICE + CANDLE_PRICE:
+            return f"wallet_{_credited(snap)}"
+        if int(snap.level) != 0 or int(snap.screen) != POTION_0D_SCREEN:
+            return f"off_0x{int(snap.screen):02x}"
+        return None
+
+    return LatchedPlan("potion_0d", skip)
 
 
 def make_secret_rupee_controller(
@@ -1141,31 +1253,139 @@ def _defended(ctl: Any, *, evade: bool = False) -> Any:
     return ctl
 
 
-def chain_stages() -> list[tuple[str, Any]]:
+# The 0x39 pond fairy refills every heart, but the loop through 0x4A/0x49
+# (or 0x59/0x49 before L1) is 1,500-3,000 frames: clean_poweron_c12 walked
+# it twice at full health. Each pond stop is a branch now, decided on the
+# frame it starts: the loop when this many hearts are missing, else the
+# direct walk.
+POND_MISSING_HEARTS = 1.0
+
+
+def pond_plan(name: str, missing: float = POND_MISSING_HEARTS) -> LatchedPlan:
+    """Detour to the pond only with ``missing`` hearts or more to refill."""
+
+    def skip(snap: ZeldaSnapshot) -> str | None:
+        held = hearts_held(snap)
+        if int(snap.heart_containers) - held < missing:
+            return f"hearts_{held:.2f}_of_{int(snap.heart_containers)}"
+        return None
+
+    return LatchedPlan(name, skip)
+
+
+def wallet_plan(name: str, screen: int, *, enough: Callable[[ZeldaSnapshot], bool]) -> LatchedPlan:
+    """A secret rupee cave only while the wallet still needs it.
+
+    ``enough(snap)`` is true once what the route owes next is covered
+    without this payout. A taken cave (``$10`` in its world flag) is never
+    re-entered, and a payout the 255 cap would throw away is not walked to.
+    """
+    pay = SECRET_RUPEE_CAVES[int(screen)].rupees
+
+    def skip(snap: ZeldaSnapshot) -> str | None:
+        wallet = _credited(snap)
+        if enough(snap):
+            return f"wallet_{wallet}_enough"
+        if wallet + pay > WALLET_CAP:
+            return f"wallet_{wallet}_full"
+        return None
+
+    return LatchedPlan(name, skip)
+
+
+# A live slot this near is worth a rollout: a boulder falls ~2 px/f and a
+# tektite leaps ~3, so 24 frames of either start inside it.
+GUARD_TRIGGER_RADIUS = 64
+
+
+def _guarded(ctl: Any) -> PolicyGuard:
+    """``rollout.PolicyGuard`` over a gather stage, rolled only near a hazard.
+
+    The first heart-first tries bled 5-8 hearts between 0x0C and 0x28 to
+    tektite leaps, the Lynel and bouncing boulders: the reactive layers
+    extrapolate a straight line, and ``spit_duck`` stepped into the next
+    boulder. Rollouts are development lookahead (owner ruling 2026-09-28);
+    the recording is the tape replayed without them.
+    """
+    return PolicyGuard(ctl, trigger_radius=GUARD_TRIGGER_RADIUS)
+
+
+def _gather_bait(hops: tuple[ScreenHop, ...]) -> Any:
+    """The 0x34 Bait buy on the ring road, with no low-heart farm.
+
+    The shop controller's farm starts below three hearts: at 2.48h on the
+    first-visit walk it farmed 0x56, scrolled into 0x46 and ground there
+    17,800 frames. The ring's buy has never farmed either.
+    """
     from zelda_i.level7.entry import make_bait_purchase_controller
 
+    ctl = make_bait_purchase_controller(hops=hops)
+    ctl.farm_below_hearts = 0
+    return ctl
+
+
+def chain_stages() -> list[tuple[str, Any]]:
     letter = make_letter_controller()
     letter.hops = LETTER_FROM_0F_HOPS
+    pond = pond_plan("pond_39")
+    pond_l1 = pond_plan("pond_39_l1")
+    # 0x6B's 100R is next on the walk: 0x5B's 10R only when that alone
+    # leaves the ring short. 0x56's only when the ring is still short.
+    tree_5b = wallet_plan(
+        "rupees_5b", 0x5B,
+        enough=lambda snap: _credited(snap) + SECRET_RUPEE_CAVES[0x6B].rupees >= RING_PRICE,
+    )
+    tree_56 = wallet_plan(
+        "rupees_56", 0x56, enough=lambda snap: _credited(snap) >= RING_PRICE,
+    )
+    ring_first = LatchedPlan(
+        "ring_first",
+        lambda snap: None if _credited(snap) >= RING_PRICE else f"wallet_{_credited(snap)}",
+    )
     return [
         ("exit_6f", CaveExitController()),
         ("walk_7c", HopWalkController(hops=RETURN_7C_HOPS)),
         ("heart_7b", make_heart_l8_controller()),
         ("exit_7b", CaveExitController()),
-        ("walk_pond", HopWalkController(hops=POND_WALK_HOPS)),
-        ("pond_39", PondFairyController()),
-        ("walk_2c", HopWalkController(hops=POND_RETURN_HOPS, waypoints=POND_RETURN_WAYPOINTS)),
-        ("potion_2c", make_potion_m3_controller()),
+        *gated(pond, (
+            ("walk_pond", HopWalkController(hops=POND_WALK_HOPS)),
+            ("pond_39", PondFairyController()),
+            ("walk_2c", HopWalkController(hops=POND_RETURN_HOPS, waypoints=POND_RETURN_WAYPOINTS)),
+        )),
+        *gated(pond.otherwise(), (
+            ("walk_2c_direct", HopWalkController(hops=HEART_WALK_HOPS)),
+        )),
+        # 0x2C to 0x0C is tektite country (0x2C, 0x1E, 0x0D, 0x0C): n5_credits
+        # spent 5h there unguarded and drank 0x0D's potion on the spot.
+        # The container, not the red potion: every take-any heart is on the
+        # 100% route, and five containers here open the White Sword straight
+        # off the candle shop. The potion is bought at 0x0D on the way.
+        ("heart_2c", _guarded(make_heart_m3_controller())),
         ("exit_2c", CaveExitController()),
-        ("rupees_2d", _defended(make_secret_rupee_controller(0x2D, RUPEES_2D_HOPS))),
+        ("rupees_2d", _guarded(_defended(make_secret_rupee_controller(0x2D, RUPEES_2D_HOPS)))),
         ("exit_2d", CaveExitController()),
-        ("ne_100", _defended(NortheastController(), evade=True)),
+        ("ne_100", _guarded(_defended(NortheastController(), evade=True))),
         ("exit_0f", CaveExitController()),
-        ("letter", _defended(letter)),
+        ("letter", _guarded(_defended(letter))),
         ("exit_0e", CaveExitController()),
-        ("candle", _defended(make_candle_controller(), evade=True)),
+        # The candle walk crosses 0x0D: its bombed shop sells the potion
+        # 0x2C no longer gives.
+        ("walk_0d", _guarded(_defended(HopWalkController(hops=CANDLE_HOPS[:3], waypoints={}), evade=True))),
+        *gated(potion_0d_plan(), (
+            ("bomb_0d", _guarded(_defended(make_bomb_0d_controller()))),
+            ("potion_0d", make_potion_0d_controller()),
+            ("exit_0d", CaveExitController()),
+        )),
+        ("candle", _guarded(_defended(make_candle_controller(hops=CANDLE_HOPS[3:]), evade=True))),
         ("exit_0c", CaveExitController()),
         ("select_candle", PauseSelectController(want=B_ITEM_CANDLE)),
-        ("walk_28", HopWalkController(hops=WHITE_TO_28_HOPS, max_frames=8000)),
+        # Five containers since 0x2C, so the sword comes straight off the
+        # candle shop, through the two empty screens 0x1C and 0x1B.
+        # Tektites (0x0C, 0x1A), the 0x0A Lynel and 0x17-0x19's boulders hop
+        # and bounce off any straight line: on the ROM's own next frames.
+        ("white", _guarded(_defended(GatherWhiteController(hops=WHITE_FROM_0C_HOPS, waypoints={})))),
+        ("back_1a", _guarded(WhiteReturnController())),
+        ("walk_28", _guarded(HopWalkController(hops=WALK_1A_TO_28_HOPS, waypoints={}, max_frames=8000))),
         ("rupees_28", _defended(make_secret_rupee_controller(0x28))),
         ("exit_28", CaveExitController(clear=0)),
         (
@@ -1176,25 +1396,49 @@ def chain_stages() -> list[tuple[str, Any]]:
         ("exit_48", CaveExitController(clear=0)),
         ("heart_47", make_burn_47_controller()),
         ("exit_47", CaveExitController(clear=0)),
-        ("walk_white", HopWalkController(hops=WALK_47_TO_28_HOPS, waypoints={})),
-        ("white", _defended(GatherWhiteController(hops=WHITE_FROM_28_HOPS, waypoints={}))),
-        ("back_1a", WhiteReturnController()),
-        (
-            "walk_back_48",
-            HopWalkController(hops=BURN_WALK_HOPS, waypoints={}, max_frames=8000),
-        ),
-        ("rupees_5b", _defended(make_secret_rupee_controller(0x5B, RUPEES_5B_HOPS, 8000))),
-        ("exit_5b", CaveExitController(clear=0)),
+        # The walks the 10R caves used to own, with no corner table (0x6B's
+        # is for the climb from the coast, not the cave's exit).
+        ("walk_5b", _defended(HopWalkController(hops=RUPEES_5B_HOPS, waypoints={}, max_frames=8000))),
+        *gated(tree_5b, (
+            ("rupees_5b", _defended(make_secret_rupee_controller(0x5B))),
+            ("exit_5b", CaveExitController(clear=0)),
+        )),
         ("rupees_6b", _defended(make_secret_rupee_controller(0x6B, RUPEES_6B_HOPS, 4000))),
         ("exit_6b", CaveExitController(clear=0)),
-        ("rupees_56", _defended(make_secret_rupee_controller(0x56, RUPEES_56_HOPS, 10000))),
-        ("exit_56", CaveExitController(clear=0)),
-        ("ring", make_ring_controller(RING_FROM_56_HOPS)),
-        ("exit_ring", CaveExitController(clear=0)),
+        ("walk_56", _defended(HopWalkController(hops=RUPEES_56_HOPS, waypoints={}, max_frames=10000))),
+        *gated(tree_56, (
+            ("rupees_56", _defended(make_secret_rupee_controller(0x56))),
+            ("exit_56", CaveExitController(clear=0)),
+        )),
+        # 0x34 twice, around 0x62's 100R: the ring first when the wallet
+        # holds its 250, else the Bait first, so the 100R lands under the
+        # 255 cap and pays the ring on the way back. Same walk either way.
+        *gated(ring_first, (
+            ("ring", make_ring_controller(RING_FROM_56_HOPS)),
+            ("exit_ring", CaveExitController(clear=0)),
+        )),
+        *gated(ring_first.otherwise(), (
+            ("bait_first", _gather_bait(RING_FROM_56_HOPS)),
+            ("exit_bait_first", CaveExitController(clear=0)),
+        )),
         ("rupees_62", _defended(make_secret_rupee_controller(0x62, RUPEES_62_HOPS, 8000), evade=True)),
         ("exit_62", CaveExitController(clear=0)),
-        ("bait", make_bait_purchase_controller(hops=BAIT_FROM_62_HOPS)),
-        ("exit_bait", CaveExitController(clear=0)),
+        *gated(ring_first, (
+            ("bait", _gather_bait(BAIT_FROM_62_HOPS)),
+            ("exit_bait", CaveExitController(clear=0)),
+        )),
+        *gated(ring_first.otherwise(), (
+            ("ring_second", make_ring_controller(BAIT_FROM_62_HOPS)),
+            ("exit_ring_second", CaveExitController(clear=0)),
+        )),
+        # The old lady's potion on the way back past 0x64, once the letter
+        # and the wallet allow (keeping the pre-L2 bomb pack's price).
+        *[
+            (name, ctl)
+            for name, ctl, _max in potion_restock_stages(
+                RING_RETURN_HOPS, "gather", reserve=BOMB_SHOP_PRICE
+            )
+        ],
         (
             "ring_return",
             # The already-open 0x56 rupee cave sits beside a heart-drop lane.
@@ -1204,11 +1448,17 @@ def chain_stages() -> list[tuple[str, Any]]:
                 max_frames=14000,
                 waypoints={},
                 scoop_heal_radius=0,
+                resume_on_screen=True,
             ),
         ),
-        ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS[2:], waypoints={})),
-        ("pond_39_l1", PondFairyController()),
-        ("walk_37", HopWalkController(hops=L1_FROM_POND_HOPS, waypoints={})),
+        *gated(pond_l1, (
+            ("walk_pond_l1", HopWalkController(hops=L1_POND_HOPS[2:], waypoints={})),
+            ("pond_39_l1", PondFairyController()),
+            ("walk_37", HopWalkController(hops=L1_FROM_POND_HOPS, waypoints={})),
+        )),
+        *gated(pond_l1.otherwise(), (
+            ("walk_37_direct", HopWalkController(hops=L1_DIRECT_HOPS, waypoints={})),
+        )),
     ]
 
 

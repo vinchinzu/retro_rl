@@ -168,8 +168,8 @@ def test_gather_is_the_default_prefix_and_stops_on_the_l1_mouth() -> None:
     ] == "gather_l1_mouth_0x37"
     names = [name for name, _, _ in gather_stages()]
     assert names == [name for name, _ in chain_stages()]
-    assert names[0] == "exit_6f" and names[-1] == "walk_37"
-    assert names.index("ring") < names.index("walk_37")
+    assert names[0] == "exit_6f" and names[-1] == "walk_37_direct"
+    assert names.index("ring_second") < names.index("walk_37")
     assert all(limit > 0 for _, _, limit in gather_stages())
     l1 = [name for name, _, _ in gathered_level1_stages()]
     assert l1 == [
@@ -179,7 +179,6 @@ def test_gather_is_the_default_prefix_and_stops_on_the_l1_mouth() -> None:
         "clear72_key",
         "return73",
         "north",
-        "clear63",
         "clear53",
     ]
     assert gather_assist(0) is None
@@ -689,7 +688,6 @@ PINNED_SPINE_THROUGH: tuple[str, ...] = (
     "level6-entry",
     "level6-west",
     "level6-compass",
-    "level6-clear68",
     "level6-keese",
     "level6-clear58",
     "level6-room48",

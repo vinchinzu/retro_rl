@@ -56,11 +56,13 @@ from zelda_i.ram import (
     ADDR_CANDLE,
     ADDR_MAGIC_KEY,
     ZeldaSnapshot,
+    ow_secret_taken,
     read_snapshot,
     read_u8,
     room_item_taken,
 )
-from zelda_i.spine.hops import SpineHop
+from zelda_i.spine.hops import LatchedPlan, SpineHop, gated_stages
+from zelda_i.walk import live_env
 
 Stage = tuple[str, object, int]
 ControllerFactory = Callable[[], object]
@@ -82,8 +84,10 @@ def make_to_rupees_13_controller() -> HopWalkController:
 
 
 def make_warp_to_l6_door_controller() -> RecorderWarpController:
+    # 0x54 when the 0x44 bomb restock had nothing to buy: the walk stops
+    # under the shop and the skipped buy never climbs to it (n6_credits).
     return RecorderWarpController(
-        target_screen=0x22, launch_screen=0x44,
+        target_screen=0x22, launch_screen=0x44, also_launch=(0x54,),
         facing="UP", leave_intermediate_doors=True,
     )
 
@@ -102,9 +106,21 @@ def make_exit_rupees_13_controller() -> CaveExitController:
 
 def make_warp_to_l4_door_controller() -> RecorderWarpController:
     return RecorderWarpController(
-        target_screen=0x45, launch_screen=0x13,
+        target_screen=0x45, launch_screen=0x13, also_launch=(0x44, 0x54),
         leave_intermediate_doors=True,
     )
+
+
+def _rupees_13_l8_plan() -> LatchedPlan:
+    """0x13's rock on the L8 walk only if the L6 walk left it shut."""
+
+    def skip(snap: ZeldaSnapshot) -> str | None:
+        env = live_env.current()
+        if env is not None and ow_secret_taken(env.get_ram(), 0x13):
+            return "taken"
+        return None
+
+    return LatchedPlan("rupees_13_l8", skip)
 
 
 def make_to_potion_64_controller() -> HopWalkController:
@@ -173,11 +189,19 @@ def _entry_stages(
         walk = (
             ("level8_post_l7_to_shop", pond, pond.max_frames),
             *bomb_restock_stages(post_l7_hops, "l7", want=LEVEL8_BOMBS_WANTED),
-            _stage("level8_warp_to_l6_door", make_warp_to_l6_door_controller),
-            _stage("level8_walk_to_rupees_13", make_to_rupees_13_controller),
-            _stage("level8_select_bombs_13", make_select_bombs_for_13_controller),
-            _stage("level8_rupees_13", make_rupees_13_controller),
-            _stage("level8_exit_rupees_13", make_exit_rupees_13_controller),
+            # The L6-door warp is only the way to 0x13's rock. A wallet short
+            # on the L6 walk already took it there (n6_credits): then the
+            # L4-door warp blows from under the 0x44 shop instead.
+            *gated_stages(
+                _rupees_13_l8_plan(),
+                (
+                    ("level8_warp_to_l6_door", make_warp_to_l6_door_controller()),
+                    ("level8_walk_to_rupees_13", make_to_rupees_13_controller()),
+                    ("level8_select_bombs_13", make_select_bombs_for_13_controller()),
+                    ("level8_rupees_13", make_rupees_13_controller()),
+                    ("level8_exit_rupees_13", make_exit_rupees_13_controller()),
+                ),
+            ),
             _stage("level8_warp_to_l4_door", make_warp_to_l4_door_controller),
             _stage("level8_walk_to_potion_64", make_to_potion_64_controller),
             _stage("level8_buy_blue_potion_64", make_buy_blue_potion_64_controller),

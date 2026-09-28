@@ -5,12 +5,23 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M8 |
-| Best verified result | Clean power-on to the **credits** (Ganon, Zelda, "hero of Hyrule"): triforce `0xFF`, 15 containers, 334,763 frames, one continuous session, 0 RAM writes, 0 deaths, no health refill. The MP4 is that run's input replayed from power-on with 0 state loads, in sync on every frame |
+| Best verified result | Clean power-on to the **credits** in **312,940 frames** (`n9_credits`, 2026-09-28): triforce `0xFF`, **16 containers** (every heart container: 0x2C's take-any gives the heart now), one continuous session, 0 RAM writes, 0 deaths, no health refill. 21,823 frames under `clean_poweron_c12` (334,763) |
 | Last verification | 2026-09-28 |
 | Runtime class | Bronze |
 | Intervention class | Clean (recording); the live policy uses ROM rollout lookahead, allowed for development (owner ruling 2026-09-28) |
-| Evidence | [clean_poweron_c12.json](../recordings/clean_poweron_c12.json) (`run_survival_spine.py --clean --through level9-credits`): `ok=True`, `resumed_from` null, no assist, 0 inventory/progression writes, `set_state=21164` = `rollout_restores=21164` (lookahead restores to the live frame), 0 other loads. Recording: [clean_poweron_c12_replay.mp4](../recordings/clean_poweron_c12_replay.mp4) from [clean_poweron_c12_replay.json](../recordings/clean_poweron_c12_replay.json) (`replay_tape.py`): 334,763 frames, 0 desynced, 0 loads, 0 writes, 11.6x real time. Previous gate: [clean_poweron98.json](../recordings/clean_poweron98.json) through L8. |
+| Evidence | [n9_credits.json](../recordings/n9_credits.json) (`run_survival_spine.py --clean --through level9-credits --save-points N9`): `ok=True`, `resumed_from` null, no assist, 0 inventory/progression writes, `set_state=31026` = `rollout_restores=31026`, 0 other loads. Recording: [n9_credits_replay.mp4](../recordings/n9_credits_replay.mp4) from [n9_credits_replay.json](../recordings/n9_credits_replay.json) (`replay_tape.py`): 312,940 frames, 0 desynced, 0 loads, 0 writes, 11.7x real time. Previous gate: [clean_poweron_c12.json](../recordings/clean_poweron_c12.json) (334,763f, 15 containers) and its replay MP4. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
+
+## 2026-09-28 (later): the credits 21,823 frames sooner, every heart taken
+
+`n9_credits` plays power-on to the credits in 312,940 frames (c12: 334,763)
+with 16 containers. The gathering takes 0x2C's heart and buys the potion at
+0x0D's shop, gets the White Sword straight off the candle through Lost
+Hills, and skips pond trips at full health; the coast hunt, the NE tektite
+screens and the White Sword leg run under `PolicyGuard`. Nine dungeon clears
+whose exits are open or keyed and whose rooms hold nothing the route takes
+are walked alive (L4 0x20 alone 7,496f -> 370f). Details and milestones:
+[PRE_L1.md](PRE_L1.md). L3's 0x4D is the slowest room left (11,821f).
 
 ## 2026-09-28: Clean power-on to the credits, recorded from its own tape
 

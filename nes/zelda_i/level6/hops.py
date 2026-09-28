@@ -9,11 +9,9 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.anchors import SCREEN_BRACELET_ARMOS, TF_BIT_L5
 from zelda_i.dungeon.door_hop import DoorHopSpec, door_hop_stages, door_hop_success
 from zelda_i.level6.dungeon import (
-    LEVEL6_COMPASS_BIT,
     ROOM_19_SPEC,
     ROOM_38_SPEC,
     ROOM_58_SPEC,
-    ROOM_68_SPEC,
     ROOM_78_SPEC,
 )
 from zelda_i.dungeon.pause_select import B_SLOT_BOMBS, PauseSelectController
@@ -34,6 +32,7 @@ from zelda_i.overworld.cave_shop import (
     restock_item,
 )
 from zelda_i.overworld.graph import ScreenHop
+from zelda_i.rollout import PolicyGuard
 from zelda_i.overworld.magical_sword import magical_sword_stages
 from zelda_i.level6.overworld import (
     LEVEL6,
@@ -73,7 +72,7 @@ from zelda_i.ram import (
     read_snapshot,
     read_u8,
 )
-from zelda_i.spine.hops import SpineHop, fight_stage, gated_stages, play_ready, ready
+from zelda_i.spine.hops import LatchedPlan, SpineHop, fight_stage, gated_stages, play_ready, ready
 
 __all__ = [
     "l6_prefix",
@@ -324,23 +323,16 @@ def _potion_33_stages(rem_hops: tuple[ScreenHop, ...]):
     )
 
 
-@dataclass
-class _Rupees13Plan:
+def _rupees_13_plan() -> LatchedPlan:
     """0x13's 30R rock only when the wallet cannot cover the L6 walk's buys.
 
     It cost 5.5 hearts in 917 frames on c9_from_coast, whose wallet reached
     L6 with 36R after both buys: the coast hearts' drops had already paid.
     """
-
-    active: bool | None = None
-    reason: str = ""
-
-    def decide(self, snap: ZeldaSnapshot) -> bool:
-        if self.active is None:
-            if int(snap.rupees) >= L6_WALK_BUYS:
-                self.reason = f"wallet_{int(snap.rupees)}"
-            self.active = not self.reason
-        return bool(self.active)
+    return LatchedPlan(
+        "rupees_13",
+        lambda snap: f"wallet_{int(snap.rupees)}" if int(snap.rupees) >= L6_WALK_BUYS else None,
+    )
 
 
 def _entry_stages():
@@ -361,7 +353,7 @@ def _entry_stages():
             POST_L5_PATH_MAX_FRAMES,
         ),
         *gated_stages(
-            _Rupees13Plan(),
+            _rupees_13_plan(),
             (
                 (
                     "walk_to_cave_13",
@@ -434,17 +426,12 @@ def l6_prefix(env, *, require_prior_tf: bool = True) -> tuple[SpineHop, ...]:
             ok6(screen=LEVEL6_COMPASS_ROOM, **tf5),
             name="level6_north_0x68",
         ),
-        fight_hop(
-            "level6-clear68",
-            "level6_clear_0x68",
-            ROOM_68_SPEC,
-            compass_bit=LEVEL6_COMPASS_BIT,
-            **tf5,
-        ),
+        # 0x68's N door is open and its clear only pays the compass (538f on
+        # clean_poweron_c12): walk through it on the ROM's next frames.
         one_hop(
             "level6-keese",
             "level6_keese_0x58",
-            make_north_58_controller,
+            lambda: PolicyGuard(make_north_58_controller(), trigger_radius=64),
             ok6(screen=LEVEL6_KEESE_ROOM, **tf5),
             name="level6_north_0x58",
         ),

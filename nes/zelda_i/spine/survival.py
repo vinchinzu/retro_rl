@@ -13,13 +13,11 @@ from typing import Any
 
 from zelda_i.route.chain import (
     CLEAR_53_MAX_FRAMES,
-    CLEAR_63_MAX_FRAMES,
     FIRST_KEY_MAX_FRAMES,
     NAV_MAX_FRAMES,
     UNLOCK_NORTH_MAX_FRAMES,
     ControllerStageResult,
     Level1Clear53Controller,
-    Level1Clear63Controller,
     Level1FirstKeyController,
     Level1UnlockNorthController,
     boot_to_ready,
@@ -28,6 +26,9 @@ from zelda_i.route.chain import (
 )
 from retro_harness.env import read_state_bytes, save_state, state_path
 from zelda_i.assist import LastHeartAssist, UnlimitedHealthAssist
+from zelda_i.level1.clear import Level1Clear53Phase
+from zelda_i.level1.finish import L1_GUARD_RADIUS
+from zelda_i.rollout import PolicyGuard
 from zelda_i.paths import GAME, GAME_DIR
 from zelda_i.overworld.gather_segments import chain_stages as gather_chain_stages
 from zelda_i.overworld.nav import NavPhase, OverworldToLevel1Controller
@@ -861,8 +862,18 @@ def gathered_level1_stages() -> tuple[tuple[str, Any, int], ...]:
         ("first_key", Level1FirstKeyController(), FIRST_KEY_MAX_FRAMES),
         *level1_west_key_stages(),
         ("north", Level1UnlockNorthController(), UNLOCK_NORTH_MAX_FRAMES),
-        ("clear63", Level1Clear63Controller(), CLEAR_63_MAX_FRAMES),
-        ("clear53", Level1Clear53Controller(), CLEAR_53_MAX_FRAMES),
+        # 0x63's N door is open and its Stalfos guard nothing (1,410f on
+        # clean_poweron_c12): 0x53's walk across it goes on the ROM's frames.
+        (
+            "clear53",
+            PolicyGuard(
+                Level1Clear53Controller(),
+                trigger_radius=L1_GUARD_RADIUS,
+                when=lambda ctl, _snap: ctl.phase
+                in (Level1Clear53Phase.ROUTE_NORTH, Level1Clear53Phase.ENTER_NORTH),
+            ),
+            CLEAR_53_MAX_FRAMES,
+        ),
     )
 
 

@@ -299,9 +299,15 @@ def test_pre_l1_stages_are_sword_then_walk_then_topup_then_buy() -> None:
     stages = pre_l1_stages()
     assert len(stages) == 4
     sword_name, sword_ctl, sword_max = stages[0]
-    walk_name, walk_ctl, walk_max = stages[1]
-    topup_name, topup_ctl, topup_max = stages[2]
+    walk_name, walk_guard, walk_max = stages[1]
+    topup_name, topup_guard, topup_max = stages[2]
     buy_name, buy_ctl, _ = stages[3]
+    # The coast hunt and its top-up play on the ROM's next frames near a body.
+    from zelda_i.rollout import PolicyGuard
+
+    assert isinstance(walk_guard, PolicyGuard) and isinstance(topup_guard, PolicyGuard)
+    assert walk_guard.trigger_radius and topup_guard.trigger_radius
+    walk_ctl, topup_ctl = walk_guard.inner, topup_guard.inner
     assert topup_name == "bomb_topup"
     assert topup_ctl.shop_screen == 0x6F and topup_ctl.price == 20
     assert topup_ctl.hunter is not None

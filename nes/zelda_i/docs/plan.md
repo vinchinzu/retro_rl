@@ -2,13 +2,14 @@
 
 ## Now: the credits tape, faster and cheaper (2026-09-28)
 
-C11 is green. `clean_poweron_c12` plays power-on to the credits in one
-session (334,763 frames, TF `0xFF`, no refill, no RAM write, no death). Its
+C11 is green and faster. `n9_credits` plays power-on to the credits in one
+session in 312,940 frames (c12: 334,763) with all 16 containers, no refill,
+no RAM write, no death (rr-1zbz: heart-first gathering, guarded coast / NE /
+White Sword legs, rupee scoop, nine clears walked instead of fought). Its
 only state loads are rollout lookahead restores, which the owner allowed for
-development on 2026-09-28. The MP4 is that run's button tape replayed from
-power-on with no lookahead (`scripts/replay_tape.py`). The replay makes no
-load and no write, its system RAM is checked every frame, and it encodes at
-about 12x real time. Numbers: [STATUS.md](STATUS.md).
+development on 2026-09-28. The MP4 is the run's button tape replayed from
+power-on with no lookahead (`scripts/replay_tape.py`). Numbers:
+[STATUS.md](STATUS.md), [PRE_L1.md](PRE_L1.md).
 
 ### Next, in order
 
@@ -57,24 +58,25 @@ A rung is green once one power-on `--clean` run reaches it.
 
 ## The Gathering (route order)
 
-Zelda Dungeon calls this The Gathering. Order:
+Zelda Dungeon calls this The Gathering. Order (rr-1zbz, 2026-09-28):
 
 1. Wooden sword on `0x77`.
 2. South-coast walk to bombs at `0x6F`. Stop when `ADDR_BOMBS >= 1`.
-3. Heart at `0x7B`, the 0x39 pond, then **the red potion** at the `0x2C`
-   take-any (left item, (88,149); 2026-09-25, was the container).
-4. Northeast cluster: 30R `0x2D`, 100R `0x0F`, letter `0x0E`, candle `0x0C`,
-   30R `0x28`.
-5. Burn row before the sword: 30R `0x48`, heart `0x47` (5 containers), back
-   up the x=120 cut to `0x28`, White Sword `0x0A`, back down to `0x48`.
-6. Blue Ring at `0x34`, paid by the hidden rupee caves (`0x5B`, `0x6B`,
-   `0x56`); 0x62's 100R after it buys Bait at `0x34`. Arrows are bought
-   after L4, and 0x67 funds Level 9's second bomb pack.
-7. The 0x39 pond again, then the Level 1 mouth at `0x37` with 5 containers
-   and usually one potion charge.
-
-The 18909f wooden-sword oracle is historical; the gathered Clean L1
-Triforce (`clean_poweron64`) replaces it as the M5 evidence.
+3. Heart at `0x7B`. The 0x39 pond only with a heart or more missing, else
+   straight up column B. **The heart** at the `0x2C` take-any (right item):
+   every take-any heart is taken, for 100%.
+4. Northeast cluster: 30R `0x2D`, 100R `0x0F`, letter `0x0E`, a blue potion
+   at `0x0D`'s bombed shop (the old lady; needs the letter, a bomb and
+   100R), candle `0x0C`.
+5. White Sword straight off the candle: `0x1C` -> Lost Hills `0x1B` ->
+   `0x1A` -> `0x0A`, then row 1 west over the boulders to `0x27`, 30R
+   `0x28`, 30R `0x48`, heart `0x47` (6 containers). This leg runs under
+   `PolicyGuard`.
+6. 10R `0x5B` and `0x56` only while the ring is short; 100R `0x6B`. `0x34`
+   twice around `0x62`'s 100R: the ring first when the wallet holds 250,
+   else Bait first and the ring on the way back. A `0x64` potion restock
+   on the return when the wallet allows.
+7. The 0x39 pond again only when hurt, then the Level 1 mouth at `0x37`.
 
 ```bash
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-infinite-life --no-video --trials 1   # gather → L1 TF

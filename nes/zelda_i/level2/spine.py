@@ -30,9 +30,9 @@ from zelda_i.level2.dungeon import (
     ROOM_4F_SPEC,
     ROOM_6C_SPEC,
     ROOM_6D_SPEC,
-    ROOM_6E_SPEC,
     ROOM_6F_SPEC,
     ROOM_7E_SPEC,
+    ROOM_L2_BOMB_N,
     ROOM_L2_BOOM_CANDIDATE,
     ROOM_L2_COMPASS,
     ROOM_L2_EAST_KEY,
@@ -45,6 +45,7 @@ from zelda_i.dungeon.hop_controller import (
     DEATH_MODE,
     HopController,
     dungeon_align_then_push,
+    lattice_door_step,
     lattice_goto,
 )
 from zelda_i.overworld.common import (
@@ -56,6 +57,7 @@ from zelda_i.overworld.common import (
     unstick_wiggle,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.rollout import PolicyGuard
 from zelda_i.walk.physics import OccupancyWalker
 
 DOOR_X = 120
@@ -102,14 +104,6 @@ ROOM_6C_SPINE_SPEC = replace(
             (168, 141),
         ),
         reward_while_live=True,
-    ),
-)
-ROOM_6E_SPINE_SPEC = replace(
-    ROOM_6E_SPEC,
-    spec_id="level2_room6e_ropes_spine",
-    combat=replace(
-        ROOM_6E_SPEC.combat,
-        engage_distance=28,
     ),
 )
 # Bow-splice l6_gohma_bow_v3 leftover 0x6f (96,117) north of diamonds.
@@ -368,50 +362,6 @@ class Level2WestEnter6eController(L2NavBase):
 
 
 @dataclass
-class Level2Clear6eController:
-    """Clear 3 ropes. Isolated ``_clear_6e_keep_mid``: idle, then FIGHT.
-
-    Keep-mid matches the 2/2 script (x<56 / y<105 / y>185) only after the
-    120f settle so west-door knockback does not lock DOWN at (88, 93).
-    """
-
-    inner: GenericDungeonRoomController = field(
-        default_factory=lambda: GenericDungeonRoomController(ROOM_6E_SPINE_SPEC)
-    )
-    settle_frames: int = 0
-    settle_max: int = 120
-
-    def __post_init__(self) -> None:
-        self.inner.phase = DungeonPhase.FIGHT
-
-    def step(self, snap: ZeldaSnapshot) -> FrameAction:
-        if snap.mode == PLAY_MODE and snap.screen == ROOM_L2_EAST_OF_ROPES:
-            if self.settle_frames < self.settle_max:
-                self.settle_frames += 1
-                return FrameAction(nes_idle_action(), "settle_6e")
-            if snap.link_x < 40:
-                return FrameAction(nes_action("RIGHT"), "keep_mid_x")
-            if snap.link_y > 195:
-                return FrameAction(nes_action("UP"), "keep_mid_s")
-        return self.inner.step(snap)
-
-    @property
-    def success(self) -> bool:
-        return self.inner.success
-
-    @property
-    def phase(self):
-        return self.inner.phase
-
-    @property
-    def spec(self):
-        return self.inner.spec
-
-    def report(self) -> dict[str, Any]:
-        return self.inner.report()
-
-
-@dataclass
 class Level2Enter6fKeyController(L2NavBase):
     """0x6e key door RIGHT → 0x6f, over the ROM lattice. Fails when keys==0.
 
@@ -561,6 +511,11 @@ class Level2Clear4fController:
             return self._stand("hurt_freeze")
         if snap.mode != PLAY_MODE:
             return self._stand(f"wait_mode_{snap.mode}")
+        if snap.screen == ROOM_L2_BOMB_N:
+            # A knockback through the bombed wall: back up it on the lattice.
+            # Standing here let 0x5F's wave take four hearts (n5_credits).
+            step = lattice_door_step(None, snap, "UP")
+            return FrameAction(nes_action(step or "UP"), "return_to_0x4f")
         if snap.screen != ROOM_L2_BOOM_CANDIDATE:
             return self._stand(f"wait_room_0x{snap.screen:02x}")
 
@@ -653,10 +608,12 @@ def level2_to_boom_stages():
             Level2WestEnter6eController(),
             ENTER_6E_WEST_MAX_FRAMES,
         ),
-        ("clear6e", Level2Clear6eController(), ROOM_6E_SPINE_SPEC.max_frames),
+        # 0x6E's E door is a key door and it holds no item: its three ropes
+        # need not die (1,734f on clean_poweron_c12, 4,504f on n3_credits).
+        # The walk to the door goes on the ROM's own next frames instead.
         (
             "enter_6f_key",
-            Level2Enter6fKeyController(),
+            PolicyGuard(Level2Enter6fKeyController(), trigger_radius=64),
             ENTER_6F_KEY_MAX_FRAMES,
         ),
         (
@@ -682,13 +639,11 @@ __all__ = [
     "Clear4fPhase",
     "Level2BacktrackTo7dController",
     "Level2Clear4fController",
-    "Level2Clear6eController",
     "Level2Enter6fKeyController",
     "Level2NavPhase",
     "Level2RoomWalkController",
     "Level2WestEnter6eController",
     "ROOM_6C_SPINE_SPEC",
-    "ROOM_6E_SPINE_SPEC",
     "ROOM_6F_SPINE_SPEC",
     "ROOM_7E_SPINE_SPEC",
     "level2_boom_success",

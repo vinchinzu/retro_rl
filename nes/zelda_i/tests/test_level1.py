@@ -298,6 +298,6 @@ def test_legacy_prefix_takes_the_west_key_after_the_first() -> None:
     from zelda_i.spine import survival
 
     names = [name for name, _, _ in survival.level1_after_first_key_stages()]
-    assert names == ["enter72", "clear72_key", "return73", "north", "clear63", "clear53"]
+    assert names == ["enter72", "clear72_key", "return73", "north", "clear53"]
     src = inspect.getsource(survival.run_survival_spine)
     assert 'milestone="first_key"' in src

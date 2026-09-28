@@ -1,9 +1,66 @@
-# Zelda I sitting residual — Clean credits and its recording (2026-09-28)
+# Zelda I sitting residual — faster, richer gathering (2026-09-28, rr-1zbz)
 
-`rr-npv.5` is closed. Clean power-on to the credits is green, and the MP4 is
-the run's own input replayed with no lookahead. Next work is `rr-yzb4`
-(lookahead at real time) and `rr-ax52` (Level 9 health); see
-[plan.md](plan.md).
+Owner ask: cut wasted frames, more rupees in the gathering, take 0x2C's
+heart (100%) and buy the potion from the old lady, walk through Peahats
+when the hearts allow, no needless pond trips, no downstream breakage.
+Credits gate before this sitting: `clean_poweron_c12` (334,763f).
+
+## What changed
+
+- **Gathering route** (`overworld/gather_segments.py`, plan.md order): every
+  take-any heart; blue potion at 0x0D's bombed shop (rock (144,80), stand
+  (144,85) UP) on the candle walk; White Sword straight off the candle via
+  0x1C -> Lost Hills 0x1B -> 0x1A; 0x28/0x48/0x47 after it; pond trips and
+  10R caves are `LatchedPlan` branches; 0x34's ring and Bait swap order on
+  the wallet (`ring_first`).
+- **ROM-guarded stretches**: `PolicyGuard(trigger_radius=64)` on the coast
+  hunt, the NE tektite screens and the White Sword leg (tektites, the 0x0A
+  Lynel, 0x17-0x19 boulders). `PolicyGuard(when=...)` guards only a fight
+  stage's walk in. The 0x0A Lynel wait is 150f at 4+ hearts (was 900).
+- **Rupees**: `common.RupeeScoop` on every overworld walk.
+- **Peahats**: `hunt.walks_through` at 3+ hearts.
+- **Dungeon clears that bought nothing** (door table): L1 0x63/0x52/0x43,
+  L2 0x6E, L4 0x20/0x50/0x30, L6 0x68 are walked alive
+  (`door_hop.RoomTransitController`, guarded). L4 0x20 alone: 7,496f -> 370f.
+  L6's 160f census settles are 20f.
+- **Stall bugs the new timings exposed**: the 0x55 raft and 0x7C's secret
+  rock counted as bodies (`combat.NON_COMBATANT_TYPES`); L1 0x52 hand walk
+  flip (now `room_step`); L2 0x4F knockback into 0x5F idled to death; L8's
+  warp assumed the 0x44 restock had walked Link up, and its 0x13 leg assumed
+  the L6 walk had left the rock shut.
+
+## Result: `n9_credits`, continuous Clean power-on to the credits
+
+`run_survival_spine.py --clean --through level9-credits --save-points N9`:
+`ok=True`, **312,940 frames** (c12: 334,763; -21,823, -6.5%), `resumed_from`
+null, no assist, 0 RAM writes, `set_state=31026` = `rollout_restores`, TF
+`0xFF`, **16 containers** (every heart container; c12 had 15), 137.8h
+damage (c12 150.8h). Stage wall time 1,116 s (4.7x real time).
+
+| Milestone | c12 | n9 | delta |
+|---|---:|---:|---:|
+| White Sword | 37,358 | 25,006 | -12,352 |
+| Level 1 mouth | 62,115 | 55,347 | -6,768 |
+| L2 Triforce | 98,699 | 91,486 | -7,213 |
+| L3 Triforce | 121,400 | 121,559 | +159 |
+| L4 Triforce | 157,020 | 144,476 | -12,544 |
+| L5 Triforce | 211,047 | 192,815 | -18,232 |
+| L7 leave | 269,767 | 252,380 | -17,387 |
+| Credits | 334,763 | 312,940 | -21,823 |
+
+The gathering needed no pond trip (the guarded coast hunt ends at 3/3).
+Rupee drops left behind, to f180k: 33 (n4) against 55 (c12).
+
+## Leftover (next)
+
+- **L3 0x4D** is the slowest room now: 11,821f and 5,308 flutter frames in
+  one visit (Manhandla); it ate the L3 gain (+159f at the L3 Triforce).
+- Flutter is still ~5% of frames (0x59, 0x6F, 0x28, 0x7A on the overworld).
+- 100% items: L1's boomerang (`rr-07wt`) and the maps/compasses the skipped
+  clears no longer collect (L1 0x43 map, L6 0x68 compass).
+- Wall time: the guarded gathering stages run at ~1x real time; the whole
+  run at 4.7x. `rr-yzb4` (L9 guards below real time) is unchanged.
+
 
 ## Owner ruling: lookahead is allowed for development
 

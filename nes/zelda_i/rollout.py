@@ -78,12 +78,18 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Iterator, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 import numpy as np
 
 from retro_harness.nes import nes_action
-from zelda_i.combat import chebyshev, heart_value, live_enemies
+from zelda_i.combat import (
+    FLOOR_DROP_TYPES,
+    NON_COMBATANT_TYPES,
+    chebyshev,
+    heart_value,
+    live_enemies,
+)
 from zelda_i.ram import PLAY_MODE, ZeldaSnapshot, read_snapshot
 
 __all__ = [
@@ -101,6 +107,7 @@ __all__ = [
     "PolicyGuard",
     "Rollout",
     "RolloutEvader",
+    "hazard_within",
     "hold",
     "in_play",
     "press",
@@ -750,6 +757,28 @@ POLICY_GUARD_HORIZON = 24
 POLICY_GUARD_DETOURS = (4, 8, 16)
 POLICY_GUARD_DIRECTIONS = ("UP", "DOWN", "LEFT", "RIGHT")
 
+def hazard_within(snap: ZeldaSnapshot, radius: int) -> bool:
+    """Any live slot (body or shot) within ``radius`` Chebyshev of Link.
+
+    The gate a guard reads before it buys a rollout: a subtraction per slot.
+    Shots count (a boulder or a spit carries hp 0), floor drops and the
+    ``combat.NON_COMBATANT_TYPES`` (boulder generator, raft, ladder, secret
+    rock/tree tile objects) do not.
+    """
+    lx, ly = int(snap.link_x), int(snap.link_y)
+    for obj in snap.objects:
+        kind = int(obj.type_id)
+        if (
+            obj.slot < 1
+            or kind in (0, 0xFF)
+            or kind in FLOOR_DROP_TYPES
+            or kind in NON_COMBATANT_TYPES
+        ):
+            continue
+        if chebyshev(lx, ly, int(obj.x), int(obj.y)) <= radius:
+            return True
+    return False
+
 
 class PolicyGuard:
     """Follow ``inner`` unless the ROM says its own next frames get Link hit.
@@ -762,6 +791,11 @@ class PolicyGuard:
     are rolled the same way; the first clean one -- else the one hit latest
     -- is committed if it beats staying on the inner's plan. Detour frames
     do not step ``inner``, so its phases and clocks see only its own frames.
+
+    ``trigger_radius`` gates the self-roll on a live slot within that many
+    px (``hazard_within``); ``None`` rolls every play frame. ``when(inner,
+    snap)`` limits the guard to the inner's phases it names (the walk into
+    a fight room, not the fight).
     """
 
     def __init__(
@@ -771,12 +805,17 @@ class PolicyGuard:
         horizon: int = POLICY_GUARD_HORIZON,
         detours: Sequence[int] = POLICY_GUARD_DETOURS,
         directions: Sequence[str] = POLICY_GUARD_DIRECTIONS,
+        trigger_radius: int | None = None,
+        when: Callable[[Any, ZeldaSnapshot], bool] | None = None,
     ) -> None:
         self.inner = inner
         self.horizon = int(horizon)
         self.detours = tuple(int(k) for k in detours)
         self.directions = tuple(directions)
+        self.trigger_radius = trigger_radius
+        self.when = when
         self.max_frames = int(getattr(inner, "max_frames", 0))
+        self.quiet = 0
         self.checks = 0
         self.detours_taken = 0
         self.detour_frames = 0
@@ -871,6 +910,11 @@ class PolicyGuard:
             return self._inner_step(snap)
         if not in_play(snap) or self.success or self.failed:
             return self._inner_step(snap)
+        if self.when is not None and not self.when(self.inner, snap):
+            return self._inner_step(snap)
+        if self.trigger_radius is not None and not hazard_within(snap, self.trigger_radius):
+            self.quiet += 1
+            return self._inner_step(snap)
         self.checks += 1
         base = self._contact(())
         if base is None:
@@ -898,6 +942,7 @@ class PolicyGuard:
         if isinstance(rep, dict):
             rep = dict(rep)
             rep["policy_guard"] = {
+                "quiet": self.quiet,
                 "checks": self.checks,
                 "detours": self.detours_taken,
                 "detour_frames": self.detour_frames,

@@ -44,13 +44,13 @@ from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.shop_p7 import SHOP_P7_HOPS
 from zelda_i.overworld.zd_map import mirror_screen_hops
 from zelda_i.ram import CAVE_MODE, PLAY_MODE, ZeldaSnapshot
-from zelda_i.spine.hops import gated_stages
+from zelda_i.spine.hops import LatchedPlan, gated_stages
 
 __all__ = [
+    "coast_heart_plan",
+    "grave_plan",
     "COAST_BACK_HOPS",
     "COAST_TO_5F_HOPS",
-    "CoastHeartPlan",
-    "GravePlan",
     "GraveSwordController",
     "LadderHeartController",
     "RaftRideController",
@@ -119,42 +119,34 @@ def _coast_back_hops() -> tuple[ScreenHop, ...]:
 COAST_BACK_HOPS: tuple[ScreenHop, ...] = _coast_back_hops()
 
 
-@dataclass
-class CoastHeartPlan:
+def coast_heart_plan() -> LatchedPlan:
     """Decided once, on the detour's first frame; every leg reads it."""
 
-    active: bool | None = None
-    reason: str = ""
+    def skip(snap: ZeldaSnapshot) -> str | None:
+        if not snap.ladder or not snap.raft:
+            return "no_ladder_or_raft"
+        if snap.heart_containers + 1 >= SWORD_CONTAINERS:
+            return "containers_enough"
+        if snap.level != 0 or snap.screen != RUPEES_67_SCREEN:
+            return f"not_from_0x{RUPEES_67_SCREEN:02x}"
+        return None
 
-    def decide(self, snap: ZeldaSnapshot) -> bool:
-        if self.active is None:
-            if not snap.ladder or not snap.raft:
-                self.reason = "no_ladder_or_raft"
-            elif snap.heart_containers + 1 >= SWORD_CONTAINERS:
-                self.reason = "containers_enough"
-            elif snap.level != 0 or snap.screen != RUPEES_67_SCREEN:
-                self.reason = f"not_from_0x{RUPEES_67_SCREEN:02x}"
-            self.active = not self.reason
-        return bool(self.active)
+    return LatchedPlan("coast_hearts", skip)
 
 
-@dataclass
-class GravePlan:
+def grave_plan() -> LatchedPlan:
     """The L6 walk turns into 0x21 only with 12 containers and no sword yet."""
 
-    active: bool | None = None
-    reason: str = ""
+    def skip(snap: ZeldaSnapshot) -> str | None:
+        if snap.sword >= MAGICAL_SWORD:
+            return "sword_owned"
+        if snap.heart_containers < SWORD_CONTAINERS:
+            return f"containers_{snap.heart_containers}"
+        if snap.level != 0 or snap.screen not in GRAVE_FROM_SCREENS:
+            return f"not_from_0x{snap.screen:02x}"
+        return None
 
-    def decide(self, snap: ZeldaSnapshot) -> bool:
-        if self.active is None:
-            if snap.sword >= MAGICAL_SWORD:
-                self.reason = "sword_owned"
-            elif snap.heart_containers < SWORD_CONTAINERS:
-                self.reason = f"containers_{snap.heart_containers}"
-            elif snap.level != 0 or snap.screen not in GRAVE_FROM_SCREENS:
-                self.reason = f"not_from_0x{snap.screen:02x}"
-            self.active = not self.reason
-        return bool(self.active)
+    return LatchedPlan("magical_sword", skip)
 
 
 @dataclass
@@ -300,7 +292,7 @@ class TakeAnyHeartController(_ContainerStage):
 
 def coast_heart_stages() -> tuple[tuple[str, Any, int], ...]:
     """0x67 -> ladder heart 0x5F -> raft heart 0x2F -> 0x4A. Skips as one."""
-    plan = CoastHeartPlan()
+    plan = coast_heart_plan()
     legs: tuple[tuple[str, Any], ...] = (
         ("walk_coast_5f", HopWalkController(hops=COAST_TO_5F_HOPS, max_frames=16000)),
         ("ladder_heart_5f", LadderHeartController()),
@@ -371,7 +363,7 @@ class GraveSwordController:
 
 def magical_sword_stages() -> tuple[tuple[str, Any, int], ...]:
     """0x33/0x32 -> 0x21 grave -> Magical Sword -> back to 0x32. Skips as one."""
-    plan = GravePlan()
+    plan = grave_plan()
     legs: tuple[tuple[str, Any], ...] = (
         ("walk_grave_21", HopWalkController(hops=TO_GRAVE_HOPS, max_frames=6000)),
         ("magical_sword_21", GraveSwordController()),
