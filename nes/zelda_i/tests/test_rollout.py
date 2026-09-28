@@ -389,3 +389,53 @@ def test_walk_that_runs_out_of_frames_is_not_reached(monkeypatch) -> None:
     plan, _, reached = Rollout(env).walk([(40, 100)], frames=3, tol=0)
     assert not reached and plan == (LEFT, LEFT, LEFT)
     assert em.ram is em.base
+
+
+class _Walker:
+    """A hand controller that always walks RIGHT and counts its real steps."""
+
+    max_frames = 50
+    success = False
+    failed = False
+
+    def __init__(self) -> None:
+        self.steps = 0
+
+    def step(self, snap):
+        from retro_harness.input_script import FrameAction
+
+        self.steps += 1
+        return FrameAction(list(RIGHT), "walk_right")
+
+
+def _hit_ram() -> np.ndarray:
+    from zelda_i.ram import ADDR_LINK_IFRAMES
+
+    ram = _ram(x=104)
+    ram[ADDR_LINK_IFRAMES] = 24
+    return ram
+
+
+def test_policy_guard_follows_the_inner_plan_when_the_rom_says_it_is_clean() -> None:
+    from zelda_i.ram import read_snapshot
+    from zelda_i.rollout import PolicyGuard
+
+    env, em = _env({RIGHT: [_ram(x=102), _ram(x=104)]})
+    guard = PolicyGuard(_Walker(), horizon=6, detours=(4,), directions=("UP",))
+    guard.bind_env(env)
+    act = guard.step(read_snapshot(env.get_ram()))
+    assert tuple(act.action) == RIGHT and guard.inner.steps == 1
+    assert em.ram is em.base
+
+
+def test_policy_guard_detours_without_stepping_the_inner_when_its_plan_is_hit() -> None:
+    from zelda_i.ram import read_snapshot
+    from zelda_i.rollout import PolicyGuard
+
+    env, em = _env({RIGHT: [_ram(x=102), _hit_ram()], UP: [_ram(y=98)] * 6})
+    guard = PolicyGuard(_Walker(), horizon=6, detours=(4,), directions=("UP",))
+    guard.bind_env(env)
+    act = guard.step(read_snapshot(env.get_ram()))
+    assert tuple(act.action) == UP and guard.inner.steps == 0
+    assert len(guard._queue) == 3 and guard.detours_taken == 1
+    assert em.ram is em.base

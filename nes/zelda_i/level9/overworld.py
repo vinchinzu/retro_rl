@@ -16,7 +16,7 @@ from typing import Any
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import BOMB_DROP_OBJECT_TYPE, BOMB_DROP_STATES
-from zelda_i.dungeon.hop_controller import ow_edge_band_step
+from zelda_i.dungeon.hop_controller import ow_edge_band_step, room_step
 from zelda_i.dungeon.pause_select import PauseSelectController
 from zelda_i.level9.dungeon import (
     BOMBS_NOT_NATURAL,
@@ -727,6 +727,15 @@ class Level9PostL8OverworldController(OverworldPathController):
             return self._swing("LEFT", "5a_walk_left_0x59")
 
         if snap.screen == 0x59 and hop.target == 0x58:
+            # 0x59 is a cross: the x 112-128 corridor from 0x49 (y 61-221)
+            # and the y 117-157 band out west. The hand walk below overshot
+            # down the corridor and held LEFT against its wall at
+            # (112,165..205) for 6500 frames under Zora fire (9 hearts, real
+            # C10 resume CL9A). The lattice to the band's west edge covers
+            # the 0x5A arrival (y=141) and the 0x49 one alike.
+            step = ow_edge_band_step(None, snap, "LEFT", 137, 145)
+            if step is not None:
+                return self._swing(step, "59_west_lattice")
             # The direct walk arrives from 0x5A at y=141. The bomb-shop
             # return arrives from 0x49 at (112,61), above the west passage;
             # first descend through the center opening. Do not descend to
@@ -810,6 +819,12 @@ class Level9PostL8OverworldController(OverworldPathController):
             return self._swing("UP", "38_north_0x28")
 
         if snap.screen == 0x27 and hop.target == 0x17:
+            # ROM lattice first: a PolicyGuard detour left Link east of the
+            # x=144 mouth after the latch below, and UP pressed the mountain
+            # from x 176-224 until the 12000f cap (C11Evalo6).
+            step = ow_edge_band_step(None, snap, "UP", 140, 148)
+            if step is not None:
+                return self._swing(step, "27_lattice")
             # Same latch bug as 0x38 (see _cleared_38_bridge): the final
             # "UP" commit below routinely overshoots y<133, and this
             # DOWN-pressing check re-fires on every later frame with
@@ -843,12 +858,18 @@ class Level9PostL8OverworldController(OverworldPathController):
             return self._swing("UP", "17_raft_north_0x07")
 
         if snap.screen == 0x07 and hop.target == 0x06:
+            step = ow_edge_band_step(None, snap, "LEFT", 137, 145)
+            if step is not None:
+                return self._swing(step, "07_lattice")
             if abs(snap.link_y - 141) > 4:
                 btn = "UP" if snap.link_y > 141 else "DOWN"
                 return self._swing(btn, "07_west_y141")
             return self._swing("LEFT", "07_west_0x06")
 
         if snap.screen == 0x06 and hop.target == SCREEN_LEVEL9_ROCK_HYP:
+            step = ow_edge_band_step(None, snap, "LEFT", 137, 145)
+            if step is not None:
+                return self._swing(step, "06_lattice")
             if abs(snap.link_y - 141) > 4:
                 btn = "UP" if snap.link_y > 141 else "DOWN"
                 return self._swing(btn, "06_realign_y141")
@@ -1023,6 +1044,13 @@ class Level9SpectacleRockBombController:
             btn = "DOWN" if delta > 0 else "UP"
         return self._action(nes_action(btn), reason)
 
+    def _goto(
+        self, snap: ZeldaSnapshot, goal: tuple[int, int], tol: int, reason: str
+    ) -> FrameAction | None:
+        """One ROM-lattice press toward ``goal``, or None once within ``tol``."""
+        step = room_step(snap, goal, tol=tol, env=self._env)
+        return None if step is None else self._action(nes_action(step), reason)
+
     def step(self, snap: ZeldaSnapshot) -> FrameAction:
         if self.failed or self.phase is SpectacleRockBombPhase.FAILED:
             return FrameAction(nes_idle_action(), self.failure or "failed")
@@ -1078,48 +1106,37 @@ class Level9SpectacleRockBombController:
                 return self._action(driven.action, driven.reason)
             self._set_phase(SpectacleRockBombPhase.ALIGN_216_X, "bombs_selected")
 
+        # The walk to the stand is four lattice legs (``_goto``): east column,
+        # top row, centre gap, south row. Blind one-axis presses pinned Link
+        # in the (64,77) nook for 3200 frames once a dodge moved him off the
+        # line they were tuned on.
         if self.phase is SpectacleRockBombPhase.ALIGN_216_X:
-            ax = self._axis(snap, axis="x", target=216, tolerance=4, reason="rock_col26_align_x")
-            if ax is not None:
-                return ax
-            self._set_phase(SpectacleRockBombPhase.ROCK_TOP_Y, "rock_x216_reached")
+            self._set_phase(SpectacleRockBombPhase.ROCK_TOP_Y, "rock_walk_lattice")
 
         if self.phase is SpectacleRockBombPhase.ROCK_TOP_Y:
-            ax_x = self._axis(snap, axis="x", target=216, tolerance=4, reason="rock_col26_realign_x")
-            if ax_x is not None:
-                return ax_x
-            ax_y = self._axis(snap, axis="y", target=93, tolerance=4, reason="rock_climb_top_y93")
-            if ax_y is not None:
-                return ax_y
+            act = self._goto(snap, (216, 93), 4, "rock_climb_top_y93")
+            if act is not None:
+                return act
             self._set_phase(SpectacleRockBombPhase.ROCK_GAP_X, "rock_top_y93_reached")
 
         if self.phase is SpectacleRockBombPhase.ROCK_GAP_X:
-            ax_y = self._axis(snap, axis="y", target=93, tolerance=4, reason="rock_top_realign_y93")
-            if ax_y is not None:
-                return ax_y
-            ax_x = self._axis(snap, axis="x", target=120, tolerance=4, reason="rock_top_to_center_gap_x120")
-            if ax_x is not None:
-                return ax_x
+            act = self._goto(snap, (120, 93), 4, "rock_top_to_center_gap_x120")
+            if act is not None:
+                return act
             self._set_phase(SpectacleRockBombPhase.ROCK_BOTTOM_Y, "rock_center_gap_reached")
 
         if self.phase is SpectacleRockBombPhase.ROCK_BOTTOM_Y:
-            ax_x = self._axis(snap, axis="x", target=120, tolerance=4, reason="rock_gap_realign_x120")
-            if ax_x is not None:
-                return ax_x
-            ax_y = self._axis(snap, axis="y", target=173, tolerance=4, reason="rock_center_gap_to_south_y173")
-            if ax_y is not None:
-                return ax_y
+            act = self._goto(snap, (120, 173), 4, "rock_center_gap_to_south_y173")
+            if act is not None:
+                return act
             self._set_phase(SpectacleRockBombPhase.ROCK_LEFT_X, "rock_south_reached")
 
         if self.phase is SpectacleRockBombPhase.ROCK_LEFT_X:
-            ax_y = self._axis(snap, axis="y", target=173, tolerance=4, reason="rock_south_realign_y173")
-            if ax_y is not None:
-                return ax_y
             # Exact stand: the fire check needs x within 2 of 80, and a 4 px
             # walk tolerance swapped the two at x=84.
-            ax_x = self._axis(snap, axis="x", target=80, tolerance=1, reason="rock_south_to_left_stand_x80")
-            if ax_x is not None:
-                return ax_x
+            act = self._goto(snap, (80, 173), 1, "rock_south_to_left_stand_x80")
+            if act is not None:
+                return act
             self._set_phase(SpectacleRockBombPhase.ROCK_FACE_UP, "rock_left_stand_reached")
 
         if self.phase is SpectacleRockBombPhase.ROCK_FACE_UP:

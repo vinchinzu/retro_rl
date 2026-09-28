@@ -54,6 +54,7 @@ from zelda_i.level9.natural_path import (
     make_spectacle_rock_bomb_controller,
 )
 from zelda_i.ram import ADDR_MAGIC_KEY, read_u8
+from zelda_i.rollout import PolicyGuard
 from zelda_i.spine.hops import SpineHop
 
 
@@ -166,7 +167,9 @@ def level9_entry_chapter(
                 to_shop, "l8_second", want=LEVEL9_BOMBS_WANTED,
                 shop_screen=BOMB_SHOP_SCREEN, skip_unaffordable=True,
             ),
-            _stage("level9_post_l8_to_rock", post_l8_to_rock),
+            # 0x58-0x06 bleed 1.75-4 hearts to Lynels, peahats and Zoras:
+            # the walk is checked on the ROM like the rock bomb below.
+            _stage("level9_post_l8_to_rock", PolicyGuard(post_l8_to_rock)),
         )
     else:
         walk = (
@@ -178,7 +181,13 @@ def level9_entry_chapter(
     return (
         *walk,
         _stage("level9_white_sword", make_white_sword_detour_controller()),
-        _stage("level9_spectacle_rock_bomb", make_spectacle_rock_bomb_controller(handoff)),
+        # The rock bomb is a hand phase machine among Lynels and Leevers
+        # (3.5-5.5 hearts a run on 0x05, all body contact): the ROM checks
+        # its own next frames and detours when they meet a hit.
+        _stage(
+            "level9_spectacle_rock_bomb",
+            PolicyGuard(make_spectacle_rock_bomb_controller(handoff)),
+        ),
     )
 
 
