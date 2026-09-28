@@ -52,7 +52,7 @@ Manifest count: **38**.
 | `nes/metroid` / Metroid | metroidvania_navigation, graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | morph return + (5,14) door for first missiles; then bombs |
 | `snes/smz3` / SMZ3 (Super Metroid + ALttP Combined Randomizer) | metroidvania_navigation, top_down_navigation | P4 | scaffolded | M2 | bronze | clean | no | map portal → settled Z3 Link; longer one-bot segment + video; dual-bot race later |
 | `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Gravity on the Phantoon tip (rr-kw8t); then Maridia → LN → Tourian+credits |
-| `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | pre_l1 gathering, coast bombs at 0x6F then hearts, candle, White Sword |
+| `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | verified_capture | M8 | bronze | clean | yes | none for credits; live policy's Level 9 lookahead stages run below real time (rr-yzb4) |
 | `nes/zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
 | `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Gate B continuous (rr-5in): power-on → Summer D1 + income; tip return_home late-spring timeout (rr-ws8h) + ship-verify residual; crop_planter mono ~4.9k arch tax (rr-ds3)  |
 | `snes/alttp_rando` / A Link to the Past Randomizer | top_down_navigation, metroidvania_navigation | P7 | scaffolded | M1 | bronze | clean | no | M1 FirstPlay (Link's House) on JP 1.0; ./play records; ALTTPR patch + multi-seed next |

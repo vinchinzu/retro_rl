@@ -4,8 +4,8 @@ directory: nes/zelda_i
 genre_tracks:
   - graph_navigation
 capability_phase: 4
-project_state: segment_verified
-maturity: M5
+project_state: verified_capture
+maturity: M8
 runtime_class: bronze
 intervention_class: clean
 popularity: high
@@ -14,15 +14,16 @@ transfer_value: medium
 ending_definition: credits after defeating Ganon and rescuing Zelda
 start_contract: power_on
 completion_contract: full_credits
-best_manifest: nes/zelda_i/recordings/level1_complete_natural.json
-best_video: null
+best_manifest: nes/zelda_i/recordings/clean_poweron_c12.json
+best_video: nes/zelda_i/recordings/clean_poweron_c12_replay.mp4
 assist_contract: null
 status_doc: nes/zelda_i/docs/STATUS.md
 plan_doc: nes/zelda_i/docs/plan.md
-last_verified: 2026-09-14
-blocker: pre_l1 gathering, coast bombs at 0x6F then hearts, candle, White Sword
+last_verified: 2026-09-28
+blocker: none for credits; live policy's Level 9 lookahead stages run below real time (rr-yzb4)
 notes: >-
-  M5: Clean power-on to Triforce shard 1. Clean-tip oracle 18909f,
-  2/2 natural-entry, 2026-09-14 (spine/clean_tip.py l1_tf).
-  Next open row is pre_l1, the south-coast gathering prefix, not the
-  0x4A Level 2 walk. Gathering is not a Clean claim. Bronze Clean.
+  M8: Clean power-on to the credits (clean_poweron_c12, 334,763f, TF 0xFF,
+  0 RAM writes, 0 deaths). The MP4 replays that run's button tape from
+  power-on: 0 loads, system RAM in sync every frame, 11.6x real time. The
+  live policy uses ROM rollout lookahead (21,164 restores to the live
+  frame), allowed for development by owner ruling 2026-09-28. Bronze Clean.

@@ -7,10 +7,15 @@ assist / JSON report boilerplate. Path logic stays in library controllers.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import zlib
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 
@@ -258,6 +263,90 @@ def resolve_video(
     return path, config, intro
 
 
+TAPE_SUFFIX = ".tape.npz"
+# ``env.get_ram()`` is the NES's 2 KB followed by cart WRAM ($6000-). Two
+# processes playing identical input disagree on two WRAM bytes ($6000,
+# $652D) and, for a frame at a time, on zero-page temporaries ($0E/$0F on
+# title frame 40), so a replay is checked against $0010-$07FF only.
+SYNC_RAM = slice(0x10, 0x800)
+
+
+def pack_buttons(action: Any) -> int:
+    """One NES action vector as a bitmask: bit ``i`` is button ``i``."""
+    bits = 0
+    for index, value in enumerate(action):
+        if value:
+            bits |= 1 << index
+    return bits
+
+
+def unpack_buttons(bits: int, size: int = 9) -> list[int]:
+    return [(int(bits) >> index) & 1 for index in range(size)]
+
+
+def ram_crc(ram: Any) -> int:
+    """CRC32 of the system RAM past the temporaries: one frame's sync key."""
+    return zlib.crc32(np.asarray(ram, dtype=np.uint8)[SYNC_RAM].tobytes())
+
+
+@dataclass(frozen=True)
+class Tape:
+    """A live run's input, its per-frame RAM CRCs, and its final RAM."""
+
+    buttons: Any
+    crcs: Any
+    meta: dict[str, Any]
+    ram: Any
+
+
+def load_tape(path: Path) -> Tape:
+    with np.load(path) as data:
+        return Tape(
+            buttons=np.asarray(data["buttons"]),
+            crcs=np.asarray(data["crcs"]),
+            meta=json.loads(str(data["meta"])),
+            ram=np.asarray(data["ram"]),
+        )
+
+
+class ButtonTape:
+    """Every action ``env.step`` plays, and the system RAM's CRC after it.
+
+    Rollout lookahead steps ``env.em`` and restores it, so its frames never
+    reach ``env.step``: the tape is exactly the input the live session played
+    from power-on. ``scripts/replay_tape.py`` plays it into a fresh power-on
+    with no controller, no lookahead and no state load, and checks every
+    frame's CRC; that is the recording path, and it runs at emulator speed.
+    """
+
+    def __init__(self) -> None:
+        self.buttons: list[int] = []
+        self.crcs: list[int] = []
+
+    def attach(self, env: Any) -> None:
+        orig = env.step
+
+        def _step(action, *args, **kwargs):
+            self.buttons.append(pack_buttons(action))
+            out = orig(action, *args, **kwargs)
+            self.crcs.append(ram_crc(env.get_ram()))
+            return out
+
+        env.step = _step
+
+    def save(self, path: Path, *, ram: Any, **meta: Any) -> Path:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            path,
+            buttons=np.asarray(self.buttons, dtype=np.uint16),
+            crcs=np.asarray(self.crcs, dtype=np.uint32),
+            meta=np.asarray(json.dumps({"frames": len(self.buttons), **meta})),
+            ram=np.asarray(ram, dtype=np.uint8),
+        )
+        return path
+
+
 class VideoTap:
     """Attach MP4 capture + room-transition PNGs by wrapping ``env.step``."""
 
@@ -270,6 +359,7 @@ class VideoTap:
         intro_summary: str = "",
         intro_frames: int = 0,
         intervention: str = "Survival infinite-life",
+        transition_pngs: bool = True,
     ) -> None:
         self.path = path
         self.config = config
@@ -277,6 +367,7 @@ class VideoTap:
         self.intro_summary = intro_summary
         self.intro_frames = intro_frames
         self.intervention = intervention
+        self.transition_pngs = transition_pngs
         self.writer: Any = None
         self.intro_written = 0
         self.frame = 0
@@ -365,11 +456,12 @@ class VideoTap:
                 "xy": [snap.link_x, snap.link_y],
             }
             self.transitions.append(entry)
-            save_rgb_png(
-                obs,
-                RECORDINGS_DIR
-                / f"{self.tag}_L{room[0]}_{room[1]:02x}_f{self.frame:05d}.png",
-            )
+            if self.transition_pngs:
+                save_rgb_png(
+                    obs,
+                    RECORDINGS_DIR
+                    / f"{self.tag}_L{room[0]}_{room[1]:02x}_f{self.frame:05d}.png",
+                )
             self._last_room = room
         self.frame += 1
 
@@ -407,12 +499,20 @@ class VideoTap:
 __all__ = [
     "add_common_args",
     "add_video_args",
+    "ButtonTape",
     "controller_stopped",
     "ensure_import_paths",
+    "load_tape",
     "make_assist",
     "open_env",
+    "pack_buttons",
+    "ram_crc",
     "resolve_video",
     "run_controller",
+    "SYNC_RAM",
+    "TAPE_SUFFIX",
+    "Tape",
+    "unpack_buttons",
     "VideoTap",
     "write_report",
 ]

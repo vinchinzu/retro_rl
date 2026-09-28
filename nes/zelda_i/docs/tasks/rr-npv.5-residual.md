@@ -2,7 +2,7 @@
 
 # rr-npv.5 residual — Clean L9 dodge / leftover-relative (fixture-live)
 
-Not spine-green. Do not STATUS. Bead stays open.
+Closed 2026-09-28: `clean_poweron_c12` reached the credits from power-on (STATUS.md). The notes below are the 2026-09-10 fixture lane.
 
 ## Landed this sitting
 

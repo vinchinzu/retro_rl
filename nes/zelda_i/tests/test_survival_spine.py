@@ -626,6 +626,26 @@ def test_spine_run_measured_set_state_fails_the_run() -> None:
     assert report["failed_stage"] == "mid_run_state_load"
 
 
+def test_spine_run_rollout_restores_are_disclosed_not_failed() -> None:
+    """Lookahead restores return to the live frame; only other loads fail."""
+    run = SpineRun(through="level9-credits", success=True, boot_frames=1)
+    run.apply_state_audit(21164, rollout_restores=21164)
+    report = run.report()
+    assert report["set_state_count"] == 21164
+    assert report["rollout_restores"] == 21164
+    assert report["mid_run_state_load"] is False
+    assert report["ok"] is True
+
+
+def test_spine_run_a_load_beside_rollouts_still_fails() -> None:
+    run = SpineRun(through="level9-credits", success=True, boot_frames=1)
+    run.apply_state_audit(101, rollout_restores=100)
+    report = run.report()
+    assert report["mid_run_state_load"] is True
+    assert report["ok"] is False
+    assert report["failed_stage"] == "mid_run_state_load"
+
+
 # The full ``--through`` catalog, pinned. Regenerate only alongside a
 # deliberate route change: SPINE_LEVELS is the source, this is the guard.
 PINNED_SPINE_THROUGH: tuple[str, ...] = (

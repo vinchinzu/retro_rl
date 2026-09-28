@@ -15,9 +15,11 @@ last-heart, 0 is off; ``--clean`` sets 0). ``--no-gather`` is the legacy
 wooden-sword prefix.
 
 Power-on first file slot / first quest. Records MP4 + room-transition PNGs
-unless ``--no-video``. ``--headed`` opens a pygame window (``[ ]`` speed,
-TAB turbo, ESC quit) and skips dummy SDL. Heart assist is on by default;
-``--no-infinite-life`` turns it off for combat practice. ``--through pre-l1``
+unless ``--no-video``, and always ``recordings/<tag>.tape.npz``: the button
+tape ``replay_tape.py`` plays back from power-on (no lookahead) for the MP4.
+``--headed`` opens a pygame window (``[ ]`` speed, TAB turbo, ESC quit) and
+skips dummy SDL. Heart assist is on by default; ``--no-infinite-life`` turns
+it off for combat practice. ``--through pre-l1``
 forces it off: the refill hides the ``$0670`` chip that zeros the 10-kill
 5-rupee. Pre-l1 still forces heart assist and bomb/key/food pokes off, and
 writes the rupee count up to the 20R pack price before ``bomb_topup``.
@@ -30,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 from retro_harness.audit import AuditCapabilities, AuditedEnv
@@ -49,7 +52,13 @@ from zelda_i.paths import GAME, GAME_DIR, RECORDINGS_DIR
 from zelda_i.ram import ADDR_HELP_DROP_COUNT, ADDR_WORLD_KILL_COUNT, read_snapshot
 from zelda_i.spine.ledger import RunLedger
 from zelda_i.spine.resource_audit import audit as resource_audit
-from zelda_i.runner import VideoTap, add_video_args, resolve_video
+from zelda_i.runner import (
+    TAPE_SUFFIX,
+    ButtonTape,
+    VideoTap,
+    add_video_args,
+    resolve_video,
+)
 from zelda_i.spine.survival import (
     GATHER_ENGAGE_HEARTS,
     SPINE_THROUGH,
@@ -205,13 +214,6 @@ def main(argv: list[str] | None = None) -> int:
                 return _orig_step(self, snap, **kw)
 
             OverworldPathController.step = _step  # type: ignore[assignment]
-        tap = VideoTap(
-            video_path,
-            video_config,
-            tag=tag,
-            intro_summary="Survival continuous spine, first quest, first file",
-            intro_frames=intro,
-        )
         allow_pokes = not args.no_pokes and not args.clean
         infinite_life = bool(args.infinite_life) and not args.clean
         gather_engage = 0 if args.clean else int(args.gather_engage_hearts)
@@ -230,6 +232,16 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             assist = UnlimitedHealthAssist(enabled=True)
+        clean = assist is None and not allow_pokes and not (args.gather and gather_engage)
+        tap = VideoTap(
+            video_path,
+            video_config,
+            tag=tag,
+            intro_summary="Continuous spine, first quest, first file",
+            intro_frames=intro,
+            intervention="Clean: no refills, no RAM writes" if clean else "Survival infinite-life",
+        )
+        tape = ButtonTape()
         payload: dict | None = None
         pygame_mod = None
         try:
@@ -248,8 +260,10 @@ def main(argv: list[str] | None = None) -> int:
             tap.attach(env, obs)
             ledger = RunLedger(trace=[] if args.trace else None)
             ledger.attach(env)
+            tape.attach(env)
             # VideoTap wraps env.step; do not also pass on_frame (double encode).
             restores_at_start = rollout_restores()
+            started = time.perf_counter()
             run = run_survival_spine(
                 env,
                 obs,
@@ -261,7 +275,11 @@ def main(argv: list[str] | None = None) -> int:
                 save_points=args.save_points,
                 resume_from=args.resume,
             )
-            run.apply_state_audit(int(env.audit().mid_run_loads or 0))
+            wall_s = time.perf_counter() - started
+            run.apply_state_audit(
+                int(env.audit().mid_run_loads or 0),
+                rollout_restores=rollout_restores() - restores_at_start,
+            )
             final_ram = env.get_ram()
             snap = read_snapshot(final_ram)
             screenshot = RECORDINGS_DIR / f"{tag}_final.png"
@@ -273,9 +291,10 @@ def main(argv: list[str] | None = None) -> int:
                 "screenshot": str(screenshot),
                 "assist": None if assist is None else assist.report(),
                 "ledger": ledger.report(final_ram),
-                # The audit counts every ``set_state``; this many were rollout
-                # lookahead restores back to the live frame (``zelda_i.rollout``).
-                "rollout_restores": rollout_restores() - restores_at_start,
+                "tape": str(RECORDINGS_DIR / f"{tag}{TAPE_SUFFIX}"),
+                # Above 1.0 the policy, lookahead included, outruns the NES.
+                "wall_s": round(wall_s, 1),
+                "x_realtime": round(run.end_frame / 60.0 / wall_s, 2) if wall_s else None,
             }
             payload["resource_audit"] = resource_audit(payload)
             for line in ledger.summary_lines(final_ram):
@@ -292,6 +311,18 @@ def main(argv: list[str] | None = None) -> int:
                     "gameplay_frames": tap.frame,
                     "transitions": list(tap.transitions),
                 }
+            if payload is not None:
+                tape.save(
+                    RECORDINGS_DIR / f"{tag}{TAPE_SUFFIX}",
+                    tag=tag,
+                    through=args.through,
+                    clean=clean,
+                    ok=bool(payload.get("ok")),
+                    resumed_from=payload.get("resumed_from"),
+                    end_frame=payload.get("end_frame"),
+                    final=payload.get("final"),
+                    ram=final_ram,
+                )
             if pygame_mod is not None:
                 try:
                     idle_headed(env, pygame_mod)

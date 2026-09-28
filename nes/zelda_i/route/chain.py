@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -233,6 +234,8 @@ class ControllerStageResult:
     success: bool = False
     frame_base: int = 0
     end_frame: int = 0
+    # Wall-clock seconds the stage took, controller and emulator together.
+    wall_s: float = 0.0
     # Hearts (whole + partial) in, out, and summed per-frame loss / gain.
     # The gain includes an assist refill; the assist reports its own writes.
     hearts_in: float | None = None
@@ -280,6 +283,10 @@ class ControllerStageResult:
             "success": self.success,
             "controller": nested,
         }
+        if self.wall_s:
+            # Above 1.0 the stage plays faster than the NES (60 fps).
+            payload["wall_s"] = round(self.wall_s, 2)
+            payload["x_realtime"] = round(self.frames / 60.0 / self.wall_s, 2)
         leftover = leftover_from_controller(self.controller)
         if not leftover and isinstance(nested, dict):
             raw = nested.get("leftover")
@@ -415,6 +422,7 @@ def run_controller_stage(
         guard.bind_env(env)
         if assist is not None:
             assist.refill_hold = guard.holds_refill
+    started = time.perf_counter()
     try:
         frame = 0
         # Frames the guard spends drinking (~525 a red) are not the stage's:
@@ -437,6 +445,7 @@ def run_controller_stage(
             if controller_stage_done(controller):
                 break
     finally:
+        result.wall_s = time.perf_counter() - started
         if guard is not None and assist is not None:
             assist.refill_hold = None
     if guard is not None and (guard.drinks or guard.frames or guard.notes):

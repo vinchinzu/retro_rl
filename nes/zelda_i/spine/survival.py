@@ -270,6 +270,8 @@ class SpineRun:
     inventory_assist: dict[str, Any] | None = None
     position_assist: dict[str, Any] | None = None
     set_state_count: int | None = None
+    # Of those, rollout lookahead restores to the live frame (``zelda_i.rollout``).
+    rollout_restores: int = 0
     allow_pokes: bool = True
     gather: dict[str, Any] | None = None
     # Save points: ``<save_points>_<stage>`` is written at every stage start
@@ -284,21 +286,31 @@ class SpineRun:
         """True while a resume is still walking past stages it did not play."""
         return self.resume_from is not None
 
-    def apply_state_audit(self, count: int) -> None:
-        """Record measured post-reset ``env.em.set_state`` calls. Fail if any.
+    def apply_state_audit(self, count: int, *, rollout_restores: int = 0) -> None:
+        """Record measured post-reset ``env.em.set_state`` calls. Fail on a load.
 
+        A rollout restore returns the core to the live frame it was saved on
+        that same frame. Lookahead is allowed (owner ruling 2026-09-28), so
+        those are disclosed as ``rollout_restores`` and not failed; the
+        recording is the tape replayed with no lookahead (``replay_tape.py``).
         A resume's own load is disclosed as ``resumed_from`` and not failed;
         the tape is still not a continuous one.
         """
         self.set_state_count = int(count)
+        self.rollout_restores = int(rollout_restores)
         if self.skipping:
             self.success = False
             self.failed_stage = f"resume_stage_not_found:{self.resume_from}"
             return
-        if self.set_state_count - (1 if self.resumed_from else 0):
+        if self.state_loads - (1 if self.resumed_from else 0):
             self.success = False
             if self.failed_stage is None:
                 self.failed_stage = "mid_run_state_load"
+
+    @property
+    def state_loads(self) -> int:
+        """Audited loads that were not rollout lookahead restores."""
+        return int(self.set_state_count or 0) - self.rollout_restores
 
     def _position_assist_from_stages(self) -> dict[str, Any] | None:
         """Prefer an explicit field; else take it from a stage controller report."""
@@ -331,10 +343,11 @@ class SpineRun:
             "resumed_from": self.resumed_from,
             "tape_kind": "continuous_survival_spine",
             "set_state_count": self.set_state_count,
+            "rollout_restores": self.rollout_restores,
             "mid_run_state_load": (
                 None
                 if self.set_state_count is None
-                else bool(self.set_state_count)
+                else bool(self.state_loads)
             ),
             "seamed": False,
             "status_claim": False,
