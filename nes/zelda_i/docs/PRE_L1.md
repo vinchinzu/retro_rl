@@ -5,6 +5,35 @@ Claude thread took over the remaining lanes in the main tree, landing them one
 commit each; lane D (bombs) is the first. Bead `rr-npv.5` stays in progress:
 Clean power-on credits is still unproved. No STATUS change or push.
 
+## Overworld lane verified (E): Link reaches Level 9 with 12-15 hearts
+
+The real C10 Clean resume (`CL9A`, copied from `CodexAllBase`) died in L9
+0x55 after overworld 0x59 took 9 hearts: the hand walk overshot down 0x59's
+x 112-128 corridor and held LEFT against its wall at (112,165..205) for 6500
+frames under Zora fire. 0x59, 0x27, 0x07 and 0x06 now take the ROM lattice
+to their exit band first (`ow_edge_band_step`), and the Spectacle Rock
+controller's walk is four `room_step` legs instead of one-axis presses.
+
+The rock bomb and the post-L8 walk to 0x05 run behind `rollout.PolicyGuard`:
+each play frame a deep copy of the controller (0.25 ms) plays its own next
+24 frames on the ROM; a hit there buys the first clean held-direction detour
+(4/8/16 frames, never one that scrolls the screen). Detour frames do not step
+the inner controller.
+
+Clean, `l9_probe.py C11Evalo<n>_level9_post_l8_overworld --from s00 --to s07`
+(2R, 4 bombs; offsets 5-7 bank the 0x5D drop), hearts at L9 entry:
+
+| Offset | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Before this session | shop fail | shop fail | shop fail | shop fail | shop fail | 8.48 | 8.24 | 6.98 |
+| Now | 12.0 | 15.0 | 12.5 | 13.75 | 12.25 | 15.0 | 14.75 | 14.5 |
+
+The walk to the rock is 0 damage on 7 of 8 (1h on o2); the rock itself costs
+0-3h in 800-2000 frames (was 3-4h in ~700, with two deaths in 16 pin runs).
+Logs: `logs/lane_e/`. The pointless 0x4A detour on a 2R wallet is still
+walked (skipped purchase); a `GatedLeg` to the direct hops would save ~1000
+frames.
+
 ## Hazard lane verified (B) and every Patra on rollout-checked swings
 
 Lane B's blade-trap model (`ShotGuard` steps each $49 trap as Z_01.asm
@@ -80,7 +109,7 @@ without fixing the failures and repeating its ROM matrix.
 | B: hazards | main | Landed (above) with the 0x04 and 0x20 fixes. |
 | C: stalls | `agent-ac061e44b550e7c0a` | Clean agent commit `b97d30c7`; integrated on main as `6c5eced9`, including bead export and this living handoff. |
 | D: bombs | main | Landed (above). The worktree's one-line Patra16 substitution is superseded. |
-| E: overworld | `agent-ad65a8b9932b58953` | Clean lane-A base; new agent never launched. Reduce Death Mountain approach damage after hazard integration. |
+| E: overworld | main | Landed (above). |
 | F: Red Ring | `agent-a6cbaad37898ea620` | Dirty route/controller/probe/tests, no commit. Detour passes 4/4 loaded offsets, whole L9 fails 0/4; finish D's guaranteed bomb budget before landing F. |
 
 B's latest matrix (`logs/codex_lane_b/after15_v2.txt`) clears the Patra join

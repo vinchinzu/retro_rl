@@ -98,6 +98,7 @@ __all__ = [
     "Frame",
     "Outcome",
     "Plan",
+    "PolicyGuard",
     "Rollout",
     "RolloutEvader",
     "hold",
@@ -723,3 +724,147 @@ def _reach(outcome: Outcome) -> int:
     if outcome.contact_frame is None:
         return outcome.frames + 1
     return outcome.contact_frame
+
+
+# ------------------------------------------- a hand controller's own future ---
+# The horizon a hand phase is judged on: a Lynel closes 16 px in ~12 frames.
+POLICY_GUARD_HORIZON = 24
+POLICY_GUARD_DETOURS = (4, 8, 16)
+POLICY_GUARD_DIRECTIONS = ("UP", "DOWN", "LEFT", "RIGHT")
+
+
+class PolicyGuard:
+    """Follow ``inner`` unless the ROM says its own next frames get Link hit.
+
+    ``RolloutEvader`` rolls held presses; a phase machine (align x, climb,
+    place a bomb, wait) is not a held press. Here a deep copy of ``inner`` is
+    played forward ``horizon`` frames on the rollout each play frame, so the
+    controller is judged on what it will actually do. When that copy is hit,
+    detours (hold one direction ``k`` frames, then a fresh copy of ``inner``)
+    are rolled the same way; the first clean one -- else the one hit latest
+    -- is committed if it beats staying on the inner's plan. Detour frames
+    do not step ``inner``, so its phases and clocks see only its own frames.
+    """
+
+    def __init__(
+        self,
+        inner: Any,
+        *,
+        horizon: int = POLICY_GUARD_HORIZON,
+        detours: Sequence[int] = POLICY_GUARD_DETOURS,
+        directions: Sequence[str] = POLICY_GUARD_DIRECTIONS,
+    ) -> None:
+        self.inner = inner
+        self.horizon = int(horizon)
+        self.detours = tuple(int(k) for k in detours)
+        self.directions = tuple(directions)
+        self.max_frames = int(getattr(inner, "max_frames", 0))
+        self.checks = 0
+        self.detours_taken = 0
+        self.detour_frames = 0
+        self.frames_rolled = 0
+        self._env: Any = None
+        self._queue: list[Frame] = []
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.__dict__["inner"], name)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+        bind = getattr(self.inner, "bind_env", None)
+        if callable(bind):
+            bind(env)
+
+    @property
+    def success(self) -> bool:
+        return bool(getattr(self.inner, "success", False))
+
+    @property
+    def failed(self) -> bool:
+        return bool(getattr(self.inner, "failed", False))
+
+    def _copy(self) -> Any:
+        import copy
+
+        env = self._env
+        memo = {id(env): env, id(env.em): env.em}
+        unwrapped = getattr(env, "unwrapped", None)
+        if unwrapped is not None:
+            memo[id(unwrapped)] = unwrapped
+        return copy.deepcopy(self.inner, memo)
+
+    def _contact(self, detour: Sequence[Frame]) -> int | None:
+        """First hit frame: ``detour`` presses, then a copy of ``inner``.
+
+        A detour that scrolls the screen or leaves play reads as a hit on
+        that frame: it has not dodged, it has changed hops (0x05 detours
+        walked Link onto 0x04 and 0x06). The inner's own exit is its plan.
+        """
+        em = self._env.em
+        state = em.get_state()
+        probe = self._copy()
+        start = read_snapshot(self._env.get_ram())
+        room = (int(start.level), int(start.screen))
+        iframes = int(start.link_iframes)
+        try:
+            for t in range(self.horizon):
+                snap = read_snapshot(self._env.get_ram())
+                if not in_play(snap) or (int(snap.level), int(snap.screen)) != room:
+                    return t if detour and t <= len(detour) else None
+                if t < len(detour):
+                    frame = detour[t]
+                else:
+                    frame = tuple(int(v) for v in probe.step(snap).action)
+                em.set_button_mask(np.asarray(frame, dtype=np.uint8), 0)
+                em.step()
+                self.frames_rolled += 1
+                now = int(read_snapshot(self._env.get_ram()).link_iframes)
+                if now > 0 and iframes == 0:
+                    return t + 1
+                iframes = now
+        finally:
+            em.set_state(state)
+        return None
+
+    def step(self, snap: ZeldaSnapshot) -> Any:
+        from retro_harness.input_script import FrameAction
+
+        if self._queue and in_play(snap) and not (self.success or self.failed):
+            self.detour_frames += 1
+            return FrameAction(list(self._queue.pop(0)), "policy_guard_detour")
+        self._queue.clear()
+        if self._env is None or not in_play(snap) or self.success or self.failed:
+            return self.inner.step(snap)
+        self.checks += 1
+        base = self._contact(())
+        if base is None:
+            return self.inner.step(snap)
+        best: tuple[tuple[int, int], tuple[Frame, ...]] | None = None
+        for k in self.detours:
+            for d in self.directions:
+                detour = (press(d),) * k
+                hit = self._contact(detour)
+                key = (self.horizon + 1 if hit is None else hit, -k)
+                if best is None or key > best[0]:
+                    best = (key, detour)
+            if best is not None and best[0][0] > self.horizon:
+                break
+        assert best is not None
+        if best[0][0] <= base:
+            return self.inner.step(snap)
+        self.detours_taken += 1
+        self._queue = list(best[1][1:])
+        self.detour_frames += 1
+        return FrameAction(list(best[1][0]), "policy_guard_detour")
+
+    def report(self) -> dict[str, Any]:
+        rep = self.inner.report() if callable(getattr(self.inner, "report", None)) else {}
+        if isinstance(rep, dict):
+            rep = dict(rep)
+            rep["policy_guard"] = {
+                "checks": self.checks,
+                "detours": self.detours_taken,
+                "detour_frames": self.detour_frames,
+                "frames_rolled": self.frames_rolled,
+            }
+        return rep

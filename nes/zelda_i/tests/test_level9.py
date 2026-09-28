@@ -586,12 +586,11 @@ def test_spectacle_rock_bomb_controller_phases_navigation() -> None:
     ctl = make_spectacle_rock_bomb_controller(MEASURED_POST_L8_HANDOFF)
     assert ctl.max_frames == 4000
 
-    # Step 1 at (240, 141): moves LEFT to x=216
+    # Step 1 at (240, 141): the first lattice leg heads for (216, 93)
     snap0 = _snap(level=0, screen=0x05, link_x=240, link_y=141, triforce=FULL_TRIFORCE, bombs=14)
     act0 = ctl.step(snap0)
-    assert act0.action == nes_action("LEFT")
-    assert act0.reason == "rock_col26_align_x"
-    assert ctl.phase is SpectacleRockBombPhase.ALIGN_216_X
+    assert act0.action in (nes_action("LEFT"), nes_action("UP"))
+    assert ctl.phase is SpectacleRockBombPhase.ROCK_TOP_Y
 
     # Reached x=216: moves UP to y=93
     snap1 = _snap(level=0, screen=0x05, link_x=216, link_y=141, triforce=FULL_TRIFORCE, bombs=14)
@@ -706,7 +705,7 @@ def test_level9_entry_chapter_chaining() -> None:
 
     # Both controllers accept measured handoff and have route_eligible when complete
     ow_ctl = stages[0][1]
-    bomb_ctl = stages[7][1]
+    bomb_ctl = stages[7][1].inner
     assert isinstance(ow_ctl, Level9PostL8OverworldController)
     assert isinstance(bomb_ctl, Level9SpectacleRockBombController)
 
