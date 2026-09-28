@@ -96,6 +96,7 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Only the sword hurts a Patra: body and eyes carry ObjInvincibilityMask $FE (`$04B2+slot`), so the rod's shot is parried. 0x16's kill (`level9/patra.py` `PatraBlade`) commits swings a savestate rollout proved hit with Link untouched; those frames carry `ROM_CHECKED`, which `ShotGuard` passes through.
 - A walk the shot guard refuses forever (it holds each inner press to its whole horizon) needs a route, not a weaker guard: `Rollout.walk` rolls a `room_step` waypoint walk on the ROM and returns presses that replay exactly (L9 0x04 baits its corner traps, then crosses).
 - A hand phase machine among live enemies goes behind `rollout.PolicyGuard`: each play frame a deep copy of the controller plays its own next 24 frames on the ROM, and a hit there buys a held-direction detour (never one that scrolls the screen). Its walk legs must be `room_step` lattice legs: a detour leaves Link off any one-axis line (L9 0x05 pinned 3200 frames in the (64,77) nook).
+- The run audit counts every `em.set_state`, including rollout lookahead restores: a spine run that uses `PatraBlade`, `Rollout.walk` or `PolicyGuard` reports `set_state=N (rollout N)` and fails `mid_run_state_load` under the current Clean contract. Whether lookahead is Clean is an open owner decision (`docs/PRE_L1.md`).
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

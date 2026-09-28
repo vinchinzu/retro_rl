@@ -466,3 +466,12 @@ def test_policy_guard_detour_frames_carry_a_rom_checked_reason() -> None:
     assert tuple(first.action) == UP and guard.inner.steps == 0
     assert isinstance(first.reason, str) and ROM_CHECKED in first.reason
     assert tuple(queued.action) == UP and ROM_CHECKED in queued.reason
+
+
+def test_restores_counts_each_lookahead_return_to_the_live_frame() -> None:
+    from zelda_i.rollout import restores
+
+    env, em = _env({LEFT: [_ram(x=98)]})
+    before = restores()
+    Rollout(env).fan({"a": (LEFT,), "b": (IDLE,)})
+    assert restores() - before == em.restores == 3
