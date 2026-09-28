@@ -272,12 +272,24 @@ class NavTask(Task):
         # sealed, fallback must not pick that door.
         if current_tile == (26, 30) and direction == "up":
             direction = "left" if primary != "left" else "right"
+        # House outdoor door (8, 26): UP enters the farmhouse. When BFS is
+        # navigating on the farm, fallback must not pick that door.
+        if current_tile == (8, 26) and direction == "up":
+            direction = "left" if primary != "left" else "right"
         nxt = facing_tile(current_tile, direction)
         if self._navigator.note_push_facing(ram, nxt):
             return make_action()
         return make_action(**{direction: True, "b": True})
 
     def step(self, world: WorldState) -> TaskResult:
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        from harvest.planner.day_plan_status import is_house_tilemap
+        if is_house_tilemap(tilemap):
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"nav indoors on map 0x{tilemap:02X}, expected farm",
+            )
+
         self._navigator.update(world.ram)
         self._step_count += 1
 

@@ -43,7 +43,12 @@ from harvest.tasks.coop_layout import (
 )
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.nav import MAP_WIDTH, TILE_SIZE, make_action
-from harvest.tasks.skills import coop_nav_to_shipping_bin_skill, coop_press_ship_skill
+from harvest.tasks.skills import (
+    coop_nav_to_shipping_bin_skill,
+    coop_press_egg_pickup_skill,
+    coop_press_incubator_skill,
+    coop_press_ship_skill,
+)
 from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
 
 def _begin_egg_nav(task) -> TaskResult:
@@ -51,6 +56,7 @@ def _begin_egg_nav(task) -> TaskResult:
     task._verify_count = 0
     task._egg_nav_started_step = task._step_count
     task._current_egg_flag = 0
+    task._current_egg_tile = None
     task._clear_left_top_route()
     task._pathfinder.temp_blocked.clear()
     task._phase = "egg_nav"
@@ -61,6 +67,7 @@ def _after_egg_handled(task, ram: np.ndarray) -> TaskResult:
     task._verify_count = 0
     task._egg_nav_started_step = 0
     task._current_egg_flag = 0
+    task._current_egg_tile = None
     if task._collectable_egg_present(ram):
         return task._begin_egg_nav()
     return task._begin_exit_prep()
@@ -99,20 +106,24 @@ def _egg_present(task, ram: np.ndarray) -> bool:
     return False
 
 def _collectable_egg_present(task, ram: np.ndarray) -> bool:
-    """Like `_egg_present`, but ignores egg flags already skipped this run."""
+    """Like `_egg_present`, but ignores egg flags and tiles already skipped this run."""
     flags = read_egg_available_flags(ram)
     for mask, _stand, _face in EGG_PICKUP_SPOTS:
         if (flags & mask) and mask not in task._skipped_egg_flags:
+            egg_tile = task._egg_tile_for_flag(mask)
+            if egg_tile is None or egg_tile not in task._skipped_egg_tiles:
+                return True
+    for egg_tile in task._egg_tiles(ram):
+        if egg_tile not in task._skipped_egg_tiles:
             return True
-    if chicken_slot_eggs_available(ram) or task._egg_tiles(ram):
-        return True
     incubating = is_incubating(ram)
     for obj in game_objects(ram):
         if obj.sprite_table_idx != VISIBLE_EGG_SPRITE:
             continue
         if incubating and obj.tile in INCUBATOR_EGG_TILES:
             continue
-        return True
+        if obj.tile not in task._skipped_egg_tiles:
+            return True
     return False
 
 def _egg_tiles(task, ram: np.ndarray) -> list[Tuple[int, int]]:
@@ -241,7 +252,7 @@ def _egg_pickup_spot(
         if not (available & mask) or mask in task._skipped_egg_flags:
             continue
         egg_tile = task._egg_tile_for_flag(mask)
-        if egg_tile is None:
+        if egg_tile is None or egg_tile in task._skipped_egg_tiles:
             continue
         spot = task._stand_for_egg_tile(
             ram,
@@ -251,21 +262,27 @@ def _egg_pickup_spot(
         )
         if spot is not None:
             task._current_egg_flag = mask
+            task._current_egg_tile = egg_tile
             return spot
     for egg_tile in task._egg_tiles(ram):
+        if egg_tile in task._skipped_egg_tiles:
+            continue
         dynamic_spot = task._stand_for_egg_tile(
             ram, egg_tile, require_path=require_path
         )
         if dynamic_spot is not None:
             task._current_egg_flag = 0
+            task._current_egg_tile = egg_tile
             return dynamic_spot
     if require_path:
         return task._egg_pickup_spot(ram, require_path=False)
     task._current_egg_flag = 0
+    task._current_egg_tile = None
     return None
 
 def _defer_or_skip_egg(task, reason: str) -> TaskResult:
     flag = task._current_egg_flag
+    tile = task._current_egg_tile
     if flag:
         deferred = task._deferred_egg_counts.get(flag, 0)
         if deferred < MAX_EGG_DEFERRALS:
@@ -280,14 +297,34 @@ def _defer_or_skip_egg(task, reason: str) -> TaskResult:
             task._phase = "egg_nav"
             return TaskResult(status=TaskStatus.RUNNING)
         task._skipped_egg_flags.add(flag)
+        if tile:
+            task._skipped_egg_tiles.add(tile)
         print(
             f"[COOP] Egg skipped flag=0x{flag:04X} reason={reason}"
+        )
+    elif tile:
+        deferred = task._deferred_egg_tile_counts.get(tile, 0)
+        if deferred < MAX_EGG_DEFERRALS:
+            task._deferred_egg_tile_counts[tile] = deferred + 1
+            print(
+                f"[COOP] Egg deferred tile={tile} reason={reason} "
+                f"count={deferred + 1}"
+            )
+            task._egg_nav_started_step = task._step_count
+            task._egg_attempts = 0
+            task._clear_left_top_route()
+            task._phase = "egg_nav"
+            return TaskResult(status=TaskStatus.RUNNING)
+        task._skipped_egg_tiles.add(tile)
+        print(
+            f"[COOP] Egg skipped tile={tile} reason={reason}"
         )
     else:
         print(f"[COOP] Egg pickup failed, skipping ({reason})")
     task._egg_attempts = 0
     task._egg_nav_started_step = 0
     task._current_egg_flag = 0
+    task._current_egg_tile = None
     task._clear_left_top_route()
     return TaskResult(status=TaskStatus.RUNNING)
 
@@ -382,13 +419,7 @@ def _step_egg_nav(task, world: WorldState) -> TaskResult:
     if action is not None:
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
     task._egg_attempts += 1
-    task._queue_press_a(
-        egg_face,
-        face_frames=4,
-        hold_frames=28,
-        settle_frames=30,
-        hold_face_with_a=False,
-    )
+    task._enqueue_skill_actions(world, coop_press_egg_pickup_skill(face=egg_face))
     task._verify_count = 0
     task._phase = "egg_verify"
     return TaskResult(status=TaskStatus.RUNNING)
@@ -399,6 +430,8 @@ def _step_egg_verify(task, world: WorldState) -> TaskResult:
         print(f"[COOP] Egg collected")
         if task._current_egg_flag:
             task._skipped_egg_flags.discard(task._current_egg_flag)
+        if task._current_egg_tile:
+            task._skipped_egg_tiles.discard(task._current_egg_tile)
         task._phase = "decide"
         return TaskResult(status=TaskStatus.RUNNING)
     held_item = read_item_on_hand(world.ram)
@@ -442,7 +475,7 @@ def _step_incubate_nav(task, world: WorldState) -> TaskResult:
     action = task._navigate_to_incubator_stand(world.ram)
     if action is not None:
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-    task._queue_press_a(INCUBATOR_FACE, hold_frames=20, settle_frames=24, hold_face_with_a=False)
+    task._enqueue_skill_actions(world, coop_press_incubator_skill(face=INCUBATOR_FACE))
     task._verify_count = 0
     task._phase = "incubate_verify"
     return TaskResult(status=TaskStatus.RUNNING)

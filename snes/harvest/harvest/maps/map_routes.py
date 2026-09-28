@@ -295,8 +295,6 @@ _PATH_FARM_EXIT = Waypoint(
     exit_direction="right",
     exit_push_frames=18,
 )
-_FARM_WEST_TO_TOWN: List[Waypoint] = [_FARM_WEST_EXIT, _PATH_TOWN_EXIT]
-
 # Pond A6 is y=25 x=0-6. House column x=8 is A0 y=24–25 then A8 y=26 (door).
 # Down that column onto y=26, then west on A8. Do not LEFT-hold on y=24
 # (A1 gate), y=25 (pond), or y=27 (FF at x=1).
@@ -310,6 +308,11 @@ _FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
     ),
     Waypoint(tilemap=0x00, target_px=(72, 424), radius=8, run_direction="left"),
     _FARM_WEST_EXIT,
+]
+_FARM_WEST_TO_TOWN: List[Waypoint] = [
+    *_FARM_GATE_PINCH_TO_EXIT,
+    _PATH_CROSSROADS,
+    _PATH_TOWN_EXIT,
 ]
 
 # L1 house front ~(136,344) BFS-cuts the NW ledge. Drop south first onto
@@ -515,9 +518,9 @@ _FARM_WEST_GATE_TO_SHIPPING_BIN: List[Waypoint] = [
 
 _TOWN_TO_ANIMAL_SHOP_DOOR: List[Waypoint] = [
     Waypoint(tilemap=0x04, target_px=(688, 430), radius=16),
-    Waypoint(tilemap=0x04, target_px=(688, 888), radius=16, run_direction="down"),
-    Waypoint(tilemap=0x04, target_px=(601, 888), radius=12),
-    Waypoint(tilemap=0x04, target_px=(601, 874), radius=12, is_exit=True, exit_direction="up"),
+    Waypoint(tilemap=0x04, target_px=(688, 890), radius=6, run_direction="down", force_run=True),
+    Waypoint(tilemap=0x04, target_px=(601, 890), radius=8, run_direction="left"),
+    Waypoint(tilemap=0x04, target_px=(601, 874), radius=10, is_exit=True, exit_direction="up"),
 ]
 _ANIMAL_SHOP_STAGING = Waypoint(
     tilemap=0x24, target_px=(128, 200), radius=12, run_direction="up"

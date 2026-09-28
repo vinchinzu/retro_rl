@@ -22,6 +22,21 @@ from harvest.core.ram_catalog import read_ram_u8
 from harvest.core.stamina import Stamina
 from harvest.planner.day_phase_stamina import evening_clear_phases
 from harvest.planner.day_phase_berry import _berry_run_phases
+from harvest.planner.day_phase_calendar import (
+    ATTEND_FESTIVAL_PHASE,
+    REPAIR_CROPS_PHASE,
+    SUNDAY_CHURCH_PHASE,
+    SUNDAY_MOUNTAIN_PHASE,
+    attend_festival_phase,
+    default_crop_for_season,
+    festival_name_for_date,
+    is_festival_day,
+    is_storm_day,
+    is_storm_weather,
+    next_crop_in_rotation,
+    post_storm_recovery_phases,
+    seasonal_crops_for_season,
+)
 from harvest.planner.day_phase_chicken import (
     _chicken_oversupplied,
     _chicken_phases,
@@ -174,6 +189,11 @@ def build_day_phases(
     money: Optional[int] = None,
     stamina: Optional[Stamina | int] = None,
     has_plant_capacity: Optional[bool] = None,
+    is_storm: Optional[bool] = None,
+    is_post_storm: Optional[bool] = None,
+    is_festival: Optional[bool] = None,
+    festival_name: Optional[str] = None,
+    weather_code: Optional[int] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble a day's phase list dynamically from state inspection.
@@ -218,6 +238,10 @@ def build_day_phases(
             stamina = probe.stamina()
         if has_plant_capacity is None and probe.source_ram is not None:
             has_plant_capacity = probe.pocket_has_plant_capacity()
+        if is_storm is None:
+            is_storm = probe.is_storm()
+        if is_festival is None:
+            is_festival = probe.is_festival()
 
     # Fill remaining defaults
     if has_plant_capacity is None:
@@ -248,14 +272,33 @@ def build_day_phases(
         has_debris = False
     if is_rainy is None:
         is_rainy = False
+    if is_storm is None:
+        if weather_code is not None:
+            is_storm = is_storm_day(season, weather_code=weather_code)
+        else:
+            is_storm = False
+    if is_post_storm is None:
+        is_post_storm = False
+    if is_festival is None:
+        is_festival = is_festival_day(season, day)
+    if is_festival and festival_name is None:
+        festival_name = festival_name_for_date(season, day)
 
     policy = day_planner_policy_for_season(season, policy)
 
+    if is_storm:
+        # Severe storm (hurricane/blizzard): farmer cannot leave the house.
+        if policy.include_end_day:
+            return [GO_TO_SLEEP_PHASE]
+        return []
+
     is_sunday = weekday == SUNDAY_WEEKDAY
+    is_fest = bool(is_festival and policy.include_festivals)
+    shops_closed = is_sunday or is_fest
     late_day = hour >= policy.late_water_hour
     oversupplied_chickens = _chicken_oversupplied(adult_chickens, policy)
     berry_phases = _berry_run_phases(
-        is_sunday=is_sunday,
+        is_sunday=shops_closed,
         hour=hour,
         has_seeds=has_seeds,
         policy=policy,
@@ -264,6 +307,7 @@ def build_day_phases(
         money=money,
         has_plant_capacity=has_plant_capacity,
         has_harvest=bool(has_harvest),
+        is_festival=is_fest,
     )
 
     buy_cow_first = (
@@ -271,12 +315,18 @@ def build_day_phases(
         and policy.include_shop_run
         and should_buy_cow
         and not late_day
+        and not shops_closed
     )
     phases: List[PhaseSpec] = []
     if buy_cow_first:
         phases.extend(BUY_COW_FIRST_PHASES)
     else:
         phases.append(EXIT_TO_FARM_PHASE)
+
+    # Post-storm recovery: morning debris clearing and fence repair
+    if is_post_storm and not late_day:
+        phases.append(_daytime_clear_phase(season, day))
+        phases.append(REPAIR_CROPS_PHASE)
 
     seed_buy_phases = [
         phase
@@ -350,6 +400,7 @@ def build_day_phases(
         and not late_day
         and not defer_field_clear
         and not berry_before_clear
+        and not is_post_storm
     )
     if day_clear:
         phases.append(_daytime_clear_phase(season, day))
@@ -364,8 +415,9 @@ def build_day_phases(
         _chicken_sale_phases(
             adult_chickens=adult_chickens,
             hour=hour,
-            is_sunday=is_sunday,
+            is_sunday=shops_closed,
             policy=policy,
+            is_festival=is_fest,
         )
     )
 
@@ -400,7 +452,22 @@ def build_day_phases(
     if defer_field_clear and not berry_before_clear:
         phases.append(_daytime_clear_phase(season, day))
 
-    # 4. Early money route after animals/crops (or skipped if already first).
+    # 4. Festival attendance: on festival days, farm work happens early, then attend festival
+    if is_fest and not late_day:
+        phases.append(attend_festival_phase(season, day))
+        if policy.include_end_day:
+            phases.append(RETURN_HOME_PHASE)
+            phases.append(GO_TO_SLEEP_PHASE)
+        return phases
+
+    # 4b. Sunday church visit and mountain foraging
+    if is_sunday and not late_day:
+        if policy.include_sunday_church:
+            phases.append(SUNDAY_CHURCH_PHASE)
+        if policy.include_sunday_mountain:
+            phases.append(SUNDAY_MOUNTAIN_PHASE)
+
+    # 4c. Early money route after animals/crops (or skipped if already first).
     if not late_day and not early_berries:
         phases.extend(other_berry_phases)
         # Seeds already placed early on keep-alive path when applicable.
@@ -436,14 +503,23 @@ def build_outdoor_day_phases(
     money: Optional[int] = None,
     stamina: Optional[Stamina | int] = None,
     has_plant_capacity: bool = True,
+    is_storm: bool = False,
+    is_post_storm: bool = False,
+    is_festival: Optional[bool] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
     """Assemble the outdoor portion of the day's work from current farm state."""
+    if is_storm:
+        return []
     policy = day_planner_policy_for_season(season, policy)
     is_sunday = weekday == SUNDAY_WEEKDAY
+    if is_festival is None:
+        is_festival = is_festival_day(season, day)
+    is_fest = bool(is_festival and policy.include_festivals)
+    shops_closed = is_sunday or is_fest
     late_day = hour >= policy.late_water_hour
     berry_phases = _berry_run_phases(
-        is_sunday=is_sunday,
+        is_sunday=shops_closed,
         hour=hour,
         has_seeds=has_seeds,
         policy=policy,
@@ -452,8 +528,14 @@ def build_outdoor_day_phases(
         money=money,
         has_plant_capacity=has_plant_capacity,
         has_harvest=has_harvest,
+        is_festival=is_fest,
     )
     phases: List[PhaseSpec] = []
+
+    # Post-storm recovery: morning debris clearing and fence repair
+    if is_post_storm and not late_day:
+        phases.append(_daytime_clear_phase(season, day))
+        phases.append(REPAIR_CROPS_PHASE)
 
     seed_buy_phases = [
         phase
@@ -517,6 +599,7 @@ def build_outdoor_day_phases(
         and not late_day
         and not defer_field_clear
         and not berry_before_clear
+        and not is_post_storm
     )
     if day_clear:
         phases.append(_daytime_clear_phase(season, day))
@@ -538,6 +621,21 @@ def build_outdoor_day_phases(
 
     if defer_field_clear and not berry_before_clear:
         phases.append(_daytime_clear_phase(season, day))
+
+    # 4. Festival attendance: on festival days, farm work happens early, then attend festival
+    if is_fest and not late_day:
+        phases.append(attend_festival_phase(season, day))
+        if policy.include_end_day:
+            phases.append(RETURN_HOME_PHASE)
+            phases.append(GO_TO_SLEEP_PHASE)
+        return phases
+
+    # 4b. Sunday church visit and mountain foraging
+    if is_sunday and not late_day:
+        if policy.include_sunday_church:
+            phases.append(SUNDAY_CHURCH_PHASE)
+        if policy.include_sunday_mountain:
+            phases.append(SUNDAY_MOUNTAIN_PHASE)
 
     # Berries after crop work when keep-alive / harvest claimed the morning
     # (skip when a restock day already ran them first).
@@ -565,6 +663,7 @@ def build_outdoor_day_phases_from_ram(
     *,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
     state_name: Optional[str] = None,
+    is_post_storm: bool = False,
 ) -> List[PhaseSpec]:
     """Inspect live farm RAM and build only the outdoor work that remains."""
     probe = WorldProbe.from_inputs(ram=ram, state_name=state_name)
@@ -583,6 +682,9 @@ def build_outdoor_day_phases_from_ram(
         money=probe.money(),
         stamina=probe.stamina(),
         has_plant_capacity=probe.pocket_has_plant_capacity(),
+        is_storm=probe.is_storm(),
+        is_post_storm=is_post_storm,
+        is_festival=probe.is_festival(),
         policy=policy,
     )
 
@@ -592,11 +694,14 @@ def build_day_phases_from_ram(
     *,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
     state_name: Optional[str] = None,
+    is_post_storm: bool = False,
 ) -> List[PhaseSpec]:
     """Assemble a day's phase list directly from live RAM."""
     probe = WorldProbe.from_inputs(ram=ram, state_name=state_name)
     season, _calendar_day = probe.calendar_date()
     policy = day_planner_policy_for_season(season, policy)
+    if probe.is_storm():
+        return [GO_TO_SLEEP_PHASE] if policy.include_end_day else []
     _day, hour, _minute = probe.day_time()
     tilemap = probe.tilemap() or 0
     on_farm = is_farm_tilemap(tilemap)
@@ -608,6 +713,8 @@ def build_day_phases_from_ram(
     adult_chickens = probe.chicken_counts()[0]
     oversupplied_chickens = _chicken_oversupplied(adult_chickens, policy)
     is_sunday = (probe.weekday() or 1) == SUNDAY_WEEKDAY
+    is_fest = probe.is_festival() and policy.include_festivals
+    shops_closed = is_sunday or is_fest
     cows_need_chores = policy.include_cows and not late_day and probe.needs_cow_chores()
     chickens_need_chores = (
         policy.include_chickens and not late_day and probe.needs_chicken_chores()
@@ -617,6 +724,7 @@ def build_day_phases_from_ram(
         policy.include_cows
         and policy.include_shop_run
         and not late_day
+        and not shops_closed
         and probe.should_buy_cow()
     )
     phases: List[PhaseSpec] = []
@@ -658,8 +766,9 @@ def build_day_phases_from_ram(
         _chicken_sale_phases(
             adult_chickens=adult_chickens,
             hour=hour,
-            is_sunday=is_sunday,
+            is_sunday=shops_closed,
             policy=policy,
+            is_festival=is_fest,
         )
     )
     if chickens_need_chores and not started_in_coop_chickens:
@@ -671,7 +780,11 @@ def build_day_phases_from_ram(
             )
         )
     if on_farm:
-        phases.extend(build_outdoor_day_phases_from_ram(ram, policy=policy, state_name=state_name))
+        phases.extend(
+            build_outdoor_day_phases_from_ram(
+                ram, policy=policy, state_name=state_name, is_post_storm=is_post_storm
+            )
+        )
     else:
         phases.append(DYNAMIC_OUTDOOR_PLAN_PHASE)
     return phases
@@ -739,6 +852,9 @@ def auto_day_phases(
     ram: Optional[np.ndarray] = None,
     *,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
+    is_post_storm: bool = False,
+    is_storm: Optional[bool] = None,
+    is_festival: Optional[bool] = None,
 ) -> List[PhaseSpec]:
     """Build the day's phase list dynamically from state/RAM inspection.
 
@@ -746,9 +862,17 @@ def auto_day_phases(
     instead of a sequence name.
     """
     if ram is not None:
-        return build_day_phases_from_ram(ram, policy=policy, state_name=state_name)
+        return build_day_phases_from_ram(
+            ram, policy=policy, state_name=state_name, is_post_storm=is_post_storm
+        )
 
-    return build_day_phases(state_name, policy=policy)
+    return build_day_phases(
+        state_name,
+        policy=policy,
+        is_post_storm=is_post_storm,
+        is_storm=is_storm,
+        is_festival=is_festival,
+    )
 
 
 __all__ = [
@@ -844,4 +968,16 @@ __all__ = [
     "build_outdoor_day_phases",
     "build_outdoor_day_phases_from_ram",
     "build_day_phases_from_ram",
+    "ATTEND_FESTIVAL_PHASE",
+    "REPAIR_CROPS_PHASE",
+    "SUNDAY_CHURCH_PHASE",
+    "SUNDAY_MOUNTAIN_PHASE",
+    "attend_festival_phase",
+    "default_crop_for_season",
+    "is_festival_day",
+    "festival_name_for_date",
+    "is_storm_day",
+    "is_storm_weather",
+    "post_storm_recovery_phases",
+    "seasonal_crops_for_season",
 ]

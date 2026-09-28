@@ -354,12 +354,12 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         self.assertEqual(buy.params["recording_name"], "buy_summer")
         self.assertEqual(buy.params["recording_start"], 0)
 
-    def test_fall_morning_skips_seed_shop_and_planting(self) -> None:
+    def test_winter_morning_skips_seed_shop_and_planting(self) -> None:
         phases = build_day_phases(
             None,
             weekday=3,
             hour=6,
-            season=2,
+            season=3,
             day=5,
             has_seeds=True,
             has_waterable=False,

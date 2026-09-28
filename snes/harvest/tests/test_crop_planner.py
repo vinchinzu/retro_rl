@@ -180,18 +180,24 @@ class CropPlannerTests(unittest.TestCase):
         self.assertEqual(crop.name, "corn")
         self.assertGreater(crop.harvests_from_planting_day(12), 1)
 
-    def test_fall_and_winter_have_no_plantable_crops(self) -> None:
+    def test_fall_has_eggplant_and_winter_has_no_plantable_crops(self) -> None:
         from harvest.planner.crop_planner import (
             is_crop_planting_season,
             resolve_seed_type_for_date,
             should_buy_seeds_for_date,
+            choose_crop_for_date,
         )
 
-        self.assertFalse(is_crop_planting_season("fall"))
+        self.assertTrue(is_crop_planting_season("fall"))
         self.assertFalse(is_crop_planting_season("winter"))
-        self.assertIsNone(choose_crop_for_date("fall", 1))
+        crop = choose_crop_for_date("fall", 1)
+        self.assertIsNotNone(crop)
+        assert crop is not None
+        self.assertEqual(crop.name, "eggplant")
+        self.assertEqual(resolve_seed_type_for_date("fall", 5), "eggplant")
+        self.assertTrue(should_buy_seeds_for_date("fall", 5))
         self.assertIsNone(resolve_seed_type_for_date("winter", 10))
-        self.assertFalse(should_buy_seeds_for_date("fall", 5))
+        self.assertFalse(should_buy_seeds_for_date("winter", 5))
 
     def test_resolve_seed_type_ignores_potato_stock_in_summer(self) -> None:
         from harvest.planner.crop_planner import resolve_seed_type_for_date

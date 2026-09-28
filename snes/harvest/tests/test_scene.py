@@ -195,7 +195,7 @@ class SceneClassifierTests(unittest.TestCase):
         self.assertEqual(scene.location, SceneLocation.BARN)
 
     def test_pinned_morning_after_sleep_fixture_is_normal_house_scene(self) -> None:
-        state = parse_save_state(resolve_state_path("Y1_After_Sleep"))
+        state = parse_save_state(resolve_state_path("Y1_D3_Morning"))
 
         scene = classify_scene_from_ram(state.ram)
 

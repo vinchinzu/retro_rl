@@ -12,6 +12,8 @@ NAV_TO_BARN_PHASE = PhaseSpec(
     "NAV_TO_BARN",
     "multi_nav",
     {"route": "farm_to_barn", "timeout": 10000},
+    required_maps=(0x00,),
+    estimated_frames=800,
 )
 
 ENTER_BARN_PHASE = PhaseSpec(
@@ -31,12 +33,17 @@ ENTER_BARN_PHASE = PhaseSpec(
         "overshoot_limit_px": 330,
         "require_empty_hands": True,
     },
+    required_maps=(0x00,),
+    estimated_frames=120,
 )
 
 COW_CHORES_PHASE = PhaseSpec(
     "COW_CHORES",
     "cow_chores",
     {"talk": True, "brush": True, "milk": True, "feed": True},
+    required_maps=(0x27,),
+    estimated_frames=8000,
+    failure_modes=("slot_timeout", "nav_unreachable", "pixel_nav_stall", "sleeping_animal", "no_grass"),
 )
 
 EXIT_BARN_PHASE = PhaseSpec(
@@ -52,6 +59,8 @@ EXIT_BARN_PHASE = PhaseSpec(
         "door_align_px": 8 * 16 + 8,
         "settle_frames": 5,
     },
+    required_maps=(0x27,),
+    estimated_frames=100,
 )
 
 BARN_CURRENT_COW_PHASES: List[PhaseSpec] = [

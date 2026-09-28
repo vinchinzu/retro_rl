@@ -130,6 +130,9 @@ class CoopChoresTask(Task):
     _current_egg_flag: int = field(default=0, init=False)
     _skipped_egg_flags: set[int] = field(default_factory=set, init=False)
     _deferred_egg_counts: dict[int, int] = field(default_factory=dict, init=False)
+    _current_egg_tile: Optional[Tuple[int, int]] = field(default=None, init=False)
+    _skipped_egg_tiles: set[Tuple[int, int]] = field(default_factory=set, init=False)
+    _deferred_egg_tile_counts: dict[Tuple[int, int], int] = field(default_factory=dict, init=False)
     _feed_place_started_step: int = field(default=0, init=False)
     _deferred_feed_counts: dict[int, int] = field(default_factory=dict, init=False)
     fed_count: int = field(default=0, init=False)
@@ -163,6 +166,9 @@ class CoopChoresTask(Task):
         self._current_egg_flag = 0
         self._skipped_egg_flags.clear()
         self._deferred_egg_counts.clear()
+        self._current_egg_tile = None
+        self._skipped_egg_tiles.clear()
+        self._deferred_egg_tile_counts.clear()
         self._feed_place_started_step = 0
         self._deferred_feed_counts.clear()
         self.egg_collected = False

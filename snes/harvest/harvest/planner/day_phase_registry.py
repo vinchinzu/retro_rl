@@ -342,6 +342,7 @@ def _build_multi_nav(
         waypoints=list(waypoints),
         timeout=spec.params.get("timeout", 8000),
         initial_settle_frames=spec.params.get("initial_settle_frames", 60),
+        auto_slice=True,
     )
 
 

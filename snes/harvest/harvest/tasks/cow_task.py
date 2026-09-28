@@ -135,6 +135,8 @@ MAX_MILK_DEFERRALS = 2
 PIXEL_NAV_STALL_FRAMES = 120
 MAX_PIXEL_NAV_STALLS = 2
 MAX_EXIT_PREP_FRAMES = 480
+ADDR_DIALOG_TEXT_ID = 0x0183
+COW_SLEEPING_DIALOG_ID = 0x035F
 
 @dataclass
 class CowChoresTask(Task):
@@ -155,6 +157,7 @@ class CowChoresTask(Task):
     _step_count: int = field(default=0, init=False)
     _verify_count: int = field(default=0, init=False)
     _interaction_started: bool = field(default=False, init=False)
+    _cow_sleeping: bool = field(default=False, init=False)
     _cow_count: int = field(default=0, init=False)
     _feed_remaining: int = field(default=0, init=False)
     _feed_goal_count: int = field(default=0, init=False)
@@ -214,6 +217,7 @@ class CowChoresTask(Task):
         self._step_count = 0
         self._verify_count = 0
         self._interaction_started = False
+        self._cow_sleeping = False
         self._action_queue.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
@@ -459,6 +463,7 @@ class CowChoresTask(Task):
         self._milk_attempts = 0
         self._verify_count = 0
         self._interaction_started = False
+        self._cow_sleeping = False
         self._care_slot_started_step = self._step_count
         self._care_trough_exit_logged = False
         self._pixel_nav_stall_count = 0
@@ -586,9 +591,25 @@ class CowChoresTask(Task):
             self._remember_current_pin()
         if input_lock != 1:
             self._interaction_started = True
+            dialog_id = (
+                int(world.ram[ADDR_DIALOG_TEXT_ID]) | (int(world.ram[ADDR_DIALOG_TEXT_ID + 1]) << 8)
+                if ADDR_DIALOG_TEXT_ID + 1 < len(world.ram)
+                else 0
+            )
+            if dialog_id == COW_SLEEPING_DIALOG_ID:
+                self._cow_sleeping = True
         if self.talked and (not self._interaction_started or input_lock == 1):
             return self._after_talk(world.ram)
         if self._interaction_started and input_lock == 1:
+            dialog_id = (
+                int(world.ram[ADDR_DIALOG_TEXT_ID]) | (int(world.ram[ADDR_DIALOG_TEXT_ID + 1]) << 8)
+                if ADDR_DIALOG_TEXT_ID + 1 < len(world.ram)
+                else 0
+            )
+            if self._cow_sleeping or dialog_id == COW_SLEEPING_DIALOG_ID:
+                self._cow_sleeping = False
+                print(f"[COW] Cow slot={self._target_cow_slot} is sleeping; deferring care")
+                return self._skip_current_cow_care(world.ram, "sleeping")
             retry = self._retry_talk_nav(world.ram, "dialog_closed_without_flag")
             if retry is not None:
                 return retry
