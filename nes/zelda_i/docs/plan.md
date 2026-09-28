@@ -120,7 +120,10 @@ Claim one spine bead. `bd ready -l zelda_i -l spine` is this list.
    (`level8/north_column.py`).
 4. **C10, Level 8 (rr-npv.4).** Blocked on C9 and on rr-awh6.
 5. **C11, credits (rr-npv.5).** `--clean --through level9-credits`.
-   That tape is the STATUS row.
+   That tape is the STATUS row. 2026-09-28: `clean_poweron_c11p2` plays
+   power-on to the credits in one session, but its 21,164 `set_state`
+   calls are all rollout lookahead restores; the audit fails it until the
+   owner rules whether lookahead is Clean (`docs/PRE_L1.md`).
 
 Potion (rr-thlc), extra keys (rr-qb6w), and the 0x3a heart bleed
 (rr-rgum.1) wait until a Clean tape actually dies there. They are not

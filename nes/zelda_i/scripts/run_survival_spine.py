@@ -41,6 +41,7 @@ from retro_harness.headed import (
     idle_headed,
 )
 from retro_harness.segment_runner import configure_headless, save_rgb_png, write_json_report
+from zelda_i.rollout import restores as rollout_restores
 from zelda_i.assist import UnlimitedHealthAssist
 from zelda_i.combat import facing_to_direction
 from zelda_i.overworld.path import OverworldPathController
@@ -248,6 +249,7 @@ def main(argv: list[str] | None = None) -> int:
             ledger = RunLedger(trace=[] if args.trace else None)
             ledger.attach(env)
             # VideoTap wraps env.step; do not also pass on_frame (double encode).
+            restores_at_start = rollout_restores()
             run = run_survival_spine(
                 env,
                 obs,
@@ -271,6 +273,9 @@ def main(argv: list[str] | None = None) -> int:
                 "screenshot": str(screenshot),
                 "assist": None if assist is None else assist.report(),
                 "ledger": ledger.report(final_ram),
+                # The audit counts every ``set_state``; this many were rollout
+                # lookahead restores back to the live frame (``zelda_i.rollout``).
+                "rollout_restores": rollout_restores() - restores_at_start,
             }
             payload["resource_audit"] = resource_audit(payload)
             for line in ledger.summary_lines(final_ram):
@@ -310,6 +315,7 @@ def main(argv: list[str] | None = None) -> int:
             f"keys={payload['final']['keys']} bombs={payload['final']['bombs']} "
             f"rupees={payload['final']['rupees']} kills={kills} "
             f"set_state={payload.get('set_state_count')} "
+            f"(rollout {payload.get('rollout_restores')}) "
             f"boot={payload.get('boot_policy')} video={video.get('path')}"
         )
     n_ok = sum(1 for row in results if row.get("ok"))

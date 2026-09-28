@@ -104,6 +104,7 @@ __all__ = [
     "hold",
     "in_play",
     "press",
+    "restores",
     "swing_after",
 ]
 
@@ -114,6 +115,23 @@ __all__ = [
 # one-button array, which is a no-op that looks like a working rollout.
 Frame = tuple[int, ...]
 Plan = tuple[Frame, ...]
+
+
+# Every lookahead restore this module makes, process-wide. The run audit
+# counts each as a ``set_state``; a report sets this beside it so the reader
+# can see which loads were rollouts returning to the live frame.
+_RESTORES = 0
+
+
+def _restore(em: Any, state: Any) -> None:
+    global _RESTORES
+    em.set_state(state)
+    _RESTORES += 1
+
+
+def restores() -> int:
+    """Lookahead restores (``em.set_state`` back to a saved live frame) so far."""
+    return _RESTORES
 
 
 def press(*names: str) -> Frame:
@@ -233,10 +251,10 @@ class Rollout:
         try:
             for label, plan in plans.items():
                 script = _pad(tuple(tuple(int(v) for v in f) for f in plan), frames)
-                self.em.set_state(state)
+                _restore(self.em, state)
                 outcomes.append(self._replay(label, script, before))
         finally:
-            self.em.set_state(state)
+            _restore(self.em, state)
         return tuple(outcomes)
 
     def _replay(
@@ -320,7 +338,7 @@ class Rollout:
                 self.em.set_button_mask(np.asarray(frame, dtype=np.uint8), 0)
                 self.em.step()
         finally:
-            self.em.set_state(state)
+            _restore(self.em, state)
         plan = tuple(script)
         return plan, self.run("walk", plan), i >= len(waypoints)
 
@@ -374,7 +392,7 @@ class Rollout:
         try:
             yield Branch(self, state)
         finally:
-            self.em.set_state(state)
+            _restore(self.em, state)
 
     def report(self) -> dict[str, int]:
         return {"rollouts": self.rollouts, "frames_rolled": self.frames_rolled}
@@ -417,7 +435,7 @@ class Branch:
         on :class:`Rollout`.
         """
         em = self.rollout.em
-        em.set_state(self.root if token is None else token)
+        _restore(em, self.root if token is None else token)
         before = read_snapshot(self.rollout.env.get_ram())
         script = tuple(tuple(int(v) for v in f) for f in plan)
         outcome = self.rollout._replay(label, script, before)
@@ -827,7 +845,7 @@ class PolicyGuard:
                     return t + 1
                 iframes = now
         finally:
-            em.set_state(state)
+            _restore(em, state)
         return None
 
     def _inner_step(self, snap: ZeldaSnapshot) -> Any:

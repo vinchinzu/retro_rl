@@ -6,6 +6,27 @@ commit each), then made Level 9 survivable Clean from real entries (below).
 Bead `rr-npv.5` stays in progress until a continuous power-on tape reaches
 the credits. No STATUS change or push.
 
+## Power-on tape reaches the credits; every audited load is a rollout
+
+`run_survival_spine.py --clean --through level9-credits --save-points C11Q
+--no-video --trials 1 --tag clean_poweron_c11p2` (and the identical
+`clean_poweron_c11p1`): all 330 stages succeed from power-on in one
+continuous emulator session, `resumed_from` null, 334,763 frames, no RAM
+writes, no assist, ending on `level9_wait_credits` with the "hero of Hyrule"
+text on screen (`recordings/clean_poweron_c11p2_final.png`, TF 0xFF, room
+0x32). The run still reports `ok=False failed=mid_run_state_load`: the audit
+counts `set_state=21164`, and all 21,164 are rollout lookahead restores
+(`rollout_restores=21164`, new `zelda_i.rollout.restores()`), from
+`PatraBlade`, `Rollout.walk` (0x04) and `PolicyGuard`. Each restore returns
+the core to the live frame it saved on that same frame, so the tape is one
+continuous play; but the lookahead does see the future, and the current
+contract ("no state loads after power-on") does not exempt it.
+
+Whether rollout lookahead is Clean is a policy call for the owner. If yes,
+the gate should count loads that are not rollout restores (0 here) and
+disclose `rollout_restores`; if no, the four rollout users must be replaced
+by model-only policies before `rr-npv.5` can close. STATUS is unchanged.
+
 ## Clean Level 9 from real entries: 8 of 8 offsets reach the credits
 
 Each run below starts from a real Clean Spectacle Rock state (`E2C11Evalo<n>
@@ -285,7 +306,8 @@ level9-credits` from power-on with 0 loads.
 
 ## Plan
 
-Run the continuous Clean power-on credits tape on this tree. If it is red,
-fix from its `C11P_<stage>` save point and rerun power-on. The next Clean
+Get the owner's ruling on rollout lookahead (above), then either count only
+non-rollout loads in the gate and write the STATUS row from
+`clean_poweron_c11p2`, or replace the rollout users and rerun power-on. The next Clean
 costs to cut are room 0x10 (Wizzrobe magic, up to 8h) and the Spectacle
 Rock bomb (0-3h); the Red Ring and the 0x4A-detour skip stay optional.
