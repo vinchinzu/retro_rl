@@ -53,7 +53,18 @@ def steps(*, guard=True):
         if not guard and isinstance(ctl, GuardedController):
             ctl = ctl.inner
         out.append((name, ctl, cap))
-    return [(f"s{i:02d}_{name}", ctl, cap) for i, (name, ctl, cap) in enumerate(out)]
+    # Keep the s00-s33 pins valid: the 0x16 bomb-item kill and the Red Ring
+    # detour follow s14 (East15) under their own stable labels.
+    aliases = {"level9_patra_16": "s14b", "level9_red_ring": "s14r"}
+    labelled = []
+    i = 0
+    for name, ctl, cap in out:
+        sid = aliases.get(name)
+        if sid is None:
+            sid = f"s{i:02d}"
+            i += 1
+        labelled.append((f"{sid}_{name}", ctl, cap))
+    return labelled
 
 
 def main() -> int:
@@ -114,6 +125,7 @@ def main() -> int:
             "healed": rep.get("hearts", {}).get("healed"),
             "rooms": rep.get("hearts", {}).get("damage_by_room"),
             "bombs": int(snap.bombs),
+            "ring": int(snap.ring),
             "rupees": int(snap.rupees),
             "end": f"L{snap.level}:0x{snap.screen:02x} ({snap.link_x},{snap.link_y}) m{snap.mode}",
             "by_cause": hits.get("hits_by_cause") if isinstance(hits, dict) else None,

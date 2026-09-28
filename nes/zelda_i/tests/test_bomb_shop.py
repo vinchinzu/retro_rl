@@ -254,3 +254,45 @@ def test_level4_walk_resumes_after_the_shop_or_the_potion() -> None:
     assert next_target(0x44) == 0x54
     assert next_target(0x64) == 0x65
     assert LEVEL4_HOPS_VIA_SHOP_E5[-3:] == LEVEL4_HOPS_FROM_POST_L3[-3:]
+
+
+def _l9_restock(*, skip: bool):
+    from zelda_i.level9.overworld import POST_L8_TO_BOMB_SHOP_HOPS
+    from zelda_i.overworld.bomb_shop import bomb_restock_stages
+
+    (_, buy, _), _ = bomb_restock_stages(
+        POST_L8_TO_BOMB_SHOP_HOPS, "l8", want=8,
+        shop_screen=BOMB_SHOP_SCREEN, skip_unaffordable=skip,
+    )
+    buy.reset()
+    return buy
+
+
+def test_l9_restock_skips_a_pack_the_wallet_cannot_pay_for() -> None:
+    ctl = _l9_restock(skip=True)
+    ctl.step(read_snapshot(_ram(bombs=4, rupees=2)))
+    assert ctl.success and ctl.phase is CaveShopBuyPhase.DONE
+    assert ctl.frames == 1
+    assert "bomb_restock_unaffordable_2r" in ctl.notes
+
+
+def test_restock_without_the_opt_in_still_fails_closed_on_a_short_wallet() -> None:
+    ctl = _l9_restock(skip=False)
+    ctl.step(read_snapshot(_ram(bombs=4, rupees=2)))
+    assert not ctl.success
+    paid = _l9_restock(skip=True)
+    paid.step(read_snapshot(_ram(bombs=4, rupees=20)))
+    assert not paid.success
+    assert paid.phase not in (CaveShopBuyPhase.DONE, CaveShopBuyPhase.FAILED)
+
+
+def test_level9_entry_opts_both_0x4a_packs_into_the_skip() -> None:
+    from zelda_i.level9.dungeon import MEASURED_POST_L8_HANDOFF
+    from zelda_i.level9.hops import level9_entry_chapter
+
+    buys = {
+        name: ctl for name, ctl, _ in level9_entry_chapter(handoff=MEASURED_POST_L8_HANDOFF)
+        if name.startswith("bomb_restock_")
+    }
+    assert set(buys) == {"bomb_restock_l8", "bomb_restock_l8_second"}
+    assert all(ctl.skip_unaffordable for ctl in buys.values())

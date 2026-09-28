@@ -1,4 +1,4 @@
-"""Final Patra combat policy for Level 9 room ``0x52``.
+"""Level 9 Patra combat: the final Patra in ``0x52``, 0x61's, and 0x16's.
 
 Live fceumm observations from the disclosed full-loadout recon fixture:
 
@@ -8,13 +8,13 @@ Live fceumm observations from the disclosed full-loadout recon fixture:
 - after the eyes are gone, body hits move ``0xB0 -> 0x70 -> 0x30 -> dead``;
 - the game raises north-door bit ``0x08`` after the body disappears.
 
-This controller performs no RAM writes.  The start checkpoint remains an
-explicit fixture because its full inventory and room-loader setup are composed.
+No policy here writes RAM. 0x16's first Patra (``Level9Patra16Controller``)
+is killed with swings checked against the ROM by savestate rollout.
 """
 
 from __future__ import annotations
 
-from zelda_i.dungeon.hop_controller import room_step
+from zelda_i.dungeon.hop_controller import HopController, WAIT_SCROLL_B, room_step
 
 from collections import deque
 from dataclasses import dataclass, field
@@ -22,10 +22,18 @@ from typing import Any
 
 import numpy as np
 
+from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.combat import direction_to_facing, in_sword_hitbox
+from zelda_i.dungeon.shot_guard import ROM_CHECKED
 from zelda_i.level9.ganon import LEVEL9, ROOM_BEFORE_GANON, hazard_dodge_dir
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, read_snapshot
+from zelda_i.ram import (
+    PLAY_MODE,
+    ZeldaObject,
+    ZeldaSnapshot,
+    room_item_taken,
+)
+from zelda_i.walk import live_env
 
 OBJ_PATRA = 0x47
 OBJ_PATRA_EYE = 0x25
@@ -661,110 +669,251 @@ class PatraAim:
         return nes_idle_action(), "aim_wait"
 
 
+# --- 0x16 bomb item (rr-npv.5) ------------------------------------------------
+# 0x16's first Patra ($48, eyes $26) guards the room's BOMBS item (+4) at
+# (128,144), which appears once the Patra dies. Link leaves Level 8 with 4
+# bombs and 2R, so the 0x4A packs cannot be bought: this item pays for the
+# walls.
+#
+# Only the sword hurts it: body and eyes carry ObjInvincibilityMask $FE
+# ($04B2+slot, every damage type but the sword's 1), so the rod's magic shot
+# ($10) is parried -- measured, twelve shots died on eyes at full HP. Below
+# full hearts there is no beam, so it is the blade, and the $26 lap breathes
+# 23..83 px off the body about every 130 frames: the fixed 0x61-style stand
+# (192,149) sat inside the wide lap half the time and, at 10 hearts over
+# offsets 0/3/7/11, paid 5/3/10/10 hearts with two deaths (L9S5_s15).
+# So every swing is searched with a savestate rollout (``zelda_i.rollout``):
+# the emulator is deterministic, and a committed plan plays out exactly.
+PATRA_16_ROOM = 0x16
+PATRA_16_MAX_FRAMES = 20_000
+# The body spawns a frame after the room loads and the eyes two later (0x61's
+# spawn race). A room with no Patra by then was cleared on an earlier visit.
+PATRA_16_SPAWN_FRAMES = 60
+# A swing is worth searching only with a Patra part this close (Chebyshev):
+# a 12-frame step covers ~18 px and the blade reaches ~16 more.
+BLADE_REACH = 44
+BLADE_STEPS = (0, 4, 8, 12)
+BLADE_TURN = 2
+BLADE_PIN = 13
+# Link must stand this long untouched after the pin, or the next frame is
+# already a hit the search cannot see past.
+BLADE_TAIL = 16
+BLADE_SEARCH_EVERY = 4
+# Between swings, wait this far off the body: the tight lap (23..30 px) is in
+# reach of a short step, and the wide one is dodged by rollout. With the eyes
+# gone, close to blade range of the body (56 px waited 900 frames on it).
+BLADE_STAGE = 56
+BLADE_STAGE_BODY = 24
+BLADE_EVADE_FRAMES = 24
+_ROOM_16_BOX = (32, 208, 85, 189)
+
+
+def patra_hp(snap: ZeldaSnapshot) -> int:
+    """Patra HP left in the room: live eyes plus the body."""
+    return sum(
+        int(o.hp) for o in snap.objects
+        if int(o.type_id) in PATRA_BODY_TYPES + PATRA_EYE_TYPES
+    )
+
+
+def _blade_plans(
+    snap: ZeldaSnapshot, parts: tuple[ZeldaObject, ...]
+) -> list[tuple[int, list[str | None], str]]:
+    """(swing frame, presses before A, facing), earliest swing first.
+
+    A facing is tried only toward a Patra part within ``BLADE_REACH``.
+    """
+    x, y = int(snap.link_x), int(snap.link_y)
+    faces = set()
+    for o in parts:
+        dx, dy = int(o.x) - x, int(o.y) - y
+        if max(abs(dx), abs(dy)) > BLADE_REACH:
+            continue
+        faces.add("RIGHT" if dx > 0 else "LEFT")
+        faces.add("DOWN" if dy > 0 else "UP")
+    plans = []
+    for face in sorted(faces):
+        for d in (None, "UP", "DOWN", "LEFT", "RIGHT"):
+            for k in BLADE_STEPS:
+                if (d is None) != (k == 0):
+                    continue
+                presses = [d] * k + [face] * BLADE_TURN
+                plans.append((len(presses), presses, face))
+    return sorted(plans, key=lambda p: p[0])
+
+
 @dataclass
-class FinalPatraFightController:
-    """Controller-input-only final Patra clear and north-door earn."""
+class PatraBlade:
+    """Blade kills on a Patra, each swing checked against the ROM first.
 
-    max_frames: int = PATRA_MAX_FRAMES
-    stand_dy: int = PATRA_STAND_DY
-    frames: int = 0
-    sword_pulses: int = 0
-    max_eyes_seen: int = 0
-    eye_count_changes: list[dict[str, int]] = field(default_factory=list)
-    body_hp_changes: list[int] = field(default_factory=list)
-    reasons: dict[str, int] = field(default_factory=dict)
+    When a Patra part is in reach it searches short plans (step, turn, A,
+    hold through the pin and ``BLADE_TAIL``) with a savestate rollout and
+    commits the first whose swing drops Patra HP with Link untouched. Between
+    swings it waits ``BLADE_STAGE`` px off the body; a rollout of that walk
+    that meets a hit hands the frame to the rollout's best held direction.
+    Every returned reason carries ``ROM_CHECKED`` so the shot guard does not
+    override a frame the ROM already answered.
+    """
 
-    def run(
-        self,
-        env: Any,
-        *,
-        assist: Any | None = None,
-        total: list[int] | None = None,
-    ) -> dict[str, Any]:
-        total_frames = total if total is not None else [0]
-        start = read_snapshot(env.get_ram())
-        if not final_patra_live(start):
-            return self.report(ok=False, snap=start, error="final Patra not live")
+    rollout: Any = None
+    swings: int = 0
+    searches: int = 0
+    evades: int = 0
+    _plan: list[list[int]] = field(default_factory=list)
+    _recheck: int = 0
 
-        cooldown = 0
-        last_eye_count: int | None = None
-        last_body_hp: int | None = None
+    def _search(self, snap: ZeldaSnapshot, parts: tuple[ZeldaObject, ...]) -> list[list[int]] | None:
+        from zelda_i.rollout import hold, press
 
-        for _ in range(self.max_frames):
-            snap = read_snapshot(env.get_ram())
-            eyes = patra_eyes(snap)
-            body = patra_body(snap)
-            eye_count = len(eyes)
-            self.max_eyes_seen = max(self.max_eyes_seen, eye_count)
-            if eye_count != last_eye_count:
-                self.eye_count_changes.append({"frame": self.frames, "eyes": eye_count})
-                last_eye_count = eye_count
-            if body is not None and body.hp != last_body_hp:
-                self.body_hp_changes.append(int(body.hp))
-                last_body_hp = body.hp
+        self.searches += 1
+        hp = patra_hp(snap)
+        for _, presses, _ in _blade_plans(snap, parts):
+            script = tuple(press(d) if d else press() for d in presses) + (press("A"),)
+            script += hold(None, BLADE_PIN + BLADE_TAIL)
+            out = self.rollout.run("swing", script)
+            if out.contact_frame is None and patra_hp(out.snap) < hp:
+                return [list(f) for f in script[: len(presses) + 1 + BLADE_PIN]]
+        return None
 
-            if final_patra_north_door_earned(snap):
-                return self.report(ok=True, snap=snap)
-            if snap.mode == 17:
-                return self.report(ok=False, snap=snap, error="link death")
+    def _stage(
+        self, snap: ZeldaSnapshot, body: ZeldaObject, radius: int = BLADE_STAGE
+    ) -> tuple[int, int]:
+        x, y = int(snap.link_x), int(snap.link_y)
+        dx, dy = x - int(body.x), y - int(body.y)
+        norm = max(1.0, (dx * dx + dy * dy) ** 0.5)
+        xlo, xhi, ylo, yhi = _ROOM_16_BOX
+        gx = int(body.x) + round(dx / norm * radius)
+        gy = int(body.y) + round(dy / norm * radius)
+        gx = max(xlo, min(xhi, gx // 8 * 8))
+        gy = max(ylo, min(yhi, (gy - 5) // 8 * 8 + 5))
+        return gx, gy
 
-            action, reason, cooldown = patra_action(
-                snap,
-                cooldown=cooldown,
-                stand_dy=self.stand_dy,
-            )
-            if reason.startswith("sword_pulse"):
-                self.sword_pulses += 1
-            self.reasons[reason] = self.reasons.get(reason, 0) + 1
-            env.step(action)
-            self.frames += 1
-            total_frames[0] += 1
-            if assist is not None:
-                assist.apply_env(env, frame=total_frames[0])
+    def step(self, snap: ZeldaSnapshot, env: Any) -> tuple[list[int], str]:
+        from zelda_i.rollout import Rollout, hold
 
-        return self.report(
-            ok=False,
-            snap=read_snapshot(env.get_ram()),
-            error="north door timeout",
-        )
-
-    def report(
-        self,
-        *,
-        ok: bool,
-        snap: ZeldaSnapshot,
-        error: str | None = None,
-    ) -> dict[str, Any]:
+        if self._plan:
+            return self._plan.pop(0), f"{ROM_CHECKED}blade_plan"
         body = patra_body(snap)
-        result: dict[str, Any] = {
-            "ok": ok,
-            "frames": self.frames,
-            "policy": "south_stand_dodge",
-            "stand_dy": self.stand_dy,
-            "sword_pulses": self.sword_pulses,
-            "max_eyes_seen": self.max_eyes_seen,
-            "eye_count_changes": list(self.eye_count_changes),
-            "body_hp_changes": list(self.body_hp_changes),
-            "reasons": dict(self.reasons),
-            "north_door_earned": bool(snap.cur_opened_doors & NORTH_DOOR),
-            "open_doorway_mask": int(snap.open_doorway_mask),
-            "room_all_dead": int(snap.room_all_dead),
-            "room_obj_count": int(snap.room_obj_count),
-            "remaining_eyes": len(patra_eyes(snap)),
-            "body": (
-                {"slot": body.slot, "hp": body.hp, "state": body.state}
-                if body is not None
-                else None
-            ),
-            "controller_memory_writes": 0,
-        }
-        if error is not None:
-            result["error"] = error
-        return result
+        parts = tuple(e for e in patra_eyes(snap) if e.hp > 0)
+        if body is not None:
+            parts += (body,)
+        if not parts:
+            return nes_idle_action(), f"{ROM_CHECKED}blade_no_target"
+        if self.rollout is None or self.rollout.env is not env:
+            self.rollout = Rollout(env)
+        self._recheck = max(0, self._recheck - 1)
+        if self._recheck == 0 and _blade_plans(snap, parts):
+            plan = self._search(snap, parts)
+            if plan is not None:
+                self.swings += 1
+                self._plan = plan[1:]
+                return plan[0], f"{ROM_CHECKED}blade_plan"
+            self._recheck = BLADE_SEARCH_EVERY
+        anchor = body if body is not None else parts[0]
+        radius = BLADE_STAGE if len(parts) > 1 else BLADE_STAGE_BODY
+        intended = room_step(snap, self._stage(snap, anchor, radius), tol=2)
+        out = self.rollout.run("go", hold(intended, BLADE_EVADE_FRAMES))
+        if out.contact_frame is not None:
+            best = self.rollout.best_step(frames=BLADE_EVADE_FRAMES)
+            if best.contact_frame is None or best.contact_frame > out.contact_frame:
+                self.evades += 1
+                act = nes_idle_action() if best.label == "STAND" else nes_action(best.label)
+                return act, f"{ROM_CHECKED}blade_evade_{best.label.lower()}"
+        if intended is None:
+            return nes_idle_action(), f"{ROM_CHECKED}blade_wait"
+        return nes_action(intended), f"{ROM_CHECKED}blade_stage"
+
+
+def _room16_sweep() -> Any:
+    # ``prefix`` imports this module, and the room-engine adapter lives there.
+    from dataclasses import replace
+
+    from zelda_i.dungeon.engine import DoorRoute
+    from zelda_i.level9.prefix import ROOM_10_WIZZROBES_SPEC, RoomFight
+
+    return RoomFight(replace(
+        ROOM_10_WIZZROBES_SPEC,
+        spec_id="level9_room16_sweep",
+        source_room=0x15,
+        room_id=PATRA_16_ROOM,
+        entry=DoorRoute("RIGHT", ((32, 141),)),
+        enemy_types=(OBJ_PATRA_2, OBJ_PATRA_EYE_2),
+        expected_enemy_count=0,
+        max_frames=900,
+    ))
+
+
+@dataclass(kw_only=True)
+class Level9Patra16Controller(HopController):
+    """Kill 0x16's Patra with rollout-checked swings, then take its bomb item.
+
+    Link stays in 0x16: the north walk is ``level9_north_16``'s, and the Red
+    Ring detour leaves from this room too.
+    """
+
+    spec_id: str = "level9_patra_16"
+    done_reason: str = "patra16_bombs_taken"
+    require_level: int | None = LEVEL9
+    wait_modes: tuple[int, ...] = WAIT_SCROLL_B
+    max_frames: int = PATRA_16_MAX_FRAMES
+    blade: PatraBlade = field(default_factory=PatraBlade)
+    _seen: bool = False
+    _cleared: bool = False
+    _sweep: Any = field(default=None, repr=False)
+
+    def _live_env(self) -> Any:
+        return self._env or live_env.current()
+
+    def _item_taken(self) -> bool:
+        env = self._live_env()
+        return env is not None and room_item_taken(env.get_ram(), LEVEL9, PATRA_16_ROOM)
+
+    def arrived(self, snap: ZeldaSnapshot) -> bool:
+        return snap.mode == PLAY_MODE and self._item_taken()
+
+    def policy(self, snap: ZeldaSnapshot) -> FrameAction:
+        if snap.mode != PLAY_MODE:
+            return FrameAction(nes_idle_action(), f"wait_mode_{snap.mode}")
+        if snap.screen != PATRA_16_ROOM:
+            return self.mark_fail(f"patra16_left_0x{snap.screen:02x}")
+        env = self._live_env()
+        if env is None:
+            return self.mark_fail("patra16_env_not_bound")
+        if not self._cleared:
+            alive = bool(patra_eyes(snap)) or patra_body(snap) is not None
+            self._seen |= alive
+            if not alive and (self._seen or self.frames > PATRA_16_SPAWN_FRAMES):
+                self._cleared = True
+            else:
+                action, reason = self.blade.step(snap, env)
+                return FrameAction(action, f"patra16_{reason}")
+        if self._sweep is None:
+            self._sweep = _room16_sweep()
+        if self._sweep.done:
+            return self.mark_fail("patra16_item_not_taken")
+        return self._sweep.step(snap)
+
+    def report(self) -> dict[str, Any]:
+        rep = super().report()
+        rollout = self.blade.rollout
+        rep.update({
+            "patra_cleared": self._cleared,
+            "blade_swings": self.blade.swings,
+            "blade_searches": self.blade.searches,
+            "blade_evades": self.blade.evades,
+            "rollouts": getattr(rollout, "rollouts", 0),
+            "frames_rolled": getattr(rollout, "frames_rolled", 0),
+        })
+        return rep
+
+
+def make_patra_16_controller() -> Level9Patra16Controller:
+    return Level9Patra16Controller()
 
 
 __all__ = [
-    "FinalPatraFightController",
+    "Level9Patra16Controller",
+    "PatraBlade",
     "NORTH_DOOR",
     "OBJ_PATRA",
     "OBJ_PATRA_2",
@@ -783,7 +932,9 @@ __all__ = [
     "final_patra_live",
     "final_patra_north_door_earned",
     "in_final_patra_room",
+    "make_patra_16_controller",
     "patra_action",
     "patra_body",
     "patra_eyes",
+    "patra_hp",
 ]

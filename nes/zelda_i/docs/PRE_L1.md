@@ -1,22 +1,40 @@
-# Zelda I sitting residual — Level 9 worktree integration (2026-09-27)
+# Zelda I sitting residual — Level 9 lane integration (2026-09-28)
 
-Lane A from Claude's interrupted session is complete and on main at
-`a686cce2`, based on `ff66c93a`.
-Bead `rr-npv.5` stays in progress: Clean power-on credits is still unproved.
-The user authorized completing the five other worktrees with new sub-agents
-and landing every lane on main. Lane C is now on main at `6c5eced9`.
-The user then requested a graceful stop and handoff. The hazards and Red Ring
-agents hit a usage limit before completing validation; their changes remain
-uncommitted in their original worktrees. Bomb-budget and overworld agents
-were not launched. Claude's partial edits were preserved. No STATUS change
-or push. No takeover eval processes remain running at handoff.
+Lanes A (`a686cce2`) and C (`6c5eced9`) are on main. On 2026-09-28 a single
+Claude thread took over the remaining lanes in the main tree, landing them one
+commit each; lane D (bombs) is the first. Bead `rr-npv.5` stays in progress:
+Clean power-on credits is still unproved. No STATUS change or push.
 
-The current-main real-C10 resume `codex_all_baseline` fails
-`bomb_restock_l8` at 3008 frames with 4 bombs and 2R. It has one state load,
-no heart assist, no inventory pokes, and confirms the shop shortfall.
-The Red Ring's reciprocal ROM-door graph requires three extra bomb walls;
-the bomb-budget lane must guarantee the 0x16 item and save another bomb,
-for example by avoiding 0x31W. Existing lane-A verification follows.
+## Bomb budget lane verified (D)
+
+0x16's Patra ($48, eyes $26) now dies for its BOMBS item (+4) in hop
+`level9_patra_16` (probe alias `s14b`), after East15 and before North16.
+Only the sword hurts a Patra: body and eyes carry ObjInvincibilityMask $FE
+(`$04B2+slot`), so the Magical Rod's shot (magic, $10) is parried -- twelve
+measured shots died on full-HP eyes. The fixed melee stand paid 5/3/10/10h
+with two deaths at 10 hearts (offsets 0/3/7/11). `PatraBlade`
+(`level9/patra.py`) instead searches short plans (step, turn, A, hold the
+13-frame pin and 16 more) with a savestate rollout and commits the first whose
+swing drops Patra HP with Link untouched; the emulator is deterministic, so
+the committed plan plays out exactly. From `L9S5_s15` at 10 hearts, offsets
+0/1/3/5/7/11 all kill it and take the item in 595-707 frames with **0
+damage**, then North16 leaves in ~210. Its frames carry `ROM_CHECKED`, which
+`ShotGuard.filter` passes through. The controller moved out of `prefix.py`
+(1591 -> 1512 lines); the unused `FinalPatraFightController` was deleted.
+
+`LEVEL9_BOMBS_WANTED` stays 8 as headroom: both 0x4A restocks opt into
+`skip_unaffordable` (L9 only; other legs still fail closed on a short
+wallet). On `C11Evalo0..4` Clean, which used to fail `bomb_restock_l8` with
+4 bombs / 2R, both restocks now skip in one frame and all five reach 0x05.
+Offset 0 then lost 8.78h on overworld 0x59 (26 Zora `0x55` hits) walking
+back from the pointless 0x4A detour: skipping the detour itself when the
+wallet is short (a `GatedLeg` pair with the direct `POST_L8_TO_LEVEL9_HOPS`)
+belongs to the overworld lane E. Whole L9 from `L9S5_s08` under refill with
+bombs written to 3 (the real count after the rock) reaches the credits; bomb
+ledger 3 -> 2 (0x65N) -> 6 (0x16 item) -> 5 (0x06W) -> 4 (0x20N) -> join
+ends with 6 (drops) -> credits 6. That run's damage is 17.5h (join 6.27h,
+room 0x10 3.75h, final Patra 2h, Ganon 2h): refill evidence, not Clean.
+Logs: `logs/lane_d/`.
 
 ## Resume the remaining lanes
 
@@ -29,7 +47,7 @@ without fixing the failures and repeating its ROM matrix.
 |---|---|---|
 | B: hazards | `agent-a936abbf5e5d1f561` | Dirty `dungeon/shot_guard.py` (staged Claude trap draft plus new unstaged changes), new `tests/test_shot_guard_hazards.py`. Fix 0x04 trap deadlock and 0x20 bomb-wall recovery before landing. |
 | C: stalls | `agent-ac061e44b550e7c0a` | Clean agent commit `b97d30c7`; integrated on main as `6c5eced9`, including bead export and this living handoff. |
-| D: bombs | `agent-a5e5e888637a7a237` | Original dirty one-line `natural_path.py` Patra16 substitution only; new agent never launched. Start this lane next. |
+| D: bombs | main | Landed (above). The worktree's one-line Patra16 substitution is superseded. |
 | E: overworld | `agent-ad65a8b9932b58953` | Clean lane-A base; new agent never launched. Reduce Death Mountain approach damage after hazard integration. |
 | F: Red Ring | `agent-a6cbaad37898ea620` | Dirty route/controller/probe/tests, no commit. Detour passes 4/4 loaded offsets, whole L9 fails 0/4; finish D's guaranteed bomb budget before landing F. |
 
