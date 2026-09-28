@@ -1,7 +1,8 @@
 # Agent Instructions — zelda_i
 
-NES Legend of Zelda. The verified Clean power-on gate is the L8 Triforce
-(`clean_poweron98`); L9 / credits is the active frontier (`docs/plan.md` ladder).
+NES Legend of Zelda. The verified Clean power-on gate is the credits
+(`clean_poweron_c12`, recorded by replaying its tape; M8). Next: lookahead at
+real time and Level 9 health (`docs/plan.md`).
 Docs: `docs/STATUS.md`, `docs/plan.md`, `docs/PRE_L1.md`.
 Session: `.grok/skills/zelda-session/SKILL.md`.
 Tracker: `bd ready -l zelda_i -l spine`. Living residual: `docs/PRE_L1.md`.
@@ -33,6 +34,7 @@ reports `hearts` (in/out/damage/damage_by_room).
 bd ready -l zelda_i -l spine
 uv run python nes/zelda_i/scripts/run_survival_spine.py --no-video --trials 1              # default: gather → L1 TF
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level9-credits --save-points Full --no-video --trials 1  # continuous power-on → credits (~1h); own prefix keeps Spine_*
+uv run python nes/zelda_i/scripts/replay_tape.py nes/zelda_i/recordings/<tag>.tape.npz   # every spine run writes a tape; replay it from power-on → <tag>_replay.mp4 (~12x real time, per-frame RAM sync)
 uv run python nes/zelda_i/scripts/run_survival_spine.py --through level7 --save-points R25 --resume level7_post_l6_overworld --no-video --trace /tmp/tape.json  # one level from a save point, per-frame tape
 uv run python nes/zelda_i/scripts/run_metrics.py nes/zelda_i/recordings/<tag>.json   # docs/RUN_METRICS.md row
 uv run python nes/zelda_i/scripts/pin_probe.py <state> --tiles --items --press DOWN:40   # pose, objects, $6530 + lattice, item flags; --fixture writes tests/fixtures
@@ -96,7 +98,8 @@ Leave proof is RAM plus `zelda_i.screen_glance`, with `--no-video`.
 - Only the sword hurts a Patra: body and eyes carry ObjInvincibilityMask $FE (`$04B2+slot`), so the rod's shot is parried. 0x16's kill (`level9/patra.py` `PatraBlade`) commits swings a savestate rollout proved hit with Link untouched; those frames carry `ROM_CHECKED`, which `ShotGuard` passes through.
 - A walk the shot guard refuses forever (it holds each inner press to its whole horizon) needs a route, not a weaker guard: `Rollout.walk` rolls a `room_step` waypoint walk on the ROM and returns presses that replay exactly (L9 0x04 baits its corner traps, then crosses).
 - A hand phase machine among live enemies goes behind `rollout.PolicyGuard`: each play frame a deep copy of the controller plays its own next 24 frames on the ROM, and a hit there buys a held-direction detour (never one that scrolls the screen). Its walk legs must be `room_step` lattice legs: a detour leaves Link off any one-axis line (L9 0x05 pinned 3200 frames in the (64,77) nook).
-- The run audit counts every `em.set_state`, including rollout lookahead restores: a spine run that uses `PatraBlade`, `Rollout.walk` or `PolicyGuard` reports `set_state=N (rollout N)` and fails `mid_run_state_load` under the current Clean contract. Whether lookahead is Clean is an open owner decision (`docs/PRE_L1.md`).
+- Rollout lookahead is allowed for development (owner ruling 2026-09-28). The audit counts every `em.set_state`. A spine run reports `set_state=N (rollout M)` and fails `mid_run_state_load` only on the N-M loads that are not rollout restores. The published MP4 is the run's button tape replayed from power-on (`replay_tape.py`): no lookahead, 0 loads, and system RAM checked every frame. Rollouts step `env.em`, so they never reach `env.step`, the tape, or the video.
+- A replay desync names its first frame. Before you blame the policy, rule out process noise: WRAM `$6000`/`$652D` and zero-page `$0E`/`$0F` (title frame 40) differ between two identical runs, so the sync key is `$0010-$07FF`.
 - Score a combat change on the multi-offset eval, not on one tape (`stage_replay.py --idle`). A dungeon reroute that touches a room M5 uses (0x23, 0x33) must be re-run against M5's 18909f.
 
 ## Pointers

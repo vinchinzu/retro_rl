@@ -239,6 +239,20 @@ work stays on pathfinding, doors, keys, bombs, and puzzles — not sword polish.
 Do not mix assisted greens into Clean STATUS rows. Prefer SM-style dual-track
 stems when both exist.
 
+## Rollout lookahead (owner ruling 2026-09-28)
+
+`zelda_i.rollout` (`PatraBlade`, `Rollout.walk`, `PolicyGuard`) saves the
+core, plays a few frames ahead, and restores the same live frame. Lookahead
+is allowed for development. The spine gate discloses those restores as
+`rollout_restores` and fails `mid_run_state_load` only on other loads.
+
+The published recording is the run's button tape (`recordings/<tag>.tape.npz`)
+replayed into a fresh power-on by `scripts/replay_tape.py`. The replay runs
+no controller and no lookahead, and it makes no state load and no RAM write.
+It is checked against the live run's system RAM every frame. Quote the Clean
+row from the replay, and disclose that its input came from a lookahead
+policy.
+
 ## CLI
 
 ```bash

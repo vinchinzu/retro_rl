@@ -4,13 +4,35 @@
 
 | Field | Value |
 |-------|-------|
-| Current maturity | M5 |
-| Best verified result | Clean power-on through the **Level 8 Triforce** on the gathered route: triforce `0xFF`, Magic Key, 15 containers, 296,423 frames, one continuous run, 0 state loads, 0 deaths, 0 inventory/progression writes |
-| Last verification | 2026-09-26 |
+| Current maturity | M8 |
+| Best verified result | Clean power-on to the **credits** (Ganon, Zelda, "hero of Hyrule"): triforce `0xFF`, 15 containers, 334,763 frames, one continuous session, 0 RAM writes, 0 deaths, no health refill. The MP4 is that run's input replayed from power-on with 0 state loads, in sync on every frame |
+| Last verification | 2026-09-28 |
 | Runtime class | Bronze |
-| Intervention class | Clean |
-| Evidence | [clean_poweron98.json](../recordings/clean_poweron98.json) (`run_survival_spine.py --clean --through level8`); 296,423 frames continuous power-on, `resumed_from` null, 0 state loads, no assist, 0 position/progression writes, 0 inventory writes between frames. Previous gate: [clean_poweron83.json](../recordings/clean_poweron83.json) through L6. |
+| Intervention class | Clean (recording); the live policy uses ROM rollout lookahead, allowed for development (owner ruling 2026-09-28) |
+| Evidence | [clean_poweron_c12.json](../recordings/clean_poweron_c12.json) (`run_survival_spine.py --clean --through level9-credits`): `ok=True`, `resumed_from` null, no assist, 0 inventory/progression writes, `set_state=21164` = `rollout_restores=21164` (lookahead restores to the live frame), 0 other loads. Recording: [clean_poweron_c12_replay.mp4](../recordings/clean_poweron_c12_replay.mp4) from [clean_poweron_c12_replay.json](../recordings/clean_poweron_c12_replay.json) (`replay_tape.py`): 334,763 frames, 0 desynced, 0 loads, 0 writes, 11.6x real time. Previous gate: [clean_poweron98.json](../recordings/clean_poweron98.json) through L8. |
 | Not the gate | Survival tapes, resumed pins, offset evals, and any `--rollout` trial. |
+
+## 2026-09-28: Clean power-on to the credits, recorded from its own tape
+
+`clean_poweron_c12` plays power-on → gathering → L1-L9 → Ganon → Zelda in
+one session with no refill, no RAM write and no death. The Level 9 lanes
+(shot guard, blade traps, 0x16 Patra bombs, Death Mountain walk, rollout-checked
+Patra swings and `PolicyGuard`; details in [PRE_L1.md](PRE_L1.md)) closed the
+gap from C10. Its 21,164 state loads are all rollout lookahead restores: the
+controller saves the core, plays a few frames ahead, and restores the same
+live frame. The owner ruled that allowed for development, so the gate
+discloses them (`rollout_restores`) and fails only on other loads.
+
+The published recording has none. Every spine run now writes a button tape.
+`replay_tape.py` plays it into a fresh power-on with no controller and no
+lookahead, and it checks the system RAM ($0010-$07FF) against the live run
+on every frame. All 334,763 match. The replay encodes at 11.6x real time. The
+live policy averages 5.7x, but three `PolicyGuard` stages in Level 9 run below
+real time (the Patra join is 0.38x; `rr-yzb4`).
+
+Under `docs/BENCHMARK_SPEC.md`, strict Clean allows no emulator-state
+mutation during the attempt. The recording meets that; the live policy
+meets it except for the disclosed lookahead.
 
 The 18909f wooden-sword M5 (2026-09-14) is historical. Its standalone
 recheck (`run_level1_complete.py --natural-entry`) is red at L1 0x33
