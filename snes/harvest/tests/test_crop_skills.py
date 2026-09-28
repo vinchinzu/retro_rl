@@ -167,6 +167,25 @@ class UseToolUntilTileTests(unittest.TestCase):
         edges = sum(1 for a, b in zip(pressed, pressed[1:]) if b and not a)
         self.assertGreaterEqual(edges, 3)
 
+    def test_busy_player_state_is_waited_out_not_spent(self) -> None:
+        """run28 D14: player_state 5 after nav drops buttons for 100+ frames.
+        The face/give-up budgets must not run down while it lasts."""
+        ram = _ram(tile=(17, 28), tid=0x01, selected=int(Tool.WATERING_CAN))
+        ram[ADDR_MAP + 28 * MAP_WIDTH + 18] = 0x5A
+        ram[ADDR_DIR] = 3
+        ram[field_spec("player_state").address] = 5
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = water_until_wet_skill(target_tile=(18, 28), face="right", timeout=1200)
+        skill.reset(world)
+        for _ in range(150):
+            result = skill.step(world)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertIn("wait player_state", result.reason)
+        ram[field_spec("player_state").address] = 1
+        result = skill.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertNotIn("wait player_state", result.reason)
+
     def test_water_gives_up_when_the_face_never_lands(self) -> None:
         world = self._edge_world(py=424, facing=1)
         skill = water_until_wet_skill(target_tile=(20, 27), face="down", timeout=1200)

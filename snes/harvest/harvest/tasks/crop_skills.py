@@ -56,6 +56,10 @@ _MAX_EDGE_NUDGES = 12
 # out (~74f). Repeat the window on this period so a press swallowed by a busy
 # player_state (run26 D6: state 5 for 100+ frames after nav) is retried.
 _USE_TOOL_PERIOD = 100
+# player_state values in which buttons are honoured; anything else is a busy
+# animation. The wait is capped so a state that never clears cannot hang us.
+_FREE_PLAYER_STATES = frozenset({0, 1})
+_MAX_BUSY_WAITS = 300
 # Past this many steps a face that never landed is a failure, not a reason to
 # keep using the tool in the wrong direction.
 _FACE_GIVE_UP_STEPS = 60
@@ -167,12 +171,14 @@ class UseToolUntilTileSkill(Task):
     _saw_tool: bool = field(default=False, init=False)
     _face_ok_step: int = field(default=0, init=False)
     _edge_nudges: int = field(default=0, init=False)
+    _busy_waits: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._steps = 0
         self._saw_tool = False
         self._face_ok_step = 0
         self._edge_nudges = 0
+        self._busy_waits = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -248,6 +254,19 @@ class UseToolUntilTileSkill(Task):
                 action=ActionResult(make_action()),
                 reason="wait input unlock",
             )
+        # Right after a nav the farmer sits in player_state 5 for 100+ frames
+        # with input_lock already 1: buttons are dropped, so the X swap, the
+        # face taps and the first Y window all vanish (run28 D14: "cannot face
+        # right" at step 60 with a fine stand). Wait it out, boundedly, and do
+        # not let that wait eat the face/give-up budgets.
+        busy = int(read_ram_value(world.ram, "player_state") or 0)
+        if busy not in _FREE_PLAYER_STATES and self._busy_waits < _MAX_BUSY_WAITS:
+            self._busy_waits += 1
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason=f"wait player_state=0x{busy:02X}",
+            )
         if self.target_tile is not None:
             dist = abs(player_tile[0] - tile[0]) + abs(player_tile[1] - tile[1])
             if dist == 0 and self.face:
@@ -305,7 +324,7 @@ class UseToolUntilTileSkill(Task):
         if (
             wanted_face is not None
             and facing != wanted_face
-            and self._steps > _FACE_GIVE_UP_STEPS
+            and self._steps - self._busy_waits > _FACE_GIVE_UP_STEPS
         ):
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -318,7 +337,7 @@ class UseToolUntilTileSkill(Task):
             wanted_face is not None
             and self._face_ok_step == 0
             and facing != wanted_face
-            and self._steps <= 24
+            and self._steps - self._busy_waits <= 24
         ):
             # 1f tap every 8f — holding the face walks onto the hoe target.
             if self._steps % 8 == 1:
