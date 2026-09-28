@@ -26,7 +26,6 @@ from zelda_i.combat import (
 )
 from zelda_i.dungeon.behaviors import ZORA_SHOT_SPEED, is_projectile
 from zelda_i.dungeon.hop_controller import ow_edge_band_step, room_step
-from zelda_i.dungeon.ids import RUPEE_DROP_OBJECT_TYPE
 from zelda_i.dungeon.threat import (
     MIN_DODGE_BODY,
     TRIGGER_TTC,
@@ -43,6 +42,8 @@ from zelda_i.overworld.common import (
     EDGE_WEST_X,
     HEART_FAIRY_DROP_STATES,
     HEART_FAIRY_DROP_TYPES,
+    SCOOP_RUPEE_RADIUS,
+    RupeeScoop,
     align_and_push,
     box_step,
     keep_y_band,
@@ -58,7 +59,6 @@ from zelda_i.overworld.common import (
     wake_or_wait_mode,
     walk_or_swing,
 )
-from zelda_i.combat import RUPEE_DROP_STATES
 from zelda_i.overworld.heart_farm import (
     BAND_SWEEP_WAYPOINTS,
     HeartFarmController,
@@ -72,7 +72,14 @@ from zelda_i.overworld.graph import (
     hop_exit_band,
     is_5c_maze_hop,
 )
-from zelda_i.overworld.hunt import SHOT_DWELL_SPEED, ScreenHunter, blade_lands, hop_lane, link_busy
+from zelda_i.overworld.hunt import (
+    SHOT_DWELL_SPEED,
+    ScreenHunter,
+    blade_lands,
+    hop_lane,
+    link_busy,
+    walks_through,
+)
 from zelda_i.overworld.locations import restock_for, worth_heart_farm, worth_rupee_farm
 from zelda_i.overworld.rupee_farm import RupeeFarmController, RupeeFarmPhase
 from zelda_i.rollout import Rollout, RolloutEvader
@@ -94,7 +101,7 @@ DEFAULT_SWING_PERIOD = 10
 DEFAULT_SWING_HOLD = 3
 DEFAULT_STUCK_THRESHOLD = 50
 DEFAULT_MAX_FRAMES = 30000
-DEFAULT_SCOOP_RADIUS = 48
+DEFAULT_SCOOP_RADIUS = SCOOP_RUPEE_RADIUS
 # Hearts and fairies only. Half the play area, so a heal that landed across
 # the room is still reachable: a fairy is a full refill and, because one
 # ``$0670`` chip takes the sword beam away (``zelda_i.beam``), the heal is
@@ -377,7 +384,9 @@ class OverworldPathController:
     # Restock-farm target. 0 disables the farm loop. Floor scoop is
     # ``scoop_rupees`` or (need_rupees > 0 and still short).
     need_rupees: int = 0
-    scoop_rupees: bool = False
+    # Every walk banks the floor rupees it passes (``common.RupeeScoop``:
+    # ROM lattice, written off when unreachable or slow), up to the cap.
+    scoop_rupees: bool = True
     scoop_bombs: bool = False
     hop_screen_max_frames: int = DEFAULT_HOP_SCREEN_MAX_FRAMES
     scoop_radius: int = DEFAULT_SCOOP_RADIUS
@@ -385,6 +394,7 @@ class OverworldPathController:
     # In-route kill+restock so we arrive at the shop closer to ``need_rupees``.
     rupee_farm_attempts: int = 0
     _rupee_farm: RupeeFarmController | None = field(default=None, repr=False)
+    _rupee_scooper: RupeeScoop | None = field(default=None, repr=False)
     # Leftover-relative column walk for UP/DOWN hops with align_x.
     _hop_walker: OccupancyWalker | None = field(default=None, repr=False)
     _hop_walker_key: tuple[int, int] | None = field(default=None, repr=False)
@@ -629,6 +639,9 @@ class OverworldPathController:
             "hits_taken": self.hits_taken,
             "farm_attempts": self.farm_attempts,
             "rupee_farm_attempts": self.rupee_farm_attempts,
+            "rupee_scoop": (
+                self._rupee_scooper.report() if self._rupee_scooper is not None else None
+            ),
             "need_rupees": self.need_rupees,
         }
         out["reason_by_screen"] = {
@@ -972,19 +985,12 @@ class OverworldPathController:
         )
         if heart is not None:
             return heart
-        rupee = scoop_floor_drop(
-            snap,
-            types=(RUPEE_DROP_OBJECT_TYPE,),
-            states=RUPEE_DROP_STATES,
-            travel_dir=hop.direction,
-            radius=self.scoop_radius,
-            reason="scoop_rupee",
-            want=self.scoop_rupees or (
-                self.need_rupees > 0 and snap.rupees < self.need_rupees
-            ),
-        )
-        if rupee is not None:
-            return rupee
+        if self.scoop_rupees or (self.need_rupees > 0 and snap.rupees < self.need_rupees):
+            if self._rupee_scooper is None:
+                self._rupee_scooper = RupeeScoop(radius=self.scoop_radius)
+            rupee = self._rupee_scooper.step(snap, env=self._env, travel_dir=hop.direction)
+            if rupee is not None:
+                return rupee
         return scoop_floor_drop(
             snap,
             types=(BOMB_DROP_OBJECT_TYPE,),
@@ -1408,7 +1414,10 @@ class OverworldPathController:
         if self._evader is None:
             return None
         hop = self._threat_hop
-        hazards = tuple(t for t in self._tracked if t.is_hazard)
+        tracked = tuple(
+            t for t in self._tracked if not walks_through(snap, t.kind, t)
+        )
+        hazards = tuple(t for t in tracked if t.is_hazard)
         stand = assess(
             (int(snap.link_x), int(snap.link_y)), hazards, bounds=_EVADE_BOUNDS
         )
@@ -1442,7 +1451,7 @@ class OverworldPathController:
         blocked = self._evade_blocked_dirs(snap)
         decision = self._evader.decide(
             snap,
-            self._tracked,
+            tracked,
             goal=self._evade_goal(snap, hop),
             blocked_dirs=blocked,
         )

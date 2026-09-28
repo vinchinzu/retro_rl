@@ -199,8 +199,20 @@ def should_swing_at(
 # Slots that are not bodies: the invisible rock spawner (hp 240) and the
 # deployed stepladder under Link's feet (hp 64). The reactive layer turned
 # and swung at both -- 4000f on 0x17's generator, ~8500f on its ladder.
+# Slot 11's secret tile objects too: a bombable rock (0x63) or burnable
+# tree / cave trigger (0x64), hp 240. 0x7C's rock at (96, 80) drew UP+A
+# swings and evader peels from (96, 85) for 19,000 frames (n4_credits
+# walk_coast_back, 2026-09-28).
+SECRET_ROCK_OBJECT_TYPE = 0x63
+SECRET_TREE_OBJECT_TYPE = 0x64
 NON_COMBATANT_TYPES = frozenset(
-    {BOULDER_GENERATOR_OBJECT_TYPE, STEPLADDER_OBJECT_TYPE, RAFT_OBJECT_TYPE}
+    {
+        BOULDER_GENERATOR_OBJECT_TYPE,
+        STEPLADDER_OBJECT_TYPE,
+        RAFT_OBJECT_TYPE,
+        SECRET_ROCK_OBJECT_TYPE,
+        SECRET_TREE_OBJECT_TYPE,
+    }
 )
 FLOOR_DROP_TYPES = frozenset(
     {
@@ -446,6 +458,10 @@ def live_enemies(snap: ZeldaSnapshot) -> tuple[ZeldaObject, ...]:
         if obj.slot >= 1
         and int(obj.type_id) not in (0, 0xFF, CAVE_TRIGGER_TYPE)
         and int(obj.type_id) not in FLOOR_DROP_TYPES
+        # The dock raft (hp 64) was the nearest "body" on 0x55: the hunt
+        # peeled DOWN off it while the hop aligned UP, 29,000 frames of
+        # 2 px flip (n3_credits walk_67, 2026-09-28).
+        and int(obj.type_id) not in NON_COMBATANT_TYPES
         and 0 < int(obj.hp) < MAX_PREY_HP
         and (int(obj.type_id) & 0xFF) not in PROJECTILE_TYPES
     )

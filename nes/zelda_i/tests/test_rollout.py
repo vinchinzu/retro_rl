@@ -475,3 +475,28 @@ def test_restores_counts_each_lookahead_return_to_the_live_frame() -> None:
     before = restores()
     Rollout(env).fan({"a": (LEFT,), "b": (IDLE,)})
     assert restores() - before == em.restores == 3
+
+
+def test_hazard_gate_ignores_drops_and_tile_objects() -> None:
+    """The guard's gate: a body or shot in reach rolls; a floor rupee, the
+    raft or a secret rock (slot 11, hp 240) never does."""
+    from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+    from zelda_i.rollout import hazard_within
+
+    def snap(*objects: ZeldaObject) -> ZeldaSnapshot:
+        return ZeldaSnapshot(
+            mode=PLAY_MODE, level=0, screen=0x7C, next_screen=0x7C, link_x=96,
+            link_y=85, facing=8, sword=2, bombs=0, rupees=0, keys=0, health=0x44,
+            triforce=0, compass=0, dialog_timer=0, colliding_tile=0,
+            room_item_id=0, room_all_dead=0, room_obj_count=0,
+            cur_opened_doors=0, open_doorway_mask=0, objects=objects,
+        )
+
+    def obj(slot: int, kind: int, x: int, y: int, hp: int = 2) -> ZeldaObject:
+        return ZeldaObject(slot=slot, type_id=kind, x=x, y=y, facing=0, state=0, hp=hp)
+
+    assert hazard_within(snap(obj(3, 0x10, 110, 100)), 64)
+    assert not hazard_within(snap(obj(3, 0x10, 200, 200)), 64)
+    assert not hazard_within(snap(obj(11, 0x63, 96, 80, hp=240)), 64)
+    assert not hazard_within(snap(obj(4, 0x61, 100, 90, hp=64)), 64)
+    assert not hazard_within(snap(obj(5, 0x60, 100, 90)), 64)

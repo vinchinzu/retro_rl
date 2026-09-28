@@ -23,6 +23,13 @@ def pre_l1_bomb_shop_success(snap: ZeldaSnapshot) -> bool:
     return snap.level == 0 and snap.has_sword and int(snap.bombs) >= 1
 
 
+def _guarded(ctl: object) -> object:
+    from zelda_i.overworld.gather_segments import GUARD_TRIGGER_RADIUS
+    from zelda_i.rollout import PolicyGuard
+
+    return PolicyGuard(ctl, trigger_radius=GUARD_TRIGGER_RADIUS)
+
+
 def pre_l1_stages() -> tuple[tuple[str, object, int], ...]:
     """Wooden sword, the hunting walk, a top-up if it arrived short, the pack.
 
@@ -34,13 +41,18 @@ def pre_l1_stages() -> tuple[tuple[str, object, int], ...]:
     top-up's stop is the money, on that screen. The buy's stop is
     ``ADDR_BOMBS``.
     """
+    # The coast's leevers, octoroks and Zora took 2-3.5h of a three-heart
+    # Link on the heart-first tries, and the pond loop then costs ~3,800f:
+    # the hunt plays on the ROM's own next frames near a hazard.
     return (
         ("sword_cave", SwordCaveController(), SWORD_MAX),
-        ("bomb_walk", make_shop_p7_walk_controller(), SHOP_P7_WALK_MAX_FRAMES),
+        ("bomb_walk", _guarded(make_shop_p7_walk_controller()), SHOP_P7_WALK_MAX_FRAMES),
         (
             "bomb_topup",
-            make_shop_p7_topup_controller(
-                shop_screen=SHOP_P7_SCREEN, price=SHOP_P7_PRICE
+            _guarded(
+                make_shop_p7_topup_controller(
+                    shop_screen=SHOP_P7_SCREEN, price=SHOP_P7_PRICE
+                )
             ),
             TOPUP_MAX_FRAMES,
         ),

@@ -32,7 +32,9 @@ __all__ = [
 ]
 
 
-SETTLE_19_IDLE_FRAMES = 160
+# The wave is up a few frames after the scroll; the fight stage after this
+# one waits for the full count. 160 idle frames per room were census time.
+SETTLE_19_IDLE_FRAMES = 20
 SETTLE_19_SAMPLE_PERIOD = 12
 SETTLE_19_MAX_FRAMES = 400
 _CENSUS_SKIP_TYPES = frozenset({0, INVULN_MOVER_OBJECT_TYPE})

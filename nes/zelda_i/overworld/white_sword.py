@@ -135,6 +135,9 @@ class WhiteSwordDetourController:
     reasons: dict[str, int] = field(default_factory=dict)
     start_checked: bool = False
     lynel_wait: int = 0
+    # Per-entry cap on the hold for the Lynel's bottom-band window. The
+    # gathering lowers it when Link can take the two-heart hit.
+    lynel_wait_max: int = LYNEL_WAIT_MAX
 
     def _set_phase(self, phase: WhiteSwordPhase) -> None:
         self.phase = phase
@@ -192,7 +195,7 @@ class WhiteSwordDetourController:
         if snap.mode != PLAY_MODE or snap.transitioning or not foot(int(snap.link_y)):
             return None
         lynels = [o for o in snap.objects if 1 <= o.slot <= 10 and int(o.type_id) == LYNEL_TYPE and o.hp > 0]
-        if not lynels or self.lynel_wait >= LYNEL_WAIT_MAX:
+        if not lynels or self.lynel_wait >= self.lynel_wait_max:
             return None
         lx, ly = int(snap.link_x), int(snap.link_y)
         if all(int(o.y) >= LYNEL_SAFE_Y and int(o.x) <= LYNEL_SAFE_X for o in lynels):

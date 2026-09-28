@@ -5,6 +5,9 @@ Two row tables, both riding ``HopController``; neither holds a room number.
 * ``DoorHopSpec`` / ``DoorHopController`` -- occupancy-BFS dest hops.  L6's
   ten generic door hops are rows.  The occupancy success predicate, the walk
   recorder and the level number are injected, so the engine is not L6's.
+* ``RoomTransitController`` -- rooms crossed door to door on the ROM
+  lattice with their enemies left alive (an open or key exit and no wanted
+  item needs no clear). Pair with ``rollout.PolicyGuard``.
 * ``RoomHopSpec`` / ``RoomHopController`` -- one-frame cardinal step hops.
   A row owns ``(origin, dest, door, step, done_reason)`` plus its fail rooms;
   L8's interior gates are rows.  A room whose gate needs a whole novel policy
@@ -24,6 +27,7 @@ from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.hop_controller import (
     CELLAR_MODE,
     HopController,
+    LatticeDoorWalker,
     WAIT_SCROLL,
     WAIT_SCROLL_B,
     release_action,
@@ -49,6 +53,7 @@ __all__ = [
     "HopFail",
     "RoomHopController",
     "RoomHopSpec",
+    "RoomTransitController",
     "door_band_goal",
     "door_hop_stages",
     "door_hop_success",
@@ -696,3 +701,71 @@ class RoomHopController(HopController):
         }
         out.update(self.spec.report_extra)
         return out
+
+
+
+@dataclass
+class RoomTransitController:
+    """Cross ``legs`` (room, exit door) in order; done on play in ``dest``.
+
+    Each leg is ``LatticeDoorWalker`` to that room's door and through it.
+    The route leaves the rooms uncleared, so a live body is the guard's to
+    answer, not this walk's. A room off the legs fails closed.
+    """
+
+    level: int
+    legs: tuple[tuple[int, str], ...]
+    dest: int
+    max_frames: int = DOOR_HOP_MAX_FRAMES
+    frames: int = 0
+    success: bool = False
+    failed: bool = False
+    notes: list[str] = field(default_factory=list)
+    _walker: LatticeDoorWalker = field(default_factory=LatticeDoorWalker, repr=False)
+    _env: Any = field(default=None, repr=False)
+
+    def bind_env(self, env: Any) -> None:
+        self._env = env
+
+    def _fail(self, note: str) -> FrameAction:
+        self.failed = True
+        self.notes.append(note)
+        return FrameAction(nes_idle_action(), note)
+
+    def step(self, snap: ZeldaSnapshot) -> FrameAction:
+        self.frames += 1
+        if self.success:
+            return FrameAction(nes_idle_action(), "done")
+        if snap.mode == 17:
+            return self._fail("link_death")
+        if self.frames > self.max_frames:
+            return self._fail(f"timeout_0x{int(snap.screen):02x}_{snap.link_x}_{snap.link_y}")
+        if int(snap.level) != self.level:
+            return FrameAction(nes_idle_action(), f"wait_level_{self.level}")
+        room = int(snap.screen)
+        if room == self.dest and snap.mode == PLAY_MODE and not snap.transitioning:
+            self.success = True
+            self.notes.append(f"entered_0x{self.dest:02x}")
+            return FrameAction(nes_idle_action(), "done")
+        exits = dict(self.legs)
+        if snap.transitioning or snap.mode != PLAY_MODE:
+            # A door scroll carries on in the leg's direction; anything else waits.
+            direction = exits.get(room)
+            if direction is None or snap.mode == 8:
+                return FrameAction(nes_idle_action(), f"transit_wait_{snap.mode}")
+            return FrameAction(nes_action(direction), "transit_scroll")
+        direction = exits.get(room)
+        if direction is None:
+            return self._fail(f"off_route_0x{room:02x}")
+        act = self._walker.action(self._env, snap, direction, f"transit_{room:02x}")
+        return act if act is not None else FrameAction(nes_action(direction), "transit_push")
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "failed": self.failed,
+            "frames": self.frames,
+            "legs": [[f"0x{r:02x}", d] for r, d in self.legs],
+            "dest": f"0x{self.dest:02x}",
+            "notes": list(self.notes),
+        }

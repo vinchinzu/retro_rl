@@ -421,25 +421,35 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
 
     names = [name for name, _ in chain_stages()]
     assert names == [
-        "exit_6f", "walk_7c", "heart_7b", "exit_7b", "walk_pond", "pond_39",
-        "walk_2c", "potion_2c", "exit_2c", "rupees_2d", "exit_2d",
-        "ne_100", "exit_0f", "letter", "exit_0e", "candle",
-        "exit_0c", "select_candle", "walk_28", "rupees_28", "exit_28",
+        "exit_6f", "walk_7c", "heart_7b", "exit_7b",
+        "walk_pond", "pond_39", "walk_2c", "walk_2c_direct",
+        "heart_2c", "exit_2c", "rupees_2d", "exit_2d",
+        "ne_100", "exit_0f", "letter", "exit_0e",
+        "walk_0d", "bomb_0d", "potion_0d", "exit_0d",
+        "candle", "exit_0c", "select_candle",
+        "white", "back_1a", "walk_28", "rupees_28", "exit_28",
         "walk_48", "rupees_48", "exit_48", "heart_47", "exit_47",
-        "walk_white", "white", "back_1a", "walk_back_48",
-        "rupees_5b", "exit_5b", "rupees_6b", "exit_6b", "rupees_56", "exit_56",
-        "ring", "exit_ring", "rupees_62", "exit_62", "bait", "exit_bait",
-        "ring_return", "walk_pond_l1", "pond_39_l1", "walk_37",
+        "walk_5b", "rupees_5b", "exit_5b", "rupees_6b", "exit_6b",
+        "walk_56", "rupees_56", "exit_56",
+        "ring", "exit_ring", "bait_first", "exit_bait_first",
+        "rupees_62", "exit_62",
+        "bait", "exit_bait", "ring_second", "exit_ring_second",
+        "potion_restock_gather", "exit_potion_gather", "ring_return",
+        "walk_pond_l1", "pond_39_l1", "walk_37", "walk_37_direct",
     ]
-    stages = dict(chain_stages())
+    stages = {name: getattr(ctl, "inner", ctl) for name, ctl in chain_stages()}
     assert _targets(stages["letter"].hops) == (0x1F, 0x1E, 0x0E)
     assert stages["select_candle"].want == 4
     assert _targets(stages["walk_37"].hops)[-1] == 0x37
-    assert stages["ring"].price == 250
-    assert stages["bait"].price == 60
+    assert _targets(stages["walk_37_direct"].hops) == (0x48, 0x38, 0x37)
+    assert _targets(stages["white"].hops) == (0x1C, 0x1B, 0x1A)
+    assert stages["ring"].price == stages["ring_second"].price == 250
+    assert stages["bait"].price == stages["bait_first"].price == 60
+    assert stages["bait"].farm_below_hearts == stages["bait_first"].farm_below_hearts == 0
     assert _targets(stages["bait"].hops) == (0x52, 0x53, 0x54, 0x44, 0x34)
     assert _targets(stages["ring_return"].hops)[0] == 0x44
     assert _targets(stages["walk_pond_l1"].hops)[0] == 0x59
+    assert stages["heart_2c"].reward == "container"
     # Burn caves exit by stairs: nothing to clear, DOWN would re-enter.
     for name, ctl in stages.items():
         if name.startswith("rupees_") and not ctl.consumes_bomb:
@@ -448,32 +458,72 @@ def test_chain_order_runs_bomb_shop_to_level_1_mouth() -> None:
     assert stages["exit_0c"].clear > 0 and stages["exit_2d"].clear > 0
 
 
-def test_secret_payouts_fund_the_ring_before_the_shop() -> None:
-    """The ring is paid from hidden rupees, not a wallet write.
+def test_every_take_any_gives_its_heart() -> None:
+    """100%: 0x7B, 0x2C and 0x47 each give the container, never the potion."""
+    from zelda_i.overworld.gather_segments import chain_stages
 
-    Payouts are the ROM's (``SECRET_RUPEE_CAVES``, 0x0F's 100 on the NE
-    walk); the candle is the only buy between them and 0x34. Enemy drops
-    are margin, not budget: the old chain reached 0x34 with 73R and a
-    177R Survival write. The wallet caps at 255, so a payout past that is
-    lost, not banked (0x62's 100R before the ring counted 0).
-    """
-    from zelda_i.overworld.gather_segments import (
-        SECRET_REWARD,
-        chain_stages,
+    stages = {name: getattr(ctl, "inner", ctl) for name, ctl in chain_stages()}
+    for name in ("heart_7b", "heart_2c", "heart_47"):
+        assert stages[name].reward == "container", name
+    assert all(
+        getattr(ctl, "reward", "") != "potion" for ctl in stages.values()
     )
 
+
+def test_pond_and_direct_branches_share_one_latch() -> None:
+    """Full hearts skip the pond loop and walk direct; hurt, the reverse."""
+    from zelda_i.overworld.gather_segments import chain_stages
+
+    def branch(health: int) -> list[str]:
+        rows = chain_stages()
+        names = [n for n, _ in rows]
+        snap = _snap(screen=0x7B, health=health)
+        played = []
+        for name in ("walk_pond", "pond_39", "walk_2c", "walk_2c_direct"):
+            leg = rows[names.index(name)][1]
+            if leg.plan.decide(snap):
+                played.append(name)
+        return played
+
+    assert branch(0x33) == ["walk_2c_direct"]  # 4/4 hearts
+    assert branch(0x31) == ["walk_pond", "pond_39", "walk_2c"]  # 2/4
+
+
+def test_secret_payouts_fund_the_ring_and_bait_without_drops() -> None:
+    """The 0x34 buys are paid from hidden rupees, not a wallet write.
+
+    Payouts are the ROM's (``SECRET_RUPEE_CAVES``, 0x0F's 100 on the NE
+    walk). Enemy drops are margin, not budget: with none at all the wallet
+    reaches 0x34 short of the ring, so the first visit buys the Bait and
+    0x62's 100R pays the ring on the second. The wallet caps at 255, so a
+    payout past that is lost, not banked.
+    """
+    from zelda_i.overworld.cave_shop import BLUE_POTION_PRICE
+    from zelda_i.overworld.gather_segments import SECRET_REWARD, chain_stages
+
     budget = 0
+    bought: list[str] = []
+    ring_first: bool | None = None
     for name, ctl in chain_stages():
-        if name == "ring":
-            break
+        inner = getattr(ctl, "inner", ctl)
         if name == "ne_100":
             budget += SECRET_REWARD
-        if name == "candle":
+        elif name == "potion_0d":
+            budget -= BLUE_POTION_PRICE
+        elif name == "candle":
             budget -= CANDLE_PRICE
-        if isinstance(ctl, BombWallController) and ctl.reward == "rupees":
+        elif name in ("ring", "bait_first", "bait", "ring_second"):
+            if ring_first is None:
+                ring_first = budget >= RING_PRICE
+            if name in (("ring", "bait") if ring_first else ("bait_first", "ring_second")):
+                assert budget >= inner.price, (name, budget)
+                budget -= inner.price
+                bought.append(name)
+        if isinstance(inner, BombWallController) and inner.reward == "rupees":
             assert budget < WALLET_MAX, f"{name} pays into a full wallet"
-            budget = min(WALLET_MAX, budget + ctl.reward_rupees)
-    assert budget >= RING_PRICE
+            budget = min(WALLET_MAX, budget + inner.reward_rupees)
+    assert bought == ["bait_first", "ring_second"]
+    assert budget >= 0
 
 
 def test_bomb_cell_turn_steps_back_and_comes_in_facing() -> None:

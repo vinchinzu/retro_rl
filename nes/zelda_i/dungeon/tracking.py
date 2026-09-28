@@ -30,7 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from zelda_i.combat import FLOOR_DROP_TYPES
+from zelda_i.combat import FLOOR_DROP_TYPES, NON_COMBATANT_TYPES
 from zelda_i.dungeon.behaviors import (
     EnemyKind,
     is_projectile,
@@ -151,7 +151,7 @@ def _hazard_class(
     spawn still reports ``body 0x59``. Motion confirms next frame.
     """
     type_id = int(obj.type_id) & 0xFF
-    if _is_empty(type_id):
+    if _is_empty(type_id) or type_id in NON_COMBATANT_TYPES:
         return HazardClass.NONE
     if type_id in FLOOR_DROP_TYPES:
         return HazardClass.DROP

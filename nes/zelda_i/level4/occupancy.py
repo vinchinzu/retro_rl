@@ -44,16 +44,6 @@ __all__ = [
     "ROOM_13_SOUTH_Y",
     "ROOM_13_SPAWN_XY",
     "ROOM_20_BOUNDS",
-    "ROOM_20_CLIP_BUDGET",
-    "ROOM_20_DOOR_Y_MAX",
-    "ROOM_20_EAST_XY",
-    "ROOM_20_NORTH_EAST_XY",
-    "ROOM_20_NORTH_XY",
-    "ROOM_20_SOUTH_EAST_XY",
-    "ROOM_20_SOUTH_XY",
-    "ROOM_20_SOUTH_Y_MAX",
-    "ROOM_20_SPAWN_XY",
-    "ROOM_20_WAYPOINTS",
     "ROOM_21_ALCOVE_Y",
     "ROOM_21_ALCOVE_Y_TOL",
     "ROOM_21_BOMB_CORRIDOR_Y",
@@ -164,31 +154,7 @@ def room_60_grid() -> OccupancyGrid:
     )
 
 
-# 0x20 leftover (120,205) after KEY-UP. Screenshot H-water (v1–v3 PNGs):
-# 16px tiles. v1 RIGHT at (120,141) is the H-bar; v2 (120,133) still on it;
-# v3 RIGHT at (120,205) is the south door frame. South gold y>=192 (water
-# ends y=191). v20 DOWN at x=200 is solid at y=109 (16px spine, not PNG gold).
-ROOM_20_SPAWN_XY = (120, 205)
-ROOM_20_SOUTH_XY = (120, 192)
-# v5 exact y=192 yo-yo (stall=0). Gold strip is y=192–204; stay off door lip.
-ROOM_20_SOUTH_Y_MAX = 200
-# v7 RIGHT at y=199 in the door column is solid. v8 y>192 UP yo-yoed at 193.
-ROOM_20_DOOR_Y_MAX = 196
-ROOM_20_EAST_XY = RIGHT_20_STAND
-ROOM_20_SOUTH_EAST_XY = (ROOM_20_EAST_XY[0], ROOM_20_SOUTH_XY[1])
-# v1/v2 RIGHT at y=141/133 is still on the H. Empty-room PNG: y=88–110 gold
-# north of the top arms (y=112–127). Ladder-cross the H-bar (v1 reached 141).
-ROOM_20_NORTH_XY = (120, 96)
-# v13 leftover: RIGHT at y=96 is the east wall (x=208 unreachable).
-ROOM_20_NORTH_EAST_XY = (200, ROOM_20_NORTH_XY[1])
-ROOM_20_CLIP_BUDGET = 96
-# v20: north-around to (200,96) then DOWN solid at (200,109). East door
-# is a RIGHT+DOWN clip, not 4-connected occupancy.
-ROOM_20_WAYPOINTS: tuple[tuple[int, int], ...] = (
-    ROOM_20_NORTH_XY,
-    ROOM_20_NORTH_EAST_XY,
-    ROOM_20_EAST_XY,
-)
+# 0x20: the lattice walk to the open east door is ``level4.map21``.
 ROOM_20_BOUNDS: tuple[int, int, int, int] = (40, 216, 77, 205)
 
 _H20_SPINE_Y0, _H20_SPINE_Y1 = 112, 191

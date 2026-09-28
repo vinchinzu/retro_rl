@@ -18,7 +18,7 @@ hunt *guards* — blade in the pad, bank a heart — and stops chasing.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
@@ -64,7 +64,7 @@ from zelda_i.overworld.arbiter import Arbiter, Rung
 from zelda_i.overworld.graph import ScreenHop
 from zelda_i.overworld.heart_farm import LEAVE_GOALS, FarmOccupancy
 from zelda_i.overworld.prey import PreyPolicy, prey_name
-from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot, hearts_held
 
 __all__ = [
     "BEAM_STAND_KINDS",
@@ -94,6 +94,7 @@ __all__ = [
     "MUZZLE_PENALTY",
     "STAND_HOLD_PX",
     "PEAHAT_LANDED_SPEED",
+    "PEAHAT_WALK_THROUGH_HEARTS",
     "SHIELD_CLOSING_PAD",
     "SHOT_DWELL_SPEED",
     "ScreenHunter",
@@ -107,6 +108,7 @@ __all__ = [
     "hop_lane",
     "perpendicular",
     "sword_stand",
+    "walks_through",
 ]
 
 HUNT_SCREEN_MAX_FRAMES = 600  # one screen; caps the detour rather than max_frames
@@ -442,18 +444,47 @@ def attackable(obj: ZeldaObject, track: TrackedObject | None) -> bool:
     return track is None or track.speed < PEAHAT_LANDED_SPEED
 
 
-def closest_live_body(snap: ZeldaSnapshot, lx: int, ly: int) -> ZeldaObject | None:
+# A Peahat in flight cannot be cut and touches for half a heart (a quarter
+# with the Blue Ring). Peeling from one on every pass cost clean_poweron_c12
+# ~1,600 frames on its screens (0x1F, 0x27, 0x28, 0x59). Holding this many
+# hearts, the walk goes through a flying one; a landed one is prey as ever.
+PEAHAT_WALK_THROUGH_HEARTS = 3.0
+
+
+def walks_through(
+    snap: ZeldaSnapshot, kind: EnemyKind, track: TrackedObject | None
+) -> bool:
+    """True for a flying Peahat while Link can afford its touch."""
+    return (
+        kind is EnemyKind.PEAHAT
+        and track is not None
+        and track.speed >= PEAHAT_LANDED_SPEED
+        and hearts_held(snap) >= PEAHAT_WALK_THROUGH_HEARTS
+    )
+
+
+def closest_live_body(
+    snap: ZeldaSnapshot,
+    lx: int,
+    ly: int,
+    *,
+    skip: Callable[[ZeldaObject], bool] | None = None,
+) -> ZeldaObject | None:
     """:func:`combat.closest_body` without the bodies that cannot act.
 
     ``closest_body`` is "what is nearest to touching Link", and a dormant
     leever is never going to touch him. Picking one as ``close`` sent the
     whole contact ladder — strike, peel, shield — at a sand mound while the
-    surfaced leever behind it closed.
+    surfaced leever behind it closed. ``skip`` drops more (a Peahat the
+    walk goes through).
     """
     body = closest_body(snap, lx, ly)
-    if body is not None and not dormant_body(body):
+    if body is not None and not dormant_body(body) and not (skip and skip(body)):
         return body
-    live = tuple(obj for obj in live_enemies(snap) if not dormant_body(obj))
+    live = tuple(
+        obj for obj in live_enemies(snap)
+        if not dormant_body(obj) and not (skip and skip(obj))
+    )
     if not live:
         return None
     return min(live, key=lambda o: chebyshev(lx, ly, int(o.x), int(o.y)))
@@ -1024,7 +1055,10 @@ class ScreenHunter:
         if in_box:
             self.census.saw_prey(screen, in_box)
         lx, ly = int(snap.link_x), int(snap.link_y)
-        close = closest_live_body(snap, lx, ly)
+        close = closest_live_body(
+            snap, lx, ly,
+            skip=lambda o: walks_through(snap, kind_for_type(int(o.type_id)), self._track(o)),
+        )
         pad = 10**6 if close is None else chebyshev(lx, ly, int(close.x), int(close.y))
         self._step_frames = int(frames)
         self._step_lane = lane

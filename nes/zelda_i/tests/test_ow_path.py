@@ -218,10 +218,31 @@ def _snap_drop(*, rupees: int, drop_x: int, drop_y: int, x: int = 100, y: int = 
     )
 
 
-def test_need_rupees_zero_ignores_drops() -> None:
+def test_walks_bank_floor_rupees_by_default() -> None:
     ctrl = OverworldPathController(hops=(ScreenHop(0x78, "RIGHT", align_y=140),))
-    act = ctrl.step(_snap_drop(rupees=0, drop_x=140, drop_y=140))
-    assert "scoop" not in act.reason
+    act = ctrl.step(_snap_drop(rupees=0, drop_x=140, drop_y=140, x=100, y=140))
+    assert act.reason == "scoop_rupee"
+    assert act.action == nes_action("RIGHT")
+
+
+def test_scoop_turns_back_for_a_drop_behind() -> None:
+    ctrl = OverworldPathController(hops=(ScreenHop(0x78, "RIGHT", align_y=140),))
+    act = ctrl.step(_snap_drop(rupees=0, drop_x=60, drop_y=140, x=100, y=140))
+    assert act.action == nes_action("LEFT")
+
+
+def test_scoop_off_keeps_the_hop() -> None:
+    ctrl = OverworldPathController(
+        hops=(ScreenHop(0x78, "RIGHT", align_y=140),), scoop_rupees=False
+    )
+    act = ctrl.step(_snap_drop(rupees=0, drop_x=60, drop_y=140, x=100, y=140))
+    assert act.action == nes_action("RIGHT")
+
+
+def test_full_wallet_keeps_the_hop() -> None:
+    ctrl = OverworldPathController(hops=(ScreenHop(0x78, "RIGHT", align_y=140),))
+    act = ctrl.step(_snap_drop(rupees=255, drop_x=60, drop_y=140, x=100, y=140))
+    assert act.action == nes_action("RIGHT")
 
 
 def test_scoop_rupees_walks_onto_nearby_drop_when_need_is_zero() -> None:
@@ -249,6 +270,7 @@ def test_need_rupees_already_funded_keeps_hopping() -> None:
     ctrl = OverworldPathController(
         hops=(ScreenHop(0x78, "RIGHT", align_y=140),),
         need_rupees=80,
+        scoop_rupees=False,
     )
     act = ctrl.step(_snap_drop(rupees=80, drop_x=140, drop_y=140))
     assert "scoop" not in act.reason

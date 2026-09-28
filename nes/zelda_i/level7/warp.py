@@ -123,6 +123,8 @@ class RecorderWarpController:
 
     target_screen: int
     launch_screen: int
+    # Other screens the walk before may end on (none entrances either).
+    also_launch: tuple[int, ...] = ()
     facing: str = WARP_FACING
     max_blows: int = MAX_BLOWS
     max_frames: int = WARP_MAX_FRAMES
@@ -305,7 +307,7 @@ class RecorderWarpController:
             return self._fail("warp_requires_whistle")
 
         if self.phase is WarpPhase.SELECT:
-            if int(snap.screen) != self.launch_screen:
+            if int(snap.screen) not in (self.launch_screen, *self.also_launch):
                 return self._fail(f"warp_not_on_launch_0x{int(snap.screen):02x}")
             return self._run_select(snap)
         if self.phase is WarpPhase.FACE:
