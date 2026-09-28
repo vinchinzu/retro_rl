@@ -126,3 +126,45 @@ def test_guard_passes_a_rom_checked_frame_through() -> None:
     assert guard.filter(read_snapshot(ram), ram, plain).reason.startswith("guard_")
     checked = FrameAction(nes_idle_action(), f"prefix_hop_7_patra16_{ROM_CHECKED}rod_wait")
     assert ShotGuard().filter(read_snapshot(ram), ram, checked) is checked
+
+
+class _ScriptedRollout:
+    """``Rollout.walk`` answers from a list: (reached, contact_frame) per call."""
+
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.prefixes = []
+
+    def walk(self, waypoints, *, prefix=(), frames=300, tol=2):
+        reached, contact = self.answers.pop(0)
+        self.prefixes.append(len(prefix))
+        out = type("Out", (), {"contact_frame": contact})()
+        plan = tuple(prefix) + ((0,) * 9,) * 3
+        return plan, out, reached
+
+
+def test_room04_plan_waits_after_the_bait_until_the_crossing_is_clean() -> None:
+    from zelda_i.level9.stairs import ROOM04_WAITS, room04_west_plan
+
+    rollout = _ScriptedRollout([(True, None), (True, 30), (True, 44), (True, None)])
+    plan = room04_west_plan(rollout, _snap((168, 124), screen=0x04))
+    assert plan is not None
+    bait = 3
+    assert rollout.prefixes == [0, bait + ROOM04_WAITS[0], bait + ROOM04_WAITS[1], bait + ROOM04_WAITS[2]]
+    assert len(plan) == bait + ROOM04_WAITS[2] + 3
+
+
+def test_room04_plan_refuses_when_no_crossing_is_clean() -> None:
+    from zelda_i.level9.stairs import ROOM04_WAITS, room04_west_plan
+
+    answers = [(True, None)] + [(True, 12)] * len(ROOM04_WAITS)
+    assert room04_west_plan(_ScriptedRollout(answers), _snap((168, 124), screen=0x04)) is None
+    assert room04_west_plan(_ScriptedRollout([(True, 5)]), _snap((168, 124), screen=0x04)) is None
+
+
+def test_blade_stage_stays_inside_its_room_box() -> None:
+    from zelda_i.level9.patra import PATRA_ROOM
+
+    body = _obj(OBJ_PATRA_2, 170, 125, slot=1, hp=0xB0)
+    x, _ = PatraBlade(box=PATRA_ROOM)._stage(_snap((200, 125)), body)
+    assert x <= PATRA_ROOM[1]

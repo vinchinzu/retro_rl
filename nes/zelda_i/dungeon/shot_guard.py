@@ -19,6 +19,13 @@ because the ROM decides them from bytes that are already in RAM
   shooter's ``ObjDir``; ``$58`` costs 2 hearts and ``$59`` 4 (``ObjTypeToDamagePoints``),
   halved per ring level. Without the Magical Shield nothing parries them.
 
+* **Blade traps ($49)** are invulnerable and react to where Link *will* be,
+  so they are stepped inside the plan simulation (:class:`Trap`, a port of
+  Z_01.asm ``UpdateTrap_Full``): a resting trap charges at 1.75 px/f toward
+  the room centre (x $78 or y $90) the frame Link is within 14 px of its row
+  (or, failing that, its column) -- if its slot allows that direction -- turns
+  back within 5 px of the centre, and crawls home at 0.5 px/f.
+
 So the future is known, not guessed: this module simulates Link on the turn
 lattice for a few candidate plans (hold one direction for *k* frames, then
 stand) against those shots and the bodies, and swaps the inner controller's
@@ -41,7 +48,7 @@ from retro_harness.input_script import FrameAction
 from retro_harness.nes import nes_action, nes_idle_action
 from zelda_i.dungeon.species import species_of
 from zelda_i.dungeon.tilemap import has_room_tile_map, ow_walkable_nodes
-from zelda_i.ram import PLAY_MODE, ZeldaSnapshot
+from zelda_i.ram import ADDR_MENU_STATE, PLAY_MODE, ZeldaSnapshot
 
 ADDR_FRAME_COUNTER = 0x15
 ADDR_OBJ_X = 0x70
@@ -87,6 +94,123 @@ def _dir_vec(bits: int) -> tuple[int, int]:
     dx = (1 if bits & 1 else 0) - (1 if bits & 2 else 0)
     dy = (1 if bits & 4 else 0) - (1 if bits & 8 else 0)
     return dx, dy
+
+
+# --- Blade traps: Z_01.asm InitTrap_Full / UpdateTrap_Full -----------------
+ADDR_OBJ_MOVING_LIMIT = 0x380
+ADDR_OBJ_GRID_OFFSET = 0x394  # the same byte as ObjRemDistance
+ADDR_OBJ_POS_FRAC = 0x3A8
+ADDR_OBJ_QSPEED = 0x3BC
+# ``AND TrapAllowedDirs-1, X`` indexes by object *slot*: slots 1-6 hold the
+# six ($49) or four ($4A) traps at (TrapXs, TrapYs) = (32,93) (32,189)
+# (208,93) (208,189) (64,141) (176,141). A slot past 6 reads code bytes, so
+# it is treated as free to charge any way.
+TRAP_ALLOWED_DIRS = (0x05, 0x09, 0x06, 0x0A, 0x01, 0x02)
+TRAP_SENSE = 0x0E  # |Link - trap| < 14 on the cross axis arms it
+TRAP_CHARGE_Q = 0x70  # q-speed: 4 x $70 / 256 = 1.75 px/f
+TRAP_RETURN_Q = 0x20  # 0.5 px/f home
+TRAP_TARGET_X = 0x78
+TRAP_TARGET_Y = 0x90
+TRAP_TURN = 5  # reverses once |coord - target| < 5
+TRAP_GRID = 0x10
+# Plans are simulated this long while a trap is in the room: a corner trap
+# needs ~50 frames to cross to the centre, so a 32-frame look calls a stand
+# at the far end of its lane safe.
+TRAP_HORIZON = 64
+_OPPOSITE = {1: 2, 2: 1, 4: 8, 8: 4}
+
+
+def _abs8(v: int) -> int:
+    """The ROM's ``Abs`` of an 8-bit difference."""
+    v &= 0xFF
+    return v if v < 0x80 else 0x100 - v
+
+
+class Trap:
+    """One blade trap, stepped frame for frame as ``UpdateTrap_Full`` does.
+
+    State 0 senses Link; 1 charges at q $70 toward the centre line and turns
+    back ``TRAP_TURN`` px short; 2 returns at q $20 to ``limit`` (the coordinate
+    it left from, ``ObjMovingLimit``) and rests. ``MoveObject`` never tests
+    tiles for a trap, and it is invulnerable: nothing but distance stops one.
+    """
+
+    __slots__ = ("slot", "x", "y", "state", "dir", "limit", "frac", "grid", "q", "allowed")
+
+    def __init__(
+        self, slot: int, x: int, y: int, state: int = 0, dir: int = 0, limit: int = 0,
+        frac: int = 0, grid: int = 0, q: int = TRAP_CHARGE_Q, allowed: int | None = None,
+    ) -> None:
+        self.slot, self.x, self.y, self.state, self.dir = slot, x, y, state, dir
+        self.limit, self.frac, self.grid, self.q = limit, frac, grid, q
+        if allowed is None:
+            allowed = TRAP_ALLOWED_DIRS[slot - 1] if 1 <= slot <= len(TRAP_ALLOWED_DIRS) else 0x0F
+        self.allowed = allowed
+
+    @classmethod
+    def from_ram(cls, ram: np.ndarray, slot: int) -> Trap:
+        grid = int(ram[ADDR_OBJ_GRID_OFFSET + slot])
+        return cls(
+            slot, int(ram[ADDR_OBJ_X + slot]), int(ram[ADDR_OBJ_Y + slot]),
+            int(ram[ADDR_OBJ_STATE + slot]), int(ram[ADDR_OBJ_DIR + slot]),
+            int(ram[ADDR_OBJ_MOVING_LIMIT + slot]), int(ram[ADDR_OBJ_POS_FRAC + slot]),
+            grid - 0x100 if grid >= 0x80 else grid, int(ram[ADDR_OBJ_QSPEED + slot]),
+        )
+
+    def copy(self) -> Trap:
+        return Trap(
+            self.slot, self.x, self.y, self.state, self.dir, self.limit,
+            self.frac, self.grid, self.q, self.allowed,
+        )
+
+    def _arm(self, d: int, limit: int) -> None:
+        self.limit = limit
+        self.dir = d
+        if d & self.allowed:
+            self.state = 1
+            self.q = TRAP_CHARGE_Q
+
+    def _move(self) -> None:
+        # MoveObject: four q-speed steps; a step at a +/-16 grid limit is lost.
+        plus = self.dir & 0x05  # right or down
+        for _ in range(4):
+            if plus:
+                self.frac += self.q
+                carry = self.frac >> 8
+                self.frac &= 0xFF
+            else:
+                self.frac -= self.q
+                carry = 1 if self.frac < 0 else 0
+                self.frac &= 0xFF
+            if carry and abs(self.grid) != TRAP_GRID:
+                s = 1 if plus else -1
+                self.grid += s
+                if self.dir & 0x03:
+                    self.x += s
+                else:
+                    self.y += s
+        if self.grid & 0x0F == 0:
+            self.grid = 0
+
+    def step(self, link_x: int, link_y: int) -> None:
+        """One frame, Link already moved (he is slot 0, updated first)."""
+        if self.state == 0:
+            if _abs8(link_y - self.y) < TRAP_SENSE and link_x != self.x:
+                self._arm(1 if link_x > self.x else 2, self.x)
+            elif _abs8(link_x - self.x) < TRAP_SENSE and link_y != self.y:
+                self._arm(4 if link_y > self.y else 8, self.y)
+            return
+        self._move()
+        horizontal = not self.dir & 0x0C
+        coord = self.x if horizontal else self.y
+        if self.state & 1:
+            target = TRAP_TARGET_X if horizontal else TRAP_TARGET_Y
+            if abs(coord - target) < TRAP_TURN:
+                self.dir = _OPPOSITE.get(self.dir, self.dir)
+                self.q = TRAP_RETURN_Q
+                self.state = 2
+        elif coord == self.limit:
+            self.state = 0
 
 
 @dataclass(frozen=True)
@@ -161,10 +285,12 @@ class Forecast:
     shooters: list[BlueShooter] = field(default_factory=list)
     frame_counter: int = 0
     link_invincible: int = 0
+    traps: list[Trap] = field(default_factory=list)
+    orange_shots: bool = False
 
     @property
     def empty(self) -> bool:
-        return not self.movers and not self.shooters
+        return not self.movers and not self.shooters and not self.traps
 
 
 def read_forecast(
@@ -204,8 +330,13 @@ def read_forecast(
             fc.movers.append(
                 Mover(x, y, ux * SHOT_SPEED, uy * SHOT_SPEED, 0, horizon, mid_x, slot, "shot")
             )
+            fc.orange_shots |= t == RED_MAGIC
             continue
         if meta != 0:
+            continue
+        if t == BLADE_TRAP:
+            # Invulnerable traps must remain hazards with contact bodies off.
+            fc.traps.append(Trap.from_ram(ram, slot))
             continue
         if t == BLUE_WIZZROBE:
             if int(ram[ADDR_OBJ_HP + slot]) == 0:
@@ -230,6 +361,7 @@ def read_forecast(
             if RED_FIRE_STATE <= st <= 0xFE and d in _DIR_BITS:
                 t_fire = st - RED_FIRE_STATE
                 if t_fire <= horizon:
+                    fc.orange_shots = True
                     ux, uy = _DIR_BITS[d]
                     fc.movers.append(
                         Mover(
@@ -347,9 +479,12 @@ def simulate(
     """First predicted hit frame (None = safe) holding ``plan`` from now."""
     x, y = start
     spawned: list[Mover] = []
+    traps = [trap.copy() for trap in forecast.traps]
     clearance = 1e9
     for t in range(1, len(plan) + 1):
         x, y, facing = model.step(x, y, facing, plan[t - 1])
+        for trap in traps:
+            trap.step(int(round(x)), int(round(y)))
         if (forecast.frame_counter + t) % BLUE_SHOT_PERIOD == 0:
             for s in forecast.shooters:
                 if s.teleport_left > t:
@@ -368,6 +503,10 @@ def simulate(
                     spawned.append(Mover(wx, wy, 0.0, uy * SHOT_SPEED, t, t + 64, 8, s.slot, "shot"))
         if t <= forecast.link_invincible:
             continue
+        for trap in traps:
+            if _collides(x, y, trap.x, trap.y, species_of(BLADE_TRAP).mid_offset_x):
+                return PlanResult(t, 0.0, (x, y))
+            clearance = min(clearance, max(abs(x - trap.x), abs(y - trap.y)))
         for m in (*forecast.movers, *spawned):
             p = m.at(t)
             if p is None:
@@ -416,7 +555,8 @@ def _cut(forecast: Forecast, snap: ZeldaSnapshot) -> Forecast:
             ):
                 continue
         keep.append(m)
-    return Forecast(keep, forecast.shooters, forecast.frame_counter, forecast.link_invincible)
+    return Forecast(keep, forecast.shooters, forecast.frame_counter,
+                    forecast.link_invincible, forecast.traps, forecast.orange_shots)
 
 
 _DEBUG = bool(os.environ.get("SHOT_GUARD_DEBUG"))
@@ -446,6 +586,7 @@ class ShotGuard:
     _tick: int = field(default=0, repr=False)
     _eye_hist: dict[int, deque] = field(default_factory=dict, repr=False)
     _body_hist: deque = field(default_factory=lambda: deque(maxlen=5), repr=False)
+    _escape: list[str | None] = field(default_factory=list, repr=False)
 
     def _model(self, ram: np.ndarray, snap: ZeldaSnapshot) -> LinkModel:
         key = (int(snap.level), int(snap.screen))
@@ -460,7 +601,7 @@ class ShotGuard:
         return bool(
             np.isin(
                 types,
-                (BLUE_WIZZROBE, RED_WIZZROBE, BLUE_MAGIC, RED_MAGIC, *PATRA_BODIES, *PATRA_EYES),
+                (BLUE_WIZZROBE, RED_WIZZROBE, BLUE_MAGIC, RED_MAGIC, BLADE_TRAP, *PATRA_BODIES, *PATRA_EYES),
             ).any()
         )
 
@@ -513,8 +654,10 @@ class ShotGuard:
 
     def filter(self, snap: ZeldaSnapshot, ram: np.ndarray, inner: FrameAction) -> FrameAction:
         self.frames += 1
-        if snap.mode != PLAY_MODE or snap.transitioning or not snap.level or not self.relevant(ram):
+        if (snap.mode != PLAY_MODE or snap.transitioning or not snap.level
+                or int(ram[ADDR_MENU_STATE]) or not self.relevant(ram)):
             self._last = None
+            self._escape.clear()
             return inner
         if ROM_CHECKED in inner.reason:
             self._last = None
@@ -525,33 +668,56 @@ class ShotGuard:
             if _DEBUG:
                 print(f"  guard f{self.frames} skip: link state {int(ram[ADDR_OBJ_STATE]):02x}")
             return inner
+        traps_present = BLADE_TRAP in ram[ADDR_OBJ_TYPE + 1:ADDR_OBJ_TYPE + 12]
+        horizon = max(self.horizon, TRAP_HORIZON) if traps_present else self.horizon
         forecast = read_forecast(
-            ram, self.horizon, bodies=self.bodies, blue_bodies=self.blue_bodies
+            ram, horizon, bodies=self.bodies, blue_bodies=self.blue_bodies
         )
         forecast.movers.extend(patra)
         if forecast.empty:
             self._last = None
+            self._escape.clear()
             return inner
         model = self._model(ram, snap)
         start = (float(snap.link_x), float(snap.link_y))
         facing = _FACING_NAME.get(int(snap.facing), "UP")
         press = _pressed_dir(inner.action)
         if _presses_a(inner.action):
-            inner_plan: list[str | None] = [None] * max(SWING_PIN, self.horizon)
+            inner_plan: list[str | None] = [None] * max(SWING_PIN, horizon)
             base = simulate(_cut(forecast, snap), model, start, facing, inner_plan)
         else:
-            inner_plan = [press] * self.horizon
+            inner_plan = [press] * horizon
             base = simulate(forecast, model, start, facing, inner_plan)
         # Hysteresis: once dodging, hand back only when the inner plan is safe
         # for the whole horizon, not just past the trigger (else the two flip
         # every frame and Link stands in the lane: L9 0x05, x 199<->200).
-        limit = self.horizon if self._last is not None else self.trigger
+        # Traps need a long forecast to judge a dodge that ends in their lane,
+        # but only imminent contact should interrupt combat or navigation.
+        early_swing = forecast.orange_shots and _presses_a(inner.action)
+        limit = horizon if self._last is not None or early_swing else self.trigger
         if _DEBUG:
             print(f"  guard f{self.frames} L{start} press={press} base={base.first_hit} last={self._last} st0={int(ram[ADDR_OBJ_STATE]):02x} movers={[(m.kind, m.slot, m.x, m.y, m.vx, m.vy, m.t0) for m in forecast.movers]}")
         if base.first_hit is None or base.first_hit > limit:
             self._last = None
+            self._escape.clear()
             return inner
-        best: tuple[tuple, str | None, int] | None = None
+        best: tuple[tuple, str | None, list[str | None]] | None = None
+        def consider(plan: list[str | None]) -> None:
+            nonlocal best
+            d = plan[0]
+            res = simulate(forecast, model, start, facing, plan)
+            score = (res.first_hit is None, res.first_hit or horizon + 1,
+                     d == self._last, d == press, min(res.clearance, 48.0),
+                     -sum(p is not None for p in plan))
+            if best is None or score > best[0]:
+                best = (score, d, plan)
+
+        if self._escape:
+            remaining = self._escape + [None] * (horizon - len(self._escape))
+            if simulate(forecast, model, start, facing, remaining).first_hit is None:
+                best = ((True, horizon + 1, True, True, 48.0, 0), remaining[0], remaining)
+            else:
+                self._escape.clear()
         for d in (None, *DIRS):
             if d is not None:
                 # A press the model says goes nowhere is a stand at best -- and
@@ -560,12 +726,12 @@ class ShotGuard:
                 if (nx, ny) == start:
                     continue
             for k in ((0,) if d is None else HOLDS):
-                plan = [d] * k + [None] * (self.horizon - k)
+                plan = [d] * k + [None] * (horizon - k)
                 res = simulate(forecast, model, start, facing, plan)
                 safe = res.first_hit is None
                 score = (
                     safe,
-                    res.first_hit or self.horizon + 1,
+                    res.first_hit or horizon + 1,
                     d == self._last,
                     d == press,
                     min(res.clearance, 48.0),
@@ -574,13 +740,26 @@ class ShotGuard:
                 if _DEBUG:
                     print(f"    alt {d} k={k} hit={res.first_hit} clr={res.clearance:.1f} end={res.end}")
                 if best is None or score > best[0]:
-                    best = (score, d, k)
+                    best = (score, d, plan)
+        # A pillar can make all straight holds unsafe while a bend around it
+        # survives. Search these only for orange magic and only as a fallback.
+        if forecast.orange_shots and best is not None and not best[0][0]:
+            for d in DIRS:
+                if model.step(start[0], start[1], facing, d)[:2] == start:
+                    continue
+                for k in (4, 8, 12, 16):
+                    for turn in DIRS:
+                        if DIRS[d][0] == DIRS[turn][0] or DIRS[d][1] == DIRS[turn][1]:
+                            continue
+                        for hold in (8, 16):
+                            consider([d] * k + [turn] * hold + [None] * (horizon - k - hold))
         assert best is not None
-        score, d, _k = best
+        score, d, plan = best
         if not score[0] and score[1] <= base.first_hit:
             # Nothing buys a frame: keep the inner controller's plan.
             return inner
         self.overrides += 1
+        self._escape = plan[1:] if forecast.orange_shots and len(set(plan) - {None}) > 1 else []
         self._last = d if d is not None else "STAND"
         reason = f"guard_{(d or 'stand').lower()}"
         self.reasons[reason] = self.reasons.get(reason, 0) + 1
