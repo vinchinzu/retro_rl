@@ -1,11 +1,37 @@
-# Zelda I sitting residual — Level 9 shot guard (2026-09-27)
+# Zelda I sitting residual — Level 9 worktree integration (2026-09-27)
 
-Lane A from Claude's interrupted session is complete on branch
-`worktree-agent-a013fbceed9812828`, based on `ff66c93a`.
+Lane A from Claude's interrupted session is complete and on main at
+`a686cce2`, based on `ff66c93a`.
 Bead `rr-npv.5` stays in progress: Clean power-on credits is still unproved.
-The other five worktrees were left untouched. No STATUS change or push.
+The user authorized completing the five other worktrees with new sub-agents
+and landing every lane on main. The stall lane is now complete; hazards and
+the Red Ring remain active. The bomb-budget lane is next, followed by the
+overworld lane as a sub-agent slot opens.
+Claude's partial edits were preserved. No STATUS change or push.
 
-## Verified
+The current-main real-C10 resume `codex_all_baseline` fails
+`bomb_restock_l8` at 3008 frames with 4 bombs and 2R. It has one state load,
+no heart assist, no inventory pokes, and confirms the shop shortfall.
+The Red Ring's reciprocal ROM-door graph requires three extra bomb walls;
+the bomb-budget lane must guarantee the 0x16 item and save another bomb,
+for example by avoiding 0x31W. Existing lane-A verification follows.
+
+## Room-stall lane verified
+
+Lane C fixes room 0x10's missing west-aisle combat node and exact stair
+alignment. It replaces room 0x61's fixed melee stand with a reachable lane
+that follows Patra's roaming body. Its 12 guarded ROM pin cases pass across
+idle offsets 0/3/7/11: room 0x10 clears at both 15h and 10h, and room 0x61
+clears in 4335–7264f with zero damage. These are Survival-origin loaded pins
+with disclosed heart writes at load; they do not prove natural-entry Clean.
+The full worktree Zelda gate passes 2124 tests, with 4 skips and 41 ROM tests
+deselected. Main's focused integration gate passes 48 tests. The old
+`patra_melee_action` API and Patra16 controller are preserved. `prefix.py`
+shrinks to 1591 lines; no generic engine change or cap increase was needed.
+Reproduction and complete before/after tables are in the lane C worktree's
+`nes/zelda_i/logs/codex_lane_c/HANDOFF.md` (gitignored).
+
+## Shot-guard lane verified
 
 Production `level9/hops.py` wraps the Silver Arrows chapter (all 17 hops),
 the Patra join, final Patra, and Ganon in `GuardedController`, once per stage.

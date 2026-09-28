@@ -59,6 +59,29 @@ from zelda_i.level9.prefix import (
 from zelda_i.ram import PASSAGE_MODE, PLAY_MODE, read_snapshot
 from zelda_i.tests.ram_helpers import make_ram
 
+
+def test_room10_frozen_wizzrobes_are_reachable_through_west_aisle() -> None:
+    from zelda_i.dungeon.engine import GenericDungeonRoomController
+    from zelda_i.level9.prefix import ROOM_10_WIZZROBES_SPEC
+    from zelda_i.tests.ram_helpers import room_tile_env
+    from zelda_i.walk.physics import lattice_route
+
+    ctl = GenericDungeonRoomController(spec=ROOM_10_WIZZROBES_SPEC)
+    ctl.bind_env(room_tile_env("10", level=9))
+    snap = read_snapshot(_ram(screen=0x10, x=92, y=181))
+    nodes = ctl._lattice_nodes(snap)
+    # Clock-active o3 leaves three Wizzrobes in the middle band. The only
+    # bridge out of the south corridor is x=32; xmin=40 removed it entirely.
+    assert lattice_route(nodes, (92, 181), {(64, 133)})
+
+
+def test_room10_stairs_do_not_idle_two_pixels_short() -> None:
+    from zelda_i.level9.prefix import make_room10_silver_arrows_controller
+
+    ctl = make_room10_silver_arrows_controller()
+    act = ctl._walk_to_stairs(read_snapshot(_ram(screen=0x10, x=206, y=93)))
+    assert list(act.action) == list(nes_action("RIGHT"))
+
 _DEFAULTS = {
     "mode": PLAY_MODE,
     "level": 9,
