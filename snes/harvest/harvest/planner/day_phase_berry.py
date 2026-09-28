@@ -194,6 +194,11 @@ def _berry_run_phases(
         )
 
     if can_buy:
+        target_crop = (
+            policy.summer_crop
+            if season == 1
+            else (policy.fall_crop if season == 2 else "potato")
+        )
         recording = (
             policy.seed_purchase_recording
             or seed_purchase_recording_for_season(season)
@@ -208,7 +213,7 @@ def _berry_run_phases(
                     failure_policy="optional",
                 ),
                 NAV_FARM_EXIT_PHASE,
-                buy_seeds_phase(recording_name=recording),
+                buy_seeds_phase(recording_name=recording, seed_type=target_crop),
             ]
         )
     return phases

@@ -90,6 +90,9 @@ def _make_ram(
     ram[ADDR_HOUR + base] = hour
     ram[ADDR_MINUTE + base] = minute
     ram[ADDR_WEATHER + base] = weather
+    if weather == WEATHER_RAIN:
+        from harvest.planner.day_plan_status import ADDR_WEATHER_FLAGS
+        ram[ADDR_WEATHER_FLAGS] = 0x02
 
     money_spec = field_spec("money")
     storage = money_spec.to_storage(money)
@@ -452,7 +455,7 @@ class MultiDayPlannerCalendarIntegrationTests(unittest.TestCase):
         # Plan the storm day: multi-day daytime work is empty, delegating sleep to orchestrator
         day_task = task._build_day_task(world_storm)
         self.assertTrue(task.last_day_decision.facts.is_storm)
-        self.assertEqual(day_task.phases, [])
+        self.assertEqual(list(day_task.phases), [])
         # Standalone decision includes GO_TO_SLEEP
         standalone = build_day_plan_decision(ram=world_storm.ram)
         self.assertEqual(list(standalone.phase_names), ["GO_TO_SLEEP"])

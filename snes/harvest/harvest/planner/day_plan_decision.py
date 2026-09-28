@@ -360,7 +360,8 @@ def _planning_facts_from_probe(
     clock = probe.clock()
     season, _calendar_day = probe.calendar_date()
     policy = day_planner_policy_for_season(season, policy)
-    weekday = probe.weekday() or 1
+    _w = probe.weekday()
+    weekday = 1 if _w is None else _w
     tilemap = probe.tilemap()
     on_farm = tilemap is not None and is_farm_tilemap(tilemap)
     pixel = probe.player_pixel() if source == "ram" else None

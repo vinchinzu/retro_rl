@@ -36,6 +36,7 @@ from harvest.planner.day_plan import (
     is_rainy_weather,
     ram_has_waterable_crops,
 )
+from harvest.planner.day_phase_calendar import is_festival_day
 from harvest.tasks.crop_planter import is_rainy_weather as crop_task_is_rainy_weather
 from harvest.core.tile_catalog import ADDR_MAP
 
@@ -591,7 +592,7 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         then potato, with a bail hour that still starts loop 2 after 10:00."""
         for day in range(3, 31):
             weekday = (1 + day - 1) % 7
-            if weekday == 0:
+            if weekday == 0 or is_festival_day(0, day):
                 continue
             phases = build_outdoor_day_phases(
                 weekday=weekday,
@@ -615,6 +616,24 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
             self.assertLess(
                 names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"), f"D{day}"
             )
+
+    def test_spring_festival_days_schedule_festival_instead_of_shop(self) -> None:
+        for day in (8, 23):
+            weekday = (1 + day - 1) % 7
+            phases = build_outdoor_day_phases(
+                weekday=weekday,
+                hour=6,
+                has_harvest=False,
+                has_waterable=True,
+                has_seeds=False,
+                has_debris=False,
+                season=0,
+                day=day,
+                money=250,
+            )
+            names = self._phase_names(phases)
+            self.assertIn("ATTEND_FESTIVAL", names, f"D{day}")
+            self.assertNotIn("BUY_SEEDS", names, f"D{day}")
 
     def test_harvest_morning_does_not_force_two_grapes_ahead_of_ripe_tiles(self) -> None:
         phases = build_outdoor_day_phases(

@@ -150,9 +150,12 @@ def buy_seeds_phase(
     *,
     recording_name: str | None = None,
     recording_start: int | None = None,
+    seed_type: str | None = None,
 ) -> PhaseSpec:
     """Build a BUY_SEEDS phase for the active seasonal shop recording."""
     params = dict(BUY_SEEDS_PHASE.params)
+    if seed_type is not None:
+        params["seed_type"] = seed_type
     if recording_name:
         params["recording_name"] = recording_name
         # Summer still uses the recorded CrossMap until a nav+RAM buy lands.

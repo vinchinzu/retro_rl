@@ -670,7 +670,7 @@ def build_outdoor_day_phases_from_ram(
     _calendar_day, hour, _minute = probe.day_time()
     season, day = probe.calendar_date()
     return build_outdoor_day_phases(
-        weekday=probe.weekday() or 1,
+        weekday=1 if probe.weekday() is None else probe.weekday(),
         hour=hour,
         has_harvest=probe.has_harvestable_crops(),
         has_waterable=probe.has_waterable_crops(),
@@ -712,7 +712,7 @@ def build_day_phases_from_ram(
         return [GO_TO_SLEEP_PHASE]
     adult_chickens = probe.chicken_counts()[0]
     oversupplied_chickens = _chicken_oversupplied(adult_chickens, policy)
-    is_sunday = (probe.weekday() or 1) == SUNDAY_WEEKDAY
+    is_sunday = probe.weekday() == SUNDAY_WEEKDAY
     is_fest = probe.is_festival() and policy.include_festivals
     shops_closed = is_sunday or is_fest
     cows_need_chores = policy.include_cows and not late_day and probe.needs_cow_chores()
