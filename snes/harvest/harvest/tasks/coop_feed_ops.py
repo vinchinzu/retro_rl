@@ -23,7 +23,11 @@ from harvest.tasks.coop_layout import (
     ChickenFeedSpot,
 )
 from harvest.tasks.nav import make_action
-from harvest.tasks.skills import coop_nav_to_feed_bin_skill, coop_press_feed_skill
+from harvest.tasks.skills import (
+    coop_nav_to_feed_bin_skill,
+    coop_press_feed_place_skill,
+    coop_press_feed_skill,
+)
 from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
 
 def _queue_place_feed(task, face: str) -> None:
@@ -55,10 +59,23 @@ def _next_feed_spot(task, ram: np.ndarray) -> Optional[ChickenFeedSpot]:
     for spot in CHICKEN_FEED_SPOTS:
         if not (flags & spot.flag) and spot.flag not in task._blocked_feed_flags:
             return spot
+
+    # Chickens wander dynamically. If all remaining unfed spots were marked
+    # blocked, clear blocked flags so other trough spots can be retried.
+    unfed = [s for s in CHICKEN_FEED_SPOTS if not (flags & s.flag)]
+    if unfed and all(s.flag in task._blocked_feed_flags for s in unfed):
+        for s in unfed:
+            task._blocked_feed_flags.discard(s.flag)
+        for s in unfed:
+            if s.stand not in blocked:
+                return s
+        return unfed[0]
+
     return None
 
 def _advance_after_feed(task, ram: np.ndarray) -> TaskResult:
     task._feed_registered = False
+    task._pathfinder.temp_blocked.clear()
     fed_now = min(task._fed_count_now(ram), task._adult_count)
     task.fed_count = max(task.fed_count, fed_now)
     task._feed_remaining = max(0, task._adult_count - fed_now)
@@ -68,6 +85,12 @@ def _advance_after_feed(task, ram: np.ndarray) -> TaskResult:
         task._clear_left_top_route()
         if read_item_on_hand(ram) == ITEM_CHICKEN_FEED:
             task._phase = "feed_place_nav"
+        elif read_hay_count(ram) <= 0:
+            print(f"[COOP] Out of hay after feeding {task.fed_count}")
+            task._feed_remaining = 0
+            if task._collectable_egg_present(ram):
+                return task._begin_egg_nav()
+            return task._begin_exit_prep()
         else:
             task._phase = "feed_nav"
     elif task._collectable_egg_present(ram):
@@ -155,9 +178,13 @@ def _step_feed_place_nav(task, world: WorldState) -> TaskResult:
         task._current_feed_spot = spot
         task._feed_place_started_step = task._step_count
     if spot is None:
-        print("[COOP] No open feed slot; continuing to eggs/exit")
-        task._feed_remaining = 0
-        return task._advance_after_feed(world.ram)
+        if task._blocked_feed_flags:
+            task._blocked_feed_flags.clear()
+            spot = task._next_feed_spot(world.ram)
+            task._current_feed_spot = spot
+        if spot is None:
+            spot = CHICKEN_FEED_SPOTS[0]
+            task._current_feed_spot = spot
 
     timed_out = (
         task._step_count - task._feed_place_started_step > MAX_FEED_PLACE_FRAMES
@@ -208,7 +235,7 @@ def _step_feed_place_nav(task, world: WorldState) -> TaskResult:
 
     task._fed_before = task._fed_count_now(world.ram)
     task._fed_flags_before = read_fed_chickens_flags(world.ram)
-    task._queue_place_feed(spot.face)
+    task._enqueue_skill_actions(world, coop_press_feed_place_skill(face=spot.face))
     task._verify_count = 0
     task._feed_place_started_step = 0
     task._phase = "feed_place_verify"

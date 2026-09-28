@@ -119,6 +119,32 @@ class WorldProbe:
         ram = self._require_ram()
         return False if ram is None else is_rainy_weather(ram)
 
+    def weather_code(self) -> int:
+        from harvest.planner.day_plan_status import ADDR_WEATHER, read_ram_u8
+
+        ram = self._require_ram()
+        if ram is None or ADDR_WEATHER >= len(ram):
+            return 0
+        return read_ram_u8(ram, ADDR_WEATHER)
+
+    def is_storm(self) -> bool:
+        from harvest.planner.day_phase_calendar import is_storm_weather
+
+        season, _day = self.calendar_date()
+        return is_storm_weather(self.weather_code(), season)
+
+    def is_festival(self) -> bool:
+        from harvest.planner.day_phase_calendar import is_festival_day
+
+        season, day = self.calendar_date()
+        return is_festival_day(season, day)
+
+    def festival_name(self) -> Optional[str]:
+        from harvest.planner.day_phase_calendar import festival_name_for_date
+
+        season, day = self.calendar_date()
+        return festival_name_for_date(season, day)
+
     def has_any_crop_seeds(self) -> bool:
         ram = self._require_ram()
         return False if ram is None else ram_has_any_crop_seeds(ram)

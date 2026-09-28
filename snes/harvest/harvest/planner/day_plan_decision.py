@@ -59,6 +59,10 @@ class PlanningFacts:
     has_harvest: bool = False
     has_waterable: bool = False
     has_seeds: bool = False
+    is_festival: bool = False
+    festival_name: Optional[str] = None
+    is_storm: bool = False
+    is_post_storm: bool = False
 
     def to_jsonable(self) -> dict[str, Any]:
         return {
@@ -87,6 +91,10 @@ class PlanningFacts:
             "has_harvest": self.has_harvest,
             "has_waterable": self.has_waterable,
             "has_seeds": self.has_seeds,
+            "is_festival": self.is_festival,
+            "festival_name": self.festival_name,
+            "is_storm": self.is_storm,
+            "is_post_storm": self.is_post_storm,
         }
 
 
@@ -174,11 +182,32 @@ def build_day_plan_decision(
     ram: Optional[np.ndarray] = None,
     *,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
+    is_storm: Optional[bool] = None,
+    is_post_storm: bool = False,
+    is_festival: Optional[bool] = None,
+    festival_name: Optional[str] = None,
 ) -> DayPlanDecision:
     """Build rule-based phases plus explicit tomorrow-facing deferrals."""
 
-    phases = tuple(auto_day_phases(state_name=state_name, ram=ram, policy=policy))
-    facts = planning_facts(state_name=state_name, ram=ram, policy=policy)
+    phases = tuple(
+        auto_day_phases(
+            state_name=state_name,
+            ram=ram,
+            policy=policy,
+            is_storm=is_storm,
+            is_post_storm=is_post_storm,
+            is_festival=is_festival,
+        )
+    )
+    facts = planning_facts(
+        state_name=state_name,
+        ram=ram,
+        policy=policy,
+        is_storm=is_storm,
+        is_post_storm=is_post_storm,
+        is_festival=is_festival,
+        festival_name=festival_name,
+    )
     deferred = tuple(collect_deferred_plans(facts, phases, policy=policy))
     notes = _planning_notes(facts, phases)
     return DayPlanDecision(phases=phases, facts=facts, deferred=deferred, notes=notes)
@@ -190,10 +219,22 @@ def auto_day_plan_decision(
     *,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
     advisor: Optional[DayPlanAdvisor] = None,
+    is_storm: Optional[bool] = None,
+    is_post_storm: bool = False,
+    is_festival: Optional[bool] = None,
+    festival_name: Optional[str] = None,
 ) -> DayPlanDecision:
     """Build a day-plan decision and optionally pass it through an advisor."""
 
-    decision = build_day_plan_decision(state_name=state_name, ram=ram, policy=policy)
+    decision = build_day_plan_decision(
+        state_name=state_name,
+        ram=ram,
+        policy=policy,
+        is_storm=is_storm,
+        is_post_storm=is_post_storm,
+        is_festival=is_festival,
+        festival_name=festival_name,
+    )
     if advisor is None:
         return decision
     advised = advisor.advise_day_plan(decision)
@@ -205,10 +246,22 @@ def planning_facts(
     ram: Optional[np.ndarray] = None,
     *,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
+    is_storm: Optional[bool] = None,
+    is_post_storm: bool = False,
+    is_festival: Optional[bool] = None,
+    festival_name: Optional[str] = None,
 ) -> PlanningFacts:
     probe = WorldProbe.from_inputs(ram=ram, state_name=state_name)
     source = "ram" if ram is not None else "state"
-    return _planning_facts_from_probe(probe, source=source, policy=policy)
+    return _planning_facts_from_probe(
+        probe,
+        source=source,
+        policy=policy,
+        is_storm=is_storm,
+        is_post_storm=is_post_storm,
+        is_festival=is_festival,
+        festival_name=festival_name,
+    )
 
 
 def collect_deferred_plans(
@@ -247,10 +300,11 @@ def collect_deferred_plans(
             deferred.append(DeferredPlan.from_phase(CROP_WATER_PHASE, reason))
     if (
         policy.include_berry_run
-        and facts.hour >= policy.berry_cutoff_hour
+        and (facts.hour >= policy.berry_cutoff_hour or facts.is_storm)
         and MOUNTAIN_BERRY_PHASE.phase not in planned
     ):
-        deferred.append(DeferredPlan.from_phase(MOUNTAIN_BERRY_PHASE, "berry_cutoff"))
+        reason = "storm_confinement" if facts.is_storm else "berry_cutoff"
+        deferred.append(DeferredPlan.from_phase(MOUNTAIN_BERRY_PHASE, reason))
     if (
         policy.include_shop_run
         and policy.include_planting
@@ -258,7 +312,11 @@ def collect_deferred_plans(
         and BUY_SEEDS_PHASE.phase not in planned
         and not facts.should_buy_cow
     ):
-        if facts.is_sunday:
+        if facts.is_storm:
+            deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "storm_confinement"))
+        elif facts.is_festival:
+            deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "shop_closed_festival"))
+        elif facts.is_sunday:
             deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "shop_closed_sunday"))
         elif facts.hour > policy.buy_seed_hour:
             deferred.append(DeferredPlan.from_phase(BUY_SEEDS_PHASE, "seed_shop_cutoff"))
@@ -292,6 +350,10 @@ def _planning_facts_from_probe(
     *,
     source: str,
     policy: DayPlannerPolicy,
+    is_storm: Optional[bool] = None,
+    is_post_storm: bool = False,
+    is_festival: Optional[bool] = None,
+    festival_name: Optional[str] = None,
 ) -> PlanningFacts:
     from harvest.planner.day_phase_types import day_planner_policy_for_season
 
@@ -303,6 +365,13 @@ def _planning_facts_from_probe(
     on_farm = tilemap is not None and is_farm_tilemap(tilemap)
     pixel = probe.player_pixel() if source == "ram" else None
     lunch = policy.lunch_clock()
+
+    actual_storm = probe.is_storm() if is_storm is None else bool(is_storm)
+    actual_festival = probe.is_festival() if is_festival is None else bool(is_festival)
+    actual_festival_name = (
+        probe.festival_name() if festival_name is None else festival_name
+    ) if actual_festival else None
+
     return PlanningFacts(
         source=source,
         weekday=weekday,
@@ -328,10 +397,16 @@ def _planning_facts_from_probe(
         has_harvest=probe.has_harvestable_crops(),
         has_waterable=probe.has_waterable_crops(),
         has_seeds=probe.has_seasonal_plantable_seeds(),
+        is_festival=actual_festival,
+        festival_name=actual_festival_name,
+        is_storm=actual_storm,
+        is_post_storm=bool(is_post_storm),
     )
 
 
 def _omission_reason(facts: PlanningFacts, policy: DayPlannerPolicy, category: str) -> str:
+    if facts.is_storm:
+        return "storm_confinement"
     if category in {"cows", "cow_purchase"} and not policy.include_cows:
         return "disabled_by_policy"
     if category == "chickens" and not policy.include_chickens:
@@ -344,6 +419,10 @@ def _omission_reason(facts: PlanningFacts, policy: DayPlannerPolicy, category: s
         return "disabled_by_policy"
     if category == "cow_purchase" and not policy.include_shop_run:
         return "shop_run_disabled"
+    if category == "cow_purchase" and facts.is_festival:
+        return "shop_closed_festival"
+    if category == "cow_purchase" and facts.is_sunday:
+        return "shop_closed_sunday"
     if category == "water" and facts.is_rainy:
         return "rainy_day"
     if category == "seeds" and facts.is_rainy:
@@ -355,6 +434,15 @@ def _omission_reason(facts: PlanningFacts, policy: DayPlannerPolicy, category: s
 
 def _planning_notes(facts: PlanningFacts, phases: Sequence[PhaseSpec]) -> tuple[str, ...]:
     notes: list[str] = []
+    if facts.is_storm:
+        notes.append("storm confinement restricts farmer indoors")
+    if facts.is_post_storm:
+        notes.append("post-storm recovery prioritizes field clearing and crop repair")
+    if facts.is_festival:
+        fest_name = facts.festival_name or "festival"
+        notes.append(f"festival day ({fest_name}) schedules early farm work and attendance")
+    if facts.is_sunday:
+        notes.append("sunday closures in effect")
     if facts.late_day and any(phase.phase in {"RETURN_HOME", "GO_TO_SLEEP"} for phase in phases):
         notes.append("late-day plan includes end-day route")
     if facts.is_rainy:

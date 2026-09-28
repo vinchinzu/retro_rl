@@ -61,6 +61,12 @@ from harvest.planner.day_phase_cow import (  # noqa: F401
     EXIT_BARN_PHASE,
     NAV_TO_BARN_PHASE,
 )
+from harvest.planner.day_phase_calendar import (  # noqa: F401
+    ATTEND_FESTIVAL_PHASE,
+    REPAIR_CROPS_PHASE,
+    SUNDAY_CHURCH_PHASE,
+    SUNDAY_MOUNTAIN_PHASE,
+)
 
 EXIT_HOUSE_PHASE = PhaseSpec(
     "EXIT_HOUSE",
@@ -744,4 +750,8 @@ __all__ = [
     "pocket_clear_phase",
     "pocket_plant_phases",
     "_crop_work_phases",
+    "ATTEND_FESTIVAL_PHASE",
+    "SUNDAY_CHURCH_PHASE",
+    "SUNDAY_MOUNTAIN_PHASE",
+    "REPAIR_CROPS_PHASE",
 ]

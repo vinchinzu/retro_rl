@@ -152,7 +152,11 @@ def read_world_weekday(ram: np.ndarray) -> int:
 def is_rainy_weather(ram: np.ndarray) -> bool:
     """Return True when current weather means crops do not need manual watering."""
     flags = read_ram_u16(ram, ADDR_WEATHER_FLAGS, live_offset=False)
-    return bool(flags & RAINY_WEATHER_FLAG_MASK)
+    if bool(flags & RAINY_WEATHER_FLAG_MASK):
+        return True
+    if ADDR_WEATHER < len(ram):
+        return read_ram_u8(ram, ADDR_WEATHER) in RAINY_WEATHER_CODES
+    return False
 
 
 def state_is_rainy(state_name: Optional[str]) -> bool:

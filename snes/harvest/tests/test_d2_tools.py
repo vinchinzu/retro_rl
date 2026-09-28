@@ -89,6 +89,29 @@ class ShedHammerAxeSpecTests(unittest.TestCase):
         self.assertEqual(task._task.stand_px, (176, 168))
         self.assertEqual(task._task.tool_id, int(Tool.HAMMER))
 
+    def test_ensure_can_from_crop_pocket_with_stage2_potatoes(self) -> None:
+        """rr-w7t9: can-recovery at pos=(216,456) must not be sealed by 0x58 crops."""
+        from harvest.core.tile_catalog import ADDR_MAP, MAP_WIDTH
+        from harvest.maps.map_config import WEST_POCKET_PLANT_CENTER
+        world = make_world(0x00)
+        set_player_pos(world.ram, 216, 456)  # tile (13, 28)
+        # Surround (13, 28) with stage 2 dry potatoes (0x58)
+        cx, cy = WEST_POCKET_PLANT_CENTER
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                world.ram[ADDR_MAP + (cy + dy) * MAP_WIDTH + (cx + dx)] = 0x58
+
+        task = EnsureCarryToolTask(tool_id=int(Tool.WATERING_CAN))
+        task.reset(world)
+        result = task.step(world)
+
+        # Must start routing, NOT fail with no_path sealed!
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertNotIn("no_path sealed", result.reason or "")
+        self.assertEqual(task._phase, "route")
+
 
 class LeftoverEnsureNotRecordedTests(unittest.TestCase):
     def test_leftover_uses_ensure_tool_not_get_hammer_macro(self) -> None:

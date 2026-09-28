@@ -45,6 +45,7 @@ class MultiDayPlannerTask(Task):
 
     name: str = "multi_day_planner"
     seed_type: str = "potato"
+    crop_rotation: Optional[dict[int, str]] = None
     tasks_dir: str = TASKS_DIR
     until_season: int = 0
     until_day: int = 30
@@ -66,6 +67,7 @@ class MultiDayPlannerTask(Task):
     _day_failures: list[dict[str, object]] = field(default_factory=list, init=False)
     _day_journal: list[dict[str, object]] = field(default_factory=list, init=False)
     _return_home_retries: int = field(default=0, init=False)
+    _was_storm_yesterday: bool = field(default=False, init=False)
     # A stranded return_home is the dominant terminal killer of long runs. Give
     # it a few fresh attempts (nav state is rebuilt each time) before failing.
     max_return_home_retries: int = 3
@@ -82,6 +84,7 @@ class MultiDayPlannerTask(Task):
         self._last_day_deferred.clear()
         self._day_failures.clear()
         self._day_journal.clear()
+        self._was_storm_yesterday = False
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -144,28 +147,51 @@ class MultiDayPlannerTask(Task):
             season,
             replace(self.policy, include_end_day=False),
         )
+        # Determine target seed for the season
+        target_seed = None
+        if self.crop_rotation and season in self.crop_rotation:
+            target_seed = self.crop_rotation[season]
+        elif season == 0 and self.seed_type:
+            target_seed = self.seed_type
+        else:
+            from harvest.planner.day_phase_calendar import default_crop_for_season
+
+            target_seed = default_crop_for_season(season) or self.seed_type
+
         # The campaign's configured crop wins while it is still plantable this
         # date — ram resolution otherwise drifts to turnip after a few potato
         # ships (its ranch-master "remaining" ranks higher), diluting the
         # potato-max goal and thrashing the pocket rings between crops.
-        resolved_seed = resolve_seed_type_from_ram(world.ram) or self.seed_type
-        if self.seed_type and resolved_seed != self.seed_type:
+        resolved_seed = resolve_seed_type_from_ram(world.ram) or target_seed
+        if target_seed and resolved_seed != target_seed:
             try:
                 from harvest.planner.crop_planner import resolve_seed_type_for_date
 
                 if (
                     resolve_seed_type_for_date(
-                        season, day, inventory={self.seed_type: 1}
+                        season, day, inventory={target_seed: 1}
                     )
-                    == self.seed_type
+                    == target_seed
                 ):
-                    resolved_seed = self.seed_type
+                    resolved_seed = target_seed
             except Exception:
                 pass
+
+        from harvest.planner.world_probe import WorldProbe
+
+        probe = WorldProbe.from_inputs(ram=world.ram)
+        is_storm = probe.is_storm()
+        is_festival = probe.is_festival()
+        festival_name = probe.festival_name()
+
         decision = auto_day_plan_decision(
             ram=world.ram,
             policy=day_policy,
             advisor=self.plan_advisor,
+            is_storm=is_storm,
+            is_post_storm=self._was_storm_yesterday,
+            is_festival=is_festival,
+            festival_name=festival_name,
         )
         self._last_day_decision = decision
         phase_names = ", ".join(phase.phase for phase in decision.phases) or "none"
@@ -377,11 +403,19 @@ class MultiDayPlannerTask(Task):
                         establish_planted += int(reason.split("planted=")[1].split()[0])
                     except Exception:
                         establish_planted += 1
+        is_storm_day = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
+        is_post_storm_day = bool(self._last_day_decision and self._last_day_decision.facts.is_post_storm)
+        is_fest_day = bool(self._last_day_decision and self._last_day_decision.facts.is_festival)
+        fest_name = self._last_day_decision.facts.festival_name if self._last_day_decision else None
         row = {
             "plan_season": int(season),
             "plan_day": int(day),
             "end_season": int(end_season),
             "end_day": int(end_day),
+            "is_storm": is_storm_day,
+            "is_post_storm": is_post_storm_day,
+            "is_festival": is_fest_day,
+            "festival_name": fest_name,
             "overnights_completed": int(self._days_completed + 1),
             "sleep_reason": sleep_reason,
             "money": money,
@@ -395,6 +429,7 @@ class MultiDayPlannerTask(Task):
             "step": int(self._step_count),
         }
         self._day_journal.append(row)
+        self._was_storm_yesterday = is_storm_day
         succeeded = [r["phase"] for r in phase_results if r.get("status") == "success"]
         skipped = [r["phase"] for r in phase_results if r.get("status") == "skipped"]
         no_work = [r["phase"] for r in phase_results if r.get("status") == "no_work"]

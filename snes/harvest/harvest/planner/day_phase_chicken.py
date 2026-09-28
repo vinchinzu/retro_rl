@@ -395,11 +395,13 @@ def _chicken_sale_phases(
     hour: int,
     is_sunday: bool,
     policy: DayPlannerPolicy,
+    is_festival: bool = False,
 ) -> List[PhaseSpec]:
     if (
         not policy.include_chicken_sales
         or not policy.include_shop_run
         or is_sunday
+        or is_festival
         or not _chicken_oversupplied(adult_chickens, policy)
         or hour >= policy.chicken_sale_cutoff_hour
     ):

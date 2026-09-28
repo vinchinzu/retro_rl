@@ -347,6 +347,13 @@ class DayPlannerPolicy:
     include_chicken_sales: bool = True
     max_adult_chickens: int = 2
     chicken_sale_cutoff_hour: int = 10
+    # Festival and Sunday event planning
+    include_festivals: bool = True
+    include_sunday_church: bool = True
+    include_sunday_mountain: bool = False
+    # Seasonal default crop preferences
+    summer_crop: str = "corn"
+    fall_crop: str = "eggplant"
     # None = derive from calendar season via crop_planner.
     seed_purchase_recording: str | None = None
 
@@ -360,11 +367,7 @@ def day_planner_policy_for_season(
     season: int | str,
     base: DayPlannerPolicy | None = None,
 ) -> DayPlannerPolicy:
-    """Adjust a day-plan policy for spring/summer planting vs fall/winter.
-
-    HM SNES has no fall/winter field crops, so planting and seed shopping stop
-    after summer while harvest/water remain gated by live crop tiles.
-    """
+    """Adjust a day-plan policy for spring/summer/fall planting vs winter."""
     from harvest.planner.crop_planner import (
         is_crop_planting_season,
         normalize_season,
@@ -397,6 +400,11 @@ def day_planner_policy_for_season(
         include_chicken_sales=policy.include_chicken_sales,
         max_adult_chickens=policy.max_adult_chickens,
         chicken_sale_cutoff_hour=policy.chicken_sale_cutoff_hour,
+        include_festivals=policy.include_festivals,
+        include_sunday_church=policy.include_sunday_church,
+        include_sunday_mountain=policy.include_sunday_mountain,
+        summer_crop=policy.summer_crop,
+        fall_crop=policy.fall_crop,
         seed_purchase_recording=recording if planting else None,
     )
 

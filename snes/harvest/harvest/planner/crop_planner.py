@@ -116,12 +116,14 @@ CROP_SPECS: dict[str, CropSpec] = {
     "potato": CropSpec("potato", (SEASON_SPRING,), seed_cost_g=200, sell_price_g=80, days_to_first_harvest=6),
     "tomato": CropSpec("tomato", (SEASON_SUMMER,), seed_cost_g=300, sell_price_g=100, days_to_first_harvest=10, regrow_days=3),
     "corn": CropSpec("corn", (SEASON_SUMMER,), seed_cost_g=300, sell_price_g=120, days_to_first_harvest=10, regrow_days=3),
+    "eggplant": CropSpec("eggplant", (SEASON_FALL,), seed_cost_g=300, sell_price_g=60, days_to_first_harvest=7, regrow_days=3),
 }
 
 RANCH_MASTER_SHIPPED_TARGET = 511
 SEED_PURCHASE_RECORDINGS: dict[int, str] = {
     SEASON_SPRING: "buy_potato_seeds",
     SEASON_SUMMER: "buy_summer",
+    SEASON_FALL: "buy_summer",
 }
 
 
@@ -443,7 +445,7 @@ def choose_crop_for_date(season: int | str, day: int, *, layout_tiles: int = 8) 
 
 
 def is_crop_planting_season(season: int | str) -> bool:
-    return normalize_season(season) in (SEASON_SPRING, SEASON_SUMMER)
+    return normalize_season(season) in (SEASON_SPRING, SEASON_SUMMER, SEASON_FALL)
 
 
 def crops_for_season(season: int | str) -> tuple[CropSpec, ...]:

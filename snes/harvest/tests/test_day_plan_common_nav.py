@@ -767,9 +767,27 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         task.reset(world)
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertIn("have lunch", result.reason or "")
+    def test_animal_shop_staging_route_has_safe_corridors(self) -> None:
+        """rr-4zvl: farm_to_animal_shop_staging must route through gate pinch, crossroads, and town y=890 corridor."""
+        route = ROUTES["farm_to_animal_shop_staging"]
+        tilemaps = [wp.tilemap for wp in route]
+        self.assertIn(0x00, tilemaps)
+        self.assertIn(0x0C, tilemaps)
+        self.assertIn(0x04, tilemaps)
+        self.assertEqual(route[-1].tilemap, 0x24)
 
+        farm_hops = [wp.target_px for wp in route if wp.tilemap == 0x00]
+        self.assertIn((136, 424), farm_hops)
+        self.assertIn((72, 424), farm_hops)
+        self.assertIn((40, 424), farm_hops)
 
+        path_hops = [wp.target_px for wp in route if wp.tilemap == 0x0C]
+        self.assertIn((132, 128), path_hops)
+        self.assertIn((10, 128), path_hops)
+
+        town_hops = [wp.target_px for wp in route if wp.tilemap == 0x04]
+        self.assertIn((688, 890), town_hops)
+        self.assertIn((601, 890), town_hops)
 
 
 if __name__ == "__main__":

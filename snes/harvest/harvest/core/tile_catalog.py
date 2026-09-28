@@ -160,12 +160,11 @@ TRAVEL_SOLID_TILES = frozenset(
 FARM_WALKABLE = frozenset({
     0x00, UNTILLED, DRIED_TILLED, WEED, FRESH_TILLED, WATERED_TILLED,
     PLANTED_GRASS_TILE,
-    0x54, 0x55,  # young potato dry/wet; D2 8-ring is ROM-walkable and boxes the notch
     0x79,  # Soil/ground variant after viewport scrolls over farm plots.
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85,
     0xA0, 0xA1, 0xA2, 0xA3, 0xA8,
     0xC5,
-})
+}) | frozenset(CROP_TILE_RANGE)
 
 PATH_WALKABLE = frozenset({
     0xA0, 0xA1, 0xA2, 0xC0,

@@ -25,7 +25,7 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.tasks.navigation import NavTask
-from harvest.tasks.nav import Point
+from harvest.tasks.nav import Point, make_action
 from harvest.tasks.primitives import (
     PressAndVerifyTask,
     QueuedActions,
@@ -166,9 +166,11 @@ class PressAInteractSkill(Task):
     face: Optional[str] = None
     condition: Optional[RamCondition] = None
     face_frames: int = 2
+    pre_press_settle_frames: int = 0
     hold_frames: int = 25
     settle_frames: int = 18
     stable_frames: int = 1
+    hold_face_with_a: bool = False
     timeout: int = 180
 
     _inner: Optional[PressAndVerifyTask] = field(default=None, init=False)
@@ -180,8 +182,10 @@ class PressAInteractSkill(Task):
         sequence = press_a_sequence(
             self.face,
             face_frames=self.face_frames if self.face else 0,
+            pre_press_settle_frames=self.pre_press_settle_frames,
             hold_frames=self.hold_frames,
             settle_frames=self.settle_frames,
+            hold_face_with_a=self.hold_face_with_a,
         )
         if self.condition is not None:
             self._inner = PressAndVerifyTask(
@@ -282,6 +286,194 @@ def coop_nav_to_feed_bin_skill(
 def coop_press_feed_skill(*, face: str = "left") -> PressAInteractSkill:
     """Press A at the feed bin (no RAM verify — feed flags vary by slot)."""
     return PressAInteractSkill(name="coop_press_feed", face=face)
+
+
+def coop_feed_place_sequence(face: str = "up") -> list[np.ndarray]:
+    """Button sequence to place held feed into the trough."""
+    return [
+        *(make_action(**{face: True}) for _ in range(4)),
+        *(make_action(**{face: True, "a": True}) for _ in range(8)),
+        *(make_action(a=True) for _ in range(4)),
+        *(make_action(down=True) for _ in range(12)),
+        *(make_action() for _ in range(8)),
+    ]
+
+
+@dataclass
+class ButtonSequenceSkill(Task):
+    """Replay a static list of button actions."""
+
+    name: str = "button_sequence"
+    sequence: list[np.ndarray] = field(default_factory=list)
+    timeout: int = 180
+
+    _queue: QueuedActions = field(default_factory=deque, init=False)
+    _step_count: int = field(default=0, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._step_count = 0
+        self._queue = deque(np.array(a, dtype=np.int32, copy=True) for a in self.sequence)
+
+    def can_start(self, world: WorldState) -> bool:
+        return bool(self.sequence)
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return ProgressSnapshot(
+            task_name=self.name,
+            phase_text="press",
+            step_count=self._step_count,
+            details=(("queue_len", len(self._queue)),),
+        )
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step_count += 1
+        if self._step_count > self.timeout:
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"{self.name} timeout")
+        queued = drain_action_queue(self._queue, reason=f"{self.name} step")
+        if queued is not None:
+            return queued
+        return TaskResult(status=TaskStatus.SUCCESS, reason=f"{self.name} complete")
+
+
+def coop_press_feed_place_skill(*, face: str = "up") -> ButtonSequenceSkill:
+    """Button sequence skill to place held chicken feed into the trough."""
+    return ButtonSequenceSkill(
+        name="coop_press_feed_place",
+        sequence=coop_feed_place_sequence(face),
+    )
+
+
+def coop_nav_to_feed_spot_skill(
+    *,
+    target_stand: Optional[Tuple[int, int]] = None,
+    target_px: Optional[Tuple[int, int]] = None,
+    timeout: int = 900,
+    navigate: Optional[NavigateFn] = None,
+) -> Union[NavSkill, NavigateUntilArrivedSkill]:
+    """Navigate to a coop feed trough stand."""
+    if navigate is not None:
+        return NavigateUntilArrivedSkill(
+            name="coop_nav_feed_spot",
+            navigate=navigate,
+            timeout=timeout,
+        )
+    from harvest.tasks.nav import TILE_SIZE
+
+    if target_px is not None:
+        px = target_px
+    elif target_stand is not None:
+        px = (target_stand[0] * TILE_SIZE + 8, target_stand[1] * TILE_SIZE + 8)
+    else:
+        px = (2 * TILE_SIZE + 8, 3 * TILE_SIZE + 8)
+    return NavSkill(
+        name="coop_nav_feed_spot",
+        target_px=px,
+        radius=6,
+        timeout=timeout,
+    )
+
+
+def coop_press_egg_pickup_skill(*, face: str = "left") -> PressAInteractSkill:
+    """Press A at a floor egg to pick it up."""
+    return PressAInteractSkill(
+        name="coop_press_egg_pickup",
+        face=face,
+        face_frames=4,
+        hold_frames=28,
+        settle_frames=30,
+        hold_face_with_a=False,
+    )
+
+
+def coop_nav_to_egg_skill(
+    *,
+    target_stand: Optional[Tuple[int, int]] = None,
+    target_px: Optional[Tuple[int, int]] = None,
+    timeout: int = 900,
+    navigate: Optional[NavigateFn] = None,
+) -> Union[NavSkill, NavigateUntilArrivedSkill]:
+    """Navigate to an egg pickup stand."""
+    if navigate is not None:
+        return NavigateUntilArrivedSkill(
+            name="coop_nav_egg",
+            navigate=navigate,
+            timeout=timeout,
+        )
+    from harvest.tasks.coop_layout import EGG_PICKUP_STAND
+    from harvest.tasks.nav import TILE_SIZE
+
+    if target_px is not None:
+        px = target_px
+    elif target_stand is not None:
+        px = (target_stand[0] * TILE_SIZE + 8, target_stand[1] * TILE_SIZE + 8)
+    else:
+        px = (EGG_PICKUP_STAND[0] * TILE_SIZE + 8, EGG_PICKUP_STAND[1] * TILE_SIZE + 8)
+    return NavSkill(
+        name="coop_nav_egg",
+        target_px=px,
+        radius=6,
+        timeout=timeout,
+    )
+
+
+def coop_nav_to_incubator_skill(
+    *,
+    timeout: int = 900,
+    navigate: Optional[NavigateFn] = None,
+) -> Union[NavSkill, NavigateUntilArrivedSkill]:
+    """Navigate to the incubator stand (13, 11)."""
+    if navigate is not None:
+        return NavigateUntilArrivedSkill(
+            name="coop_nav_incubator",
+            navigate=navigate,
+            timeout=timeout,
+        )
+    from harvest.tasks.coop_layout import INCUBATOR_STAND
+    from harvest.tasks.nav import TILE_SIZE
+
+    tx, ty = INCUBATOR_STAND
+    return NavSkill(
+        name="coop_nav_incubator",
+        target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
+        radius=10,
+        timeout=timeout,
+    )
+
+
+def coop_press_incubator_skill(*, face: str = "right") -> PressAInteractSkill:
+    """Press A at the incubator to place the egg."""
+    return PressAInteractSkill(
+        name="coop_press_incubator",
+        face=face,
+        face_frames=2,
+        hold_frames=20,
+        settle_frames=24,
+        hold_face_with_a=False,
+    )
+
+
+def coop_nav_to_exit_prep_skill(
+    *,
+    timeout: int = 900,
+    navigate: Optional[NavigateFn] = None,
+) -> Union[NavSkill, NavigateUntilArrivedSkill]:
+    """Navigate to the coop exit staging stand (8, 12)."""
+    if navigate is not None:
+        return NavigateUntilArrivedSkill(
+            name="coop_nav_exit_prep",
+            navigate=navigate,
+            timeout=timeout,
+        )
+    from harvest.tasks.coop_layout import EXIT_PREP_STAND
+    from harvest.tasks.nav import TILE_SIZE
+
+    tx, ty = EXIT_PREP_STAND
+    return NavSkill(
+        name="coop_nav_exit_prep",
+        target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
+        radius=10,
+        timeout=timeout,
+    )
 
 
 def coop_nav_to_shipping_bin_skill(
@@ -542,7 +734,211 @@ def farm_pocket_water_skill(*, center=None, timeout: int = 4000):
     return sequence_skills("pocket_water_ring", *skills, idle_between=True)
 
 
+@dataclass
+class CoopFeedAdultsSkill(Task):
+    """Feed up to max_feed_adults in the coop trough using skills.
+
+    Performs feed_nav -> feed_act -> feed_place_nav -> feed_place_verify
+    until all adults are fed or hay is exhausted.
+    """
+
+    name: str = "coop_feed_adults"
+    max_feed_adults: Optional[int] = None
+    timeout: int = 6000
+
+    _inner: Any = field(init=False)
+
+    def __post_init__(self) -> None:
+        from harvest.tasks.coop_task import CoopChoresTask
+
+        self._inner = CoopChoresTask(
+            name=self.name,
+            max_feed_adults=self.max_feed_adults,
+            timeout=self.timeout,
+        )
+
+    def reset(self, world: WorldState) -> None:
+        self._inner.reset(world)
+
+    def can_start(self, world: WorldState) -> bool:
+        return self._inner.can_start(world)
+
+    @property
+    def fed_count(self) -> int:
+        return getattr(self._inner, "fed_count", 0)
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return self._inner.progress_snapshot()
+
+    def _feed_done(self) -> bool:
+        feed_phases = ("feed_nav", "feed_act", "feed_verify", "feed_place_nav", "feed_place_verify")
+        return getattr(self._inner, "_feed_remaining", 0) <= 0 and getattr(self._inner, "_phase", "") not in feed_phases
+
+    def step(self, world: WorldState) -> TaskResult:
+        if self._feed_done():
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"fed={self.fed_count} adults")
+        result = self._inner.step(world)
+        if self._feed_done():
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"fed={self.fed_count} adults")
+        return result
+
+
+@dataclass
+class CoopCollectEggsSkill(Task):
+    """Collect available eggs in the coop."""
+
+    name: str = "coop_collect_eggs"
+    timeout: int = 3000
+
+    _inner: Any = field(init=False)
+
+    def __post_init__(self) -> None:
+        from harvest.tasks.coop_task import CoopChoresTask
+
+        self._inner = CoopChoresTask(name=self.name, timeout=self.timeout)
+
+    def reset(self, world: WorldState) -> None:
+        self._inner.reset(world)
+        self._inner._phase = "egg_nav"
+
+    def can_start(self, world: WorldState) -> bool:
+        return self._inner.can_start(world)
+
+    @property
+    def egg_collected(self) -> bool:
+        return getattr(self._inner, "egg_collected", False)
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return self._inner.progress_snapshot()
+
+    def _egg_done(self) -> bool:
+        done_phases = ("decide", "incubate_nav", "ship_nav", "exit_prep_nav", "done")
+        return self.egg_collected or getattr(self._inner, "_phase", "") in done_phases
+
+    def step(self, world: WorldState) -> TaskResult:
+        if self._egg_done():
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"egg_collected={self.egg_collected}")
+        result = self._inner.step(world)
+        if self._egg_done():
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"egg_collected={self.egg_collected}")
+        return result
+
+
+@dataclass
+class CoopEggDispositionSkill(Task):
+    """Handle egg disposition: incubate, ship, or gift."""
+
+    name: str = "coop_egg_disposition"
+    egg_mode: str = "auto"
+    timeout: int = 3000
+
+    _inner: Any = field(init=False)
+
+    def __post_init__(self) -> None:
+        from harvest.tasks.coop_task import CoopChoresTask
+
+        self._inner = CoopChoresTask(name=self.name, egg_mode=self.egg_mode, timeout=self.timeout)
+
+    def reset(self, world: WorldState) -> None:
+        self._inner.reset(world)
+        self._inner.egg_collected = True
+        self._inner._phase = "decide"
+
+    def can_start(self, world: WorldState) -> bool:
+        return self._inner.can_start(world)
+
+    @property
+    def egg_incubated(self) -> bool:
+        return getattr(self._inner, "egg_incubated", False)
+
+    @property
+    def egg_shipped(self) -> bool:
+        return getattr(self._inner, "egg_shipped", False)
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return self._inner.progress_snapshot()
+
+    def _disp_done(self) -> bool:
+        return getattr(self._inner, "_phase", "") in ("exit_prep_nav", "done")
+
+    def step(self, world: WorldState) -> TaskResult:
+        if self._disp_done():
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"disposition={self.egg_mode} incub={self.egg_incubated} ship={self.egg_shipped}",
+            )
+        result = self._inner.step(world)
+        if self._disp_done():
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"disposition={self.egg_mode} incub={self.egg_incubated} ship={self.egg_shipped}",
+            )
+        return result
+
+
+@dataclass
+class CoopExitStagingSkill(Task):
+    """Stage at the coop exit door."""
+
+    name: str = "coop_exit_staging"
+    timeout: int = 900
+
+    _inner: Any = field(init=False)
+
+    def __post_init__(self) -> None:
+        from harvest.tasks.coop_task import CoopChoresTask
+
+        self._inner = CoopChoresTask(name=self.name, timeout=self.timeout)
+
+    def reset(self, world: WorldState) -> None:
+        self._inner.reset(world)
+        self._inner._phase = "exit_prep_nav"
+
+    def can_start(self, world: WorldState) -> bool:
+        return self._inner.can_start(world)
+
+    def progress_snapshot(self) -> ProgressSnapshot:
+        return self._inner.progress_snapshot()
+
+    def step(self, world: WorldState) -> TaskResult:
+        if getattr(self._inner, "_phase", "") == "done":
+            return TaskResult(status=TaskStatus.SUCCESS, reason="at exit door")
+        result = self._inner.step(world)
+        if getattr(self._inner, "_phase", "") == "done":
+            return TaskResult(status=TaskStatus.SUCCESS, reason="at exit door")
+        return result
+
+
+def coop_chores_composed_task(
+    *,
+    egg_mode: str = "auto",
+    max_feed_adults: Optional[int] = None,
+) -> SkillSequence:
+    """Compose coop chores from modular skills per PLANNING_STACK.md.
+
+    CoopChoresTask ≈ TaskSequence(
+        FeedAdultsSkill(slots=...),
+        CollectEggsSkill(),
+        DecideEggDisposition(mode=...),
+        ExitStaging(),
+    )
+    """
+    return sequence_skills(
+        "coop_chores_sequence",
+        CoopFeedAdultsSkill(max_feed_adults=max_feed_adults),
+        CoopCollectEggsSkill(),
+        CoopEggDispositionSkill(egg_mode=egg_mode),
+        CoopExitStagingSkill(),
+        idle_between=False,
+    )
+
+
 __all__ = [
+    "ButtonSequenceSkill",
+    "CoopCollectEggsSkill",
+    "CoopEggDispositionSkill",
+    "CoopExitStagingSkill",
+    "CoopFeedAdultsSkill",
     "InteractSkill",
     "NavSkill",
     "NavigateFn",
@@ -551,9 +947,18 @@ __all__ = [
     "SequenceSkill",
     "SkillSequence",
     "VerifyRamSkill",
+    "coop_chores_composed_task",
+    "coop_feed_place_sequence",
+    "coop_nav_to_egg_skill",
+    "coop_nav_to_exit_prep_skill",
     "coop_nav_to_feed_bin_skill",
+    "coop_nav_to_feed_spot_skill",
+    "coop_nav_to_incubator_skill",
     "coop_nav_to_shipping_bin_skill",
+    "coop_press_egg_pickup_skill",
+    "coop_press_feed_place_skill",
     "coop_press_feed_skill",
+    "coop_press_incubator_skill",
     "coop_press_ship_skill",
     "farm_nav_to_pond_refill_skill",
     "farm_fence_jump_toss_skill",

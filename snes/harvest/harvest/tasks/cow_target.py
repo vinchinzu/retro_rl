@@ -6,7 +6,11 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from harvest.core.animal_probe import cow_slot_snapshots
+from harvest.core.animal_probe import (
+    BARN_TILEMAP,
+    cow_slot_snapshots,
+    read_animal_slot_field,
+)
 from harvest.core.animal_status import (
     COW_DAILY_BRUSHED_FLAG,
     COW_DAILY_TALKED_FLAG,
@@ -41,7 +45,12 @@ def _target_cow_tile(task, ram: np.ndarray) -> Optional[Tuple[int, int]]:
         if not isinstance(tile, list) or len(tile) != 2:
             return None
         return int(tile[0]), int(tile[1])
-    return None
+    try:
+        x = read_animal_slot_field(ram, "cow", task._target_cow_slot, "position_x")
+        y = read_animal_slot_field(ram, "cow", task._target_cow_slot, "position_y")
+        return int(x // 16), int(y // 16)
+    except Exception:
+        return None
 
 def _target_cow_pixel(task, ram: np.ndarray) -> Optional[Tuple[int, int]]:
     if task._target_cow_slot is None:
@@ -53,7 +62,12 @@ def _target_cow_pixel(task, ram: np.ndarray) -> Optional[Tuple[int, int]]:
         if not isinstance(pixel, list) or len(pixel) != 2:
             return None
         return int(pixel[0]), int(pixel[1])
-    return None
+    try:
+        x = read_animal_slot_field(ram, "cow", task._target_cow_slot, "position_x")
+        y = read_animal_slot_field(ram, "cow", task._target_cow_slot, "position_y")
+        return int(x), int(y)
+    except Exception:
+        return None
 
 def _target_cow_body_tile(task, ram: np.ndarray) -> Optional[Tuple[int, int]]:
     tile = task._target_cow_tile(ram)
@@ -280,9 +294,16 @@ def _milkable_cow_slots(task, ram: np.ndarray) -> list[int]:
     ]
 
 def _barn_cow_slots(task, ram: np.ndarray) -> list[int]:
-    rows = cow_slot_snapshots(ram, require_barn=True)
-    slots = [int(row["slot"]) for row in rows if "slot" in row]
-    return slots or existing_cow_slots(ram)
+    all_slots = existing_cow_slots(ram)
+    barn_slots: list[int] = []
+    for slot in all_slots:
+        try:
+            home_map = read_animal_slot_field(ram, "cow", slot, "home_map_raw")
+            if home_map in (0, BARN_TILEMAP):
+                barn_slots.append(slot)
+        except Exception:
+            barn_slots.append(slot)
+    return barn_slots or all_slots
 
 def _slot_needs_talk(task, ram: np.ndarray, slot: int) -> bool:
     return (

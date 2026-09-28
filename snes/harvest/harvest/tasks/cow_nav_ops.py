@@ -495,7 +495,7 @@ def _defer_current_care(task, ram: np.ndarray, reason: str) -> bool:
 
 def _skip_current_cow_care(task, ram: np.ndarray, reason: str) -> TaskResult:
     slot = task._target_cow_slot
-    retryable = reason in {"slot_timeout", "nav_unreachable", "pixel_nav_stall"}
+    retryable = reason in {"slot_timeout", "nav_unreachable", "pixel_nav_stall", "sleeping"}
     task._pixel_nav_stall_count = 0
     task._reset_pixel_nav_progress()
     if retryable and task._phase in MILK_CARE_PHASES:
@@ -513,11 +513,11 @@ def _skip_current_cow_care(task, ram: np.ndarray, reason: str) -> TaskResult:
                 return TaskResult(status=TaskStatus.RUNNING)
             return task._after_milk(ram)
     if slot is not None:
-        if task._slot_needs_talk(ram, slot):
+        if reason == "sleeping" or task._slot_needs_talk(ram, slot):
             task._skipped_talk_slots.add(slot)
-        if task._slot_needs_brush(ram, slot):
+        if reason == "sleeping" or task._slot_needs_brush(ram, slot):
             task._skipped_brush_slots.add(slot)
-        if task._slot_needs_milk(ram, slot):
+        if reason == "sleeping" or task._slot_needs_milk(ram, slot):
             task._skipped_milk_slots.add(slot)
         print(f"[COW] Care skipped slot={slot} reason={reason} {task._care_debug_context(ram)}")
     task._verify_count = 0

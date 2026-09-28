@@ -70,8 +70,10 @@ class MultiMapNavTask(NavCorridor, Task):
     # Cargo routes (egg/crop/forage already in hand) must fail closed at a
     # blocked corridor.  Opportunistic lift/throw would throw the cargo away.
     allow_opportunistic_clear: bool = True
+    auto_slice: bool = False
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
+    _initial_waypoints: Optional[List[Waypoint]] = field(default=None, init=False)
     _pathfinder: Pathfinder = field(init=False)
     _navigator: Navigator = field(init=False)
     _step_count: int = field(default=0, init=False)
@@ -148,6 +150,15 @@ class MultiMapNavTask(NavCorridor, Task):
         self._pathfinder.temp_blocked.clear()
         # Set initial walkable tiles based on current tilemap
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if self.auto_slice and self.waypoints:
+            if self._initial_waypoints is None:
+                self._initial_waypoints = list(self.waypoints)
+            from harvest.maps.map_routes import slice_route_from_position
+            from harvest.tasks.nav import get_pos_from_ram
+            pos = get_pos_from_ram(world.ram)
+            self.waypoints = slice_route_from_position(
+                self._initial_waypoints, pos.x, pos.y, tilemap=tilemap
+            )
         self._rebuild_pathfinder(tilemap)
         if self.waypoints:
             print(f"[MULTI_NAV] Start: {len(self.waypoints)} waypoints, tilemap=0x{tilemap:02X}")
@@ -441,9 +452,11 @@ class MultiMapNavTask(NavCorridor, Task):
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             # Timeout: give up after 500 frames of walking toward exit
             if self._exit_walk_frames > 500:
-                print("[MULTI_NAV] Exit walk timeout (500 frames)")
-                self._advance_waypoint()
-                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+                print(f"[MULTI_NAV] Exit walk timeout (500 frames) on 0x{tilemap:02X} -> 0x{wp.tilemap:02X}")
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"exit_walk timeout on tilemap 0x{tilemap:02X} towards 0x{wp.tilemap:02X}",
+                )
             direction = wp.exit_direction or "left"
             action = make_action(**{direction: True, "b": True})
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))

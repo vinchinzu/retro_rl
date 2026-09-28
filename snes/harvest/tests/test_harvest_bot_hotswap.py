@@ -386,7 +386,7 @@ class HotswapWarmupTests(unittest.TestCase):
         self.assertTrue(bot._auto_day_plan_rebuild_ready(ram))
 
     def test_auto_day_plan_rebuild_accepts_pinned_morning_after_sleep_fixture(self) -> None:
-        state_path = resolve_state_path("Y1_After_Sleep")
+        state_path = resolve_state_path("Y1_D3_Morning")
         ram = parse_save_state(state_path).ram
         bot = AutoClearBot(day_plan_enabled=True)
 
