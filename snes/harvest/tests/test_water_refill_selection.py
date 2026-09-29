@@ -64,13 +64,26 @@ class RefillSelectionTests(unittest.TestCase):
         """North of pond: north lip must beat far south lip when both pathable."""
 
         def find_path(start, goal):
-            return [start, goal]
+            # Real path length (Manhattan on open ground).
+            n = abs(goal[0] - start[0]) + abs(goal[1] - start[1])
+            return [start] * n + [goal]
 
         hit = select_main_pond_refill((33, 28), find_path)
         self.assertIsNotNone(hit)
         assert hit is not None
         self.assertEqual(hit.stand, (33, 30))
         self.assertEqual(hit.face, "down")
+
+    def test_select_main_pond_ranks_by_route_not_manhattan(self) -> None:
+        """A stand behind fences (long route) loses to a nearer-by-path one."""
+
+        def find_path(start, goal):
+            n = 70 if goal == (33, 30) else 20
+            return [start] * n + [goal]
+
+        hit = select_main_pond_refill((13, 26), find_path)
+        assert hit is not None
+        self.assertNotEqual(hit.stand, (33, 30))
 
     def test_select_staging_from_west_pocket(self) -> None:
         def find_path(start, goal):

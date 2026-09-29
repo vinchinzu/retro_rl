@@ -89,7 +89,10 @@ def select_main_pond_refill(
             continue
         path = find_path(player, stand)
         if path is not None:
-            dist = abs(stand[0] - player[0]) + abs(stand[1] - player[1])
+            # Real path length, not Manhattan: on a wild farm the fence walls
+            # make the north-lip stand (33,30) look 24 away while its route is
+            # 65+ steps around the south field; a south-lip stand is nearer.
+            dist = len(path)
             hits.append(
                 (
                     dist,
