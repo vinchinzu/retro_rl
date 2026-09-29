@@ -164,10 +164,8 @@ def _build_cow_purchase(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
     return CowPurchaseTask(
-        task_name=spec.params.get("task_name", "buy_cow"),
-        start_frame=spec.params.get("start_frame", 1631),
-        end_frame=spec.params.get("end_frame", 2328),
-        tasks_dir=ctx.tasks_dir,
+        species=str(spec.params.get("species", "cow")),
+        timeout=int(spec.params.get("timeout", 3600)),
     )
 
 
@@ -281,6 +279,8 @@ def _shop_bag_count(spec: PhaseSpec, world: WorldState, stock_field: str) -> int
     from harvest.core.ram_catalog import read_ram_value
     from harvest.maps.farm_pond import pocket_plant_targets
 
+    if "target_stock" in spec.params:
+        return max(1, int(spec.params["target_stock"]) - int(read_ram_value(world.ram, stock_field)))
     cap = int(spec.params.get("max_bags", 2))
     if cap <= 1:
         return 1
@@ -303,6 +303,30 @@ def _build_shop_buy(
         stock_field=stock_field,
         bags=_shop_bag_count(spec, _world, stock_field),
     )
+
+
+def _build_grass(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
+    from harvest.tasks.grass_planter import GrassPlantTask, PASTURE_BOUNDS
+    from harvest.tasks.farm_clearer import FarmClearer
+    from harvest.tasks.primitives import TaskSequence
+    from harvest.tasks.skills import BestEffortSkill
+    from harvest.maps.map_config import Waypoint
+
+    cutting = bool(spec.params.get("cut_only", False))
+    bounds = tuple(spec.params.get("bounds", PASTURE_BOUNDS))
+    work = GrassPlantTask(bounds=bounds, no_go_rects=[], cut_only=cutting,
+                          target_tiles=0 if cutting else 32, bag_limit=0 if cutting else 2)
+    fetch = (EnsureCarryToolTask(tool_id=int(Tool.SICKLE)) if cutting
+             else EnsureCropSeedsTask(seed_type="grass"))
+    nav = MultiMapNavTask(waypoints=[Waypoint(0x00, px, radius=8) for px in
+                         ((136, 424), (232, 392), (296, 392), (312, 488), (312, 552), (312, 568))],
+                         timeout=4000, auto_slice=True)
+    tasks = [fetch, nav, work]
+    if not cutting:
+        tasks[:0] = [MultiMapNavTask(waypoints=list(nav.waypoints), timeout=4000, auto_slice=True),
+                     BestEffortSkill(tasks=(FarmClearer(farm_bounds=bounds, timeout=6000,
+                         handoff="type_clear", fetch_tools=False, prefer_lift_for_stones=True),))]
+    return TaskSequence(tasks=tasks, name=spec.phase.lower())
 
 
 def _build_directional_transition(
@@ -358,6 +382,7 @@ def _build_mountain_berry(
             pick_attempts=spec.params.get("pick_attempts", 3),
             target_count=spec.params.get("count", 1),
             shop_bail_hour=spec.params.get("shop_bail_hour", 10),
+            forage=spec.params.get("forage", "grape"),
         )
     return MountainBerryTask(
         name=f"mountain_berry_{spec.phase.lower()}",
@@ -627,6 +652,7 @@ PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
     PhaseKind.COW_CHORES: _build_cow_chores,
     PhaseKind.EVE_TALK_LOOP: _build_eve_talk_loop,
     PhaseKind.CROP: _build_crop,
+    PhaseKind.GRASS: _build_grass,
     PhaseKind.HOT_SPRING: _build_hot_spring,
     PhaseKind.RETURN_HOME: _build_return_home,
     PhaseKind.SLEEP: _build_sleep,

@@ -524,7 +524,7 @@ class TestFarmClearerSelection(unittest.TestCase):
         _place_large_rock(ram, 40, 40)
         # Surround the rock so no approach tile is walkable.
         for dx, dy in ((-1, 0), (2, 0), (0, -1), (0, 2), (1, -1), (1, 2), (-1, 1), (2, 1)):
-            _set_tile(ram, 40 + dx, 40 + dy, 0x72)
+            _set_tile(ram, 40 + dx, 40 + dy, 0xFF)
 
         clearer = FarmClearer(priority=[DebrisType.ROCK])
         clearer.startup_done = True
@@ -584,6 +584,68 @@ class TestFarmClearerSelection(unittest.TestCase):
         self.assertEqual(nxt, "clearing")
         assert clearer.current_target is not None
         self.assertEqual(clearer.current_target.debris_type, DebrisType.ROCK)
+
+    def test_unarmed_large_rock_is_not_a_hand_lift(self) -> None:
+        """No hammer: a 2x2 boulder is not a hand-lift (held rock, nowhere to finish)."""
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _place_large_rock(ram, 11, 10)
+        clearer = FarmClearer(fetch_tools=False)
+        clearer.startup_done = True
+        rock = Target(
+            (11, 10), Point(11 * 16 + 8, 10 * 16 + 8), DebrisType.ROCK, LARGE_ROCK_TL
+        )
+        clearer.current_target = rock
+        self.assertTrue(clearer._unsinkable_lift(ram, (10, 10), rock))
+        nxt = clearer._lift_current(ram, (10, 10), (11, 10))
+        self.assertEqual(nxt, "scanning")
+        self.assertIn((11, 10), clearer.failed_tiles)
+        self.assertEqual(len(clearer.action_queue), 0)
+
+    def test_ringed_fence_is_not_lifted(self) -> None:
+        """Tile 0x05 is held 0x0F. No open landing → do not pick it up."""
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _set_tile(ram, 11, 10, 0x05)
+        for tile in ((9, 10), (10, 9), (10, 11)):
+            _set_tile(ram, tile[0], tile[1], WEED)
+        clearer = FarmClearer(fetch_tools=False)
+        clearer.startup_done = True
+        fence = Target((11, 10), Point(11 * 16 + 8, 10 * 16 + 8), DebrisType.FENCE, 0x05)
+        clearer.current_target = fence
+        self.assertTrue(clearer._unsinkable_lift(ram, (10, 10), fence))
+        nxt = clearer._lift_current(ram, (10, 10), (11, 10))
+        self.assertEqual(nxt, "scanning")
+        self.assertEqual(len(clearer.action_queue), 0)
+        self.assertIsNone(clearer._pending_lift_verify)
+
+    def test_ringed_stone_south_of_fence_is_not_lifted(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 40), tool=0)
+        _set_tile(ram, 11, 40, STONE)
+        for tile in ((9, 40), (10, 39), (10, 41)):
+            _set_tile(ram, tile[0], tile[1], WEED)
+        clearer = FarmClearer(fetch_tools=False)
+        clearer.prefer_lift_for_stones = True
+        stone = Target((11, 40), Point(11 * 16 + 8, 40 * 16 + 8), DebrisType.STONE, STONE)
+        clearer.current_target = stone
+        self.assertTrue(clearer._unsinkable_lift(ram, (10, 40), stone))
+        nxt = clearer._lift_current(ram, (10, 40), (11, 40))
+        self.assertEqual(nxt, "scanning")
+        self.assertEqual(len(clearer.action_queue), 0)
+
+    def test_ringed_stone_north_of_fence_still_lifts(self) -> None:
+        """Pocket stones still lift; the south fence-jump can finish them."""
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _set_tile(ram, 11, 10, STONE)
+        for tile in ((9, 10), (10, 9), (10, 11)):
+            _set_tile(ram, tile[0], tile[1], WEED)
+        clearer = FarmClearer(fetch_tools=False)
+        clearer.prefer_lift_for_stones = True
+        stone = Target((11, 10), Point(11 * 16 + 8, 10 * 16 + 8), DebrisType.STONE, STONE)
+        clearer.current_target = stone
+        self.assertFalse(clearer._unsinkable_lift(ram, (10, 10), stone))
+        nxt = clearer._lift_current(ram, (10, 10), (11, 10))
+        self.assertIsNone(nxt)
+        self.assertEqual(clearer._pending_lift_verify, (11, 10))
+        self.assertTrue(clearer.action_queue)
 
     def test_failed_stone_lift_stops_adjacent_thrash(self) -> None:
         """Unclearable adjacent stone must not lift forever (Spring D3 thrash)."""
@@ -731,6 +793,36 @@ class TestFarmClearTask(unittest.TestCase):
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("partial_clear", result.reason or "")
+
+    def test_clear_does_not_succeed_while_holding(self) -> None:
+        """Drop before success. Exhausted drops fail; they do not leave held!=0."""
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        ram[ADDR_HELD_ITEM] = 0x0F
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False)
+        task.reset(world)
+        task.startup_done = True
+        task.state = "complete"
+        task._drop_attempts = 6
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("held=0x0F", result.reason or "")
+
+    def test_clear_drops_before_success_while_holding(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        ram[ADDR_HELD_ITEM] = 0x0F
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False)
+        task.reset(world)
+        task.startup_done = True
+        task.state = "complete"
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("drop", (result.reason or "").lower())
 
     def test_unarmed_leftover_rock_is_no_work_not_failure(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), tool=0)

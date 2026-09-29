@@ -89,6 +89,7 @@ SEED_COUNT_ADDRS = (
     ADDR_TURNIP_SEEDS,
 )
 SEED_COUNT_ADDR_BY_TYPE = {
+    "grass": field_spec("grass_seeds").address,
     "corn": ADDR_CORN_SEEDS,
     "tomato": ADDR_TOMATO_SEEDS,
     "potato": ADDR_POTATO_SEEDS,
@@ -281,9 +282,9 @@ def ram_should_buy_cow(ram: np.ndarray) -> bool:
     """Return True when the route should prioritize buying the first cow."""
     if read_ram_u8(ram, ADDR_COW_COUNT) > 0:
         return False
-    if read_ram_value(ram, "money") < COW_PURCHASE_COST:
-        return False
-    return read_world_weekday(ram) not in SHOP_CLOSED_WEEKDAYS
+    from harvest.planner.day_phase_catalog import summer_animal_species
+
+    return summer_animal_species(ram, chickens=False) == "cow"
 
 
 def state_should_buy_cow(state_name: Optional[str]) -> bool:

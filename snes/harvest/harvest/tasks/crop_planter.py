@@ -442,7 +442,10 @@ class CropWaterTask(Task):
     def progress_text(self) -> str:
         s = f"plot={self._plot_index + 1}/{len(self._plots)} planted={self.planted_count} watered={self.watered_count}"
         if self.skipped_water:
-            s += f" skip={self.skipped_water}"
+            s += f" skipped={self.skipped_water}"
+            if self._armed_water_tiles and self._state == CropState.DONE:
+                done = max(int(self._armed_water_tiles) - int(self.skipped_water), 0)
+                s += f" completed={done}"
         if self.refill_count:
             s += f" refills={self.refill_count}"
         if self._failures:
@@ -468,8 +471,43 @@ class CropWaterTask(Task):
         self._had_seed_stock_at_start = self._has_plantable_seed_stock(ram)
         self._acceptance_snapped = True
 
+    def _best_effort_water_counts(self) -> tuple[int, int]:
+        """Skipped versus completed armed water pairs (``.skipped`` on each)."""
+        skipped = sum(1 for pair in self._water_pairs if getattr(pair, "skipped", False))
+        completed = max(int(self._armed_water_tiles) - skipped, 0)
+        return skipped, completed
+
+    def _note_skipped_water_pairs(self) -> None:
+        if not self._water_pairs:
+            return
+        skipped, _completed = self._best_effort_water_counts()
+        if skipped:
+            self.skipped_water = skipped
+
+    def _rewrite_skipped_pair_reason(self, result: TaskResult) -> TaskResult:
+        """A skipped stand must not be reported as a clean ``complete``."""
+        reason = result.reason or ""
+        if not reason.endswith(" complete"):
+            return result
+        name = reason[: -len(" complete")]
+        pair = next(
+            (item for item in self._water_pairs if getattr(item, "name", None) == name),
+            None,
+        )
+        if pair is None or not getattr(pair, "skipped", False):
+            return result
+        detail = getattr(pair, "skip_reason", "") or ""
+        rewritten = f"{name} skipped: {detail}".rstrip()
+        return TaskResult(
+            status=result.status,
+            action=result.action,
+            reason=rewritten,
+            checkpoint=result.checkpoint,
+            meta=result.meta,
+        )
+
     def _terminal_result(self, *, rain: bool = False) -> TaskResult:
-        """Map plant/water counters to SUCCESS / no_work SUCCESS / FAILURE."""
+        """Map plant/water counters to SUCCESS / no_work SUCCESS / partial / FAILURE."""
         status, reason = crop_completion_status(
             work_mode=self.work_mode,
             planted=self.planted_count,
@@ -479,8 +517,19 @@ class CropWaterTask(Task):
             had_seed_stock=self._had_seed_stock_at_start,
             rain=rain,
         )
+        skipped, completed = self._best_effort_water_counts()
+        if self._water_pairs and skipped:
+            self.skipped_water = skipped
+        armed = int(self._armed_water_tiles)
+        # All stands skipped must not use the plain success sentence. Partial
+        # is the existing incomplete-water outcome; no_work and failure stay.
+        if armed and skipped == armed and status == "success":
+            status = "partial"
+            reason = f"partial planted={self.planted_count} watered={completed}"
         extra = ""
-        if self.skipped_water:
+        if self._water_pairs and skipped:
+            extra += f" skipped={skipped} completed={completed}"
+        elif self.skipped_water:
             extra += f" skipped={self.skipped_water}"
         if self.refill_count:
             extra += f" refills={self.refill_count}"
@@ -695,8 +744,9 @@ class CropWaterTask(Task):
             and self._armed_water_tiles
             and self.watered_count == 0
         ):
-            skipped = sum(1 for pair in self._water_pairs if getattr(pair, "skipped", False))
-            self.watered_count = max(self._armed_water_tiles - skipped, 0)
+            skipped, completed = self._best_effort_water_counts()
+            self.skipped_water = skipped
+            self.watered_count = completed
 
     def _step_mode_skill(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
@@ -742,8 +792,9 @@ class CropWaterTask(Task):
 
         result = self._child.step(world)
         self._sync_phase_from_child()
+        self._note_skipped_water_pairs()
         if result.status == TaskStatus.RUNNING:
-            return result
+            return self._rewrite_skipped_pair_reason(result)
         if result.status == TaskStatus.SUCCESS:
             self._credit_skill_success()
             self._state = CropState.DONE

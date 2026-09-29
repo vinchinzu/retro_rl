@@ -15,11 +15,9 @@ from harvest.core.scene import (
     classify_scene_from_ram,
     morning_scene_ready,
     scene_indicates_ending,
+    unowned_scene_press,
 )
-from harvest.core.shipping_credit import (
-    SHIPPING_SCENE_HOUR,
-    shipping_scene_needs_dismiss,
-)
+from harvest.core.shipping_credit import SHIPPING_SCENE_HOUR
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.day_plan_decision import (
@@ -82,6 +80,8 @@ class MultiDayPlannerTask(Task):
     # it re-plans it every morning; each failed try costs frames and buys
     # nothing. Count runtime failures per season and stop after a few.
     _festival_escape: Optional[Task] = field(default=None, init=False)
+    # Phase and task the festival map interrupted. Restored when it lets go.
+    _festival_resume: Optional[Tuple[str, Optional[Task]]] = field(default=None, init=False)
     _cow_route_failures: int = field(default=0, init=False)
     _cow_failure_season: int = field(default=-1, init=False)
     # A stranded return_home is the dominant terminal killer of long runs. Give
@@ -123,6 +123,8 @@ class MultiDayPlannerTask(Task):
         self._day_bad = False
         self._floor_abandoned = False
         self._dog_released_today = False
+        self._festival_escape = None
+        self._festival_resume = None
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -292,25 +294,28 @@ class MultiDayPlannerTask(Task):
             return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
-    def _step_festival_escape(self, world: WorldState) -> TaskResult | None:
-        """Drive off a festival map the ROM dropped the farmer on (Star Night)."""
-        from harvest.planner.tasks.festival_escape import (
-            FESTIVAL_MAPS,
-            FestivalEscapeTask,
-        )
+    def _sync_festival_phase(self, world: WorldState) -> None:
+        """Phase ``festival`` on a festival map; leaving the map resumes the day."""
+        from harvest.planner.tasks.festival_escape import FESTIVAL_MAPS, FestivalEscapeTask
 
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         if tilemap not in FESTIVAL_MAPS:
+            if self._phase == "festival":
+                self._resume_festival_day()
+            self._festival_resume = None
             self._festival_escape = None
-            return None
+            return
+        if self._phase != "festival":
+            self._festival_resume = (self._phase, self._current_task)
+            self._phase = "festival"
         if self._festival_escape is None:
             self._festival_escape = FestivalEscapeTask(seed=int(self._active_day[1]))
             self._festival_escape.reset(world)
             print(f"[MULTI_DAY] Festival map 0x{tilemap:02X}: roaming until the ROM sends us home")
-        result = self._festival_escape.step(world)
-        if result.status == TaskStatus.FAILURE:
-            return None
-        return result
+        self._current_task = self._festival_escape
+
+    def _resume_festival_day(self) -> None:
+        self._phase, self._current_task = self._festival_resume or ("plan_day", None)
 
     def _day_was_idle(self) -> bool:
         """Off-season day with no real work: bed at once instead of at 18:00.
@@ -722,27 +727,12 @@ class MultiDayPlannerTask(Task):
                 print(f"[MULTI_DAY] max_days={self.max_days} passed; date target still governs")
 
         if self._phase == "plan_day":
-            try:
-                day_task = self._build_day_task(world)
-            except Exception as exc:  # planner bug must not end the run
-                print(f"[MULTI_DAY] plan_day build failed: {type(exc).__name__}: {exc}")
-                return self._abandon_day(world, f"plan build error {type(exc).__name__}")
-            self._activate("plan_day", day_task, world)
+            self._activate("plan_day", self._build_day_task(world), world)
         elif self._phase == "rescue":
-            from harvest.planner.tasks.home_recover import (
-                DogReleaseTask,
-                RescueWalkTask,
-                dog_pickup_stuck,
-            )
+            if not self._dog_release_if_stuck(world):
+                from harvest.planner.tasks.home_recover import RescueWalkTask
 
-            if dog_pickup_stuck(world.ram):
-                # Bed/lunch/interact are dead until the dog animation is closed.
-                print("[MULTI_DAY] Rescue: dog pickup flag (0x0800) stuck; releasing dog")
-                self._activate("rescue", DogReleaseTask(), world)
-            else:
-                self._activate(
-                    "rescue", RescueWalkTask(attempt=self.floor.rescues), world
-                )
+                self._activate("rescue", RescueWalkTask(attempt=self.floor.rescues), world)
         elif self._phase == "wait_shipping":
             self._activate(
                 "wait_shipping", self._build_farm_shipping_wait_task(), world
@@ -750,18 +740,7 @@ class MultiDayPlannerTask(Task):
         elif self._phase == "return_home":
             self._activate("return_home", self._build_return_home_task(), world)
         elif self._phase == "sleep":
-            from harvest.planner.tasks.home_recover import (
-                DogReleaseTask,
-                dog_pickup_stuck,
-            )
-
-            if dog_pickup_stuck(world.ram) and not self._dog_released_today:
-                # Release first; the rescue branch hands on to return_home -> sleep.
-                self._dog_released_today = True
-                self._phase = "rescue"
-                print("[MULTI_DAY] Dog pickup flag (0x0800) stuck before sleep; releasing dog")
-                self._activate("rescue", DogReleaseTask(), world)
-            else:
+            if not self._dog_release_if_stuck(world):
                 self._activate("sleep", self._build_sleep_task(), world)
         else:
             return TaskResult(
@@ -770,23 +749,25 @@ class MultiDayPlannerTask(Task):
             )
         return self._safe_step(world)
 
+    def _dog_release_if_stuck(self, world: WorldState) -> bool:
+        """Sleep and rescue both start from this predicate. Once per sleep."""
+        from harvest.planner.tasks.home_recover import DogReleaseTask, dog_pickup_stuck
+
+        if self._phase == "sleep" and self._dog_released_today:
+            return False
+        if not dog_pickup_stuck(world.ram):
+            return False
+        if self._phase == "sleep":
+            self._dog_released_today = True
+        print("[MULTI_DAY] Dog pickup flag (0x0800) stuck; releasing dog")
+        self._activate("rescue", DogReleaseTask(), world)
+        return True
+
     def _safe_step(self, world: WorldState) -> TaskResult:
-        result = self._safe_step_inner(world)
+        result = self._current_task.step(world)
         action = getattr(getattr(result, "action", None), "action", None)
         self._child_pressed = action is not None and bool(np.any(np.asarray(action)))
         return result
-
-    def _safe_step_inner(self, world: WorldState) -> TaskResult:
-        try:
-            return self._current_task.step(world)
-        except Exception as exc:  # a task bug is a failed phase, not a dead run
-            import traceback
-
-            traceback.print_exc()
-            return TaskResult(
-                status=TaskStatus.FAILURE,
-                reason=f"exception {type(exc).__name__}: {exc}",
-            )
 
     def _handle_result(self, world: WorldState, result: TaskResult) -> TaskResult:
         if result.status == TaskStatus.RUNNING:
@@ -929,38 +910,35 @@ class MultiDayPlannerTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         result = self._step_inner(world)
-        if result.action is not None:
-            from harvest.planner.tasks.home_recover import (
-                DogReleaseTask,
-                strip_dog_hug_press,
-            )
+        action = getattr(getattr(result, "action", None), "action", None)
+        if action is None or getattr(self._current_task, "allows_dog_a", False):
+            return result
+        from harvest.planner.tasks.home_recover import strip_dog_hug_press
 
-            # The release task's own A beside the dog is the point.
-            if isinstance(self._current_task, DogReleaseTask):
-                return result
-            fixed = strip_dog_hug_press(result.action.action, world.ram)
-            if fixed is not result.action.action:
-                result = replace(result, action=ActionResult(fixed))
+        fixed = strip_dog_hug_press(action, world.ram)
+        if fixed is not action:
+            result = replace(result, action=ActionResult(fixed))
         return result
 
     def _step_inner(self, world: WorldState) -> TaskResult:
         self._step_count += 1
-        escape = self._step_festival_escape(world)
-        if escape is not None:
-            return escape
+        self._sync_festival_phase(world)
+        if self._phase == "festival":
+            result = self._safe_step(world)
+            if result.status == TaskStatus.RUNNING:
+                return result
+            # Failed escape: this frame continues the interrupted day.
+            self._resume_festival_day()
         if self._phase == "settle_morning":
             return self._step_settle_morning(world)
         if self._phase != "sleep":
-            if shipping_scene_needs_dismiss(world.ram):
-                return dismiss_dialogue_result(
-                    self._step_count, buttons=("a",), pulse_every=2, reason="shipping scene"
-                )
-            held = self.scene_guard.observe(
-                world.ram, self._step_count, child_pressed=self._child_pressed
+            choice = unowned_scene_press(
+                world.ram, self.scene_guard, self._step_count, self._child_pressed
             )
-            if held:
+            if choice is not None:
+                buttons, reason = choice
                 return dismiss_dialogue_result(
-                    self._step_count, buttons=held, pulse_every=2, reason="scene guard"
+                    self._step_count, buttons=buttons, pulse_every=2, reason=reason
                 )
         if self.policy.include_end_day and self._phase in {"plan_day", "wait_shipping"}:
             _day, hour, _minute = read_world_day_time(world.ram)
@@ -969,7 +947,6 @@ class MultiDayPlannerTask(Task):
                 return self._abandon_day(world, floor_reason)
         if self._current_task is None:
             return self._handle_result(world, self._start_phase(world))
-
         result = self._safe_step(world)
         return self._handle_result(world, result)
 
@@ -977,9 +954,9 @@ class MultiDayPlannerTask(Task):
 # One failed try burns a whole day (multi_nav timeout ~13k frames), so give the
 # unproven cow route a single attempt per season.
 COW_ROUTE_MAX_FAILURES = 1
-# rr-4zvl: NAV_TO_ANIMAL_SHOP times out (multi_nav) and a whole day goes with
-# it, every season. Flip on once the animal-shop route is ROM-proven.
-COW_PURCHASE_ENABLED = False
+# rr-bu62.28: live chicken receipt, 4090->3090G and count 0->1, 2796f.
+# The morning planner still requires summer D14+, pasture, feed and reserve.
+COW_PURCHASE_ENABLED = True
 _COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
 # Phases that only move or equip the farmer; a day of just these did no work.
 _MOVEMENT_PHASES = frozenset(

@@ -53,7 +53,7 @@ from harvest.planner.day_plan_tasks import (
     EnsureCarryToolTask,
     ExitToFarmTask,
 )
-from harvest.core.shipping_credit import shipping_scene_needs_dismiss
+from harvest.core.scene import SceneGuard, unowned_scene_press
 from harvest.tasks.primitives import dismiss_dialogue_result
 
 
@@ -297,7 +297,7 @@ class DayPlanTask(Task):
         # retains the before/after accumulator values until this row is made.
         if (
             world is not None
-            and spec.phase == "MOUNTAIN_BERRY"
+            and spec.kind == "mountain_berry"
             and status == "success"
             and int(getattr(task, "shipped_count", 0) or 0) > 0
         ):
@@ -447,7 +447,7 @@ class DayPlanTask(Task):
             return
         try:
             wanted = len(pocket_plant_targets(world.ram))
-            bags = int(read_ram_value(world.ram, "potato_seeds") or 0)
+            bags = int(read_ram_value(world.ram, f"{self.seed_type}_seeds") or 0)
         except Exception:
             return
         if wanted <= 0 or bags <= 0:
@@ -1076,13 +1076,29 @@ class DayPlanTask(Task):
         expanded_d2 = False
         for _ in range(_STEP_BUDGET):
             self._step_count += 1
-            if shipping_scene_needs_dismiss(world.ram):
-                # 5pm shipper box (any phase). Child tasks must not hold A.
+            # 5pm shipper box (any phase). Child tasks must not hold A.
+            # The phase task owns every other scene; MultiDayPlanner's guard waits.
+            guard = getattr(self, "_scene_guard", None)
+            if guard is None:
+                guard = self._scene_guard = SceneGuard()
+            # A registered animal buy must finish in the purchase task. The
+            # name grid would otherwise own every frame and the receipt would
+            # never return SUCCESS.
+            task = self._current_task
+            registered = getattr(task, "purchase_already_registered", None)
+            bought = bool(task is not None and registered is not None and registered(world.ram))
+            choice = None
+            if not bought:
+                choice = unowned_scene_press(
+                    world.ram, guard, self._step_count, child_pressed=True
+                )
+            if choice is not None:
+                buttons, reason = choice
                 return dismiss_dialogue_result(
                     self._step_count,
-                    buttons=("a",),
+                    buttons=buttons,
                     pulse_every=2,
-                    reason="shipping scene",
+                    reason=reason,
                 )
             if self._recovery_task is not None:
                 recovered = self._step_recovery(world)

@@ -38,7 +38,7 @@ from harvest.core.tile_catalog import (
     ADDR_Y,
 )
 from harvest.tasks.nav import MAP_WIDTH
-from retro_harness import TaskStatus
+from retro_harness import TaskResult, TaskStatus
 
 
 class CropPlanterLogicTests(unittest.TestCase):
@@ -585,6 +585,116 @@ class CropPlanterLogicTests(unittest.TestCase):
         task._navigator.update(ram)
         self.assertEqual(task._west_pocket_plant_center(ram, (5, 28)), (13, 28))
         self.assertEqual(task._plan_new_plot_centers(ram), [(13, 28)])
+
+
+class WaterPairSkipTests(unittest.TestCase):
+    def _task(self, mode: str = "water") -> CropWaterTask:
+        task = CropWaterTask(work_mode=mode)
+        task._acceptance_snapped = True
+        return task
+
+    def test_one_skipped_stand_stays_success_and_names_counts(self) -> None:
+        task = self._task()
+        task._armed_water_tiles = 3
+        task._dry_crop_tiles_at_start = 3
+        task._water_pairs = [
+            SimpleNamespace(skipped=True, name="nav_water_pair_1_2_0"),
+            SimpleNamespace(skipped=False, name="nav_water_pair_1_2_1"),
+            SimpleNamespace(skipped=False, name="nav_water_pair_1_2_2"),
+        ]
+        task._credit_skill_success()
+        result = task._terminal_result()
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("skipped=1", result.reason or "")
+        self.assertIn("completed=2", result.reason or "")
+        self.assertIn("watered=2", result.reason or "")
+        self.assertNotIn("watered=3", result.reason or "")
+
+    def test_every_skipped_stand_is_not_ordinary_success(self) -> None:
+        task = self._task()
+        task._armed_water_tiles = 2
+        task._dry_crop_tiles_at_start = 2
+        task._water_pairs = [
+            SimpleNamespace(skipped=True),
+            SimpleNamespace(skipped=True),
+        ]
+        task._credit_skill_success()
+        result = task._terminal_result()
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        reason = result.reason or ""
+        self.assertIn("skipped=2", reason)
+        self.assertIn("completed=0", reason)
+        self.assertNotIn("watered=2", reason)
+        self.assertFalse(reason.startswith("planted="))
+
+    def test_every_skipped_stand_with_nothing_dry_is_no_work(self) -> None:
+        task = self._task()
+        task._armed_water_tiles = 2
+        task._dry_crop_tiles_at_start = 0
+        task._water_pairs = [
+            SimpleNamespace(skipped=True),
+            SimpleNamespace(skipped=True),
+        ]
+        task._credit_skill_success()
+        result = task._terminal_result()
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        reason = result.reason or ""
+        self.assertTrue(reason.startswith("no_work"), reason)
+        self.assertIn("skipped=2", reason)
+        self.assertIn("completed=0", reason)
+
+    def test_planted_and_every_water_pair_skipped_is_partial(self) -> None:
+        task = self._task("full")
+        task._had_seed_stock_at_start = True
+        task._plots = [(1, 1)]
+        task._armed_water_tiles = 2
+        task._dry_crop_tiles_at_start = 2
+        task._water_pairs = [
+            SimpleNamespace(skipped=True),
+            SimpleNamespace(skipped=True),
+        ]
+        task._credit_skill_success()
+        result = task._terminal_result()
+        reason = result.reason or ""
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertTrue(reason.startswith("partial"), reason)
+        self.assertIn("skipped=2", reason)
+        self.assertIn("completed=0", reason)
+        self.assertNotIn("watered=2", reason)
+
+    def test_phase_reason_does_not_call_a_skipped_stand_complete(self) -> None:
+        ram = blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = self._task()
+        task._season_checked = True
+        task._state = CropState.ACT
+        task._plot_phase = "water"
+        name = "nav_water_pair_1_2_0"
+        task._armed_water_tiles = 2
+        task._water_pairs = [
+            SimpleNamespace(name=name, skipped=True, skip_reason="nav timeout"),
+            SimpleNamespace(name="nav_water_pair_1_2_1", skipped=False),
+        ]
+
+        class _Child:
+            def step(self, _world):
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    reason=f"{name} complete",
+                )
+
+            @property
+            def current_task(self):
+                return None
+
+        task._child = _Child()
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertTrue((result.reason or "").startswith(f"{name} skipped:"), result.reason)
+        self.assertNotIn("complete", result.reason or "")
+        self.assertEqual(task.skipped_water, 1)
 
 
 if __name__ == "__main__":

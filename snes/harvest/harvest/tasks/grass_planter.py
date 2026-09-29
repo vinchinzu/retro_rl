@@ -20,6 +20,8 @@ from collections import deque
 import numpy as np
 
 from harvest.runtime.retro_setup import make_harvest_env
+from harvest.core.ram_catalog import read_ram_value
+from harvest.core.tile_catalog import MATURE_GRASS_TILES
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.tile_catalog import (
     Tool,
@@ -56,7 +58,8 @@ UNTILLED_TILE = 0x01       # Cleared ground, not yet hoed
 DRIED_TILLED = 0x02        # Previously hoed but dried out, needs re-hoeing
 FRESH_TILLED = 0x07        # Freshly hoed, ready for planting
 PLANTED_GRASS_TILE = 0x70  # After planting grass seeds on tilled soil
-GRASS_TILES = {0x70, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85}  # planted + mature
+GRASS_TILES = {0x1D, *range(0x70, 0x7D)}  # includes cut-regrowth $7C
+PASTURE_BOUNDS = (13, 33, 18, 38)  # Four 3x3 bags, below the crop pocket.
 TILLED_TILES = {DRIED_TILLED, FRESH_TILLED}  # Both types of tilled
 
 # Tiles the hoe can act on (both untilled AND dried-out tilled need re-hoeing)
@@ -85,6 +88,7 @@ DEFAULT_NO_GO_RECTS = [(3, 3, 28, 60)]
 class Phase:
     TILL = "till"
     PLANT = "plant"
+    CUT = "cut"
 
 
 @dataclass
@@ -95,6 +99,9 @@ class GrassPlantTask(Task):
     bounds: Tuple[int, int, int, int] = DEFAULT_BOUNDS
     no_go_rects: List[Tuple[int, int, int, int]] = field(default_factory=lambda: list(DEFAULT_NO_GO_RECTS))
     till_only: bool = False
+    cut_only: bool = False
+    target_tiles: int = 0
+    bag_limit: int = 0
     max_steps_per_target: int = 1200
     stasis_repath: int = 180
     max_failures: int = 50
@@ -122,6 +129,9 @@ class GrassPlantTask(Task):
     _plant_failures: int = field(default=0, init=False)
     _failed_tiles: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     _retry_pass: int = field(default=0, init=False)
+    _hay_before: int = field(default=0, init=False)
+    _seeds_before: int = field(default=0, init=False)
+    _grass_before: int = field(default=0, init=False)
 
     # Chunk tracking: current 3x3 chunk origin (top-left corner)
     _chunk_origin: Optional[Tuple[int, int]] = field(default=None, init=False)
@@ -143,7 +153,7 @@ class GrassPlantTask(Task):
     def reset(self, world: WorldState) -> None:
         if os.getenv("GRASS_DEBUG", "").lower() in ("1", "true", "yes"):
             self.debug = True
-        self._phase = Phase.TILL
+        self._phase = Phase.CUT if self.cut_only else Phase.TILL
         self._state = "scan"
         self._target_tile = None
         self._approach_tile = None
@@ -156,11 +166,24 @@ class GrassPlantTask(Task):
         self._chunk_origin = None
         self._chunk_phase_logged = ""
         self._retry_pass = 0
+        self._hay_before = int(read_ram_value(world.ram, "stored_grass"))
+        self._seeds_before = int(read_ram_value(world.ram, "grass_seeds"))
+        self._grass_before = int(read_ram_value(world.ram, "planted_grass"))
         self._act_count = 0
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
         self._init_no_go()
         self._chunk_order = self._build_chunk_order()
+        if not self.cut_only:
+            # A missed corner costs a whole bag to patch. Cover the empty
+            # chunks first so four bags can satisfy the 32-tile shop gate.
+            x_max, y_max = self.bounds[2:]
+            def bare_count(origin):
+                ox, oy = origin
+                return sum(get_tile_at(world.ram, x, y) in (TILLABLE_TILES | PLANTABLE_TILES)
+                           for y in range(oy, min(oy + self.chunk_size, y_max + 1))
+                           for x in range(ox, min(ox + self.chunk_size, x_max + 1)))
+            self._chunk_order.sort(key=bare_count, reverse=True)
         self._chunk_index = 0
         self.tilled_count = 0
         self.planted_count = 0
@@ -200,7 +223,17 @@ class GrassPlantTask(Task):
         return chunks
 
     def can_start(self, world: WorldState) -> bool:
-        return True
+        return int(read_ram_value(world.ram, "tilemap")) in range(4)
+
+    def _target_ids(self):
+        if self._phase == Phase.CUT:
+            return MATURE_GRASS_TILES
+        return TILLABLE_TILES if self._phase == Phase.TILL else PLANTABLE_TILES
+
+    def _wanted_tool(self):
+        if self._phase == Phase.CUT:
+            return Tool.SICKLE
+        return Tool.HOE if self._phase == Phase.TILL else GRASS_SEED_ITEM_ID
 
     # ------------------------------------------------------------------
     # Scanning helpers
@@ -208,7 +241,7 @@ class GrassPlantTask(Task):
 
     def _scan_targets(self, ram: np.ndarray) -> List[Tuple[int, int]]:
         """Find tiles matching the current phase within full bounds (for tests/stats)."""
-        target_ids = TILLABLE_TILES if self._phase == Phase.TILL else PLANTABLE_TILES
+        target_ids = self._target_ids()
         x_min, y_min, x_max, y_max = self.bounds
         results = []
         for ty in range(y_min, y_max + 1):
@@ -220,7 +253,7 @@ class GrassPlantTask(Task):
 
     def _scan_chunk(self, ram: np.ndarray, origin: Tuple[int, int]) -> List[Tuple[int, int]]:
         """Find target tiles within a single chunk."""
-        target_ids = TILLABLE_TILES if self._phase == Phase.TILL else PLANTABLE_TILES
+        target_ids = self._target_ids()
         x_min, y_min, x_max, y_max = self.bounds
         cs = self.chunk_size
         ox, oy = origin
@@ -268,7 +301,7 @@ class GrassPlantTask(Task):
                 else:
                     # Chunk complete (till-only or plant done), advance
                     self._chunk_index += 1
-                    self._phase = Phase.TILL
+                    self._phase = Phase.CUT if self.cut_only else Phase.TILL
                     self._chunk_origin = None
                     continue
 
@@ -282,15 +315,20 @@ class GrassPlantTask(Task):
                 print(f"[GRASS] {phase} chunk ({origin[0]},{origin[1]})-({origin[0]+cs-1},{origin[1]+cs-1})  "
                       f"{len(targets)} tiles{retry}")
 
-            # Use strict row order within chunk (no proximity sort)
+            # One bag covers the whole chunk only from its center.
+            if self._phase == Phase.PLANT:
+                center = (origin[0] + 1, origin[1] + 1)
+                targets.sort(key=lambda tile: tile != center)
             for target in targets:
                 if self._phase == Phase.PLANT:
-                    # PLANT: navigate ONTO target tile (grass seeds plant 3x3 around player)
-                    path = self._pathfinder.find_path(ram, self._navigator.current_tile, target)
+                    # The seed acts on fresh cells around the stand, which
+                    # can itself already contain grass when repairing holes.
+                    stand = (origin[0] + 1, origin[1] + 1)
+                    path = self._pathfinder.find_path(ram, self._navigator.current_tile, stand)
                     if path is None:
                         continue
                     self._target_tile = target
-                    self._approach_tile = target  # stand ON the tile
+                    self._approach_tile = stand
                 else:
                     # TILL: navigate adjacent to target, face it, use hoe
                     approach = self._pathfinder.find_approach(ram, target, player_pos)
@@ -314,7 +352,7 @@ class GrassPlantTask(Task):
                 self._phase = Phase.PLANT
                 continue  # re-scan same chunk for plantable
             self._chunk_index += 1
-            self._phase = Phase.TILL
+            self._phase = Phase.CUT if self.cut_only else Phase.TILL
             self._chunk_origin = None
 
         # All chunks exhausted - try retry pass
@@ -324,11 +362,17 @@ class GrassPlantTask(Task):
             self._failed_tiles.clear()
             self._chunk_index = 0
             self._chunk_origin = None
-            self._phase = Phase.TILL
+            self._phase = Phase.CUT if self.cut_only else Phase.TILL
             print(f"[GRASS] Pass done. Retry {self._retry_pass}/{self.max_retry_passes} ({n_failed} failed tiles)")
             return None
 
         msg = f"tilled={self.tilled_count} planted={self.planted_count}"
+        if self.cut_only:
+            hay = int(read_ram_value(ram, "stored_grass"))
+            return TaskResult(status=TaskStatus.SUCCESS if hay > self._hay_before else TaskStatus.FAILURE,
+                              reason=f"stored_grass={self._hay_before}->{hay}")
+        if self.target_tiles and int(read_ram_value(ram, "planted_grass")) < self.target_tiles:
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"pasture short: {msg}")
         print(f"[GRASS] Complete: {msg}")
         return TaskResult(status=TaskStatus.SUCCESS, reason=msg)
 
@@ -339,7 +383,7 @@ class GrassPlantTask(Task):
 
         # Check target still valid
         tid = get_tile_at(ram, *self._target_tile)
-        target_ids = TILLABLE_TILES if self._phase == Phase.TILL else PLANTABLE_TILES
+        target_ids = self._target_ids()
         if tid not in target_ids:
             self._state = "scan"
             return None
@@ -392,7 +436,7 @@ class GrassPlantTask(Task):
 
         # Re-validate target
         tid = get_tile_at(ram, tx, ty)
-        target_ids = TILLABLE_TILES if self._phase == Phase.TILL else PLANTABLE_TILES
+        target_ids = self._target_ids()
         if tid not in target_ids:
             if self._phase == Phase.TILL and tid == FRESH_TILLED:
                 self.tilled_count += 1
@@ -403,7 +447,7 @@ class GrassPlantTask(Task):
         player = self._navigator.current_tile
         if self._phase == Phase.PLANT:
             # Must be ON target tile (grass seeds plant 3x3 around player)
-            if player != self._target_tile:
+            if player != self._approach_tile:
                 self._state = "navigate"
                 return None
         else:
@@ -429,7 +473,7 @@ class GrassPlantTask(Task):
             return None
 
         # Check correct tool is equipped
-        wanted_tool = Tool.HOE if self._phase == Phase.TILL else GRASS_SEED_ITEM_ID
+        wanted_tool = self._wanted_tool()
         if self._tool_mgr.current != wanted_tool:
             self._tool_mgr.start_search()
             self._state = "tool_switch"
@@ -480,9 +524,14 @@ class GrassPlantTask(Task):
                     print(f"[GRASS] TILL OK ({tx},{ty}) -> 0x{tid:02X} tilled={self.tilled_count}")
             else:
                 self._failures += 1
-                self._failed_tiles.add(self._target_tile)
+                # Retry an unregistered first swing before spending this
+                # chunk's bag; a missing corner cannot use a second bag.
                 if self._act_count <= 20 or self.debug:
                     print(f"[GRASS] TILL FAIL ({tx},{ty}) still 0x{tid:02X} failures={self._failures}")
+        elif self._phase == Phase.CUT:
+            if tid in MATURE_GRASS_TILES:
+                self._failures += 1
+                self._failed_tiles.add((tx, ty))
         else:
             # Grass seeds plant 3x3 around player — count all newly-planted
             player = self._navigator.current_tile
@@ -506,7 +555,7 @@ class GrassPlantTask(Task):
 
     def _handle_tool_switch(self, ram: np.ndarray) -> Optional[TaskResult]:
         """Cycle tools until we find the one we need."""
-        wanted = Tool.HOE if self._phase == Phase.TILL else GRASS_SEED_ITEM_ID
+        wanted = self._wanted_tool()
         self._tool_mgr.update(ram)
         current = self._tool_mgr.current
 
@@ -575,6 +624,14 @@ class GrassPlantTask(Task):
 
         # Dialog dismissal (only after queue is empty so tool swings aren't interrupted)
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
+        seeds = int(read_ram_value(world.ram, "grass_seeds"))
+        daily_limit = min(self.bag_limit, self._seeds_before)
+        if input_lock == 1 and self.bag_limit and self._seeds_before - seeds >= daily_limit:
+            grass = int(read_ram_value(world.ram, "planted_grass"))
+            return TaskResult(status=TaskStatus.SUCCESS if grass > self._grass_before else TaskStatus.FAILURE,
+                              reason=f"pasture progress {self._grass_before}->{grass}; remaining tomorrow")
+        if input_lock == 1 and self.target_tiles and int(read_ram_value(world.ram, "planted_grass")) >= self.target_tiles:
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"planted_grass={int(read_ram_value(world.ram, 'planted_grass'))}")
         if input_lock != 1:
             action = make_action(a=True) if self._total_steps % 2 == 0 else make_action()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason="dialog")

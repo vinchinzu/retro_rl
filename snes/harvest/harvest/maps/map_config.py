@@ -479,7 +479,7 @@ def get_walkable_tiles(tilemap_id: int) -> FrozenSet[int]:
 # the farmer walks them (Y1 D13: DOWN from (598,230) reached (601,250)).
 # Without this the BFS has no path out of the doorstep and exit_to_farm
 # pixel-sticks there for good.
-_TOWN_DOORSTEP_WALKWAY: FrozenSet[Tuple[int, int]] = frozenset({(37, 14), (37, 15), (37, 16)})
+_TOWN_DOORSTEP_WALKWAY: FrozenSet[Tuple[int, int]] = frozenset({(37, 14), (37, 15), (37, 16), (37, 54), (37, 55)})
 WALKABLE_COORDS_BY_TILEMAP: Dict[int, FrozenSet[Tuple[int, int]]] = {
     0x04: _TOWN_DOORSTEP_WALKWAY,
 }

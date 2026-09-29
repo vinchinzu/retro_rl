@@ -77,7 +77,8 @@ MATURE_CROP_TILES = frozenset({
 PLOT_TILES = frozenset({FRESH_TILLED, WATERED_TILLED}) | frozenset(CROP_TILE_RANGE)
 UNRIPE_DRY_CROP_TILES = frozenset(tile_id for tile_id in DRY_CROP_TILES if tile_id not in MATURE_CROP_TILES)
 WATERABLE_TILES = UNRIPE_DRY_CROP_TILES
-MATURE_GRASS_TILES = frozenset(range(0x80, 0x86))
+# ToolUsedSickle checks exactly $79 before AddGrass; $70..$78 grow.
+MATURE_GRASS_TILES = frozenset({0x79})
 STALE_TILE_IDS = frozenset({0x72, 0x75, 0x76, 0xFF})
 
 # Pond/water tiles.  0xA6 is a pond border/decor tile that is useful for
@@ -168,8 +169,7 @@ CROP_SOLID_TILES = frozenset(
 
 FARM_WALKABLE = frozenset({
     0x00, UNTILLED, DRIED_TILLED, WEED, FRESH_TILLED, WATERED_TILLED,
-    PLANTED_GRASS_TILE,
-    0x79,  # Soil/ground variant after viewport scrolls over farm plots.
+    0x1D, *range(0x70, 0x7D),  # seeded, growing, mature and cut pasture
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85,
     0xA0, 0xA1, 0xA2, 0xA3, 0xA8,
     0xC5,

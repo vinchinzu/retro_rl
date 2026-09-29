@@ -146,7 +146,7 @@ class PlannerFloorTests(unittest.TestCase):
         self.assertTrue(planner.day_journal[0]["bad_day"])
         self.assertEqual(planner.floor.bad_days, 1)
 
-    def test_day_work_exception_goes_home(self) -> None:
+    def test_day_work_exception_fails_the_run(self) -> None:
         def boom(world):
             raise RuntimeError("planner bug")
 
@@ -156,9 +156,8 @@ class PlannerFloorTests(unittest.TestCase):
             sleep=lambda: _Task(TaskStatus.SUCCESS, "slept", _advance_day),
         )
         world = make_date_world(0x00, season=0, day=5)
-        result = _run(planner, world, 100)
-        self.assertEqual(result.status, TaskStatus.SUCCESS)
-        self.assertTrue(planner.day_failures)
+        with self.assertRaises(RuntimeError):
+            _run(planner, world, 100)
 
     def test_return_home_exhaustion_rescues_instead_of_failing(self) -> None:
         calls = {"home": 0}

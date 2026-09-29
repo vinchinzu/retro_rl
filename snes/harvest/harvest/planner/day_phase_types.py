@@ -34,6 +34,7 @@ class PhaseKind(StrEnum):
     COW_CHORES = "cow_chores"
     COW_PURCHASE = "cow_purchase"
     CROP = "crop"
+    GRASS = "grass"
     HOT_SPRING = "hot_spring"
     RETURN_HOME = "return_home"
     SLEEP = "sleep"
@@ -70,6 +71,7 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.ENSURE_ANIMAL_TOOLS,
         PhaseKind.ENSURE_SEED,
         PhaseKind.CLEAR_FIELD,
+        PhaseKind.GRASS,
         PhaseKind.FENCE_CLEAR,
         PhaseKind.COW_PURCHASE,
         PhaseKind.EVE_TALK_LOOP,
@@ -338,6 +340,8 @@ class DayPlannerPolicy:
     include_field_clear: bool = True
     include_watering: bool = True
     include_planting: bool = True
+    include_pasture: bool = True
+    include_mushroom_gather: bool = True
     # Early-spring money: mountain berries + ship. Default on so D2+ does not
     # thrash CLEAR_FIELD all day with empty pockets (live power-on feedback).
     include_berry_run: bool = True
@@ -396,7 +400,8 @@ def day_planner_policy_for_season(
     # Fall and Winter: the ROM has no fall seed, growing crops that are
     # watered in Fall die (NightlyFarmTilesCheck DECs odd growing ids) and
     # freeze in Winter, and CLEAR_FIELD's lift_only failure repeats daily. The
-    # day's only job is to reach the evening bed, so no water/clear work.
+    # Fall keeps animal care and mushroom shipping; neither needs crop water
+    # or a whole-field clear. Winter keeps animal care and sleep.
     off_season = season_id in (SEASON_FALL, SEASON_WINTER)
     winter = season_id == SEASON_WINTER
     return DayPlannerPolicy(
@@ -409,9 +414,13 @@ def day_planner_policy_for_season(
         include_chickens=policy.include_chickens,
         include_cows=policy.include_cows,
         include_harvest=policy.include_harvest,
-        include_field_clear=policy.include_field_clear and not off_season,
+        # Summer pockets clear their own planting area. A whole-field pass
+        # spends stamina that the pasture and repeat-harvest corn need.
+        include_field_clear=policy.include_field_clear and season_id == 0,
         include_watering=policy.include_watering and not off_season,
         include_planting=planting and policy.include_planting,
+        include_pasture=policy.include_pasture,
+        include_mushroom_gather=policy.include_mushroom_gather and season_id == SEASON_FALL,
         # The grape route is only proven in Year-1 spring: in Summer the picks
         # come back "unverified after 3 picks" and strand the farmer on the
         # mountain map (run summer5 D16), and from Year 2 the wallet no longer

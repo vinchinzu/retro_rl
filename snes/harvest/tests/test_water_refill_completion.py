@@ -142,6 +142,54 @@ class CropCompletionTests(unittest.TestCase):
         else:
             self.assertEqual(result.status, TaskStatus.FAILURE)
 
+    def test_summer_farm_arms_sixteen_dry_tiles_without_left_map(self) -> None:
+        """summer1: ``water fail: dry_crops=16 watered=0`` was not a skipped stand.
+
+        The first armed stand was ``nav_water_13_28_0`` / ``nav_water_19_28_0``
+        with ``require_tilemap=0x00``. Summer's farm is tilemap 0x01, so a
+        strict compare returned ``left map 0x00 → 0x01`` and aborted the
+        sequence before any tile was watered. ``tilemaps_match`` treats
+        0x00–0x03 as one farm; the stand must stay running and face a dry crop.
+        """
+        from harvest.core.tile_catalog import ADDR_MAP
+        from harvest.tasks.crop_planter import tile_needs_watering
+        from harvest.tasks.nav import MAP_WIDTH
+
+        ram = _blank_ram()
+        for cx, cy in ((13, 28), (19, 28)):
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    tid = 0x01 if dx == 0 and dy == 0 else 0x54
+                    _set_tile(ram, cx + dx, cy + dy, tid)
+        ram[ADDR_TILEMAP] = 0x01
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[ADDR_TOOL] = 0x10
+        ram[0x0926] = 20
+        _set_player_tile(ram, (8, 26))
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = CropWaterTask(work_mode="water", bounds=(2, 3, 62, 60))
+        task.reset(world)
+
+        first = task.step(world)
+        self.assertEqual(first.status, TaskStatus.RUNNING, first.reason)
+        self.assertEqual(task._dry_crop_tiles_at_start, 16)
+        self.assertEqual(task._plots, [(13, 28), (19, 28)])
+        self.assertEqual(task._armed_water_tiles, 16)
+        self.assertEqual(task.watered_count, 0)
+
+        pair = task._water_pairs[0]
+        nav, wet = pair.tasks
+        self.assertEqual(nav.require_tilemap, 0x00)
+        tx, ty = wet.target_tile
+        self.assertTrue(tile_needs_watering(int(ram[ADDR_MAP + ty * MAP_WIDTH + tx])))
+        sx, sy = nav.target_px[0] // 16, nav.target_px[1] // 16
+        self.assertEqual(abs(sx - tx) + abs(sy - ty), 1)
+
+        second = task.step(world)
+        self.assertEqual(second.status, TaskStatus.RUNNING, second.reason)
+        self.assertNotIn("left map", second.reason or "")
+        self.assertFalse(getattr(pair, "skipped", False))
+
     def test_crop_task_reports_no_work_in_fall_and_winter(self) -> None:
         """No fall seed exists and Fall/Winter never grow a crop (ROM nightly check)."""
         from day_plan_test_helpers import make_date_world

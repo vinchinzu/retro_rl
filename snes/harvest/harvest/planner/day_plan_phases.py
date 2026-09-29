@@ -54,6 +54,10 @@ from harvest.planner.day_phase_catalog import (
     EXIT_FARM_WEST_PHASE,
     BUY_SEEDS_PHASE,
     buy_seeds_phase,
+    pasture_day_phases,
+    summer_animal_species,
+    animal_purchase_phases,
+    cow_day_phases,
     MOUNTAIN_BERRY_PHASE,
     NAV_CROP_PHASE,
     HARVEST_ROUTE_PHASE,
@@ -188,6 +192,34 @@ def _planting_today(
     return buying_seeds and not _uses_d2_exhaustive_clear(season, day, year)
 
 
+def _calendar_gates(
+    *,
+    weekday: int,
+    hour: int,
+    season: int,
+    day: int,
+    year: int,
+    is_festival: Optional[bool],
+    policy: DayPlannerPolicy,
+) -> tuple[DayPlannerPolicy, bool, bool, bool, bool, bool]:
+    """Season policy plus sunday/festival shop closure.
+
+    Returns ``(policy, is_sunday, is_fest, shops_closed, late_day, festival_today)``.
+    ``policy`` is the off-season copy (no fall/winter field work, berries only
+    in year-1 spring, no winter shop). ``is_fest`` also requires
+    ``include_festivals``; ``festival_today`` does not.
+    """
+    policy = day_planner_policy_for_season(season, policy, year=year)
+    is_sunday = weekday == SUNDAY_WEEKDAY
+    festival_today = (
+        is_festival_day(season, day, year) if is_festival is None else bool(is_festival)
+    )
+    is_fest = bool(festival_today and policy.include_festivals)
+    shops_closed = is_sunday or is_fest or weekday in SHOP_CLOSED_WEEKDAYS
+    late_day = hour >= policy.late_water_hour
+    return policy, is_sunday, is_fest, shops_closed, late_day, festival_today
+
+
 def build_day_phases(
     state_name: Optional[str] = None,
     *,
@@ -265,10 +297,7 @@ def build_day_phases(
             is_festival = probe.is_festival()
 
     # Fill remaining defaults
-    if has_plant_capacity is None or _uses_d2_exhaustive_clear(season, day, year or 0):
-        # D2's own tactic clears and plants the pockets. A power-on D2 farm is
-        # still all debris, so "no ring has bare capacity" there is not a
-        # reason to skip the seed shop (it left the whole spring grape-only).
+    if has_plant_capacity is None:
         has_plant_capacity = True
     if weekday is None:
         weekday = 1
@@ -305,36 +334,22 @@ def build_day_phases(
             is_storm = False
     if is_post_storm is None:
         is_post_storm = False
-    if is_festival is None:
-        is_festival = is_festival_day(season, day, year)
-    if is_festival and festival_name is None:
+    policy, _is_sunday, is_fest, shops_closed, late_day, festival_today = _calendar_gates(
+        weekday=weekday,
+        hour=hour,
+        season=season,
+        day=day,
+        year=year,
+        is_festival=is_festival,
+        policy=policy,
+    )
+    if festival_today and festival_name is None:
         festival_name = festival_name_for_date(season, day, year)
-
-    policy = day_planner_policy_for_season(season, policy, year=year)
-
     if is_storm:
         # Severe storm (hurricane/blizzard): farmer cannot leave the house.
         if policy.include_end_day:
             return [GO_TO_SLEEP_PHASE]
         return []
-
-    is_sunday = weekday == SUNDAY_WEEKDAY
-    is_fest = bool(is_festival and policy.include_festivals)
-    shops_closed = is_sunday or is_fest or weekday in SHOP_CLOSED_WEEKDAYS
-    late_day = hour >= policy.late_water_hour
-    oversupplied_chickens = _chicken_oversupplied(adult_chickens, policy)
-    berry_phases = _berry_run_phases(
-        is_sunday=shops_closed,
-        hour=hour,
-        has_seeds=has_seeds,
-        policy=policy,
-        season=season,
-        day=day,
-        money=money,
-        has_plant_capacity=has_plant_capacity,
-        has_harvest=bool(has_harvest),
-        is_festival=is_fest,
-    )
 
     buy_cow_first = (
         policy.include_cows
@@ -349,96 +364,14 @@ def build_day_phases(
     else:
         phases.append(EXIT_TO_FARM_PHASE)
 
-    # Post-storm recovery: morning debris clearing and fence repair
-    if is_post_storm and not late_day:
-        phases.append(_daytime_clear_phase(season, day, year))
-        phases.append(REPAIR_CROPS_PHASE)
-
-    seed_buy_phases = [
-        phase
-        for phase in berry_phases
-        if phase.phase in {"BUY_SEEDS_WINDOW", "NAV_FARM_EXIT", "BUY_SEEDS"}
-    ]
-    other_berry_phases = [
-        phase for phase in berry_phases if phase not in seed_buy_phases
-    ]
-    plant_intent = _planting_today(
-        has_seeds=has_seeds,
-        buying_seeds=bool(seed_buy_phases),
-        season=season,
-        day=day,
-        late_day=late_day,
-        policy=policy,
-        has_plant_capacity=has_plant_capacity,
-        year=year,
-    )
-
-    # Field wipe is valuable, but day CLEAR thrash starves berry ship on empty
-    # Spring mornings. Bushes/weeds only clear in the evening after shipping.
-    # When dry crops already exist, still defer any day clear until after water.
-    defer_field_clear = bool(
-        policy.include_field_clear
-        and has_debris
-        and not late_day
-        and has_waterable
-        and not is_rainy
-        and policy.include_watering
-    )
-    # Empty early-spring day: berries (+ optional seed buy) before chores.
-    berry_before_clear = bool(
-        not late_day
-        and other_berry_phases
-        and not has_waterable
-        and not has_harvest
-        and not has_chickens
-        and not has_cows
-    )
-    # Restock day (D3+): grapes ship before the shop hop even with keep-alive
-    # crops — both are morning deadlines and grape income precedes the spend.
-    # Harvest mornings are the exception: do not force a 2-grape run in front
-    # of ripe tiles (2 grapes stay an option after crop work).
-    restock_berries_first = bool(
-        not berry_before_clear
-        and not late_day
-        and seed_buy_phases
-        and other_berry_phases
-        and not has_harvest
-    )
-    early_berries = berry_before_clear or restock_berries_first
-    if berry_before_clear:
-        # Berries ship first, then potato seeds only if wallet can pay.
-        phases.extend(other_berry_phases)
-        phases.extend(seed_buy_phases)
-        # Shop hop used to starve morning CLEAR. After a real buy we are back
-        # on the farm with time left — clear before go-home.
-        if seed_buy_phases and has_debris and _clear_after_shop(policy, season, day, year):
-            phases.append(_daytime_clear_phase(season, day, year))
-    elif seed_buy_phases:
-        # Keep-alive farm: still buy seeds early so plant/water is not starved.
-        if restock_berries_first:
-            phases.extend(other_berry_phases)
-        phases.extend(seed_buy_phases)
-
-    # Daytime clear only when crops need pathing and we are not on the empty
-    # berry-first path. Weed/bush lift thrash is evening-only on D2 empty days.
-    day_clear = bool(
-        policy.include_field_clear
-        and has_debris
-        and not late_day
-        and not defer_field_clear
-        and not berry_before_clear
-        and not is_post_storm
-    )
-    if day_clear:
-        phases.append(_daytime_clear_phase(season, day, year))
-
+    # Livestock sits between morning clear and harvest; the field list is outdoor.
+    animal_phases: List[PhaseSpec] = []
     if policy.include_cows and has_cows and not late_day and not buy_cow_first:
-        phases.extend(COW_PHASES)
+        animal_phases.extend(COW_PHASES)
         exited_barn = True
     else:
         exited_barn = buy_cow_first
-
-    phases.extend(
+    animal_phases.extend(
         _chicken_sale_phases(
             adult_chickens=adult_chickens,
             hour=hour,
@@ -447,72 +380,37 @@ def build_day_phases(
             is_festival=is_fest,
         )
     )
-
     if policy.include_chickens and has_chickens and not late_day:
-        phases.extend(
+        animal_phases.extend(
             _chicken_phases(
                 exited_barn=exited_barn,
-                oversupplied=oversupplied_chickens,
+                oversupplied=_chicken_oversupplied(adult_chickens, policy),
                 policy=policy,
             )
         )
-
-    # 2. Harvest ripe crops
-    if policy.include_harvest and has_harvest and not late_day:
-        phases.append(NAV_CROP_PHASE)
-        phases.append(HARVEST_ROUTE_PHASE)
-
-    # 3. Crop work before optional money routes so watering is not pushed past 5pm.
     phases.extend(
-        _crop_work_phases(
+        build_outdoor_day_phases(
+            weekday=weekday,
+            hour=hour,
             has_harvest=has_harvest,
             has_waterable=has_waterable,
-            has_seeds=plant_intent,
+            has_seeds=has_seeds,
+            has_debris=has_debris,
             is_rainy=is_rainy,
-            late_day=late_day,
+            season=season,
+            day=day,
+            year=year,
+            money=money,
+            stamina=stamina,
+            has_plant_capacity=has_plant_capacity,
+            is_post_storm=is_post_storm,
+            is_festival=festival_today,
+            has_chickens=has_chickens,
+            has_cows=has_cows,
+            between_clear_and_harvest=animal_phases,
             policy=policy,
         )
     )
-
-    # 3b. Deferred field clear after keep-alive water (rr-3v9) — day path only
-    # when crops claimed the morning (not empty berry days).
-    if defer_field_clear and not berry_before_clear:
-        phases.append(_daytime_clear_phase(season, day, year))
-
-    # 4. Festival attendance: on festival days, farm work happens early, then attend festival
-    if is_fest and not late_day and policy.attend_festivals:
-        phases.append(attend_festival_phase(season, day, year))
-        if policy.include_end_day:
-            phases.append(RETURN_HOME_PHASE)
-            phases.append(GO_TO_SLEEP_PHASE)
-        return phases
-
-    # 4b. Sunday church visit and mountain foraging
-    if is_sunday and not late_day:
-        if policy.include_sunday_church:
-            phases.append(SUNDAY_CHURCH_PHASE)
-        if policy.include_sunday_mountain:
-            phases.append(SUNDAY_MOUNTAIN_PHASE)
-
-    # 4c. Early money route after animals/crops (or skipped if already first).
-    if not late_day and not early_berries:
-        phases.extend(other_berry_phases)
-        # Seeds already placed early on keep-alive path when applicable.
-
-    # Evening: bush/debris clear after the 5pm shipping window, then sleep.
-    if late_day:
-        phases.extend(
-            evening_clear_phases(
-                has_debris=has_debris,
-                late_day=True,
-                policy=policy,
-                stamina=stamina,
-            )
-        )
-        if policy.include_end_day:
-            phases.append(RETURN_HOME_PHASE)
-            phases.append(GO_TO_SLEEP_PHASE)
-
     return phases
 
 
@@ -534,20 +432,32 @@ def build_outdoor_day_phases(
     is_storm: bool = False,
     is_post_storm: bool = False,
     is_festival: Optional[bool] = None,
+    has_chickens: bool = False,
+    has_cows: bool = False,
+    between_clear_and_harvest: Optional[List[PhaseSpec]] = None,
     policy: DayPlannerPolicy = DayPlannerPolicy(),
 ) -> List[PhaseSpec]:
-    """Assemble the outdoor portion of the day's work from current farm state."""
+    """Assemble the outdoor portion of the day's work from current farm state.
+
+    ``has_chickens`` / ``has_cows`` hold berries behind chores (full-day plan).
+    ``between_clear_and_harvest`` is spliced after the morning clear; livestock
+    from ``build_day_phases`` goes there. Both default to an outdoor-only list.
+    """
     if is_storm:
         return []
-    policy = day_planner_policy_for_season(season, policy, year=year)
     if _uses_d2_exhaustive_clear(season, day, year):
-        has_plant_capacity = True  # D2's tactic clears the pockets it plants
-    is_sunday = weekday == SUNDAY_WEEKDAY
-    if is_festival is None:
-        is_festival = is_festival_day(season, day, year)
-    is_fest = bool(is_festival and policy.include_festivals)
-    shops_closed = is_sunday or is_fest or weekday in SHOP_CLOSED_WEEKDAYS
-    late_day = hour >= policy.late_water_hour
+        # Power-on D2 is all debris, so no ring looks plantable. The tactic
+        # clears those pockets itself; skipping the shop left spring grape-only.
+        has_plant_capacity = True
+    policy, is_sunday, is_fest, shops_closed, late_day, _festival_today = _calendar_gates(
+        weekday=weekday,
+        hour=hour,
+        season=season,
+        day=day,
+        year=year,
+        is_festival=is_festival,
+        policy=policy,
+    )
     berry_phases = _berry_run_phases(
         is_sunday=shops_closed,
         hour=hour,
@@ -596,11 +506,15 @@ def build_outdoor_day_phases(
         and not is_rainy
         and policy.include_watering
     )
+    # Animals hold the morning the same way keep-alive crops do. Outdoor-only
+    # callers leave both false, so an empty field still ships berries first.
     berry_before_clear = bool(
         not late_day
         and other_berry_phases
         and not has_waterable
         and not has_harvest
+        and not has_chickens
+        and not has_cows
     )
     # Restock day (D3+): ship the grapes before the shop hop even when
     # keep-alive crops still need water — grape < 5pm and shop < noon are
@@ -634,6 +548,9 @@ def build_outdoor_day_phases(
     )
     if day_clear:
         phases.append(_daytime_clear_phase(season, day, year))
+
+    if between_clear_and_harvest:
+        phases.extend(between_clear_and_harvest)
 
     if policy.include_harvest and has_harvest and not late_day:
         phases.append(NAV_CROP_PHASE)
@@ -700,7 +617,7 @@ def build_outdoor_day_phases_from_ram(
     probe = WorldProbe.from_inputs(ram=ram, state_name=state_name)
     _calendar_day, hour, _minute = probe.day_time()
     season, day = probe.calendar_date()
-    return build_outdoor_day_phases(
+    phases = build_outdoor_day_phases(
         weekday=1 if probe.weekday() is None else probe.weekday(),
         hour=hour,
         has_harvest=probe.has_harvestable_crops(),
@@ -719,6 +636,17 @@ def build_outdoor_day_phases_from_ram(
         is_festival=probe.is_festival(),
         policy=policy,
     )
+    if hour < 12 and not probe.is_storm():
+        # Farm tiles are available here, after the dynamic house-exit handoff.
+        extra = pasture_day_phases(ram) if policy.include_pasture else []
+        if season == 2 and policy.include_mushroom_gather:
+            extra.append(PhaseSpec("MUSHROOM_GATHER", "mountain_berry",
+                                   {"ship": True, "forage": "mushroom"},
+                                   failure_policy="optional"))
+        end = next((i for i, phase in enumerate(phases)
+                    if phase.phase == "RETURN_HOME"), len(phases))
+        phases[end:end] = extra
+    return phases
 
 
 def build_day_phases_from_ram(
@@ -760,13 +688,8 @@ def build_day_phases_from_ram(
         policy.include_chickens and not late_day and probe.needs_chicken_chores()
     )
     animal_tools_ready = _animal_tools_ready(ram)
-    buy_cow_first = (
-        policy.include_cows
-        and policy.include_shop_run
-        and not late_day
-        and not shops_closed
-        and probe.should_buy_cow()
-    )
+    species = summer_animal_species(ram, cows=policy.include_cows, chickens=policy.include_chickens)
+    buy_cow_first = bool(species and policy.include_shop_run and not late_day and not shops_closed)
     phases: List[PhaseSpec] = []
     started_in_barn_cows = False
     started_in_coop_chickens = False
@@ -783,25 +706,24 @@ def build_day_phases_from_ram(
         phases.append(EXIT_COOP_PHASE)
         exited_barn = False
     elif buy_cow_first:
-        phases.extend(BUY_COW_FIRST_PHASES)
+        phases.append(EXIT_TO_FARM_PHASE)
+        phases.extend(animal_purchase_phases(species))
         handled_buy_cow = True
-        exited_barn = True
+        exited_barn = False
     elif not on_farm:
         phases.append(EXIT_TO_FARM_PHASE)
         exited_barn = in_barn
     else:
         exited_barn = False
     if in_coop and buy_cow_first:
-        phases.extend(BUY_COW_FIRST_PHASES)
+        phases.extend(animal_purchase_phases(species))
         handled_buy_cow = True
-        exited_barn = True
+        exited_barn = False
     if started_in_barn_cows:
         pass
-    elif cows_need_chores and not handled_buy_cow:
-        phases.extend(COW_PHASES)
+    elif cows_need_chores:
+        phases.extend(cow_day_phases(ram))
         exited_barn = True
-    else:
-        exited_barn = exited_barn or handled_buy_cow
     phases.extend(
         _chicken_sale_phases(
             adult_chickens=adult_chickens,

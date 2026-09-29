@@ -280,6 +280,15 @@ _FARM_WEST_EXIT = Waypoint(
 )
 _PATH_FARM_GATE = Waypoint(tilemap=0x0C, target_px=(232, 128), radius=16)
 _PATH_CROSSROADS = Waypoint(tilemap=0x0C, target_px=(132, 128), radius=16)
+# Exit then plaza. PATH_FARM_GATE (232,128) pins leaked (10,422) landings.
+# force_run left: BFS from the east landing walks back onto the farm.
+_PATH_PLAZA_FROM_FARM = Waypoint(
+    tilemap=0x0C,
+    target_px=(132, 128),
+    radius=16,
+    run_direction="left",
+    force_run=True,
+)
 _PATH_TOWN_EXIT = Waypoint(
     tilemap=0x0C, target_px=(10, 128), radius=8, is_exit=True, exit_direction="left"
 )
@@ -311,21 +320,12 @@ _FARM_GATE_PINCH_TO_EXIT: List[Waypoint] = [
 ]
 _FARM_WEST_TO_TOWN: List[Waypoint] = [
     *_FARM_GATE_PINCH_TO_EXIT,
-    _PATH_CROSSROADS,
+    _PATH_PLAZA_FROM_FARM,
     _PATH_TOWN_EXIT,
 ]
 
 # L1 house front ~(136,344) BFS-cuts the NW ledge. Drop south first onto
 # A0 above the pond, then the house-column pinch down to y=26.
-# Exit then plaza. PATH_FARM_GATE (232,128) pins leaked (10,422) landings.
-# force_run left: BFS from the east landing walks back onto the farm.
-_PATH_PLAZA_FROM_FARM = Waypoint(
-    tilemap=0x0C,
-    target_px=(132, 128),
-    radius=16,
-    run_direction="left",
-    force_run=True,
-)
 _FARM_TO_PATH: List[Waypoint] = [
     Waypoint(tilemap=0x00, target_px=(137, 375), radius=12),
     Waypoint(tilemap=0x00, target_px=(136, 392), radius=8),  # (8,24) A0
@@ -517,8 +517,10 @@ _FARM_WEST_GATE_TO_SHIPPING_BIN: List[Waypoint] = [
 ]
 
 _TOWN_TO_ANIMAL_SHOP_DOOR: List[Waypoint] = [
-    Waypoint(tilemap=0x04, target_px=(688, 430), radius=16),
-    Waypoint(tilemap=0x04, target_px=(688, 890), radius=6, run_direction="down", force_run=True),
+    # East-gate landing is ~(744, 424). (696, 430) push-faces blocked tile
+    # (45, 26) and walks back out to the path. Same open face as the seed shop.
+    Waypoint(tilemap=0x04, target_px=(728, 424), radius=18),
+    Waypoint(tilemap=0x04, target_px=(696, 890), radius=6, run_direction="down", force_run=True),
     Waypoint(tilemap=0x04, target_px=(601, 890), radius=8, run_direction="left"),
     Waypoint(tilemap=0x04, target_px=(601, 874), radius=10, is_exit=True, exit_direction="up"),
 ]
@@ -579,6 +581,9 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "shop_to_town": list(_SHOP_TO_TOWN),
     "town_shop_to_path": list(_TOWN_SHOP_TO_PATH),
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "mountain_entry_to_first_mushroom": [*_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:3],
+        *[Waypoint(tilemap=0x10, target_px=px, radius=4) for px in
+          ((616, 712), (616, 696), (632, 696), (632, 664), (648, 664), (648, 632), (662, 633))]],
     "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
     "farm_west_gate_to_shipping_bin": list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
 }
@@ -599,6 +604,9 @@ ROUTES: Dict[str, List[Waypoint]] = {
     + list(_PATH_TO_TOWN_SHOP)
     + list(_TOWN_TO_SHOP_DOOR),
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "mountain_entry_to_first_mushroom": [*_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:3],
+        *[Waypoint(tilemap=0x10, target_px=px, radius=4) for px in
+          ((616, 712), (616, 696), (632, 696), (632, 664), (648, 664), (648, 632), (662, 633))]],
     "farm_to_first_mountain_berry": list(_FARM_TO_MOUNTAIN_GATE)
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
     "first_mountain_berry_to_shipping_bin": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
@@ -640,6 +648,16 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x24, target_px=(137, 212), radius=12, is_exit=True, exit_direction="down"),
         # After the transition, step off the town door tile before idle wait.
         Waypoint(tilemap=0x04, target_px=(601, 904), radius=2, run_direction="down"),
+    ],
+    "animal_shop_town_to_farm": [
+        # Leave the door column east before turning north. A diagonal from
+        # (600,888) to the town gate steps straight back into the shop.
+        Waypoint(tilemap=0x04, target_px=(648, 904), radius=4, run_direction="right", force_run=True),
+        Waypoint(tilemap=0x04, target_px=(696, 890), radius=6),
+        Waypoint(tilemap=0x04, target_px=(696, 424), radius=6, run_direction="up", force_run=True),
+        Waypoint(tilemap=0x04, target_px=(756, 424), radius=8, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x0C, target_px=(244, 128), radius=8, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x00, target_px=(80, 448), radius=12),
     ],
     # Spring D1 town handoff (docs/town_day1_recon.md). Natural entry lands
     # at town gate ~(712,424). Routes assume start on 0x04.

@@ -32,6 +32,7 @@ from harvest.tasks.animal_navigation import (
 )
 from harvest.planner.tasks.sale_menu import (
     SHOP_MENU_TEXT_ID,
+    AnimalPurchaseSession,
     chicken_count_reason,
     dialog_text_id,
     near_px,
@@ -738,48 +739,94 @@ class ChickenSaleEventTask(Task):
 
 @dataclass
 class CowPurchaseTask(Task):
-    """Replay the precise shop interaction and require the cow count to change."""
+    """Buy one cow or one chicken from the animal-shop counter.
+
+    ``species`` is ``cow`` or ``chicken``. The shop sells one animal per day,
+    so a second species needs another day. Success is the wallet dropping by that
+    price and that count rising by one. Tilemap 0x5F is named and is not a buy.
+    """
 
     name: str = "cow_purchase"
-    task_name: str = "buy_cow"
-    start_frame: int = 1631
-    end_frame: Optional[int] = 2328
-    tasks_dir: str = TASKS_DIR
+    species: str = "cow"
+    timeout: int = 3600
 
-    _frames: List[List[int]] = field(default_factory=list, init=False)
-    _idx: int = field(default=0, init=False)
-    _start_cows: int = field(default=0, init=False)
-    _saw_purchase: bool = field(default=False, init=False)
+    _session: AnimalPurchaseSession = field(init=False)
+    _step_count: int = field(default=0, init=False)
+    _name_press_step: int = field(default=-(10**9), init=False)
+    _bought_reason: str = field(default="", init=False)
+    _dismiss_frames: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
-        recording = RecordedTask.load(self.task_name, self.tasks_dir)
-        self._frames = recording.frames[self.start_frame:self.end_frame]
-        self._idx = 0
-        self._start_cows = read_ram_u8(world.ram, ADDR_COW_COUNT)
-        self._saw_purchase = False
+        self._session = AnimalPurchaseSession(species=self.species, timeout=self.timeout)
+        self._session.start(world.ram)
+        self._step_count = 0
+        self._name_press_step = -(10**9)
+        self._bought_reason = ""
+        self._dismiss_frames = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
 
+    def purchase_already_registered(self, ram: np.ndarray) -> bool:
+        """True once this reload's wallet and species count have both moved."""
+        if self._bought_reason:
+            return True
+        session = getattr(self, "_session", None)
+        if session is None:
+            return False
+        return bool(session._registered(ram))
+
+    def _running(self, action: np.ndarray, reason: str) -> TaskResult:
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason=reason)
+
+    def _finish_registered(self, world: WorldState) -> TaskResult:
+        """Close out a buy the ROM has already registered.
+
+        A held A never dismisses the receipt. Pulse, then succeed once the
+        player can move. A registered receipt on a locked screen must finish
+        its dialogue before the navigation phase takes over.
+        """
+        self._dismiss_frames += 1
+        lock_open = int(read_ram_value(world.ram, "input_lock")) == 1
+        if lock_open:
+            return TaskResult(status=TaskStatus.SUCCESS, reason=self._bought_reason)
+        if self._step_count > self.timeout:
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"{self._bought_reason}; receipt still locked")
+        if self._dismiss_frames % 8 == 0:
+            return self._running(make_action(a=True), self._bought_reason)
+        return self._running(make_action(), self._bought_reason)
+
     def step(self, world: WorldState) -> TaskResult:
-        current_cows = read_ram_u8(world.ram, ADDR_COW_COUNT)
-        if current_cows > self._start_cows:
-            self._saw_purchase = True
+        self._step_count += 1
+        tilemap = int(read_ram_value(world.ram, "tilemap"))
+        if self._session._registered(world.ram):
+            self._bought_reason = self._session._success_reason(world.ram)
+        if self._bought_reason and tilemap != 0x5F:
+            return self._finish_registered(world)
+        if tilemap == 0x5F:
+            if self._step_count > self.timeout:
+                return TaskResult(status=TaskStatus.FAILURE, reason="animal name-entry timeout")
+            from harvest.core.scene import name_entry_press
 
-        if self._idx >= len(self._frames):
-            if self._saw_purchase:
-                return TaskResult(
-                    status=TaskStatus.SUCCESS,
-                    reason=f"cows {self._start_cows}->{current_cows}",
-                )
-            return TaskResult(
-                status=TaskStatus.FAILURE,
-                reason=f"cow purchase did not register (cows={current_cows})",
+            choice = name_entry_press(
+                world.ram,
+                step=self._step_count,
+                last_press_step=self._name_press_step,
             )
+            if choice is None:
+                return self._running(make_action(), "name screen idle")
+            buttons, reason, last = choice
+            self._name_press_step = last
+            return self._running(make_action(**{button: True for button in buttons}), reason)
 
-        action = np.asarray(self._frames[self._idx], dtype=np.int32)
-        self._idx += 1
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+        decision = self._session.step(world.ram)
+        if decision.status == "success":
+            self._bought_reason = decision.reason
+            return self._finish_registered(world)
+        if decision.status == "failure":
+            return TaskResult(status=TaskStatus.FAILURE, reason=decision.reason)
+        action = decision.action if decision.action is not None else make_action()
+        return self._running(action, decision.reason)
 
 
 

@@ -249,11 +249,17 @@ def pocket_plant_targets(ram) -> Tuple[Tuple[int, int], ...]:
     if ram is None:
         return ()
     from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted
+    from harvest.core.ram_catalog import read_ram_value
 
     targets = []
+    summer = int(read_ram_value(ram, "season")) == 1
     for center in POCKET_PLANT_CENTERS:
         planted = count_ring_planted(ram, center)
         if planted >= PLOT_RING_SIZE:
+            continue
+        # Summer crops regrow. Spending another 300G bag to fill one or
+        # two missed cells delays livestock and rarely earns the seed back.
+        if summer and PLOT_RING_SIZE - planted < 3:
             continue
         if _ring_bare_capacity(ram, center) >= PLOT_RING_SIZE - planted:
             targets.append(center)
@@ -316,4 +322,3 @@ FARM_TILEMAP_NAMES: Dict[int, str] = {
 NO_GO_TILES_BY_TILEMAP: Dict[int, FrozenSet[Tuple[int, int]]] = {
     tilemap_id: FARM_NO_GO_TILES for tilemap_id in FARM_TILEMAP_IDS
 }
-

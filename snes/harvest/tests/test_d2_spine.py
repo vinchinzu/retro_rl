@@ -17,7 +17,11 @@ from retro_harness import AttemptAudit, AuditCapabilities, WorldState
 
 from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
 from harvest.core.tile_catalog import ADDR_TILEMAP
-from harvest.scripts.run_to_day2 import _clean_run_report, _d2_spine_checkpoint_evidence
+from harvest.scripts.run_to_day2 import (
+    _clean_run_report,
+    _d2_spine_checkpoint_evidence,
+    _gate_b_full_ok,
+)
 
 _HARVEST_DIR = Path(__file__).resolve().parents[1]
 _SPINE_EVIDENCE = _HARVEST_DIR / "recordings" / "power_on_d2_spine_clear_final.json"
@@ -217,6 +221,23 @@ class CurrentPowerOnD2SpineCandidateTests(unittest.TestCase):
         self.assertTrue(crops["alive"])
         self.assertEqual(crops["wet"], 8)
         self.assertFalse(self.report["gate_b_full_ok"])
+        end = self.report["end"]
+        summary = self.report["journal_summary"]
+        clean = self.report["clean_run"]
+        self.assertFalse(
+            _gate_b_full_ok(
+                power_on=self.report.get("state") is None,
+                until_ending=bool(self.report.get("until_ending")),
+                end_key=(
+                    int(end.get("year", 0)),
+                    int(end["season"]),
+                    int(end["day"]),
+                ),
+                total_shipped=int(summary.get("total_shipped") or 0),
+                total_harvested=int(summary.get("total_harvested") or 0),
+                mid_run_state_loads=clean.get("mid_run_state_loads"),
+            )
+        )
         self.assertFalse(self.report["money_gt_100"])
         self.assertEqual(self.report["journal_summary"]["total_shipped"], 0)
         planted = int(crops["crop"])
@@ -245,6 +266,33 @@ class FailedD1HandoffPinEvidenceTests(unittest.TestCase):
         }
         self.assertIn("MOUNTAIN_BERRY", deferred)
         self.assertIn("return_to_bin", deferred["MOUNTAIN_BERRY"])
+
+
+class GateBReportTests(unittest.TestCase):
+    """A report that is not Y1 Summer entry with harvest income is not Gate B."""
+
+    def test_non_matching_report_is_false(self) -> None:
+        spring_d2 = dict(
+            power_on=True,
+            until_ending=False,
+            end_key=(0, 0, 2),
+            total_shipped=0,
+            total_harvested=0,
+            mid_run_state_loads=0,
+        )
+        self.assertFalse(_gate_b_full_ok(**spring_d2))
+        self.assertFalse(_gate_b_full_ok(**{**spring_d2, "power_on": False, "total_shipped": 3}))
+        self.assertFalse(
+            _gate_b_full_ok(**{**spring_d2, "end_key": (0, 1, 1), "total_shipped": 3, "mid_run_state_loads": 1})
+        )
+        self.assertFalse(
+            _gate_b_full_ok(
+                **{**spring_d2, "end_key": (0, 1, 1), "total_harvested": 1, "mid_run_state_loads": None}
+            )
+        )
+        self.assertFalse(
+            _gate_b_full_ok(**{**spring_d2, "end_key": (0, 0, 30), "total_shipped": 1})
+        )
 
 
 if __name__ == "__main__":

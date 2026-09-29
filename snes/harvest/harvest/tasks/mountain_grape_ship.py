@@ -1,4 +1,4 @@
-"""Natural Spring D2 mountain-grape pickup, return, and shipping skill."""
+"""Mountain grape or normal mushroom pickup, return, and verified shipping."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ DROP_RETRY_LIMIT = 2
 
 @dataclass
 class MountainGrapeShipTask(Task):
-    """Pick the first mountain grape, carry it home, and ship it.
+    """Pick a seasonal forage item, carry it home, and ship it.
 
     The postcondition is domain-visible: the held forage is gone and the
     same-day shipping accumulator increased.  Wallet money is intentionally
@@ -50,6 +50,7 @@ class MountainGrapeShipTask(Task):
     # grape has reached the bin the run reports SUCCESS even if a later
     # pick/return fails (rr-20w.3 daily spring forage).
     target_count: int = 1
+    forage: str = "grape"
     # Do not start another mountain loop at/after this hour. A loop is ~4h
     # (measured run11: 3000 f from house to bin). D3+ restock days pass 12
     # so a ~10:00 first grape still starts loop 2 (2 grapes + shop is
@@ -128,12 +129,18 @@ class MountainGrapeShipTask(Task):
             self._start_pick(world)
 
     def _start_pick(self, world: WorldState) -> None:
+        from harvest.tasks.mountain_berry import BERRY_NAV_SEGMENTS
+
+        mushroom = self.forage == "mushroom"
         self._child = MountainBerryTask(
             name=f"{self.name}_pick",
             timeout=self.pick_timeout,
             nav_timeout=min(self.nav_timeout, 6_000),
             approach_only=False,
             pick_attempts=self.pick_attempts,
+            stand_px=(662, 633) if mushroom else (326, 409),
+            expected_items=frozenset({1}) if mushroom else frozenset({3, 8}),
+            segments=(*BERRY_NAV_SEGMENTS[:2], "mountain_entry_to_first_mushroom") if mushroom else BERRY_NAV_SEGMENTS,
         )
         self._child.reset(world)
         self._phase = "pick"
@@ -184,7 +191,7 @@ class MountainGrapeShipTask(Task):
         """Count one shipped grape; loop back for the next or finish."""
         self._shipped += 1
         shipped_reason = (
-            f"mountain grape {self._shipped}/{self.target_count} shipped: "
+            f"mountain {self.forage} {self._shipped}/{self.target_count} shipped: "
             f"shipping_money={self._shipping_before}->{self._shipping_after}"
         )
         if self._shipped >= self.target_count:
@@ -269,7 +276,7 @@ class MountainGrapeShipTask(Task):
         return TaskResult(
             status=TaskStatus.SUCCESS,
             reason=(
-                f"mountain grape {self._shipped}/{self.target_count} shipped; "
+                f"mountain {self.forage} {self._shipped}/{self.target_count} shipped; "
                 f"stopped early ({why})"
             ),
         )

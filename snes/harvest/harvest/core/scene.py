@@ -422,6 +422,7 @@ class SceneGuard:
         self._quiet = 0
         self._active = 0
         self._gave_up = False
+        self._name_press_step = -(10**9)
 
     @property
     def active(self) -> bool:
@@ -488,6 +489,129 @@ class SceneGuard:
         return ("a",)
 
 
+def _dog_a_blocked(ram: np.ndarray) -> bool:
+    """A beside the dog starts a hug, unless this A is closing a text box.
+
+    ``input_lock != 1`` or a scene that needs dismiss keeps A: stripping the
+    press that closes the 5pm box deadlocks ShippingScene.
+    """
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.tasks.home_recover import dog_adjacent
+
+    if int(read_ram_value(ram, "input_lock")) != 1:
+        return False
+    if classify_scene_from_ram(ram).needs_input_dismiss:
+        return False
+    return dog_adjacent(ram)
+
+
+def _buttons_respecting_dog(
+    ram: np.ndarray, buttons: tuple[str, ...]
+) -> tuple[str, ...] | None:
+    if "a" not in buttons or not _dog_a_blocked(ram):
+        return buttons
+    kept = tuple(button for button in buttons if button != "a")
+    if "b" not in kept:
+        kept = (*kept, "b")
+    return kept or None
+
+
+# Name grid (player, dog, horse, calf, kids). Title is 0x5C and the diary
+# is 0x5E; those stay on PowerOnStartTask. B deletes a character (NameMenuKeyB).
+_NAME_ENTRY_TILEMAP = 0x5F
+_NAME_CURSOR_ADDR = 0x0991
+_NAME_LENGTH_ADDR = 0x0994
+_NAME_ENTRY_CHARS = 4
+# Same gap the outdoor dog intro uses. Callers pulse every 2 frames, and an
+# odd step is dropped, so a press is committed only on an even step.
+_NAME_ENTRY_GAP = 40
+
+
+def _name_u8(ram: np.ndarray, address: int) -> int:
+    if address < 0 or address >= len(ram):
+        return 0
+    return int(ram[address])
+
+
+def name_entry_press(
+    ram: np.ndarray,
+    *,
+    step: int,
+    last_press_step: int,
+) -> tuple[tuple[str, ...], str, int] | None:
+    """Next name-grid edge, or None when the live tilemap is not 0x5F.
+
+    Empty buttons are an idle frame. The caller must not start MultiMapNav
+    or a rescue walk while this returns: the farmer is at the name screen,
+    often ``(0, 0)``, and is not on a map. Never includes B.
+    """
+    if int(read_ram_value(ram, "tilemap")) != _NAME_ENTRY_TILEMAP:
+        return None
+    if step % 2 != 0 or step - last_press_step < _NAME_ENTRY_GAP:
+        return (), "name entry wait", last_press_step
+    if int(read_ram_value(ram, "input_lock")) != 5:
+        return (), "name entry wait", last_press_step
+    length = _name_u8(ram, _NAME_LENGTH_ADDR)
+    cursor = _name_u8(ram, _NAME_CURSOR_ADDR)
+    # Same reversed grid as PowerOnStartTask: physical LEFT, then UP, then A.
+    if length < _NAME_ENTRY_CHARS:
+        reason = f"name entry char {length + 1}/{_NAME_ENTRY_CHARS}"
+        buttons: tuple[str, ...] = ("a",)
+    elif cursor == 0:
+        reason = "name entry move to OK"
+        buttons = ("left",)
+    elif cursor == 40:
+        reason = "name entry move to OK"
+        buttons = ("up",)
+    elif cursor == 70:
+        reason = "name entry confirm"
+        buttons = ("a",)
+    else:
+        reason = f"name entry confirm cursor={cursor}"
+        buttons = ("a",)
+    return buttons, reason, step
+
+
+def unowned_scene_press(
+    ram: np.ndarray,
+    guard: SceneGuard,
+    step: int = 0,
+    child_pressed: bool = False,
+) -> tuple[tuple[str, ...], str] | None:
+    """Buttons to pulse because nobody owns this scene, and a log reason.
+
+    ShippingScene is an A edge, not a held button, and does not wait out the
+    quiet window. Tilemap 0x5F is the name grid and is taken before the guard
+    so a child nav or rescue cannot walk from (0, 0). Otherwise ``guard``
+    counts unowned frames. ``child_pressed`` means the active task owns the
+    scene (the Spring berry pick).
+    """
+    from harvest.core.shipping_credit import shipping_scene_needs_dismiss
+
+    named = name_entry_press(
+        ram,
+        step=step,
+        last_press_step=getattr(guard, "_name_press_step", -(10**9)),
+    )
+    if named is not None:
+        buttons, reason, last = named
+        guard._name_press_step = last
+        return buttons, reason
+
+    if shipping_scene_needs_dismiss(ram):
+        buttons: tuple[str, ...] | None = ("a",)
+        reason = "shipping scene"
+    else:
+        buttons = guard.observe(ram, step, child_pressed=child_pressed)
+        reason = "scene guard"
+    if not buttons:
+        return None
+    safe = _buttons_respecting_dog(ram, buttons)
+    if not safe:
+        return None
+    return safe, reason
+
+
 __all__ = [
     "Scene",
     "SceneGuard",
@@ -496,5 +620,7 @@ __all__ = [
     "classify_scene",
     "classify_scene_from_ram",
     "morning_scene_ready",
+    "name_entry_press",
     "scene_indicates_ending",
+    "unowned_scene_press",
 ]

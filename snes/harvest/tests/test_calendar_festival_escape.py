@@ -9,7 +9,8 @@ import numpy as np
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.multi_day_planner import MultiDayPlannerTask
 from harvest.planner.tasks.festival_escape import FESTIVAL_MAPS, FestivalEscapeTask
-from retro_harness import TaskStatus
+from harvest.tasks.nav import make_action
+from retro_harness import ActionResult, TaskResult, TaskStatus
 
 
 def _world(tilemap: int):
@@ -54,11 +55,36 @@ class FestivalEscapeTests(unittest.TestCase):
 
     def test_planner_takes_over_on_a_festival_map_only(self) -> None:
         task = MultiDayPlannerTask()
-        self.assertIsNone(task._step_festival_escape(_world(0x15)))
-        result = task._step_festival_escape(_world(0x0A))
-        self.assertEqual(result.status, TaskStatus.RUNNING)
-        self.assertIsNone(task._step_festival_escape(_world(0x15)))
+        task._sync_festival_phase(_world(0x15))
+        self.assertNotEqual(task._phase, "festival")
         self.assertIsNone(task._festival_escape)
+        task._sync_festival_phase(_world(0x0A))
+        self.assertEqual(task._phase, "festival")
+        result = task._current_task.step(_world(0x0A))
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        task._sync_festival_phase(_world(0x15))
+        self.assertNotEqual(task._phase, "festival")
+        self.assertIsNone(task._festival_escape)
+        self.assertEqual(task._phase, "plan_day")
+
+    def test_failed_escape_falls_through_to_the_interrupted_day(self) -> None:
+        task = MultiDayPlannerTask()
+        seen = {"n": 0}
+
+        class _Day:
+            def step(self, world):
+                seen["n"] += 1
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+        task._phase = "return_home"
+        task._current_task = _Day()
+        task._sync_festival_phase(_world(0x0A))
+        task._festival_escape.timeout = 0
+        result = task._step_inner(_world(0x0A))
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "return_home")
+        self.assertEqual(seen["n"], 1)
+        self.assertIs(task._current_task.__class__, _Day)
 
 
 if __name__ == "__main__":

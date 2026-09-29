@@ -299,6 +299,11 @@ def _date_fields(ram) -> dict[str, int]:
         "minute": int(read_ram_value(ram, "minute")),
         "tilemap": int(read_ram_value(ram, "tilemap")),
         "money": int(read_ram_value(ram, "money")),
+        "num_cows": int(read_ram_value(ram, "num_cows")),
+        "num_chickens": int(read_ram_value(ram, "num_chickens")),
+        "planted_grass": int(read_ram_value(ram, "planted_grass")),
+        "stored_grass": int(read_ram_value(ram, "stored_grass")),
+        "grass_seeds": int(read_ram_value(ram, "grass_seeds")),
         "stamina": int(read_ram_value(ram, "stamina")),
     }
 
@@ -430,13 +435,6 @@ def _build_task(args: argparse.Namespace, start_key: tuple[int, int, int]) -> ob
     # harvest_bot --end-of-spring uses until_season=0 until_day=30 so success
     # when date > Spring 30 (i.e. Summer 1 morning).
     if args.end_of_spring:
-        from harvest.planner.day_phase_types import DayPlannerPolicy
-
-        # Spring campaign to Summer is a potato-economy loop. Daily CLEAR_FIELD
-        # re-picks regrown weeds that never touch the north planting pocket, and
-        # it routinely strands the farmer deep in the south field where
-        # return_home cannot path (terminal). D2 farm clear is its own path.
-        extra.setdefault("policy", DayPlannerPolicy(include_field_clear=False))
         return MultiDayPlannerTask(
             until_season=0,
             until_day=30,
@@ -471,15 +469,6 @@ def _build_task(args: argparse.Namespace, start_key: tuple[int, int, int]) -> ob
             kwargs["max_days"] = max(
                 days_between(start_key, target) + 5, bound[2] + 5, 4
             )
-
-    if getattr(args, "power_on", False) and "policy" not in extra:
-        # A power-on farm is all debris and the farmer owns no hammer or axe:
-        # daily CLEAR_FIELD hand-lifts boulders, ends the day holding a rock
-        # with no free tile to drop it on and wedges return_home (D6,
-        # rr-bu62.24). --end-of-spring already runs without it.
-        from harvest.planner.day_phase_types import DayPlannerPolicy
-
-        extra["policy"] = DayPlannerPolicy(include_field_clear=False)
 
     kwargs.update(extra)
     return MultiDayPlannerTask(**kwargs)
@@ -603,6 +592,58 @@ def _summarize_journal(journal: list[dict]) -> dict:
         "crop_establish_nonzero": establish_nonzero,
         "gate_a_economy_ok": bool(money_ok and harvest_phases_present),
     }
+
+
+def _year_report_fields(planner: object) -> dict[str, object]:
+    """Journal, failures, days, and floor stats from the task that played.
+
+    EndingTask has none of these. ``floor_report`` is null when the task
+    does not define that property (do not invent a second report shape).
+    """
+    journal = list(getattr(planner, "day_journal", ()) or ())
+    return {
+        "days_completed": getattr(planner, "_days_completed", None),
+        "day_failures": list(getattr(planner, "day_failures", ()) or ()),
+        "day_journal": journal,
+        "journal_summary": _summarize_journal(journal),
+        "floor_report": getattr(planner, "floor_report", None),
+    }
+
+
+def _gate_b_full_ok(
+    *,
+    power_on: bool,
+    until_ending: bool,
+    end_key: tuple[int, int, int],
+    total_shipped: int,
+    total_harvested: int,
+    mid_run_state_loads: int | None,
+) -> bool:
+    """Power-on stop at Y1 Summer entry with harvest income and no mid-run loads.
+
+    ``--until-ending`` and the Year-3 Summer D30 ending are not Gate B.
+    Missing load or income evidence is a miss.
+    """
+    if not power_on or until_ending or mid_run_state_loads is None:
+        return False
+    try:
+        loads = int(mid_run_state_loads)
+        shipped = int(total_shipped)
+        harvested = int(total_harvested)
+    except (TypeError, ValueError):
+        return False
+    if loads != 0:
+        return False
+    year, season, day = end_key
+    # Summer entry: year 0, past Spring D30, season summer. Not Y3 credits.
+    if (
+        year != 0
+        or season != 1
+        or end_key <= (0, 0, 30)
+        or is_ending_date(year, season, day)
+    ):
+        return False
+    return shipped > 0 or harvested > 0
 
 
 def _crop_survival_report(ram: np.ndarray) -> dict:
@@ -979,6 +1020,7 @@ def main() -> int:
             # multi-day internal date is live from RAM on reset.
 
         task = _build_task(args, start_key)
+        planner = task  # never overwritten; --until-ending steps ending_task
         task.reset(world)
 
         plan_label = args.day_plan or (
@@ -1014,6 +1056,7 @@ def main() -> int:
             "peak_index": 0,
             "final": None,
         }
+        stepped = planner
 
         def _start_ending(active_world, why: str) -> EndingTask:
             nonlocal ending_task
@@ -1045,6 +1088,7 @@ def main() -> int:
                 ),
             )
 
+        result = None
         while args.max_frames <= 0 or frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
             if (
@@ -1054,8 +1098,13 @@ def main() -> int:
             ):
                 # Slept into Y3 Summer D30: the ROM plays the ending on its own
                 # (no input needed); stop day-planning and wait it out.
-                task = _start_ending(world, "ending date reached")
-            result = task.step(world)
+                _start_ending(world, "ending date reached")
+            if ending_task is not None:
+                stepped = ending_task
+                result = ending_task.step(world)
+            else:
+                stepped = planner
+                result = planner.step(world)
             frames += 1
 
             year, season, day = read_world_ymd(world.ram)
@@ -1119,12 +1168,13 @@ def main() -> int:
                 and "ending" in (result.reason or "")
             ):
                 # The planner saw the ROM start the ending; let it finish.
-                task = _start_ending(world, result.reason or "ending reached")
-                result = task.step(world)
+                _start_ending(world, result.reason or "ending reached")
+                stepped = ending_task
+                result = ending_task.step(world)
             if (
                 result.status == TaskStatus.SUCCESS
                 and ending_task is not None
-                and task is ending_task
+                and stepped is ending_task
             ):
                 ending_report["finished"] = True
                 reason = result.reason or "ending credits complete"
@@ -1155,7 +1205,7 @@ def main() -> int:
             if args.day_plan and not args.stop_after_d2_clear and _goal_reached(
                 start=start_key,
                 end=current,
-                days_completed=getattr(task, "_days_completed", None),
+                days_completed=getattr(planner, "_days_completed", None),
                 args=args,
             ):
                 reason = "goal reached"
@@ -1170,7 +1220,7 @@ def main() -> int:
             )
             if sample:
                 record = _sidecar_write(
-                    task,
+                    stepped,
                     world,
                     d2_status=d2_prev_status if args.stop_after_d2_clear else None,
                 )
@@ -1178,14 +1228,18 @@ def main() -> int:
                     if record is not None:
                         print(format_run_progress_line(record), flush=True)
                     else:
-                        phase = getattr(task, "phase_text", "?")
-                        progress = getattr(task, "progress_text", "")
+                        phase = getattr(stepped, "phase_text", "?")
+                        progress = getattr(stepped, "progress_text", "")
                         hour = int(read_ram_value(world.ram, "hour"))
                         minute = int(read_ram_value(world.ram, "minute"))
                         money = int(read_ram_value(world.ram, "money"))
+                        cows = int(read_ram_value(world.ram, "num_cows"))
+                        chickens = int(read_ram_value(world.ram, "num_chickens"))
+                        tilemap = int(read_ram_value(world.ram, "tilemap"))
                         print(
                             f"[RUN] f={frames} date={_ymd_text(current) if year else f'S{season}D{day}'} "
-                            f"{hour:02d}:{minute:02d} ${money} phase={phase} {progress}",
+                            f"{hour:02d}:{minute:02d} ${money} cows={cows} chickens={chickens} "
+                            f"map={tilemap:#04x} phase={phase} {progress}",
                             flush=True,
                         )
             if stop_sig is not None:
@@ -1204,7 +1258,7 @@ def main() -> int:
 
         world = _world(env, frames)
         _sidecar_write(
-            task,
+            stepped,
             world,
             d2_status=d2_prev_status if args.stop_after_d2_clear else None,
         )
@@ -1216,8 +1270,9 @@ def main() -> int:
             ending_report["peak_index"] = max(
                 int(ending_report["peak_index"]), ending_task.peak_index
             )
-        days_completed = getattr(task, "_days_completed", None)
-        journal = list(getattr(task, "day_journal", ()) or ())
+        year_fields = _year_report_fields(planner)
+        days_completed = year_fields["days_completed"]
+        journal = list(year_fields["day_journal"] or [])
         advanced = end_key > start_key
         goal = _goal_reached(
             start=start_key,
@@ -1256,7 +1311,15 @@ def main() -> int:
             success = bool(ending_report["finished"])
             goal = success
         else:
-            success = bool(goal and advanced and morning_ok)
+            # A named day plan ends when its phases finish. The shop buy is
+            # the same calendar morning, so the overnight goal stays false.
+            plan_finished = bool(
+                args.day_plan
+                and terminal
+                and result is not None
+                and result.status == TaskStatus.SUCCESS
+            )
+            success = bool(plan_finished or (goal and advanced and morning_ok))
 
         # The ROM can expose its next-day RAM before its fade has produced a
         # visible frame.  These neutral frames do not alter inputs, RAM, or
@@ -1290,12 +1353,38 @@ def main() -> int:
         # Crop keep-alive evidence (rr-3v9): only valid on farm metatile maps.
         crop_survival = _crop_survival_report(world.ram)
 
-        js = _summarize_journal(journal)
+        js = year_fields["journal_summary"]
+        if not isinstance(js, dict):
+            js = _summarize_journal(journal)
         final_money = end_fields.get("money")
         try:
             money_ok = final_money is not None and int(final_money) > 100
         except Exception:
             money_ok = False
+        clean_run = _clean_run_report(
+            env,
+            initial_state_loads=0 if args.power_on else 1,
+            source_state=source_state,
+            source_state_sha256=source_state_sha256,
+        )
+        try:
+            mid_run_loads: int | None = int(clean_run["mid_run_state_loads"])
+        except (KeyError, TypeError, ValueError):
+            mid_run_loads = None
+        try:
+            total_shipped = int(js.get("total_shipped") or 0)
+            total_harvested = int(js.get("total_harvested") or 0)
+        except (TypeError, ValueError):
+            total_shipped = 0
+            total_harvested = 0
+        gate_b = _gate_b_full_ok(
+            power_on=bool(args.power_on),
+            until_ending=bool(args.until_ending),
+            end_key=end_key,
+            total_shipped=total_shipped,
+            total_harvested=total_harvested,
+            mid_run_state_loads=mid_run_loads,
+        )
         report = {
             "state": None if args.power_on else args.state,
             "power_on": power_on_report,
@@ -1305,6 +1394,9 @@ def main() -> int:
             "boot_frames": boot_frames,
             "planner_frames": frames - planner_start_frame,
             "day_plan": plan_label,
+            "phase_results": [
+                dict(row) for row in (getattr(planner, "phase_results", ()) or ())
+            ],
             "days": args.days,
             "until_day": args.until_day,
             "until_season": args.until_season,
@@ -1320,20 +1412,16 @@ def main() -> int:
             "scene": scene.summary(),
             "morning_ready": bool(morning_ok),
             "days_completed": days_completed,
-            "day_failures": list(getattr(task, "day_failures", ()) or ()),
+            "day_failures": year_fields["day_failures"],
             "day_journal": journal,
             "journal_summary": js,
+            "floor_report": year_fields["floor_report"],
             "crop_survival": crop_survival,
             "success": success,
             "advanced": advanced,
             "goal_reached": goal,
             "money_gt_100": bool(money_ok),
-            "gate_b_full_ok": bool(
-                success
-                and args.power_on
-                and money_ok
-                and end_key > (0, 0, 30)
-            ),
+            "gate_b_full_ok": gate_b,
             "d2_farm": (
                 {
                     "start": d2_start_counts,
@@ -1355,12 +1443,7 @@ def main() -> int:
             "terminal": terminal,
             "progress_sidecar": str(sidecar_path) if sidecar_path is not None else None,
             "mid_run_state_load": False,
-            "clean_run": _clean_run_report(
-                env,
-                initial_state_loads=0 if args.power_on else 1,
-                source_state=source_state,
-                source_state_sha256=source_state_sha256,
-            ),
+            "clean_run": clean_run,
             "video": video_result,
         }
         args.out.parent.mkdir(parents=True, exist_ok=True)

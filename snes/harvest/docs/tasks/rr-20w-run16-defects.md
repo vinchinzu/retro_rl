@@ -7,6 +7,87 @@ session's nav work on its own.
 
 **Do not STATUS.** Do not start from `Y1_D2_Morning_After_D1`.
 
+## Seasonal preparation — 2026-09-29, rr-bu62.28
+
+The daily schedule now plants a separate four-chunk pasture below the two
+crop pockets, limits sowing to two bags per day, buys missing grass stock,
+and sickles mature grass into hay. Growing grass is physically walkable:
+the tight D5 probe walked from (314,556) to (282,556) on tile `0x73`, then
+back. Treating those tiles as walls had blocked subsequent sowing and cuts.
+Empty chunks get seed before single-hole repairs, and repairs stand at the
+chunk center. The sickle's mature tile is `0x79`, not `0x80..0x85`.
+
+Summer uses pocket clearing, keeps regrowing corn, avoids buying another bag
+for one or two missing cells, and checks seasonal seed stock when composing
+a second plant phase. The cow/chicken schedule starts checking at D14, needs
+32 planted tiles, 16 stored hay and a 300G reserve, and respects shop/weather
+and one-purchase-per-day gates. The menu reads `$018F` and waits for choices;
+the receipt must close before navigation. No blind NAME_COW slice remains.
+
+Live receipts: cow 7,010G → 2,010G and count 0 → 1; next-day chicken
+2,010G → 1,010G and count 0 → 1. The improved continuous summer pin prefix
+buys the cow on D20 (5,500G → 500G) and the chicken on D23
+(1,580G → 580G). Missing animal tools no longer trigger a futile shed trip.
+The D1 → D27 prefix completed 26 overnights in 314,127 frames with no failed
+days or rescues, ending at 1,660G, one cow, one chicken, 34 planted grass,
+and 59 hay. Seasonal pins are still its initial entry.
+The exact D27 predecessor continued through Fall D4 in 98,168 frames after
+the rr-bu62.29 visitor fix, ending at 3,190G and 62 hay. Barn entry, cow feed,
+and chicken feed completed on 7/7 mornings. The earlier 97,089-frame run fed
+the cow on only 5/7: the visitor interrupted Summer D30 and Fall D1 entry.
+A successful overnight alone is not complete animal care.
+
+Fall's normal mushroom phase shipped 150G on each of three consecutive
+mornings, 9,880G → 10,330G after overnight credit. It also shipped after
+animal chores on Fall D1–D3, and after cutting fodder on Fall D2 in the fixed
+continuation. Pasture
+departure now retraces its east approach instead of descending into untouched
+debris at y=39. The poisonous mushroom is excluded.
+
+Evidence: `recordings/rr-bu62.28-{summer-optimized,summer-prep,chicken-buy,
+animal-care,fall-mushroom,pasture,rainy-refuse}.json`. Each runner audit records
+zero RAM writes and zero mid-run loads. Initial pins remain fixture entries.
+No STATUS promotion, no D2 bad pin, no recorded BFS walk, and no origin-return
+credited as a shop purchase.
+
+Remaining: **rr-bu62.30** owns the Fall D3 cow attention timeout (talk=False,
+feed succeeds); the rainy Spring D15 town gate still returns to the path
+before the counter; crop seed-carry and harvest misses remain. The summer
+schedule needs its real power-on spring predecessor under **rr-bu62.25**
+before a full-run readiness claim.
+
+### Next-agent handoff
+
+Start with `bd ready -l harvest -l spine`, then claim **rr-bu62.25** and
+compose the seasonal schedule from its real power-on spring predecessor.
+Do not launch another ending soak as the next check. **rr-bu62.29 is fixed**:
+the exit waits for `game_state & 0x4000` after the ordinary fade, pulses
+through the visitor dialogue, and waits for departure to return control.
+This uses a separate bounded 1,800-frame farm-event budget. Unknown-map
+thrash retains its sticky 360-frame limit. The measured visitor box lasts
+about 368 frames, so the earlier generic dismissal gate expired before the
+text finished.
+
+The ROM regression in `test_day_plan_home_sequences.py` reproduces the
+original barn deferral in 1.25 seconds and passes after the fix. Generate its
+controller-only predecessor with `run_to_day2 --state Y1_Summer_Optimized
+--days 3 --save-end-state Y1_Visitor_Predecessor`; run it with
+`pytest snes/harvest/tests/test_day_plan_home_sequences.py -m rom -k farm_visitor`.
+The full `--days 7` replay overwrites `recordings/rr-bu62.28-animal-care.json`.
+Every expected feed and all three 150G mushroom deposits pass; Fall D2 cuts
+fodder before the mushroom trip. There are zero phase deferrals, failed days,
+rescues, RAM writes, or mid-run state loads. Cow talking succeeds on 6/7;
+rr-bu62.30 tracks that separate miss.
+
+Verification: the complete Harvest suite now finishes (1,550 passed,
+30 skipped, 45 subtests), including its editor tests. The visitor ROM
+regression passes separately. A power-on opening also reaches Spring D2 in
+22,959 frames, with zero initial/mid-run loads, writes or failed days
+(`recordings/rr-bu62.29-poweron.json`). Docs checks pass (8 tests), and
+`git diff --check` is clean. Use `UV_CACHE_DIR=/tmp/retro_rl_uv_cache`,
+`QT_QPA_PLATFORM=offscreen`, `HEADLESS=1`, and `uv run --no-sync` for the
+prepared environment. Preserve unrelated dirty `sm/` and ALttP work.
+
 ## Fixed this session
 
 Each entry names the run13 defect it closes, the mechanism, and the test.

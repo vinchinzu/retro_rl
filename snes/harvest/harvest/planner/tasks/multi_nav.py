@@ -350,6 +350,20 @@ class MultiMapNavTask(NavCorridor, Task):
                     action=ActionResult(make_action()),
                     reason="settle: transition scene running",
                 )
+            # Path-left entry keeps ~(10, 128) for a few frames after the
+            # tilemap flips to town. Walking that stale point aims back
+            # through the gate.
+            if (
+                self._settle_hold < SETTLE_HOLD_MAX
+                and int(world.ram[ADDR_TILEMAP]) == 0x04
+                and self._navigator.current_pos.x <= 200
+            ):
+                self._settle_hold += 1
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="settle: town coords stale",
+                )
             self._initial_settle += 1
             dismissed = nav_needs_menu_dismiss(world.ram, self._step_count)
             if dismissed is not None:

@@ -46,7 +46,7 @@ from harvest.tasks.skills import (
     farm_pocket_plant_skill,
     farm_pocket_water_skill,
 )
-from retro_harness import TaskStatus, WorldState
+from retro_harness import TaskResult, TaskStatus, WorldState
 from retro_harness.actions import action_names
 
 ADDR_DIR = field_spec("player_direction").address
@@ -767,6 +767,50 @@ class HoeUntilTilledCropGuardTests(unittest.TestCase):
         result = skill.step(world)
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertIn("already crop", result.reason or "")
+
+
+class BestEffortSkipTests(unittest.TestCase):
+    def test_failed_group_skips_without_aborting_the_next_stand(self) -> None:
+        from harvest.tasks.skills import BestEffortSkill, sequence_skills
+
+        class _Scripted:
+            def __init__(self, name: str, status: TaskStatus, reason: str) -> None:
+                self.name = name
+                self._status = status
+                self._reason = reason
+
+            def reset(self, _world) -> None:
+                return None
+
+            def can_start(self, _world) -> bool:
+                return True
+
+            def step(self, _world) -> TaskResult:
+                return TaskResult(status=self._status, reason=self._reason)
+
+        world = WorldState(frame=0, ram=_ram(), info={}, obs=None)
+        skipped_group = BestEffortSkill(
+            name="stand_a",
+            tasks=(_Scripted("nav", TaskStatus.FAILURE, "no path"),),
+        )
+        skipped_group.reset(world)
+        skipped = skipped_group.step(world)
+        self.assertTrue(skipped_group.skipped)
+        self.assertTrue((skipped.reason or "").startswith("stand_a skipped:"), skipped.reason)
+        self.assertNotIn("complete", skipped.reason or "")
+        # SUCCESS is only the continue token; the reason is the skip.
+        self.assertEqual(skipped.status, TaskStatus.SUCCESS)
+
+        nxt = BestEffortSkill(
+            name="stand_b",
+            tasks=(_Scripted("wet", TaskStatus.SUCCESS, "watered"),),
+        )
+        seq = sequence_skills("crop_water", skipped_group, nxt, idle_between=False)
+        seq.reset(world)
+        done = seq.step(world)
+        self.assertEqual(done.status, TaskStatus.SUCCESS)
+        self.assertTrue(skipped_group.skipped)
+        self.assertFalse(nxt.skipped)
 
 
 if __name__ == "__main__":

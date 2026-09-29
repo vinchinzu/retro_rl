@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import unittest
 
 import numpy as np
@@ -14,12 +15,16 @@ from harvest.planner.day_plan_status import (
     read_world_ymd,
 )
 from harvest.planner.multi_day_planner import MultiDayPlannerTask
+from harvest.planner.tasks.ending import EndingTask
 from harvest.scripts.run_to_day2 import (
+    _gate_b_full_ok,
     _goal_reached,
     _parse_args,
     _previous_day,
     _build_task,
+    _year_report_fields,
     days_between,
+    main,
     resolve_until_target,
 )
 
@@ -140,6 +145,123 @@ class RunnerTargetTests(unittest.TestCase):
         self.assertFalse(task._target_reached(_ram(2, 1, 29)))
         self.assertFalse(task._target_reached(_ram(2, 1, 30)))
         self.assertGreaterEqual(task.max_days, 300)
+
+    def test_build_task_power_on_and_end_of_spring_keep_daily_clear(self) -> None:
+        args_poweron = _parse_args(["--power-on", "--until-season", "1", "--until-day", "1"])
+        task_poweron = _build_task(args_poweron, (0, 0, 2))
+        self.assertTrue(task_poweron.policy.include_field_clear)
+
+        args_eos = _parse_args(["--end-of-spring"])
+        task_eos = _build_task(args_eos, (0, 0, 2))
+        self.assertTrue(task_eos.policy.include_field_clear)
+
+
+class EndingHandoffReportTests(unittest.TestCase):
+    def test_year_fields_come_from_the_planner_not_ending_task(self) -> None:
+        planner = MultiDayPlannerTask()
+        planner._days_completed = 12
+        planner._day_journal.append(
+            {
+                "shipped_count": 4,
+                "harvested_count": 1,
+                "money": 800,
+                "rescues": 2,
+                "phase_results": [],
+            }
+        )
+        planner._day_failures.append({"phase": "sleep", "reason": "bed"})
+        planner.floor.bad_days = 1
+        planner.floor.total_bad_days = 3
+        planner.scene_guard.log.append({"step": 1, "mode": "dialogue"})
+
+        fields = _year_report_fields(planner)
+        self.assertEqual(fields["days_completed"], 12)
+        self.assertEqual(fields["day_journal"][0]["shipped_count"], 4)
+        self.assertEqual(fields["day_journal"][0]["rescues"], 2)
+        self.assertEqual(fields["day_failures"], [{"phase": "sleep", "reason": "bed"}])
+        self.assertEqual(fields["journal_summary"]["total_shipped"], 4)
+        self.assertEqual(fields["journal_summary"]["total_harvested"], 1)
+        self.assertEqual(fields["journal_summary"]["overnights"], 1)
+        self.assertEqual(
+            fields["floor_report"],
+            {
+                "consecutive_bad_days": 1,
+                "total_bad_days": 3,
+                "scene_guard": [{"step": 1, "mode": "dialogue"}],
+            },
+        )
+        self.assertEqual(fields["floor_report"], planner.floor_report)
+
+        # The credits waiter must not be what the report reads.
+        blank = _year_report_fields(EndingTask())
+        self.assertIsNone(blank["days_completed"])
+        self.assertEqual(blank["day_journal"], [])
+        self.assertEqual(blank["day_failures"], [])
+        self.assertIsNone(blank["floor_report"])
+        self.assertEqual(blank["journal_summary"]["total_shipped"], 0)
+        self.assertEqual(blank["journal_summary"]["total_harvested"], 0)
+
+    def test_missing_floor_report_is_null(self) -> None:
+        class _NoFloor:
+            _days_completed = 1
+            day_journal = ({"shipped_count": 1, "harvested_count": 0, "phase_results": []},)
+            day_failures = ()
+
+        fields = _year_report_fields(_NoFloor())
+        self.assertIsNone(fields["floor_report"])
+        self.assertEqual(fields["days_completed"], 1)
+        self.assertEqual(fields["journal_summary"]["total_shipped"], 1)
+
+    def test_until_ending_does_not_replace_the_planner(self) -> None:
+        src = inspect.getsource(main)
+        self.assertNotIn("task = _start_ending", src)
+        self.assertIn("ending_task.step", src)
+        self.assertIn("_year_report_fields(planner)", src)
+
+    def test_until_ending_is_not_gate_b(self) -> None:
+        # Summer entry plus harvest income still is not Gate B on a credits run.
+        self.assertFalse(
+            _gate_b_full_ok(
+                power_on=True,
+                until_ending=True,
+                end_key=(0, 1, 1),
+                total_shipped=5,
+                total_harvested=5,
+                mid_run_state_loads=0,
+            )
+        )
+
+    def test_gate_b_is_summer_entry_with_harvest_income(self) -> None:
+        summer = dict(
+            power_on=True,
+            until_ending=False,
+            end_key=(0, 1, 1),
+            mid_run_state_loads=0,
+        )
+        self.assertTrue(_gate_b_full_ok(**summer, total_shipped=1, total_harvested=0))
+        self.assertTrue(_gate_b_full_ok(**summer, total_shipped=0, total_harvested=2))
+        # Money and "past Spring D30" are not enough: fall, Y3 ending, no income.
+        self.assertFalse(
+            _gate_b_full_ok(
+                power_on=True,
+                until_ending=False,
+                end_key=(0, 2, 1),
+                total_shipped=10,
+                total_harvested=10,
+                mid_run_state_loads=0,
+            )
+        )
+        self.assertFalse(
+            _gate_b_full_ok(
+                power_on=True,
+                until_ending=False,
+                end_key=(2, 1, 30),
+                total_shipped=10,
+                total_harvested=1,
+                mid_run_state_loads=0,
+            )
+        )
+        self.assertFalse(_gate_b_full_ok(**summer, total_shipped=0, total_harvested=0))
 
 
 if __name__ == "__main__":

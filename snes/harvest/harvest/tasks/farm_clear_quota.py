@@ -341,7 +341,12 @@ from harvest.core.tile_catalog import (
 from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
 from harvest.maps.map_config import FARM_POND_ACCESS_FENCE_ROW
 from harvest.tasks.farm_ops import TileScanner
-from harvest.tasks.farm_toss import FenceJumpTossSkill, needs_south_fence_drop
+from harvest.tasks.farm_toss import (
+    FENCE_WALL_Y,
+    FenceJumpTossSkill,
+    needs_south_fence_drop,
+    open_toss_face,
+)
 from harvest.tasks.nav import Point, get_pos_from_ram, get_tile_at, make_action
 
 _FENCE_WALL_PX_Y = FARM_POND_ACCESS_FENCE_ROW * 16
@@ -631,6 +636,71 @@ def _step_exit_nav(self, world: WorldState) -> Optional[TaskResult]:
     self._pending_finish_status = TaskStatus.SUCCESS
     return TaskResult(status=status, reason=reason)
 
+def _unsinkable_lift(self, ram, player, target) -> bool:
+    """True when a hand-lift cannot be finished.
+
+    A large rock needs a hammer. Tile 0x04 becomes held 0x0D and tile
+    0x05 becomes held 0x0F; with no open landing the clear walks away
+    carrying it. A stone north of the fence can still use the south jump.
+    """
+    if target is None or target.debris_type == DebrisType.ROCK:
+        return True
+    if target.debris_type == DebrisType.WEED:
+        return False
+    if open_toss_face(ram, player, blocked=(target.tile,)) is not None:
+        return False
+    return not (
+        target.debris_type == DebrisType.STONE and int(player[1]) <= FENCE_WALL_Y
+    )
+
+
+def _lift_current(self, ram, player, target):
+    held = read_held_item(ram)
+    if held:
+        self._toss_before_lift += 1
+        if self._toss_before_lift > 3:
+            print(f"[CLEARER] Still held=0x{held:02X}; stop clear at {target}")
+            self.failed_tiles.add(target)
+            self.current_target = None
+            self.clearing_start_frame = 0
+            self._toss_before_lift = 0
+            return "complete"
+        print(f"[CLEARER] Toss held=0x{held:02X} before next lift")
+        self._queue_held_toss(ram, player, held, face="down")
+        return None
+    self._toss_before_lift = 0
+    if self._unsinkable_lift(ram, player, self.current_target):
+        kind = self.current_target.debris_type.name if self.current_target else "debris"
+        print(f"[CLEARER] Skip unsinkable {kind} at {target}")
+        self.failed_tiles.add(target)
+        self.current_target = None
+        self.clearing_start_frame = 0
+        return "scanning"
+    lift_key = (target[0], target[1], int(self.current_target.tile_id))
+    attempts = self.tile_attempts.get(lift_key, 0)
+    if attempts >= 2 or target in self.failed_tiles:
+        print(
+            f"[CLEARER] Skipping lift thrash at {target} "
+            f"({self.current_target.debris_type.name})"
+        )
+        self.failed_tiles.add(target)
+        self.current_target = None
+        self.clearing_start_frame = 0
+        return "scanning"
+    self.tile_attempts[lift_key] = attempts + 1
+    print(
+        f"[CLEARER] Lifting {self.current_target.debris_type.name} "
+        f"at {target} (attempt {attempts + 1}/2)"
+    )
+    direction = self._face_dir(player, target)
+    self.action_queue.extend(make_action(**{direction: True}) for _ in range(3))
+    self.action_queue.extend(make_action() for _ in range(4))
+    self.action_queue.extend(make_action(a=True) for _ in range(18))
+    self.action_queue.extend(make_action() for _ in range(20))
+    self._pending_lift_verify = target
+    return None
+
+
 def _maybe_stage_then_success(self, world: WorldState, reason: str) -> TaskResult:
     from harvest.planner.day_plan_status import is_farm_tilemap
     status = self._pending_finish_status
@@ -672,8 +742,11 @@ def _finish_or_drop(
         return self._maybe_stage_then_success(world, reason)
     if self._drop_attempts >= 6:
         held = read_held_item(world.ram)
-        print(f"[CLEAR] Leaving clear with held=0x{held:02X} after drop attempts")
-        return self._maybe_stage_then_success(world, f"{reason}; held=0x{held:02X}")
+        print(f"[CLEAR] Drop failed; not leaving clear held=0x{held:02X}")
+        return TaskResult(
+            status=TaskStatus.FAILURE,
+            reason=f"{reason}; held=0x{held:02X}",
+        )
     self._drop_attempts += 1
     self._pending_finish_reason = reason
     held = read_held_item(world.ram)

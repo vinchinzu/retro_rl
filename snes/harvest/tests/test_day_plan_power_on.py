@@ -203,6 +203,135 @@ class DayPlanSequencePowerOnTests(unittest.TestCase):
         self.assertIn("confirm dog name", r4.reason or "")
         self.assertTrue(task._name_submitted)
 
+    def test_name_screen_is_submitted_before_nav_or_rescue(self) -> None:
+        """rr-bu62.18: tilemap 0x5F at (0, 0) must not time out into a rescue walk.
+
+        Horse/calf/dog share the grid. The scripted world applies the same
+        cursor moves PowerOnStartTask expects. B deletes a character.
+        """
+        from harvest.core.scene import SceneGuard, name_entry_press, unowned_scene_press
+        from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE
+        from harvest.planner.tasks.inventory_exit import ExitToFarmTask
+
+        b_index = int(np.argmax(make_action(b=True)))
+
+        def arm(tilemap: int = 0x5F) -> object:
+            world = make_world(tilemap)
+            world.ram[ADDR_INPUT_LOCK] = 5
+            world.ram[0x099F] = 4  # horse; calf/dog use the same grid
+            world.ram[0x0994] = 0
+            world.ram[0x0991] = 0
+            set_player_pos(world.ram, 0, 0)
+            return world
+
+        for tilemap in (0x5C, 0x5E):
+            boot = arm(tilemap)
+            self.assertIsNone(
+                name_entry_press(boot.ram, step=0, last_press_step=-(10**9))
+            )
+
+        world = arm()
+        guard = SceneGuard()
+        # child_pressed is how DayPlanTask calls the guard; the name screen
+        # still has to win, or the phase task navs from (0, 0).
+        self.assertIsNotNone(
+            unowned_scene_press(world.ram, guard, step=0, child_pressed=True)
+        )
+        self.assertNotIn(
+            "b", unowned_scene_press(world.ram, guard, step=0, child_pressed=True)[0]
+        )
+
+        direct = ExitToFarmTask(cutscene_mash_limit=2, dismiss_mash_limit=2)
+        direct.reset(world)
+        self.assertIsNone(direct._task)
+        self.assertEqual(direct._blocked_reason, "")
+
+        plan = DayPlanTask(
+            phase_sequence=[EXIT_TO_FARM_PHASE],
+            policy=DayPlannerPolicy(include_end_day=False),
+        )
+        plan.reset(world)
+        presses: list[str] = []
+        for _ in range(500):
+            if int(world.ram[ADDR_TILEMAP]) != 0x5F:
+                break
+            result = plan.step(world)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertIsNone(plan._current_task)
+            reason = result.reason or ""
+            self.assertNotIn("timeout", reason)
+            self.assertNotIn("rescue", reason)
+            self.assertNotIn("unknown-map", reason)
+            action = result.action.action
+            self.assertEqual(int(np.asarray(action)[b_index]), 0)
+            if np.array_equal(action, make_action(a=True)):
+                if int(world.ram[0x0994]) < 4:
+                    world.ram[0x0994] = int(world.ram[0x0994]) + 1
+                    presses.append("a")
+                elif int(world.ram[0x0991]) == 70:
+                    world.ram[ADDR_TILEMAP] = 0x00
+                    world.ram[ADDR_INPUT_LOCK] = 1
+                    set_player_pos(world.ram, 136, 424)
+                    presses.append("confirm")
+            elif np.array_equal(action, make_action(left=True)):
+                self.assertEqual(int(world.ram[0x0991]), 0)
+                world.ram[0x0991] = 40
+                presses.append("left")
+            elif np.array_equal(action, make_action(up=True)):
+                self.assertEqual(int(world.ram[0x0991]), 40)
+                world.ram[0x0991] = 70
+                presses.append("up")
+        else:
+            self.fail(f"still on name screen after scripted edges {presses}")
+
+        self.assertEqual(presses, ["a", "a", "a", "a", "left", "up", "confirm"])
+        self.assertNotEqual(int(world.ram[ADDR_TILEMAP]), 0x5F)
+        pos_x = int(world.ram[ADDR_X]) | (int(world.ram[ADDR_X + 1]) << 8)
+        pos_y = int(world.ram[ADDR_Y]) | (int(world.ram[ADDR_Y + 1]) << 8)
+        self.assertNotEqual((pos_x, pos_y), (0, 0))
+        self.assertIsNone(name_entry_press(world.ram, step=0, last_press_step=-(10**9)))
+
+        # The exit composer itself must not unknown-map-timeout while naming.
+        stuck = arm()
+        exit_task = ExitToFarmTask(cutscene_mash_limit=2, dismiss_mash_limit=2)
+        exit_task.reset(stuck)
+        exit_presses: list[str] = []
+        for _ in range(500):
+            if int(stuck.ram[ADDR_TILEMAP]) != 0x5F:
+                break
+            result = exit_task.step(stuck)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertIsNone(exit_task._task)
+            self.assertNotIn("timeout", result.reason or "")
+            action = result.action.action
+            self.assertEqual(int(np.asarray(action)[b_index]), 0)
+            if np.array_equal(action, make_action(a=True)):
+                if int(stuck.ram[0x0994]) < 4:
+                    stuck.ram[0x0994] = int(stuck.ram[0x0994]) + 1
+                    exit_presses.append("a")
+                elif int(stuck.ram[0x0991]) == 70:
+                    stuck.ram[ADDR_TILEMAP] = 0x04
+                    stuck.ram[ADDR_INPUT_LOCK] = 1
+                    set_player_pos(stuck.ram, 200, 160)
+                    exit_presses.append("confirm")
+            elif np.array_equal(action, make_action(left=True)):
+                stuck.ram[0x0991] = 40
+                exit_presses.append("left")
+            elif np.array_equal(action, make_action(up=True)):
+                stuck.ram[0x0991] = 70
+                exit_presses.append("up")
+        else:
+            self.fail(f"ExitToFarm stayed on 0x5F {exit_presses}")
+        self.assertEqual(exit_presses, ["a", "a", "a", "a", "left", "up", "confirm"])
+        self.assertNotEqual(int(stuck.ram[ADDR_TILEMAP]), 0x5F)
+        self.assertNotEqual(
+            (
+                int(stuck.ram[ADDR_X]) | (int(stuck.ram[ADDR_X + 1]) << 8),
+                int(stuck.ram[ADDR_Y]) | (int(stuck.ram[ADDR_Y + 1]) << 8),
+            ),
+            (0, 0),
+        )
+
 class SleepAndPlannerTests(unittest.TestCase):
     def test_go_to_sleep_succeeds_once_date_advances(self) -> None:
         task = GoToSleepTask(morning_ready_frames=3)

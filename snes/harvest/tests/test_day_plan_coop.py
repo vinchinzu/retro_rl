@@ -130,7 +130,7 @@ from harvest.core.ram_catalog import COW_SLOT_BASE, COW_SLOT_SIZE, field_spec
 
 
 class DayPlanSequenceCoopTests(unittest.TestCase):
-    def test_buy_cow_sequence_splits_nav_menu_name_and_barn_chores(self) -> None:
+    def test_buy_cow_sequence_uses_live_purchase_and_barn_chores(self) -> None:
         phases = PHASE_SEQUENCES["buy_cow"]
 
         self.assertEqual(
@@ -141,7 +141,6 @@ class DayPlanSequenceCoopTests(unittest.TestCase):
                 "BUY_COW_VENDOR",
                 "EXIT_ANIMAL_SHOP",
                 "RETURN_FARM_AFTER_COW_PURCHASE",
-                "NAME_COW",
                 "ENSURE_ANIMAL_TOOLS",
                 "NAV_TO_BARN",
                 "ENTER_BARN",
@@ -149,8 +148,8 @@ class DayPlanSequenceCoopTests(unittest.TestCase):
             ],
         )
         self.assertEqual(phases[2].kind, "cow_purchase")
-        self.assertEqual(phases[2].params["start_frame"], 1631)
-        self.assertEqual(phases[5].params["end_frame"], 5001)
+        self.assertEqual(phases[2].params["species"], "cow")
+        self.assertFalse(any(phase.kind == "recorded_slice" for phase in phases))
 
     def test_sell_chicken_test_sequence_is_only_required_sale_work(self) -> None:
         phases = PHASE_SEQUENCES["sell_chicken_test"]
@@ -760,17 +759,21 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
         self.assertEqual(self._phase_names(phases), ["EXIT_COOP", "DYNAMIC_OUTDOOR_PLAN"])
 
     def test_build_day_phases_from_ram_buys_first_cow_before_coop(self) -> None:
-        world = make_date_world(0x15, season=0, day=16, hour=6)
+        world = make_date_world(0x15, season=1, day=16, hour=6)
         world.ram[ADDR_WEEKDAY + 0x4000] = 2
         world.ram[ADDR_CHICKEN_COUNT + 0x4000] = 1
         world.ram[ADDR_EGG_AVAILABLE + 0x4000] = 1
-        set_money(world.ram, COW_PURCHASE_COST)
+        set_money(world.ram, COW_PURCHASE_COST + 300)
+        from harvest.core.ram_catalog import field_spec, ram_index
+        for field, value in (("planted_grass", 32), ("stored_grass", 20)):
+            spec = field_spec(field)
+            world.ram[ram_index(world.ram, spec.address, live_offset=spec.live_offset)] = value
 
         phases = build_day_phases_from_ram(world.ram)
         names = self._phase_names(phases)
 
         self.assertLess(names.index("BUY_COW_VENDOR"), names.index("NAV_TO_COOP"))
-        self.assertLess(names.index("EXIT_BARN"), names.index("NAV_TO_COOP"))
+        self.assertLess(names.index("RETURN_FARM_AFTER_COW_PURCHASE"), names.index("NAV_TO_COOP"))
         self.assertEqual(names[-1], "DYNAMIC_OUTDOOR_PLAN")
 
     def test_build_day_phases_from_ram_skips_cow_purchase_when_already_owned(self) -> None:

@@ -274,13 +274,24 @@ class ShedShelfToolTask(Task):
 
     def _activate_nav(self, world: WorldState) -> TaskResult:
         self._phase = "nav"
-        self._task = NavTask(
+        nav = NavTask(
             name=f"nav_shed_shelf_0x{self.tool_id:02X}",
             target_px=Point(self.stand_px[0], self.stand_px[1]),
             radius=self.radius,
             timeout=self.timeout,
             stasis_repath=90,
         )
+        if self.tool_id == seed_item_id("grass"):
+            from harvest.planner.tasks.navigation import MultiMapNavTask
+            from harvest.maps.map_config import Waypoint
+
+            self._task = MultiMapNavTask(waypoints=[
+                Waypoint(SHED_TILEMAP, (128, 168), radius=2),
+                Waypoint(SHED_TILEMAP, (128, 118), radius=2),
+                Waypoint(SHED_TILEMAP, self.stand_px, radius=2),
+            ], timeout=self.timeout, initial_settle_frames=0, auto_slice=True)
+        else:
+            self._task = nav
         self._task.reset(world)
         return self._task.step(world)
 

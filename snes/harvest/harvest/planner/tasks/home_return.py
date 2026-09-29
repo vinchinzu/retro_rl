@@ -29,7 +29,6 @@ from harvest.maps.map_config import (
 from harvest.core.ram_catalog import field_spec, read_ram_u16
 from harvest.planner.day_plan_status import (
     TASKS_DIR,
-    FARM_TILEMAP,
     is_farm_tilemap,
     is_house_tilemap,
 )
@@ -45,6 +44,7 @@ from harvest.planner.tasks.home_approach import (
 from harvest.planner.tasks.home_recover import (
     RecoverDecision,
     RecoverKind,
+    WanderDropTask,
     decide_child_failure,
     drop_carried_actions,
     enter_fail_south_recovery_actions,
@@ -78,11 +78,8 @@ class ReturnHomeTask(Task):
     _task: Optional[Task] = field(default=None, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
     _drop_attempts: int = field(default=0, init=False)
-    _drop_spot_navs: int = field(default=0, init=False)
-    _drop_same_held: int = field(default=0, init=False)
-    _drop_last_held: int = field(default=-1, init=False)
-    _drop_deep_relocated: bool = field(default=False, init=False)
-    _wander_drops: int = field(default=0, init=False)
+    _drop_spot_visited: bool = field(default=False, init=False)
+    _drop_wandered: bool = field(default=False, init=False)
     _enter_retries: int = field(default=0, init=False)
     _exit_to_farm_retries: int = field(default=0, init=False)
     _mountain_return_attempts: int = field(default=0, init=False)
@@ -96,8 +93,6 @@ class ReturnHomeTask(Task):
     # Keep well under outer timeout: each multi-face cycle is ~250f and prior
     # nav/escape already burned frames (power-on D19 drop_carried@0x0F).
     drop_attempt_limit: int = 6
-    # Same held id across this many cycles → hard-fail (stuck rock fragment).
-    drop_stuck_held_limit: int = 4
     # rr-uru1: ExitToFarm dialogue/unknown-map thrash budget before hard fail.
     exit_to_farm_retry_limit: int = 3
     # SW debris softlock escape + densified re-nav budget (rr-5in D9).
@@ -134,11 +129,8 @@ class ReturnHomeTask(Task):
         self._task = None
         self._action_queue.clear()
         self._drop_attempts = 0
-        self._drop_spot_navs = 0
-        self._drop_same_held = 0
-        self._drop_last_held = -1
-        self._drop_deep_relocated = False
-        self._wander_drops = 0
+        self._drop_spot_visited = False
+        self._drop_wandered = False
         self._enter_retries = 0
         self._exit_to_farm_retries = 0
         self._mountain_return_attempts = 0
@@ -151,7 +143,7 @@ class ReturnHomeTask(Task):
         return True
 
     def _at_drop_spot(self, pos: Point, front: Point) -> bool:
-        drop = drop_spot_px(front, deep=self._drop_deep_relocated)
+        drop = drop_spot_px(front)
         return abs(pos.x - drop.x) <= 28 and abs(pos.y - drop.y) <= 28
 
     @classmethod
@@ -218,7 +210,7 @@ class ReturnHomeTask(Task):
         From deep south, use densified multi_nav (same as house approach) so
         we are not stuck with single-point NavTask in the SW pocket.
         """
-        drop = drop_spot_px(front, deep=self._drop_deep_relocated)
+        drop = drop_spot_px(front)
         pos = get_pos_from_ram(world.ram)
         child_timeout = min(4000, max(800, self.timeout - self._total_steps - 400))
         if deep_south_of_house(pos, front):
@@ -314,7 +306,7 @@ class ReturnHomeTask(Task):
             and (
                 self._south_escape_attempts > 0
                 or self._drop_attempts > 0
-                or self._drop_deep_relocated
+                or self._drop_wandered
             )
         )
         need_pre_escape = (
@@ -426,114 +418,47 @@ class ReturnHomeTask(Task):
         front = self._house_front_px(world.ram)
 
         if not hands_are_clear(world.ram):
-            # Always relocate to open ground south of the house before thrashing
-            # A-drops in a debris field (rr-6g7g: CLEAR leaves held=0x0D).
+            # One sequence: the drop spot, then one open-ground wander.
+            # Fixed spots ringed by debris refuse held 0x0F; do not add a
+            # third relocate. WanderDropTask drops on ground that accepts it.
             held = int(read_held_item(world.ram))
             at_drop = self._at_drop_spot(pos, front)
-            if (
-                self._drop_spot_navs >= 1
-                and self._wander_drops < 3
-                and self._drop_same_held < self.drop_stuck_held_limit
-                and self._drop_attempts < self.drop_attempt_limit
-            ):
-                # Fixed drop spots ringed by debris refuse the item: walk to
-                # open ground and drop it there.
-                from harvest.planner.tasks.home_recover import WanderDropTask
-
-                self._wander_drops += 1
-                print(
-                    f"[RETURN_HOME] Wander drop {self._wander_drops}/3 "
-                    f"held=0x{held:02X} pos=({pos.x},{pos.y})"
-                )
-                self._activate(
-                    "nav_drop_spot",
-                    WanderDropTask(start_dir=self._wander_drops),
-                    world,
-                )
-                return self._task.step(world)
-            if not at_drop and self._drop_spot_navs < 3:
-                self._drop_spot_navs += 1
-                print(
-                    f"[RETURN_HOME] Moving to open drop spot "
-                    f"pos=({pos.x},{pos.y}) held=0x{held:02X} "
-                    f"(nav {self._drop_spot_navs}/3)"
-                )
-                return self._nav_to_drop_spot(world, front)
-            # Stuck same held id (power-on D19 rock fragment 0x0F): do not burn
-            # the full outer timeout on multi-face thrash.
-            if held == self._drop_last_held:
-                self._drop_same_held += 1
-            else:
-                self._drop_same_held = 1
-                self._drop_last_held = held
-            # After a couple same-held thrash cycles at the primary drop, try a
-            # deeper south stand once (debris re-pickup / soft-block at y≈480).
-            if (
-                self._drop_same_held >= 2
-                and not self._drop_deep_relocated
-                and self._drop_spot_navs < 5
-            ):
-                self._drop_deep_relocated = True
-                self._drop_spot_navs += 1
-                deep = drop_spot_px(front, deep=True)
-                print(
-                    f"[RETURN_HOME] Deep drop relocate held=0x{held:02X} "
-                    f"→ ({deep.x},{deep.y}) after same_held="
-                    f"{self._drop_same_held}"
-                )
-                child_timeout = min(
-                    2500, max(600, self.timeout - self._total_steps - 400)
-                )
-                self._activate(
-                    "nav_drop_spot",
-                    MultiMapNavTask(
-                        name="nav_drop_spot_deep",
-                        waypoints=[
-                            Waypoint(
-                                tilemap=FARM_TILEMAP,
-                                target_px=(deep.x, deep.y),
-                                radius=16,
-                            )
-                        ],
-                        timeout=child_timeout,
-                    ),
-                    world,
-                )
-                return self._task.step(world)
-            if (
-                self._drop_same_held >= self.drop_stuck_held_limit
-                or self._drop_attempts >= self.drop_attempt_limit
-            ):
+            if self._drop_wandered:
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason=(
                         "could not clear hands before house entry "
-                        f"(held=0x{held:02X} attempts={self._drop_attempts} "
-                        f"same_held={self._drop_same_held})"
+                        f"(held=0x{held:02X} attempts={self._drop_attempts})"
                     ),
                 )
-            if self._drop_attempts < self.drop_attempt_limit:
+            if not at_drop and not self._drop_spot_visited:
+                self._drop_spot_visited = True
+                print(
+                    f"[RETURN_HOME] Moving to open drop spot "
+                    f"pos=({pos.x},{pos.y}) held=0x{held:02X}"
+                )
+                return self._nav_to_drop_spot(world, front)
+            if at_drop and self._drop_attempts < 1:
                 self._drop_attempts += 1
                 self._phase = "drop_carried"
                 self._queue_drop_carried()
                 print(
                     f"[RETURN_HOME] Dropping carried item before house entry "
                     f"({self._drop_attempts}/{self.drop_attempt_limit} "
-                    f"held=0x{held:02X} at_drop={at_drop} "
-                    f"same_held={self._drop_same_held})"
+                    f"held=0x{held:02X} at_drop={at_drop})"
                 )
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(self._action_queue.popleft()),
                     reason="drop carried before house",
                 )
-            return TaskResult(
-                status=TaskStatus.FAILURE,
-                reason=(
-                    "could not clear hands before house entry "
-                    f"(held=0x{held:02X})"
-                ),
+            self._drop_wandered = True
+            print(
+                f"[RETURN_HOME] Wander drop held=0x{held:02X} "
+                f"pos=({pos.x},{pos.y})"
             )
+            self._activate("nav_drop_spot", WanderDropTask(start_dir=1), world)
+            return self._task.step(world)
 
         # Too far north of the outdoor stand: walk south before pushing up.
         north_of_stand = abs(pos.x - front.x) <= 24 and pos.y < front.y - 10
@@ -605,7 +530,8 @@ class ReturnHomeTask(Task):
             self._phase = "start"
             if decision.hands_not_clear or "hands not clear" in reason:
                 self._drop_attempts = 0
-                self._drop_spot_navs = 0
+                self._drop_spot_visited = False
+                self._drop_wandered = False
             print(
                 f"[RETURN_HOME] Retry house enter "
                 f"({self._enter_retries}/4): {reason}"

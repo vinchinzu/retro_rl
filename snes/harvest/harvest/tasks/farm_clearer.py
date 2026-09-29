@@ -833,42 +833,6 @@ class FarmClearer(Task):
             return self._lift_current(ram, player, target)
         return self.handle_tool_clear(ram, player=player, target=target)
 
-    def _lift_current(self, ram: np.ndarray, player: Tile, target: Tile) -> Optional[str]:
-        held = read_held_item(ram)
-        if held:
-            self._toss_before_lift += 1
-            if self._toss_before_lift > 3:
-                print(f"[CLEARER] Still held=0x{held:02X}; skip lift at {target}")
-                self.failed_tiles.add(target)
-                self.current_target = None
-                self.clearing_start_frame = 0
-                self._toss_before_lift = 0
-                return "scanning"
-            print(f"[CLEARER] Toss held=0x{held:02X} before next lift")
-            self._queue_held_toss(ram, player, held, face="down")
-            return None
-        self._toss_before_lift = 0
-        lift_key = (target[0], target[1], int(self.current_target.tile_id))
-        attempts = self.tile_attempts.get(lift_key, 0)
-        if attempts >= 2 or target in self.failed_tiles:
-            print(f"[CLEARER] Skipping lift thrash at {target} ({self.current_target.debris_type.name})")
-            self.failed_tiles.add(target)
-            self.current_target = None
-            self.clearing_start_frame = 0
-            return "scanning"
-        self.tile_attempts[lift_key] = attempts + 1
-        print(
-            f"[CLEARER] Lifting {self.current_target.debris_type.name} "
-            f"at {target} (attempt {attempts + 1}/2)"
-        )
-        direction = self._face_dir(player, target)
-        self.action_queue.extend(make_action(**{direction: True}) for _ in range(3))
-        self.action_queue.extend(make_action() for _ in range(4))
-        self.action_queue.extend(make_action(a=True) for _ in range(18))
-        self.action_queue.extend(make_action() for _ in range(20))
-        self._pending_lift_verify = target
-        return None
-
     def _handle_tool_switch(self, ram: np.ndarray) -> Optional[str]:
         del ram
         if not self.searching_tool:
@@ -981,7 +945,8 @@ def _install_clear_handoff() -> None:
         "_pocket_stand_px", "_make_pocket_approach", "_uses_pocket_approach",
         "_step_pocket_approach", "can_start", "_on_farm", "_exit_stand_px",
         "_queue_south_exit_staging", "_quota_met", "_complete_status", "_step_exit_nav",
-        "_maybe_stage_then_success", "_finish_or_drop", "_running", "_finish_idle", "step",
+        "_unsinkable_lift", "_lift_current", "_maybe_stage_then_success",
+        "_finish_or_drop", "_running", "_finish_idle", "step",
     )
     for name in names:
         setattr(FarmClearer, name, getattr(policy, name))

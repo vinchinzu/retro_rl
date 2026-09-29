@@ -335,7 +335,8 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task._phase, "nav_drop_spot")
-        self.assertEqual(task._drop_spot_navs, 1)
+        self.assertTrue(task._drop_spot_visited)
+        self.assertFalse(task._drop_wandered)
         # Deep south: densified MultiMapNav ending at drop spot ~(136,480).
         self.assertIsInstance(task._task, MultiMapNavTask)
         self.assertEqual(task._task.waypoints[-1].target_px, (136, 480))
@@ -566,6 +567,29 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         self.assertEqual(task._drop_attempts, 1)
         self.assertTrue(task._action_queue)
 
+    def test_return_home_wanders_once_when_drop_spot_refuses(self) -> None:
+        """Fixed spot ringed by debris: one WanderDropTask, not a deep relocate."""
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+        from harvest.planner.tasks.home_recover import WanderDropTask
+
+        world = make_date_world(0x00, season=0, day=7, hour=17)
+        set_player_pos(world.ram, 136, 480)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = 0x0D
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask(drop_attempt_limit=2)
+        task.reset(world)
+        task._drop_spot_visited = True
+        task._drop_attempts = 1
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsInstance(task._task, WanderDropTask)
+        self.assertTrue(task._drop_wandered)
+        self.assertIn("wander", (result.reason or "").lower())
+
     def test_return_home_fails_after_drop_budget_with_held_item(self) -> None:
         from harvest.core.animal_status import ADDR_HELD_ITEM
         from harvest.core.ram_catalog import live_wram_base
@@ -577,8 +601,9 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         world.ram[field_spec("player_state").address + base] = 0x03
         task = ReturnHomeTask(drop_attempt_limit=2)
         task.reset(world)
-        task._drop_spot_navs = 3  # skip relocate
-        task._drop_attempts = 2
+        task._drop_spot_visited = True
+        task._drop_wandered = True
+        task._drop_attempts = 1
 
         result = task.step(world)
 
@@ -605,11 +630,11 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         self.assertIn("low-budget", result.reason or "")
         self.assertTrue(task._action_queue)
 
-    def test_return_home_fails_early_on_stuck_same_held(self) -> None:
-        """Power-on D19 residual: held=0x0F rock fragment never clears.
+    def test_return_home_fails_after_one_wander_still_holding(self) -> None:
+        """Power-on residual: held=0x0F fence/rock the spot and wander refused.
 
-        Same held id across drop_stuck_held_limit observations must hard-fail
-        before burning the outer 11k timeout in phase=drop_carried.
+        One wander, then fail. No deep-south third strategy and no same-held
+        counter burning the outer timeout in phase=drop_carried.
         """
         from harvest.core.animal_status import ADDR_HELD_ITEM
         from harvest.core.ram_catalog import live_wram_base
@@ -619,21 +644,18 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         base = live_wram_base(world.ram)
         world.ram[ADDR_HELD_ITEM + base] = 0x0F
         world.ram[field_spec("player_state").address + base] = 0x03
-        task = ReturnHomeTask(drop_stuck_held_limit=3, drop_attempt_limit=10)
+        task = ReturnHomeTask()
         task.reset(world)
-        task._drop_spot_navs = 3
-        task._drop_deep_relocated = True  # deep south already tried
-        task._wander_drops = 3  # open-ground wander already tried
-        task._drop_last_held = 0x0F
-        task._drop_same_held = 2  # one more observation trips the gate
-        task._drop_attempts = 2
+        task._drop_spot_visited = True
+        task._drop_wandered = True
+        task._drop_attempts = 1
 
         result = task.step(world)
 
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("could not clear hands before house entry", result.reason or "")
         self.assertIn("held=0x0F", result.reason or "")
-        self.assertIn("same_held=", result.reason or "")
+        self.assertNotIn("same_held=", result.reason or "")
 
 
 if __name__ == "__main__":

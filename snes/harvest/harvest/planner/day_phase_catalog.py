@@ -149,6 +149,75 @@ BUY_SEEDS_PHASE = PhaseSpec(
 LIVE_SHOP_SEED_TYPES = frozenset({"corn", "tomato"})
 
 
+def pasture_day_phases(ram) -> List[PhaseSpec]:
+    """Establish at least 32 pasture tiles; cut feed before purchases."""
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.core.tile_catalog import MATURE_GRASS_TILES
+    from harvest.tasks.grass_planter import PASTURE_BOUNDS
+    from harvest.tasks.nav import get_tile_at
+    from harvest.planner.day_plan_status import SHOP_CLOSED_WEEKDAYS
+
+    season = int(read_ram_value(ram, "season"))
+    day = int(read_ram_value(ram, "day"))
+    if season not in (1, 2):
+        return []
+    planted = int(read_ram_value(ram, "planted_grass"))
+    if season == 1 and 2 <= day <= 20 and planted < 32:
+        stock = int(read_ram_value(ram, "grass_seeds"))
+        bags = (32 - planted + 8) // 9
+        phases = []
+        if stock < bags:
+            if (int(read_ram_value(ram, "weekday")) in SHOP_CLOSED_WEEKDAYS
+                    or int(read_ram_value(ram, "money")) < (bags - stock) * 500 + 300):
+                # Existing stock can still make progress on closed-shop days.
+                return [PhaseSpec("PLANT_PASTURE", "grass", failure_policy="optional")] if stock else []
+            phases.append(PhaseSpec("BUY_GRASS_SEEDS", "shop_buy",
+                          {"stock_field": "grass_seeds", "target_stock": bags},
+                          failure_policy="optional"))
+        phases.append(PhaseSpec("PLANT_PASTURE", "grass", failure_policy="optional"))
+        return phases
+    x0, y0, x1, y1 = PASTURE_BOUNDS
+    if int(read_ram_value(ram, "stored_grass")) < 48 and any(
+        get_tile_at(ram, x, y) in MATURE_GRASS_TILES
+        for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)
+    ):
+        return [PhaseSpec("CUT_FODDER", "grass", {"cut_only": True}, failure_policy="optional")]
+    return []
+
+
+def summer_animal_species(ram, *, cows: bool = True, chickens: bool = True) -> str | None:
+    """One cow, then one chicken, with pasture, hay and spending reserve."""
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.day_plan_status import SHOP_CLOSED_WEEKDAYS
+    from harvest.planner.tasks.sale_menu import purchase_block_reason, species_spec
+
+    value = lambda key: int(read_ram_value(ram, key))
+    if (value("season") != 1 or value("day") < 14
+            or value("weekday") in SHOP_CLOSED_WEEKDAYS
+            or value("planted_grass") < 32 or value("stored_grass") < 16):
+        return None
+    species = "cow" if cows and value("num_cows") == 0 else (
+        "chicken" if chickens and value("num_cows") > 0 and value("num_chickens") == 0 else None
+    )
+    if species is None or purchase_block_reason(ram, species) is not None:
+        return None
+    return species if value("money") >= int(species_spec(species)["price"]) + 300 else None
+
+
+def animal_purchase_phases(species: str) -> List[PhaseSpec]:
+    return [
+        PhaseSpec("NAV_TO_ANIMAL_SHOP", "multi_nav",
+                  {"route": "farm_to_animal_shop_counter_sale", "timeout": 7000},
+                  failure_policy="optional"),
+        PhaseSpec("BUY_COW_VENDOR", "cow_purchase", {"species": species},
+                  failure_policy="optional"),
+        PhaseSpec("EXIT_ANIMAL_SHOP", "multi_nav",
+                  {"route": "animal_shop_to_town", "timeout": 3000}, failure_policy="optional"),
+        PhaseSpec("RETURN_FARM_AFTER_COW_PURCHASE", "multi_nav",
+                  {"route": "animal_shop_town_to_farm", "timeout": 7000}, failure_policy="optional"),
+    ]
+
+
 def buy_seeds_phase(
     *,
     recording_name: str | None = None,
@@ -398,21 +467,26 @@ COW_PHASES: List[PhaseSpec] = [
     EXIT_BARN_PHASE,
 ]
 
+
+def cow_day_phases(ram) -> List[PhaseSpec]:
+    """Feed and talk even before the brush and milker have been bought."""
+    from harvest.core.ram_catalog import read_ram_u8
+    from harvest.core.carry import carry_pair_items
+
+    carried = carry_pair_items(ram)
+    shelf = read_ram_u8(ram, 0x11F01)
+    brush = int(Tool.BRUSH) in carried or bool(shelf & 0x40)
+    milker = int(Tool.MILKER) in carried or bool(shelf & 0x20)
+    if brush and milker:
+        return list(COW_PHASES)
+    return [EXIT_TO_FARM_PHASE, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE,
+            PhaseSpec("COW_CHORES", "cow_chores",
+                      {"talk": True, "brush": False, "milk": False, "feed": True},
+                      required_maps=(0x27,)), EXIT_BARN_PHASE]
+
 BUY_COW_PHASES: List[PhaseSpec] = [
     EXIT_TO_FARM_PHASE,
-    PhaseSpec("NAV_TO_ANIMAL_SHOP", "multi_nav", {"route": "farm_to_animal_shop_staging", "timeout": 12000}),
-    PhaseSpec(
-        "BUY_COW_VENDOR",
-        "cow_purchase",
-        {"task_name": "buy_cow", "start_frame": 1631, "end_frame": 2328},
-    ),
-    PhaseSpec("EXIT_ANIMAL_SHOP", "multi_nav", {"route": "animal_shop_to_town", "timeout": 3000}),
-    PhaseSpec("RETURN_FARM_AFTER_COW_PURCHASE", "multi_nav", {"route": "town_to_farm", "timeout": 7000}),
-    PhaseSpec(
-        "NAME_COW",
-        "recorded_slice",
-        {"task_name": "buy_cow", "start_frame": 3262, "end_frame": 5001},
-    ),
+    *animal_purchase_phases("cow"),
     ENSURE_ANIMAL_TOOLS_PHASE,
     NAV_TO_BARN_PHASE,
     ENTER_BARN_PHASE,
@@ -533,6 +607,38 @@ PHASE_SEQUENCES: Dict[str, List[PhaseSpec]] = {
     "resume_water": RESUME_WATER_PHASES,
     "harvest": HARVEST_PHASES,
     "buy_cow": BUY_COW_PHASES,
+    "pasture": [
+        EXIT_TO_FARM_PHASE,
+        PhaseSpec("BUY_GRASS_SEEDS", "shop_buy",
+                  {"stock_field": "grass_seeds", "target_stock": 4}),
+        PhaseSpec("PLANT_PASTURE", "grass"),
+    ],
+    "mushroom_gather": [
+        EXIT_TO_FARM_PHASE,
+        PhaseSpec("MUSHROOM_GATHER", "mountain_berry", {"ship": True, "forage": "mushroom"}),
+    ],
+    "buy_cow_counter": [
+        EXIT_TO_FARM_PHASE,
+        PhaseSpec(
+            "NAV_ANIMAL_COUNTER",
+            "multi_nav",
+            {"route": "farm_to_animal_shop_counter_sale", "timeout": 45000},
+        ),
+        PhaseSpec("BUY_COW_AT_COUNTER", "cow_purchase", {"species": "cow", "timeout": 3600}),
+    ],
+    "buy_chicken_counter": [
+        EXIT_TO_FARM_PHASE,
+        PhaseSpec(
+            "NAV_ANIMAL_COUNTER",
+            "multi_nav",
+            {"route": "farm_to_animal_shop_counter_sale", "timeout": 45000},
+        ),
+        PhaseSpec(
+            "BUY_CHICKEN_AT_COUNTER",
+            "cow_purchase",
+            {"species": "chicken", "timeout": 3600},
+        ),
+    ],
     "sell_chicken_test": SELL_CHICKEN_TEST_PHASES,
     "sell_three_chickens_test": SELL_THREE_CHICKENS_TEST_PHASES,
     "sell_three_chickens_batch_test": SELL_THREE_CHICKENS_BATCH_TEST_PHASES,
@@ -575,7 +681,6 @@ OPTIONAL_COW_PURCHASE_PHASES = frozenset({
     "BUY_COW_VENDOR",
     "EXIT_ANIMAL_SHOP",
     "RETURN_FARM_AFTER_COW_PURCHASE",
-    "NAME_COW",
     # The barn tail belongs to the same group: skipping only the purchase
     # would leave these as required phases for a cow that was never bought,
     # and the day would die one phase later instead.

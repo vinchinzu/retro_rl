@@ -47,8 +47,8 @@ from harvest.core.ram_catalog import field_spec
 
 
 class DayPlanSequenceCommonNavTests(unittest.TestCase):
-    def test_navigator_treats_transition_tile_0x76_as_stale_and_repaths(self) -> None:
-        ram = make_navigation_ram()
+    def test_navigator_treats_unloaded_tile_as_stale_and_repaths(self) -> None:
+        ram = make_navigation_ram(blocked_id=0xFF)
         navigator = Navigator(Pathfinder(TileScanner()))
         navigator.update(ram)
         navigator.path = [(14, 8)]
@@ -786,7 +786,7 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertIn((10, 128), path_hops)
 
         town_hops = [wp.target_px for wp in route if wp.tilemap == 0x04]
-        self.assertIn((688, 890), town_hops)
+        self.assertIn((696, 890), town_hops)
         self.assertIn((601, 890), town_hops)
 
 

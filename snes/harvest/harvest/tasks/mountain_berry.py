@@ -271,6 +271,8 @@ class MountainBerryTask(Task):
     pick_attempts: int = 0
     approach_only: bool = True
     segments: Tuple[str, ...] = BERRY_NAV_SEGMENTS
+    stand_px: Tuple[int, int] = GRAPE_STAND_PX
+    expected_items: frozenset[int] = frozenset(MOUNTAIN_FORAGE_ITEMS)
 
     _step_count: int = field(default=0, init=False)
     _held_before: int = field(default=0, init=False)
@@ -284,6 +286,10 @@ class MountainBerryTask(Task):
     _eat_wait: int = field(default=0, init=False)
     _post_pick_wait: int = field(default=0, init=False)
     _path_settle: int = field(default=0, init=False)
+
+    def _at_stand(self, ram, *, radius: int = GRAPE_STAND_RADIUS) -> bool:
+        pos = get_pos_from_ram(ram)
+        return abs(pos.x - self.stand_px[0]) <= radius and abs(pos.y - self.stand_px[1]) <= radius
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
@@ -340,7 +346,7 @@ class MountainBerryTask(Task):
                 hops = segment_waypoints(name)
         # North-edge spawn (y≈10) is still the map transition. Manhattan
         # would skip the south-land hops and send us through Gotz.
-        if name == "mountain_entry_to_first_berry" and int(pos.y) < 80:
+        if name.startswith("mountain_entry_to_first_") and int(pos.y) < 80:
             sliced = hops
         else:
             sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)
@@ -356,7 +362,7 @@ class MountainBerryTask(Task):
     def _arm_next(self, world: WorldState) -> None:
         tilemap = _tilemap(world)
         held = int(read_held_item(world.ram))
-        if is_mountain_forage(held):
+        if held in self.expected_items:
             self._child = None
             self._child_name = "done"
             self._last_reason = held_forage_name(held) or "picked"
@@ -367,7 +373,7 @@ class MountainBerryTask(Task):
             self._child_name = "exit_to_farm"
             self._last_reason = "leaving building"
             return
-        if tilemap == MOUNTAIN_TILEMAP and at_grape_stand(world.ram):
+        if tilemap == MOUNTAIN_TILEMAP and self._at_stand(world.ram):
             self._child = None
             if self.approach_only or self.pick_attempts <= 0:
                 self._child_name = "at_stand"
@@ -418,8 +424,8 @@ class MountainBerryTask(Task):
 
     def _queue_stand_nudge(self, ram) -> None:
         pos = get_pos_from_ram(ram)
-        dx = GRAPE_STAND_PX[0] - int(pos.x)
-        dy = GRAPE_STAND_PX[1] - int(pos.y)
+        dx = self.stand_px[0] - int(pos.x)
+        dy = self.stand_px[1] - int(pos.y)
         if abs(dx) > GRAPE_STAND_NUDGE:
             face = "right" if dx > 0 else "left"
             self._pick_queue.extend(
@@ -446,16 +452,16 @@ class MountainBerryTask(Task):
         self._post_pick_wait = 0
         self._eat_phase = "idle"
         self._eat_wait = 0
-        if not on_grape_pixel(world.ram):
+        if not self._at_stand(world.ram, radius=GRAPE_STAND_NUDGE):
             self._queue_stand_nudge(world.ram)
         # Tape: last step is already Down onto (326,409), idle, then A 14f
         # in place. Extra face-walk steps off the grape. Do not cycle
         # faces — south/east carpenter NPCs talk.
-        face = face_toward_grape(world.ram)
+        face = "down"
         self._pick_queue.extend(
             press_a_sequence(
-                None,
-                face_frames=0,
+                "down" if self.stand_px != GRAPE_STAND_PX else None,
+                face_frames=1 if self.stand_px != GRAPE_STAND_PX else 0,
                 pre_press_settle_frames=10,
                 hold_frames=14,
                 settle_frames=12,
@@ -502,6 +508,19 @@ class MountainBerryTask(Task):
                 action=ActionResult(make_action()),
                 reason=self._last_reason,
             )
+        if int(read_ram_value(world.ram, "dialog_text_id")) in {0x0366, 0x0367}:
+            # Mushroom's first page and choices share text id 0x0366.
+            # $019B bit 0x10 says choices are live; $018F holds the row.
+            # $018A is a text offset here, not the visible choice cursor.
+            pulse = self._eat_wait % 32 < 8
+            choices_live = bool(int(world.ram[0x019B]) & 0x10)
+            choice = int(read_ram_value(world.ram, "dialog_choice_result"))
+            if not choices_live:
+                return TaskResult(status=TaskStatus.RUNNING,
+                                  action=ActionResult(make_action(a=pulse)), reason="advance mushroom page")
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(
+                make_action(a=pulse) if choice == _EAT_CURSOR_DONT else make_action(down=pulse)
+            ), reason="keep mushroom")
         if cursor == _EAT_CURSOR_DONT:
             self._last_reason = "confirm don't-eat"
             hold_a = cycle < 8 or 48 <= cycle < 56
@@ -551,10 +570,10 @@ class MountainBerryTask(Task):
         lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
         box = _box_open(scene, lock)
 
-        if is_mountain_forage(held) and box:
+        if held in self.expected_items and box:
             # Item box after A-pick is Eat / Don't eat — keep the grape.
             return self._handle_eat_box(world, lock=lock)
-        if is_mountain_forage(held) and lock == 1:
+        if held in self.expected_items and lock == 1:
             if self._picks > 0 and self._eat_phase == "idle":
                 self._post_pick_wait += 1
                 if self._post_pick_wait < 40:
@@ -564,7 +583,7 @@ class MountainBerryTask(Task):
                         reason="wait grape item box",
                     )
             return self._success(held)
-        if is_mountain_forage(held):
+        if held in self.expected_items:
             return self._success(held)
 
         if box:
@@ -688,7 +707,7 @@ class MountainBerryTask(Task):
 
         if self.approach_only or self.pick_attempts <= 0:
             pos = get_pos_from_ram(world.ram)
-            if at_grape_stand(world.ram):
+            if self._at_stand(world.ram):
                 return TaskResult(
                     status=TaskStatus.SUCCESS,
                     reason=f"at first grape stand pos=({pos.x},{pos.y}) pick unverified",

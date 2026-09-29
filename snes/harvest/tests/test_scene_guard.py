@@ -4,8 +4,9 @@ import unittest
 
 import numpy as np
 
-from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
-from harvest.core.scene import SceneGuard
+from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec, live_wram_base
+from harvest.core.scene import SceneGuard, unowned_scene_press
+from harvest.planner.tasks.home_recover import DOG_POS_ADDR
 
 
 def _ram(lock=0, text=0x1234, cursor=0):
@@ -63,6 +64,25 @@ class SceneGuardTests(unittest.TestCase):
         out = [guard.observe(ram, i) for i in range(60)]
         self.assertIsNone(out[-1])
         self.assertLessEqual(sum(o is not None for o in out), 11)
+
+    def test_helper_waits_out_the_quiet_window(self) -> None:
+        guard = SceneGuard(quiet_frames=5, bound=50)
+        ram = _ram(lock=0, text=0x0321)
+        out = [unowned_scene_press(ram, guard, i) for i in range(12)]
+        self.assertIsNone(out[0])
+        self.assertIn((("a",), "scene guard"), out)
+
+    def test_shipping_scene_pulses_a_immediately_beside_the_dog(self) -> None:
+        # 5pm box is an A edge. Do not wait quiet_frames, and do not swap that
+        # A for B just because the dog is standing on the farmer.
+        guard = SceneGuard(quiet_frames=10**6)
+        ram = _ram(lock=2, text=0x031A)
+        idx = DOG_POS_ADDR + live_wram_base(ram)
+        ram[idx], ram[idx + 1] = 136, 0
+        ram[idx + 2], ram[idx + 3] = 424 & 0xFF, 424 >> 8
+        self.assertEqual(unowned_scene_press(ram, guard, 0), (("a",), "shipping scene"))
+        self.assertEqual(guard._quiet, 0)
+        self.assertFalse(guard.active)
 
 
 if __name__ == "__main__":

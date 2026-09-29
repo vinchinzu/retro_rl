@@ -382,7 +382,6 @@ class RescueWalkTask(Task):
 # stuck: bed A, lunch and every other interaction are dead for the rest of the
 # day (Fall soak D27, power-on D16).  A second A beside the dog clears it.
 DOG_PICKUP_ANIM_FLAG = 0x0800
-DOG_CARRYING_FLAG = 0x0080
 DOG_POS_ADDR = 0x11F2C  # WRAM $7F1F2C dog_pos_X, then dog_pos_Y
 DOG_A_RADIUS_PX = 24
 _A_INDEX = int(np.argmax(make_action(a=True)))
@@ -394,9 +393,12 @@ def _game_state(ram: np.ndarray) -> int:
 
 
 def dog_pickup_stuck(ram: np.ndarray) -> bool:
-    """0x0800 set while not carrying the dog: an unfinished pickup animation."""
-    gs = _game_state(ram)
-    return bool(gs & DOG_PICKUP_ANIM_FLAG) and not gs & DOG_CARRYING_FLAG
+    """game_state bit 0x0800 is set, whether or not 0x0080 is set.
+
+    A door warp sets 0x0080 for a few frames (0x4C81). That is still the
+    pickup animation, not a finished release.
+    """
+    return bool(_game_state(ram) & DOG_PICKUP_ANIM_FLAG)
 
 
 def dog_position(ram: np.ndarray) -> Optional[Point]:
@@ -459,6 +461,8 @@ class DogReleaseTask(Task):
     """Outdoors, walk to the dog and press A until the stuck 0x0800 clears."""
 
     name = "dog_release"
+    # Planner reads this; it must not special-case the class.
+    allows_dog_a = True
 
     def __init__(self, timeout: int = 4000, max_tries: int = 8) -> None:
         self.timeout = timeout
@@ -487,9 +491,8 @@ class DogReleaseTask(Task):
         from harvest.planner.tasks.navigation import MultiMapNavTask
 
         self._step += 1
-        # Raw 0x0800, not dog_pickup_stuck: the door warp sets 0x0080 for a few
-        # frames (0x4C81) and must not read as "released".
-        if not _game_state(world.ram) & DOG_PICKUP_ANIM_FLAG:
+        # Clear only when 0x0800 itself drops. 0x0080 during a warp is not that.
+        if not dog_pickup_stuck(world.ram):
             return TaskResult(status=TaskStatus.SUCCESS, reason="dog flag clear")
         if self._step > self.timeout or self._tries > self.max_tries:
             return TaskResult(status=TaskStatus.FAILURE, reason="dog flag stuck")

@@ -57,8 +57,8 @@ SEED_CLERK_PX = (182, 342)
 # streams its description, then the buy prompt (cursor 0 = buy). One stand per
 # bag along y=342 (measured Summer D13: corn x=152 and tomato x=168 each took
 # 300 G and added one bag; potato x=182 in spring).
-SEED_STAND_X = {"potato_seeds": 182, "corn_seeds": 152, "tomato_seeds": 168}
-SEED_BAG_PRICE = {"potato_seeds": 200, "corn_seeds": 300, "tomato_seeds": 300}
+SEED_STAND_X = {"potato_seeds": 182, "corn_seeds": 152, "tomato_seeds": 168, "grass_seeds": 216}
+SEED_BAG_PRICE = {"potato_seeds": 200, "corn_seeds": 300, "tomato_seeds": 300, "grass_seeds": 500}
 SEED_STAND_Y = 342
 SEED_CLERK_RADIUS = 10
 SHOP_INTERIOR_SETTLE = 45
@@ -449,8 +449,8 @@ class BuySeedsTask(Task):
         else:
             self._buy_queue.extend(
                 press_a_sequence(
-                    None,
-                    face_frames=0,
+                    "up" if lock == 1 else None,
+                    face_frames=1 if lock == 1 else 0,
                     pre_press_settle_frames=20 if lock == 1 else 8,
                     hold_frames=8,
                     settle_frames=40 if lock != 2 else 28,

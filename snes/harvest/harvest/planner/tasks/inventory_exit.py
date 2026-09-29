@@ -40,6 +40,7 @@ from harvest.core.scene import (
     SceneLocation,
     SceneMode,
     classify_scene_from_ram,
+    name_entry_press,
     scene_indicates_ending,
 )
 from harvest.core.ram_catalog import read_ram_value
@@ -296,6 +297,9 @@ class ExitToFarmTask(Task):
     # dismiss — mashing forever until the outer return_home / planner budget.
     # This limit only resets on reset() or farm SUCCESS, never mid-thrash.
     dismiss_mash_limit: int = 360
+    # Farm visitors own movement before their dialogue opens, and can keep a
+    # multi-page box open longer than the unknown-map thrash limit.
+    farm_control_limit: int = 1800
 
     _task: Optional[Task] = field(default=None, init=False)
     _blocked_reason: str = field(default="", init=False)
@@ -310,6 +314,8 @@ class ExitToFarmTask(Task):
     # door, every day) until its own budgets run out. Idle through it here.
     _warped: bool = field(default=False, init=False)
     _fade_wait: int = field(default=0, init=False)
+    _farm_control_wait: int = field(default=0, init=False)
+    _name_press_step: int = field(default=-(10**9), init=False)
 
     def reset(self, world: WorldState) -> None:
         self._blocked_reason = ""
@@ -318,9 +324,15 @@ class ExitToFarmTask(Task):
         self._dismiss_mash_count = 0
         self._offroute_stuck_frames = 0
         self._fade_wait = 0
+        self._farm_control_wait = 0
+        self._name_press_step = -(10**9)
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         self._warped = not is_farm_tilemap(tilemap)
         if is_farm_tilemap(tilemap):
+            self._task = None
+            return
+        if tilemap == _NAME_TILEMAP:
+            # Not a route. Naming from (0, 0) must not become MultiMapNav.
             self._task = None
             return
         if is_house_tilemap(tilemap):
@@ -472,8 +484,54 @@ class ExitToFarmTask(Task):
             reason=f"farm fade-in {self._fade_wait}/{FARM_FADE_IN_FRAMES}",
         )
 
+    def _name_entry_result(self, world: WorldState) -> Optional[TaskResult]:
+        """Submit the name before unknown-map escape can time out into a rescue."""
+        choice = name_entry_press(
+            world.ram,
+            step=self._step_count,
+            last_press_step=self._name_press_step,
+        )
+        if choice is None:
+            return None
+        buttons, reason, last = choice
+        self._name_press_step = last
+        self._task = None
+        self._blocked_reason = ""
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**{button: True for button in buttons})),
+            reason=reason,
+        )
+
+    def _farm_control_result(self, world: WorldState, scene) -> Optional[TaskResult]:
+        """Finish a farm visitor before giving navigation any frames."""
+        if farm_free_move_ready(world.ram):
+            self._farm_control_wait = 0
+            return None
+        self._farm_control_wait += 1
+        if self._farm_control_wait > self.farm_control_limit:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"farm control timeout after {self._farm_control_wait}f from {scene.summary()}",
+            )
+        if scene.needs_input_dismiss:
+            return dismiss_dialogue_result(
+                self._step_count,
+                buttons=("a", "b"),
+                pulse_every=1,
+                reason="dismiss farm visitor before navigation",
+            )
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason="waiting for farm visitor to return control",
+        )
+
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        named = self._name_entry_result(world)
+        if named is not None:
+            return named
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         scene = classify_scene_from_ram(world.ram)
         if scene_indicates_ending(scene):
@@ -481,6 +539,11 @@ class ExitToFarmTask(Task):
                 status=TaskStatus.BLOCKED,
                 reason=f"cannot exit to farm from {scene.summary()}",
             )
+
+        if is_farm_tilemap(tilemap) and self._farm_control_wait:
+            waiting = self._farm_control_result(world, scene)
+            if waiting is not None:
+                return waiting
 
         # Settled on farm with no active child → done (clears sticky thrash).
         # When a DirectionalTransition child is still settling on farm, defer
@@ -497,6 +560,9 @@ class ExitToFarmTask(Task):
             fade = self._farm_fade_wait()
             if fade is not None:
                 return fade
+            waiting = self._farm_control_result(world, scene)
+            if waiting is not None:
+                return waiting
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilemap=0x{tilemap:02X}")
 
         # Drop stale child routes when the live tilemap left their origin
@@ -559,6 +625,9 @@ class ExitToFarmTask(Task):
                 fade = self._farm_fade_wait()
                 if fade is not None:
                     return fade
+                waiting = self._farm_control_result(world, scene)
+                if waiting is not None:
+                    return waiting
                 return TaskResult(
                     status=TaskStatus.SUCCESS,
                     reason=f"tilemap=0x{tilemap:02X} mid-warp settle y={pos_y}",
@@ -608,6 +677,9 @@ class ExitToFarmTask(Task):
         if self._blocked_reason:
             return TaskResult(status=TaskStatus.BLOCKED, reason=self._blocked_reason)
         if is_farm_tilemap(tilemap) and self._task is None:
+            waiting = self._farm_control_result(world, scene)
+            if waiting is not None:
+                return waiting
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilemap=0x{tilemap:02X}")
         if self._task is None:
             # Rebuild route without wiping sticky counters (manual partial reset).
@@ -633,7 +705,13 @@ class ExitToFarmTask(Task):
                 if timed is not None:
                     return timed
                 return self._unknown_map_escape_result(scene)
-        return self._task.step(world)
+        result = self._task.step(world)
+        if result.status == TaskStatus.SUCCESS and is_farm_tilemap(tilemap):
+            self._task = None
+            waiting = self._farm_control_result(world, scene)
+            if waiting is not None:
+                return waiting
+        return result
 
 
 @dataclass

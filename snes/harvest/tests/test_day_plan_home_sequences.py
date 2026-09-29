@@ -44,6 +44,7 @@ from harvest.core.tile_catalog import (
     ADDR_MAP,
 )
 from harvest.core.ram_catalog import field_spec
+import pytest
 
 
 class DayPlanSequenceHomeTests(unittest.TestCase):
@@ -228,6 +229,7 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
             with self.subTest(tilemap=tilemap):
                 task = ExitToFarmTask()
                 world = make_world(tilemap)
+                world.ram[field_spec("game_state").address + 1] = 0x40
 
                 task.reset(world)
                 result = task.step(world)
@@ -236,6 +238,38 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
                 self.assertIsNone(task._task)
                 self.assertEqual(result.status, TaskStatus.SUCCESS)
                 self.assertEqual(result.reason, f"tilemap=0x{tilemap:02X}")
+
+    def test_exit_to_farm_waits_through_visitor_walk_and_long_dialogue(self) -> None:
+        world = make_world(0x00)
+        set_player_pos(world.ram, 136, 426)
+        world.ram[field_spec("game_state").address] = 1
+        task = ExitToFarmTask()
+        task.reset(world)
+        self.assertEqual(task.step(world).status, TaskStatus.RUNNING)
+        world.ram[ADDR_INPUT_LOCK] = 2
+        text = field_spec("dialog_text_id").address
+        world.ram[text:text + 2] = (0x86, 0x04)
+        for _ in range(400):
+            self.assertEqual(task.step(world).status, TaskStatus.RUNNING)
+        self.assertEqual(task._dismiss_mash_count, 0)
+        world.ram[ADDR_INPUT_LOCK] = 1
+        # A closed box is still not controllable while the visitor leaves.
+        self.assertEqual(task.step(world).status, TaskStatus.RUNNING)
+        world.ram[field_spec("game_state").address + 1] = 0x40
+        self.assertEqual(task.step(world).status, TaskStatus.SUCCESS)
+
+    def test_exit_to_farm_visitor_wait_is_bounded_across_free_input_frames(self) -> None:
+        world = make_world(0x00)
+        set_player_pos(world.ram, 136, 426)
+        world.ram[field_spec("game_state").address] = 1
+        task = ExitToFarmTask(farm_control_limit=3)
+        task.reset(world)
+        for i in range(3):
+            world.ram[ADDR_INPUT_LOCK] = 1 if i % 2 == 0 else 2
+            self.assertEqual(task.step(world).status, TaskStatus.RUNNING)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("farm control timeout after 4f", result.reason)
 
     def test_exit_to_farm_uses_scripted_house_exit(self) -> None:
         task = ExitToFarmTask()
@@ -507,6 +541,7 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertEqual(task.step(intermediate).status, TaskStatus.RUNNING)
         target = make_world(0x00)
         set_player_pos(target.ram, 422, 489)
+        target.ram[field_spec("game_state").address + 1] = 0x40
         for _ in range(4):
             self.assertEqual(task.step(target).status, TaskStatus.RUNNING)
         result = task.step(target)
@@ -529,6 +564,49 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertIsNotNone(result.action)
         self.assertEqual(task._task.stand_tile, (8, 12))
+
+
+@pytest.mark.rom
+def test_farm_visitor_finishes_before_barn_navigation() -> None:
+    """rr-bu62.29: the visitor must not forfeit the morning's barn entry.
+
+    Generate the controller-only predecessor with run_to_day2:
+    --state Y1_Summer_Optimized --days 3 --save-end-state Y1_Visitor_Predecessor.
+    """
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE
+    from harvest.planner.day_phase_cow import NAV_TO_BARN_PHASE, ENTER_BARN_PHASE
+    from harvest.runtime.retro_setup import make_harvest_env, STATES_DIR, find_harvest_rom
+
+    state = "Y1_Visitor_Predecessor"
+    if find_harvest_rom() is None or not (STATES_DIR / f"{state}.state").exists():
+        pytest.skip("needs the Harvest ROM and controller-generated Summer D30 predecessor")
+    env = AuditedEnv(
+        make_harvest_env(state, lean_step=True),
+        capabilities=AuditCapabilities.all("harvest.visitor_barn_regression"),
+    )
+    try:
+        env.reset()
+        world = WorldState(frame=0, ram=env.get_ram(), info={}, obs=None)
+        assert read_ram_value(world.ram, "season") == 1
+        assert read_ram_value(world.ram, "day") == 30
+        # This is the actual Composer handoff, including its child navigation.
+        plan = DayPlanTask(phase_sequence=[EXIT_TO_FARM_PHASE, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE])
+        plan.reset(world)
+        for frame in range(2400):
+            world = WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None)
+            result = plan.step(world)
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action is not None else make_action())
+        assert result.status == TaskStatus.SUCCESS, (frame, result.reason, plan.phase_results)
+        assert read_ram_value(env.get_ram(), "tilemap") == 0x27, plan.phase_results
+        assert all(row["status"] == "success" for row in plan.phase_results), plan.phase_results
+        assert not plan.deferred_plans
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
 
 
 if __name__ == "__main__":
