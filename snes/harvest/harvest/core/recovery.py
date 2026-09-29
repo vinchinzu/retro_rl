@@ -152,9 +152,13 @@ def _enum_text(value: SceneLocation | str) -> str:
 # bank_81 $81D8xx) reaches NightReset, so a farmer that never gets home stays
 # outdoors forever. The floor below is therefore the only thing that ends a
 # bad day; the ROM will not do it for us.
-DAY_WORK_FRAME_BUDGET = 24_000
+# It is a last resort, not a schedule: work after 18:00 costs no game time (the
+# hour is frozen), and CROP/HARVEST phases have their own 24k watchdog. At
+# 24k/3k it cut watering on 8 of 28 spring days ($4,630 vs $5,540, D3 pin);
+# at 48k/15k it never trips there and spring ends at $5,150 (rr-bu62.16).
+DAY_WORK_FRAME_BUDGET = 48_000
 DAY_CLOCK_HOUR = 18
-DAY_CLOCK_GRACE_FRAMES = 3_000
+DAY_CLOCK_GRACE_FRAMES = 15_000
 MAX_RESCUES_PER_DAY = 8
 
 
