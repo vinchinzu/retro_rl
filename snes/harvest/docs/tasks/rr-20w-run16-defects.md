@@ -387,3 +387,35 @@ time - none of this session's fixes are in run16. The three deterministic
   `buy_seeds_probe --bags 2` is green from a ≥400 G pin, treat `max_bags=2`
   as unproven.
 - Zelda lane untouched.
+
+## 2026-09-28/29 full-game push (rr-bu62) — pin results
+
+Six parallel lanes, merged to main by `dda54bbd`. Power-on to the ending is in
+STATUS; everything below started from a pin and stays here.
+
+| run | start pin | result |
+|---|---|---|
+| spring, 24k/3k day floor | `Y1_D3_Morning` | Summer D1, $4,630, floor cut work 8/28 days |
+| spring, 48k/15k floor (now default) | `Y1_D3_Morning` | Summer D1, $5,150, 357,020 f, 352 s (run29: $5,540, 453k f, 1,073 s) |
+| spring, sleep-when-done off | `Y1_D3_Morning` | Summer D1, $4,840, 452,999 f |
+| summer | `Y1_Summer_D1_Pin` | Fall D1, $9,880, 362,335 f (last session: +$840 per summer) |
+| fall to the ending | `LN_integ_fall_d1` | Y3 Summer D30 credits, 1,554,115 f, 1,524 s, $29,650, Clean, 1 rescue |
+
+Logs and JSON: `logs/full_year/integ_long1_fall_to_ending.*`,
+`recordings/full_year/integ_long1_fall_to_ending.json`; the spring and summer
+runs live in the `rr_harvest_integ` worktree (`logs/lanes/integ_*`).
+
+What moved the numbers, each with its own tests and ROM probe:
+- Grown crops are solid to travel BFS (ROM-measured ids). This was the refill
+  corner thrash and the push-facing spam.
+- Fall/Winter plant nothing (no fall seed exists); idle days sleep at once.
+- The planner sleeps when the day's work ends; NightReset pays shipping at any
+  hour. The day floor is a last resort because the hour freezes at 18:00.
+- Forced festivals (Star Night, Y2+ New Year) are escaped by talking to every
+  villager after 18:00; the other festivals pass as ordinary days.
+- The dog pick-up flag (0x0800) left set indoors kills the bed; the rescue
+  releases the dog and A is never pressed beside it.
+
+Regressions caught only by the merged-main spring soak: SceneGuard stole the
+grape task's dialogue frames (fixed: quiet window counts only frames the task
+pressed nothing), and the 24k/3k floor.

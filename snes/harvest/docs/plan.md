@@ -7,24 +7,28 @@ Tracker: `bd ready -l harvest -l spine`. One living residual:
 
 ## Next
 
-1. Gate B. Power-on `--end-of-spring` to Summer D1 with harvest income,
-   Clean, no mid-run load (`rr-5in` / `rr-20w`). A `Y1_D3_Morning` soak is
-   not this item.
-2. Animal-shop nav that changes the wallet and the animal count (`rr-4zvl`).
+The power-on run now reaches the ROM ending (STATUS, 2026-09-29), with an idle
+farm. Epic `rr-bu62`; `bd ready -l harvest`.
+
+1. Power-on farm income (`rr-bu62.22`): power-on D2 stops after
+   `NAV_FARM_EXIT` with no seed buy, clear or plant, and no later day plans
+   crop work. A wild farm needs a path to a plantable pocket on any day.
+   Then Gate B: power-on to Summer D1 with harvest income (`rr-5in`).
+2. Decide the ending contract (manifest `ending_definition` is TBD) before
+   promoting maturity: credits alone, or year 3 credits with a score.
+3. Pre-sleep dog release (`rr-bu62.21`): the stuck 0x0800 flag is only
+   cleared after 12 failed sleeps and a rescue (~40k frames when it happens).
+4. Animal-shop nav that changes the wallet and the animal count (`rr-4zvl`).
    A menu, or a return to the origin map, is not a buy. Do not RAM-poke
    livestock and call it purchased. See
    [livestock_purchase_plan.md](livestock_purchase_plan.md).
-3. A third pocket ring only after hoe, water, and harvest stands are already
-   in the search. Do not record that walk.
-4. The day-level loss still named in the living residual (`rr-w7t9`), then
-   power-on. Do not open a second residual file. Also still open from the
-   deleted `rr-20w.2.15` note, and not re-run here: NW bush clear stalls on
-   the stone at `(5, 5)` (`Skipping lift thrash`) instead of lifting it.
-   Pin was `--section bushes --chunk nw`. Do not soak the whole farm for that.
-5. Festival, Sunday, and rain ordering.
-6. M4 natural-entry summer from a power-on predecessor, then year 1,
-   marriage, year 3 credits with a score, then the published video. Ranch
-   master and 999 are not required.
+5. Marriage, then the published video (M8 records by replaying the tape from
+   power-on). Ranch master and 999 are not required.
+6. Spring economy, still open: a third pocket ring only after hoe, water and
+   harvest stands are already in the search (do not record that walk); NW
+   bush clear stalls on the stone at `(5, 5)` (`Skipping lift thrash`), pin
+   `--section bushes --chunk nw`. The merged-main D3 pin spring ends at
+   $5,150 against run29's $5,540.
 
 ## Stack
 

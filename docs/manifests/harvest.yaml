@@ -15,18 +15,18 @@ transfer_value: high
 ending_definition: published multi-year / marriage / farm objective (contract TBD)
 start_contract: power_on_new_game
 completion_contract: campaign_objective
-best_manifest: snes/harvest/recordings/power_on_spring_to_summer.json
+best_manifest: snes/harvest/recordings/full_year/power_on_to_ending.json
 best_video: null
 assist_contract: null
 status_doc: snes/harvest/docs/STATUS.md
 plan_doc: snes/harvest/docs/plan.md
-last_verified: 2026-08-10
+last_verified: 2026-09-29
 blocker: >
-  Gate B continuous (rr-5in): power-on → Summer D1 + income; tip return_home
-  late-spring timeout (rr-ws8h) + ship-verify residual; crop_planter mono ~4.9k
-  arch tax (rr-ds3)
+  Ending contract TBD (maturity not promoted). Power-on farm plants nothing
+  after Spring Y1 (rr-bu62.22), so Gate B (rr-5in, Summer D1 with harvest
+  income) stays open.
 notes: >
-  Gate A closed (Day09 multi-day money growth). Empty-can natural mostly closed.
-  Power-on→D2 shed Clean (rr-bhr). Power-on continuous PARTIAL: ~21 overnights,
-  money $400, terminal return_home (recordings/power_on_spring_to_summer.json).
+  2026-09-29 rr-bu62: Clean continuous power-on to the ROM ending (Y3 Summer
+  D30 credits), 845,653 frames, 0 loads, 0 RAM writes, money $3,600. Gate A
+  closed (Day09 fixture). Pin chain Y1 Fall D1 to the ending reached $29,650.
   Pioneer planning trunk; gates live in STATUS/plan; tracker is beads.

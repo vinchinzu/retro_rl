@@ -53,9 +53,18 @@ power-on. Nested import: workspace `snes/harvest/`, package `harvest.*`.
 - The clock does not advance indoors. A stuck `[RUN]` time means tilemap `0x15` or `0x26`, not a hang.
 - The ROM never ends a day by clock: hour caps at 18 (bank_82 UpdateTime) and
   only the bed reaches NightReset. `DayFloor` (core/recovery.py) ends bad
-  days: 24k-frame budget or 18:00 + 3k frames -> return_home -> rescue walk
-  -> sleep (bed takes any hour). Fault hook: `HARVEST_FAULT_PHASES=crop:fail,
+  days: 48k-frame budget or 18:00 + 15k frames -> return_home -> rescue walk
+  -> sleep (bed takes any hour). Work after 18:00 costs no game time, so a
+  tighter floor cuts real watering. Fault hook: `HARVEST_FAULT_PHASES=crop:fail,
   harvest:stall,*:stall` (+ `HARVEST_FAULT_RATE/SEED`, `HARVEST_DAY_FRAME_BUDGET`).
+- `game_state` bit 0x0800 (dog pick-up/drop animation) left set indoors
+  kills the bed and every A for the day. Never press A beside the dog; the
+  sleep rescue releases it outdoors.
+- Star Night (Winter D24) and Y2+ New Year (Spring D1) are forced: any house
+  exit lands on the festival map until you talk to every villager after
+  18:00 (`FestivalEscapeTask`). Other festivals pass as ordinary days.
+- Run targets are year-aware: `--until-year N` (1-based), `--until-ending`.
+  `--until-season/--until-day` stop on that day's morning.
 - Do not write a pin or fixture result into `docs/STATUS.md`.
   `Y1_D3_Morning` spring runs stay in the living residual.
 
