@@ -521,6 +521,8 @@ def build_outdoor_day_phases(
     if is_storm:
         return []
     policy = day_planner_policy_for_season(season, policy)
+    if _uses_d2_exhaustive_clear(season, day):
+        has_plant_capacity = True  # D2's tactic clears the pockets it plants
     is_sunday = weekday == SUNDAY_WEEKDAY
     if is_festival is None:
         is_festival = is_festival_day(season, day)

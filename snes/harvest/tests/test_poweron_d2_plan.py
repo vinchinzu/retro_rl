@@ -31,3 +31,18 @@ def test_later_days_still_honor_no_field_clear():
     names = _d2_names(day=5, weekday=5, has_plant_capacity=True)
     assert "D2_FARM_CLEAR" not in names
     assert "CLEAR_FIELD" not in names
+
+
+def test_outdoor_power_on_d2_ignores_debris_capacity_probe():
+    from harvest.planner.day_plan_phases import build_outdoor_day_phases
+
+    names = [
+        p.phase
+        for p in build_outdoor_day_phases(
+            weekday=2, hour=7, has_harvest=False, has_waterable=False,
+            has_seeds=False, has_debris=True, season=0, day=2, money=300,
+            has_plant_capacity=False,
+            policy=DayPlannerPolicy(include_field_clear=False),
+        )
+    ]
+    assert "BUY_SEEDS" in names and "D2_FARM_CLEAR" in names
