@@ -564,6 +564,16 @@ class TestFarmClearerSelection(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.SUCCESS)
         self.assertIn("lift_only", result.reason or "")
 
+    def test_lift_only_remaining_ignores_unarmed_debris(self) -> None:
+        """A rock we cannot break is not "remaining" work (Fall lift_only loop)."""
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _place_large_rock(ram, 20, 20)
+        task = FarmClearTask(fetch_tools=False)
+        task.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        clearer = task.clearer
+        clearer._enable_lift_only_mode([int(Tool.HAMMER), int(Tool.AXE)])
+        self.assertEqual(clearer._remaining_debris(ram), [])
+
     def test_adjacent_opportunity_picks_priority_debris(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10))
         _set_tile(ram, 11, 10, WEED)
@@ -717,9 +727,22 @@ class TestFarmClearTask(unittest.TestCase):
         task.reset(world)
         task.clearer.startup_done = True
         task.clearer.state = "complete"
+        task.clearer.tools_missing = False  # armed: a leftover rock is real work
         result = task.step(world)
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("partial_clear", result.reason or "")
+
+    def test_unarmed_leftover_rock_is_no_work_not_failure(self) -> None:
+        ram = _make_farm_ram(player_tile=(10, 10), tool=0)
+        _place_large_rock(ram, 20, 20)
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task = FarmClearTask(fetch_tools=False)
+        task.reset(world)
+        task.clearer.startup_done = True
+        task.clearer.state = "complete"
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("lift_only", result.reason or "")
 
     def test_type_clear_does_not_succeed_on_plot_ring(self) -> None:
         ram = _make_farm_ram(player_tile=(10, 10), tool=0)

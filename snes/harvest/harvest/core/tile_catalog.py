@@ -157,6 +157,15 @@ TRAVEL_SOLID_TILES = frozenset(
 
 # ── Walkability by map ────────────────────────────────────────────────
 
+# ROM-measured 2026-09-28 (Y1_Fall_D1_Pin farm, each id written under (19,29),
+# UP held 30f from (19,30)): the ids below stop the farmer, the rest of
+# CROP_TILE_RANGE lets him through. Mature corn/tomato/potato/turnip are all
+# solid; only the first growth stages are not.
+CROP_SOLID_TILES = frozenset(
+    set(range(0x22, 0x26)) | set(range(0x2A, 0x3A)) | set(range(0x40, 0x54))
+    | set(range(0x5A, 0x62)) | {0x64, 0x65} | set(range(0x6A, 0x70))
+)
+
 FARM_WALKABLE = frozenset({
     0x00, UNTILLED, DRIED_TILLED, WEED, FRESH_TILLED, WATERED_TILLED,
     PLANTED_GRASS_TILE,
@@ -164,7 +173,7 @@ FARM_WALKABLE = frozenset({
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85,
     0xA0, 0xA1, 0xA2, 0xA3, 0xA8,
     0xC5,
-}) | frozenset(CROP_TILE_RANGE)
+}) | (frozenset(CROP_TILE_RANGE) - CROP_SOLID_TILES)
 
 PATH_WALKABLE = frozenset({
     0xA0, 0xA1, 0xA2, 0xC0,

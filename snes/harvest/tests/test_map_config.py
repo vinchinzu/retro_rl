@@ -59,6 +59,13 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertIn(0x54, FARM_WALKABLE)
         self.assertIn(0x55, FARM_WALKABLE)
 
+    def test_farm_walkable_excludes_solid_crop_stages(self) -> None:
+        """ROM-measured: grown corn 0x4C-0x53 stops the farmer (Push-facing spam)."""
+        for tid in (0x4C, 0x50, 0x52, 0x38, 0x60, 0x6E):
+            self.assertNotIn(tid, FARM_WALKABLE)
+        for tid in (0x1E, 0x3A, 0x54, 0x62):
+            self.assertIn(tid, FARM_WALKABLE)
+
     def test_seasonal_farm_tilemaps_share_farm_metadata(self) -> None:
         for tilemap in (0x00, 0x01, 0x02, 0x03):
             with self.subTest(tilemap=tilemap):
