@@ -49,6 +49,62 @@ Save-state RAM is direct WRAM; live `env.get_ram()` may be offset by `+0x4000`
 Chicken/cow slot tables and feed counts live in `harvest/core/animal_status.py`
 and matching catalog entries (`num_chickens`, `num_cows`, feed flags, incubator).
 
+## Ending sequence (decomp + ROM-probed)
+
+Trigger. The game ends on the morning of **Year 3, Summer D30** (RAM
+`year=2 season=1 day=30`; `$7F1F18/19/1B`). `NightReset` (bank_82 `$8282AC`)
+advances the calendar; on waking with that date the ROM queues the ending event
+(bank_83 `$83DED3`: `year==2 && season==1 && day==0x1E` -> `CODE_83F4D8`, CC event
+`0x2E`, sets FLAG5E bit 2, zeroes the stepper `$7F1F47`, tallies cows/farm
+development). A cutscene at Y3 Summer D29 6:00 (`$83E340`, CC event `0x0A`/5)
+precedes it. Nothing else on the calendar ends the game: Y2 and Y3 play normally.
+
+Debug shortcut. bank_82 `.endgamecheat` (~L787, end of the sleep routine): joypad
+`Joy1_Current & 0x2030 == 0x2030` (Select + L + R) at bedtime sets
+`year=2 season=1 day=30` outright. ROM-probed: holding Select+L+R through the
+normal sleep task jumps a Y1 D2 pin to Y3 S1 D30 and the ending plays.
+
+Sequence (probed frame counts from the moment the bot's sleep task reports
+"morning house ready", pin `LN_ending_Y3S29_eve`; the ROM drives all of it):
+
+| frame | RAM signal | what is on screen |
+|---|---|---|
+| +0 | `year=2 season=1 day=30`, house tilemap 0x15, `ending_scene_index`=0 | wake in house |
+| ~+680 | tilemap 0x3D, then 0x00 farm, `ending_scene_index`=0x14 | farm/dog scene |
+| ~+2400 | tilemaps 0x4B..0x52, index 0x15..0x1B, 0x20 | black/eval fades |
+| ~+5500 | tilemap 0x36 (mountain), index 0x25, `time_running`=1 | sunset -> dusk mountain |
+| ~+6200..+11900 | `dialog_text_id` 1092..1105, 1164, 1108, 1155 (`input_lock` 6 while text prints) | evaluation screens: Money, each girl's love, Happiness rate, ranch rating |
+| ~+11900 | `dialog_text_id` 1147, `input_lock` 1 | final line ("...you still need to be trained more" in the probe; wording is branch dependent) |
+| terminal | index stays 0x25, tilemap 0x36, static screen | night mountain, empty; **never returns to the title** |
+
+Signals (`harvest/planner/tasks/ending.py`, catalog fields in `ram_catalog.py`):
+
+- `ending_scene_index` = `$7F1F47` (RAM `0x11F47`): the ending stepper. 0 in
+  normal play; 0x14..0x25 during the sequence. Dispatch at bank_83 `$83EC11`;
+  `0x20` runs `RanchMasteryCalculator`, `0x25` -> `CODE_83F4D7` (a bare `RTS`) =
+  the terminal state. **Credits finished = index 0x25 + `input_lock==1` + the
+  screen key (index, tilemap, text id, lock) unchanged for 900 frames.**
+- `ending_aux_scene_index` = `$7F1F49`: per-scene sub-step, written 0..0x1D by the
+  event-script block at `$83E76D` (stayed 0 in the probes).
+- The in-game clock is meaningless during the ending (hour cycles 6 / 16-18).
+- **Input is not required.** A run with no buttons after the sleep is frame for
+  frame identical to one pulsing A (both probed to frame 30000). Do not press;
+  just wait ~12k frames after waking on D30. Only the sleep needs the bot.
+
+Bot support: `scene.scene_indicates_ending` (any non-zero stepper),
+`EndingTask` (waits for the terminal static screen),
+`run_to_day2 --until-ending` (hands the run to `EndingTask` once the date is
+Y3 S1 D30 or the planner reports "ending reached"; out JSON `ending` block).
+
+## Year handling
+
+`year` is 0-based (`0x11F18`, `$7F1F18`; Year 1 = 0). `NightReset` increments it
+when Winter D30 rolls to Spring D1. `read_world_date` stays `(season, day)`;
+use `read_world_ymd` / `format_world_date` (`Y2S1D5`, 1-based year) when a
+comparison can cross a year. `run_to_day2 --until-year N` (1-based) plus the
+existing `--until-season/--until-day` name an inclusive morning target; without
+`--until-year` the target is in the start year.
+
 ## Scene modes (derived)
 
 `harvest/core/scene.py` classifies tilemap + locks into NORMAL, DIALOGUE, MENU,

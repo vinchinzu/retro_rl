@@ -33,6 +33,7 @@ from harvest.planner.day_plan_status import (
     is_house_tilemap,
     read_world_date,
     read_world_day_time,
+    read_world_ymd,
 )
 from harvest.planner.day_plan_tasks import (
     FarmShippingWaitTask,
@@ -54,6 +55,9 @@ class MultiDayPlannerTask(Task):
     tasks_dir: str = TASKS_DIR
     until_season: int = 0
     until_day: int = 30
+    # 0-based year of the exclusive (until_season, until_day) bound; 0 keeps
+    # the Year-1 meaning, later years are past every Year-1 target.
+    until_year: int = 0
     target_days: Optional[int] = None
     max_days: int = 40
     morning_settle_frames: int = 10
@@ -164,8 +168,7 @@ class MultiDayPlannerTask(Task):
     def _target_reached(self, ram: np.ndarray) -> bool:
         if self.target_days is not None:
             return self._days_completed >= self.target_days
-        current = read_world_date(ram)
-        return current > (self.until_season, self.until_day)
+        return read_world_ymd(ram) > (self.until_year, self.until_season, self.until_day)
 
     def _build_day_task(self, world: WorldState):
         from harvest.planner.day_phase_types import day_planner_policy_for_season
