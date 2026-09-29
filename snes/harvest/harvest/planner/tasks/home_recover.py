@@ -438,6 +438,17 @@ def strip_dog_hug_press(action, ram: np.ndarray):
         return action
     if not action[_A_INDEX] or not dog_adjacent(ram):
         return action
+    # An open text box (the 17:00 shipping scene) needs its A to close; only
+    # the follow-up A after it closes can hug the dog.  Stripping the closing
+    # press deadlocked the scene for 150k frames (power-on D4).
+    from harvest.core.ram_catalog import read_ram_value
+
+    if int(read_ram_value(ram, "input_lock")) != 1:
+        return action
+    from harvest.core.scene import classify_scene_from_ram
+
+    if classify_scene_from_ram(ram).needs_input_dismiss:
+        return action
     out = np.array(action, copy=True)
     out[_A_INDEX] = 0
     out[_B_INDEX] = 1

@@ -15,7 +15,7 @@ def _ram(gs=0x4401, player=(100, 100), dog=(110, 100), tilemap=0, held=0):
     ram = np.zeros(0x24000, dtype=np.uint8)
     base = live_wram_base(ram)
     ram[0xD2], ram[0xD3] = gs & 0xFF, gs >> 8
-    for name, val in (("tilemap", tilemap), ("player_x", player[0]), ("player_y", player[1])):
+    for name, val in (("input_lock", 1), ("tilemap", tilemap), ("player_x", player[0]), ("player_y", player[1])):
         spec = field_spec(name)
         idx = spec.address + (base if spec.live_offset else 0)
         ram[idx] = val & 0xFF
@@ -44,3 +44,12 @@ def test_a_kept_when_dog_far_or_indoors():
     assert hr.strip_dog_hug_press(make_action(a=True), far)[A]
     indoors = _ram(tilemap=0x15)
     assert hr.strip_dog_hug_press(make_action(a=True), indoors)[A]
+
+
+def test_a_kept_while_text_box_open():
+    ram = _ram()
+    from harvest.core.ram_catalog import field_spec, live_wram_base
+
+    spec = field_spec("input_lock")
+    ram[spec.address + (live_wram_base(ram) if spec.live_offset else 0)] = 2
+    assert hr.strip_dog_hug_press(make_action(a=True), ram)[A]
