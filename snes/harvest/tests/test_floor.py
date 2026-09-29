@@ -239,3 +239,15 @@ class PlannerFloorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SleepWhenDoneTests(unittest.TestCase):
+    def test_sleep_early_and_no_shipping_wait_by_default(self) -> None:
+        p = MultiDayPlannerTask(target_days=1)
+        self.assertEqual(p._build_sleep_task().earliest_sleep_hour, 0)
+        world = make_date_world(0x00, season=0, day=5)
+        self.assertFalse(p._needs_farm_shipping_wait(world))
+
+    def test_opt_out_restores_evening_gate(self) -> None:
+        p = MultiDayPlannerTask(target_days=1, sleep_when_done=False)
+        self.assertEqual(p._build_sleep_task().earliest_sleep_hour, 18)
