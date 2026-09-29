@@ -142,6 +142,13 @@ def _uses_d2_exhaustive_clear(
     return int(year or 0) == 0 and int(season or 0) == 0 and int(day or 0) == 2
 
 
+def _clear_after_shop(
+    policy: DayPlannerPolicy, season: int | None, day: int | None, year: int = 0
+) -> bool:
+    """Post-shop clear: the D2 tactic is required even when daily CLEAR_FIELD is off."""
+    return bool(policy.include_field_clear or _uses_d2_exhaustive_clear(season, day, year))
+
+
 def _daytime_clear_phase(
     season: int | None, day: int | None, year: int = 0
 ) -> PhaseSpec:
@@ -258,7 +265,10 @@ def build_day_phases(
             is_festival = probe.is_festival()
 
     # Fill remaining defaults
-    if has_plant_capacity is None:
+    if has_plant_capacity is None or _uses_d2_exhaustive_clear(season, day, year or 0):
+        # D2's own tactic clears and plants the pockets. A power-on D2 farm is
+        # still all debris, so "no ring has bare capacity" there is not a
+        # reason to skip the seed shop (it left the whole spring grape-only).
         has_plant_capacity = True
     if weekday is None:
         weekday = 1
@@ -401,7 +411,7 @@ def build_day_phases(
         phases.extend(seed_buy_phases)
         # Shop hop used to starve morning CLEAR. After a real buy we are back
         # on the farm with time left — clear before go-home.
-        if seed_buy_phases and has_debris and policy.include_field_clear:
+        if seed_buy_phases and has_debris and _clear_after_shop(policy, season, day, year):
             phases.append(_daytime_clear_phase(season, day, year))
     elif seed_buy_phases:
         # Keep-alive farm: still buy seeds early so plant/water is not starved.
@@ -530,6 +540,8 @@ def build_outdoor_day_phases(
     if is_storm:
         return []
     policy = day_planner_policy_for_season(season, policy, year=year)
+    if _uses_d2_exhaustive_clear(season, day, year):
+        has_plant_capacity = True  # D2's tactic clears the pockets it plants
     is_sunday = weekday == SUNDAY_WEEKDAY
     if is_festival is None:
         is_festival = is_festival_day(season, day, year)
@@ -605,7 +617,7 @@ def build_outdoor_day_phases(
     if berry_before_clear:
         phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
-        if seed_buy_phases and has_debris and policy.include_field_clear:
+        if seed_buy_phases and has_debris and _clear_after_shop(policy, season, day, year):
             phases.append(_daytime_clear_phase(season, day, year))
     elif seed_buy_phases:
         if restock_berries_first:

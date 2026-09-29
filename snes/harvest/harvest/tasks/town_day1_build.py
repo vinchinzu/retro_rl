@@ -440,10 +440,16 @@ def build_day1_handoff_tasks(
                                     min_x=400,
                                     timeout=280,
                                 ),
-                                _HoldButtonsTask(
+                                # The pad is dead ~80-100f after the door
+                                # warp; a fixed 28f hold is dropped and the
+                                # nina nav then pixel-stalls on the doorstep
+                                # (power-on 2026-09-28).  Hold until moved.
+                                WalkUntilCoordTask(
                                     name="livestock_off_door",
-                                    buttons=("right", "b"),
-                                    frames=28,
+                                    direction="right",
+                                    tilemap=TOWN_TILEMAP,
+                                    min_x=620,
+                                    timeout=400,
                                 ),
                             ),
                         ),
