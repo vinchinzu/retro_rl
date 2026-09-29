@@ -73,6 +73,7 @@ ADDR_DAY = field_spec("day").address
 ADDR_HOUR = field_spec("hour").address
 ADDR_MINUTE = field_spec("minute").address
 ADDR_SEASON = field_spec("season").address
+ADDR_YEAR = field_spec("year").address
 ADDR_WEATHER = field_spec("weather").address
 ADDR_WEATHER_FLAGS = 0x0196
 ADDR_TOOL_SELECTED = field_spec("tool_selected").address
@@ -149,6 +150,22 @@ def read_world_date(ram: np.ndarray) -> Tuple[int, int]:
         read_ram_u8(ram, ADDR_SEASON),
         read_ram_u8(ram, ADDR_DAY),
     )
+
+
+def read_world_year(ram: np.ndarray) -> int:
+    """Read the 0-based game year (0 = Year 1) from live or save-state WRAM."""
+    return read_ram_u8(ram, ADDR_YEAR)
+
+
+def read_world_ymd(ram: np.ndarray) -> Tuple[int, int, int]:
+    """Read (year0, season, day); orders correctly across year rollovers."""
+    return (read_world_year(ram), *read_world_date(ram))
+
+
+def format_world_date(ram: np.ndarray) -> str:
+    """Compact date for logs, e.g. ``Y2S1D5`` (displayed 1-based year, season index)."""
+    year, season, day = read_world_ymd(ram)
+    return f"Y{year + 1}S{season}D{day}"
 
 
 def read_world_weekday(ram: np.ndarray) -> int:
@@ -368,6 +385,10 @@ __all__ = [
     "ADDR_HOUR",
     "ADDR_MINUTE",
     "ADDR_SEASON",
+    "ADDR_YEAR",
+    "read_world_year",
+    "read_world_ymd",
+    "format_world_date",
     "ADDR_WEATHER",
     "ADDR_WEATHER_FLAGS",
     "HURRICANE_FLAG_MASK",

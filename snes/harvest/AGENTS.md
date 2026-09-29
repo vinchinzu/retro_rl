@@ -51,6 +51,11 @@ power-on. Nested import: workspace `snes/harvest/`, package `harvest.*`.
 - Do not start D2 from `Y1_D2_Morning_After_D1`. Grape return-to-bin
   seals at the house fence (rr-oqri).
 - The clock does not advance indoors. A stuck `[RUN]` time means tilemap `0x15` or `0x26`, not a hang.
+- The ROM never ends a day by clock: hour caps at 18 (bank_82 UpdateTime) and
+  only the bed reaches NightReset. `DayFloor` (core/recovery.py) ends bad
+  days: 24k-frame budget or 18:00 + 3k frames -> return_home -> rescue walk
+  -> sleep (bed takes any hour). Fault hook: `HARVEST_FAULT_PHASES=crop:fail,
+  harvest:stall,*:stall` (+ `HARVEST_FAULT_RATE/SEED`, `HARVEST_DAY_FRAME_BUDGET`).
 - Do not write a pin or fixture result into `docs/STATUS.md`.
   `Y1_D3_Morning` spring runs stay in the living residual.
 

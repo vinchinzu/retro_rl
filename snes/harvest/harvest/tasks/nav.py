@@ -35,6 +35,7 @@ from harvest.tasks.travel_walk import (
     MAX_IGNORED_HOLD_FRAMES,
     is_travel_occupied,
     is_travel_occupied_with,
+    travel_occupied_grid,
     player_is_busy,
     read_player_action,
     read_player_direction,
@@ -212,15 +213,32 @@ class Pathfinder:
             addr = base + ty * MAP_WIDTH + tx
             return int(ram[addr]) if addr < size else 0
 
+        # One vectorised pass over the whole grid replaces the per-cell
+        # is_travel_occupied_with (6 tile reads + footprint tuples per call).
+        count = MAP_WIDTH * MAP_HEIGHT
+        flat = np.zeros(count, dtype=np.uint8)
+        avail = max(0, min(count, size - base))
+        if avail:
+            flat[:avail] = ram[base:base + avail]
+        grid = flat.reshape(MAP_HEIGHT, MAP_WIDTH)
+        occupied = travel_occupied_grid(grid).ravel().tolist()
+        tile_ok = np.isin(flat, tuple(walkable_tiles)).tolist()
+
         def walkable(tx: int, ty: int) -> bool:
             if current_pos and (tx, ty) == current_pos:
                 return True
             if (tx, ty) in no_go or (tx, ty) in base_no_go or (tx, ty) in temp_blocked:
                 return False
-            tile_id = tile_at(tx, ty)
-            if is_travel_occupied_with(tile_at, tx, ty):
-                return False
-            if tile_id in walkable_tiles:
+            if 0 <= tx < MAP_WIDTH and 0 <= ty < MAP_HEIGHT:
+                idx = ty * MAP_WIDTH + tx
+                if occupied[idx]:
+                    return False
+                tile_walkable = tile_ok[idx]
+            else:
+                if is_travel_occupied_with(tile_at, tx, ty):
+                    return False
+                tile_walkable = tile_at(tx, ty) in walkable_tiles
+            if tile_walkable:
                 return True
             if (tx, ty) in walkable_coords:
                 return True
@@ -302,6 +320,51 @@ class Pathfinder:
         path.reverse()
         if max_steps is not None and len(path) > max_steps:
             return path[:max_steps]
+        return path
+
+    def bfs_tree(
+        self,
+        ram: np.ndarray,
+        start: Tuple[int, int],
+    ) -> Dict[Tuple[int, int], Optional[Tuple[int, int]]]:
+        """Full BFS parent map from ``start`` (no goal, no override).
+
+        Parent pointers match ``find_path``'s: it stops once the goal is popped,
+        and a node's parent is fixed when first discovered, so the path to any
+        reachable goal is identical.  One tree replaces N failing ``find_path``
+        calls that each flood the whole reachable area.
+        """
+        walkable = self._walk_test(ram, None, start)
+        queue = deque([start])
+        came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
+        while queue:
+            cx, cy = queue.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = cx + dx, cy + dy
+                if (
+                    0 <= nx < MAP_WIDTH
+                    and 0 <= ny < MAP_WIDTH
+                    and (nx, ny) not in came_from
+                    and walkable(nx, ny)
+                ):
+                    came_from[(nx, ny)] = (cx, cy)
+                    queue.append((nx, ny))
+        return came_from
+
+    @staticmethod
+    def path_from_tree(
+        came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]],
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+    ) -> Optional[List[Tuple[int, int]]]:
+        if goal not in came_from:
+            return None
+        path: List[Tuple[int, int]] = []
+        cur = goal
+        while cur != start:
+            path.append(cur)
+            cur = came_from[cur]  # type: ignore[assignment]
+        path.reverse()
         return path
 
     def find_hop_toward(

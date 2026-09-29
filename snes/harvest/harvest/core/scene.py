@@ -403,8 +403,83 @@ def morning_scene_ready(scene: Scene, hour: int) -> bool:
     )
 
 
+class SceneGuard:
+    """Advance a dialogue/menu/event that no active task is handling.
+
+    A scene is "unowned" when it is dismissible (dialogue, menu, input lock,
+    cutscene) and its whole signature (text id/mode, cursor, tilemap, pose,
+    lock) has not changed for ``quiet_frames``: whatever task is running is
+    either not looking at it or pressing buttons that do nothing. The guard
+    then answers with pulsed A (B first for a menu), for at most ``bound``
+    frames, and records what appeared so the run teaches us the scene id.
+    """
+
+    def __init__(self, quiet_frames: int = 150, bound: int = 480) -> None:
+        self.quiet_frames = quiet_frames
+        self.bound = bound
+        self.log: list[dict[str, object]] = []
+        self._sig: tuple | None = None
+        self._quiet = 0
+        self._active = 0
+        self._gave_up = False
+
+    @property
+    def active(self) -> bool:
+        return self._active > 0
+
+    def observe(self, ram: np.ndarray, step: int = 0) -> tuple[str, ...] | None:
+        """Buttons to pulse this frame, or None when the scene is not ours."""
+        scene = classify_scene_from_ram(ram)
+        if not scene.needs_input_dismiss or scene_indicates_ending(scene):
+            self._sig, self._quiet, self._active, self._gave_up = None, 0, 0, False
+            return None
+        sig = (
+            scene.mode,
+            scene.dialog_text_id,
+            scene.dialog_text_mode,
+            scene.dialog_menu_cursor,
+            scene.tilemap,
+            scene.player_x,
+            scene.player_y,
+            scene.input_lock,
+        )
+        if sig != self._sig and not self._active:
+            self._sig, self._quiet, self._gave_up = sig, 0, False
+            return None
+        if self._gave_up:
+            return None
+        self._quiet += 1
+        if not self._active and self._quiet < self.quiet_frames:
+            return None
+        self._active += 1
+        if self._active == 1:
+            row = {
+                "step": int(step),
+                "mode": scene.mode.value,
+                "text_id": scene.dialog_text_id,
+                "text_id_hex": f"0x{scene.dialog_text_id:04X}",
+                "text_mode": scene.dialog_text_mode,
+                "cursor": scene.dialog_menu_cursor,
+                "tilemap": scene.tilemap,
+                "location": scene.location.value,
+                "input_lock": scene.input_lock,
+            }
+            if len(self.log) < 200:
+                self.log.append(row)
+            print(f"[SCENE_GUARD] unowned {scene.summary()} {scene.reason}".rstrip())
+        if self._active > self.bound:
+            self._gave_up = True
+            self._active = 0
+            print("[SCENE_GUARD] gave up; scene did not clear")
+            return None
+        if scene.mode == SceneMode.MENU and self._active <= self.bound // 3:
+            return ("b",)
+        return ("a",) if self._active % 6 else ("b",)
+
+
 __all__ = [
     "Scene",
+    "SceneGuard",
     "SceneLocation",
     "SceneMode",
     "classify_scene",

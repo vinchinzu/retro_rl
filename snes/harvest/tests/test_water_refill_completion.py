@@ -142,6 +142,19 @@ class CropCompletionTests(unittest.TestCase):
         else:
             self.assertEqual(result.status, TaskStatus.FAILURE)
 
+    def test_crop_task_reports_no_work_in_fall_and_winter(self) -> None:
+        """No fall seed exists and Fall/Winter never grow a crop (ROM nightly check)."""
+        from day_plan_test_helpers import make_date_world
+
+        for season in (2, 3):
+            world = make_date_world(0x00, season=season, day=3)
+            _set_tile(world.ram, 12, 25, 0x4C)  # dry, unripe corn
+            task = CropWaterTask(work_mode="full", bounds=(3, 14, 30, 40))
+            task.reset(world)
+            result = task.step(world)
+            self.assertEqual(result.status, TaskStatus.SUCCESS)
+            self.assertTrue(is_no_work_reason(result.reason), result.reason)
+
 
 if __name__ == "__main__":
     unittest.main()
