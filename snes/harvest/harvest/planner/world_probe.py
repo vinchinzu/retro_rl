@@ -102,6 +102,13 @@ class WorldProbe:
             return 0, 1
         return read_world_date(ram)
 
+    def year(self) -> int:
+        """ROM year byte (0 = Year 1) from live/save RAM."""
+        from harvest.core.ram_catalog import read_ram_value
+
+        ram = self._require_ram()
+        return 0 if ram is None else int(read_ram_value(ram, "year", raw=True))
+
     def weekday(self) -> Optional[int]:
         ram = self._require_ram()
         if ram is None:
@@ -158,13 +165,13 @@ class WorldProbe:
         from harvest.planner.day_phase_calendar import is_festival_day
 
         season, day = self.calendar_date()
-        return is_festival_day(season, day)
+        return is_festival_day(season, day, self.year())
 
     def festival_name(self) -> Optional[str]:
         from harvest.planner.day_phase_calendar import festival_name_for_date
 
         season, day = self.calendar_date()
-        return festival_name_for_date(season, day)
+        return festival_name_for_date(season, day, self.year())
 
     def has_any_crop_seeds(self) -> bool:
         ram = self._require_ram()

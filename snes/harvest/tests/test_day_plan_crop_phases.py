@@ -638,10 +638,11 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
             self.assertNotIn("BUY_SEEDS", names, f"D{day}")
             self.assertNotIn("NAV_FARM_EXIT", names, f"D{day}")
 
-    def test_spring_festival_days_schedule_festival_instead_of_shop(self) -> None:
-        for day in (8, 23):
+    def test_spring_festival_day_closes_the_shop_and_does_not_attend(self) -> None:
+        """ROM: Spring D23 is the only Spring festival (D8 is an ordinary day)."""
+        for day, festival in ((8, False), (23, True)):
             weekday = (1 + day - 1) % 7
-            phases = build_outdoor_day_phases(
+            kwargs = dict(
                 weekday=weekday,
                 hour=6,
                 has_harvest=False,
@@ -652,9 +653,16 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
                 day=day,
                 money=250,
             )
-            names = self._phase_names(phases)
-            self.assertIn("ATTEND_FESTIVAL", names, f"D{day}")
-            self.assertNotIn("BUY_SEEDS", names, f"D{day}")
+            names = self._phase_names(build_outdoor_day_phases(**kwargs))
+            self.assertNotIn("ATTEND_FESTIVAL", names, f"D{day}")
+            attend = self._phase_names(
+                build_outdoor_day_phases(
+                    **kwargs, policy=DayPlannerPolicy(attend_festivals=True)
+                )
+            )
+            self.assertEqual("ATTEND_FESTIVAL" in attend, festival, f"D{day}")
+            if festival:
+                self.assertNotIn("BUY_SEEDS", names)
 
     def test_harvest_morning_does_not_force_two_grapes_ahead_of_ripe_tiles(self) -> None:
         phases = build_outdoor_day_phases(

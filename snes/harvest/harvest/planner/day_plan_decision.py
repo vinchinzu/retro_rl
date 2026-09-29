@@ -362,7 +362,7 @@ def _planning_facts_from_probe(
 
     clock = probe.clock()
     season, _calendar_day = probe.calendar_date()
-    policy = day_planner_policy_for_season(season, policy)
+    policy = day_planner_policy_for_season(season, policy, year=probe.year())
     _w = probe.weekday()
     weekday = 1 if _w is None else _w
     tilemap = probe.tilemap()

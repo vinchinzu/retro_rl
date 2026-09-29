@@ -349,7 +349,13 @@ class DayPlannerPolicy:
     chicken_sale_cutoff_hour: int = 10
     # Festival and Sunday event planning
     include_festivals: bool = True
-    include_sunday_church: bool = True
+    # The only festival macro is a whole-day Spring recording from the house; it
+    # replays blind inputs from anywhere else (Fall D12 burned 20k frames doing
+    # nothing). Festival days close the shops but the bot does not attend.
+    attend_festivals: bool = False
+    # The church macro replays a Spring farm recording blind; in Winter it walked
+    # into the path horse event and stranded the run. Nothing needs it.
+    include_sunday_church: bool = False
     include_sunday_mountain: bool = False
     # Seasonal default crop preferences
     summer_crop: str = "corn"
@@ -366,9 +372,16 @@ class DayPlannerPolicy:
 def day_planner_policy_for_season(
     season: int | str,
     base: DayPlannerPolicy | None = None,
+    *,
+    year: int = 0,
 ) -> DayPlannerPolicy:
-    """Adjust a day-plan policy for spring/summer/fall planting vs winter."""
+    """Adjust a day-plan policy for the calendar: planting vs off-season.
+
+    ``year`` is the ROM year byte (0 = Year 1).
+    """
     from harvest.planner.crop_planner import (
+        SEASON_FALL,
+        SEASON_WINTER,
         is_crop_planting_season,
         normalize_season,
         seed_purchase_recording_for_season,
@@ -380,6 +393,12 @@ def day_planner_policy_for_season(
     recording = policy.seed_purchase_recording
     if recording is None and planting:
         recording = seed_purchase_recording_for_season(season_id)
+    # Fall and Winter: the ROM has no fall seed, growing crops that are
+    # watered in Fall die (NightlyFarmTilesCheck DECs odd growing ids) and
+    # freeze in Winter, and CLEAR_FIELD's lift_only failure repeats daily. The
+    # day's only job is to reach the evening bed, so no water/clear work.
+    off_season = season_id in (SEASON_FALL, SEASON_WINTER)
+    winter = season_id == SEASON_WINTER
     return DayPlannerPolicy(
         berry_cutoff_hour=policy.berry_cutoff_hour,
         berry_exit_cutoff_hour=policy.berry_exit_cutoff_hour,
@@ -390,20 +409,26 @@ def day_planner_policy_for_season(
         include_chickens=policy.include_chickens,
         include_cows=policy.include_cows,
         include_harvest=policy.include_harvest,
-        include_field_clear=policy.include_field_clear,
-        include_watering=policy.include_watering,
+        include_field_clear=policy.include_field_clear and not off_season,
+        include_watering=policy.include_watering and not off_season,
         include_planting=planting and policy.include_planting,
-        # The grape route is only proven in spring; in Summer the picks come
-        # back "unverified after 3 picks" and strand the farmer on the mountain
-        # map (run summer5 D16).
-        include_berry_run=policy.include_berry_run and season_id == 0,
-        include_shop_run=policy.include_shop_run,
+        # The grape route is only proven in Year-1 spring: in Summer the picks
+        # come back "unverified after 3 picks" and strand the farmer on the
+        # mountain map (run summer5 D16), and from Year 2 the wallet no longer
+        # needs the grape money.
+        include_berry_run=(
+            policy.include_berry_run and season_id == 0 and int(year) == 0
+        ),
+        # The winter path/town maps fire a one-off horse event whose name-entry
+        # screen strands the bot (Winter D1, measured); nothing there is needed.
+        include_shop_run=policy.include_shop_run and not winter,
         include_end_day=policy.include_end_day,
-        include_spa=policy.include_spa,
-        include_chicken_sales=policy.include_chicken_sales,
+        include_spa=policy.include_spa and not winter,
+        include_chicken_sales=policy.include_chicken_sales and not winter,
         max_adult_chickens=policy.max_adult_chickens,
         chicken_sale_cutoff_hour=policy.chicken_sale_cutoff_hour,
         include_festivals=policy.include_festivals,
+        attend_festivals=policy.attend_festivals,
         include_sunday_church=policy.include_sunday_church,
         include_sunday_mountain=policy.include_sunday_mountain,
         summer_crop=policy.summer_crop,

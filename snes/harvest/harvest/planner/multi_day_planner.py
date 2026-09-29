@@ -81,6 +81,7 @@ class MultiDayPlannerTask(Task):
     # The cow-purchase route is unproven on the ROM. Once the planner is rich
     # it re-plans it every morning; each failed try costs frames and buys
     # nothing. Count runtime failures per season and stop after a few.
+    _festival_escape: Optional[Task] = field(default=None, init=False)
     _cow_route_failures: int = field(default=0, init=False)
     _cow_failure_season: int = field(default=-1, init=False)
     # A stranded return_home is the dominant terminal killer of long runs. Give
@@ -186,9 +187,13 @@ class MultiDayPlannerTask(Task):
         from harvest.planner.day_plan_status import resolve_seed_type_from_ram
 
         season, day = read_world_date(world.ram)
+        from harvest.planner.world_probe import WorldProbe
+
+        year = WorldProbe.from_inputs(ram=world.ram).year()
         day_policy = day_planner_policy_for_season(
             season,
             replace(self.policy, include_end_day=False),
+            year=year,
         )
         if (
             self._cow_failure_season == int(season)
@@ -278,11 +283,52 @@ class MultiDayPlannerTask(Task):
         # waiting for the 18:00 bed gate never ends. The bed accepts sleep at
         # any hour (measured Summer D12: day 12 -> 13 at 06:00).
         storm = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
-        # A day the floor cut short sleeps at once: the bed takes any hour and
-        # idling to 18:00 outdoors is exactly the exposure the floor removes.
-        if storm or self._floor_abandoned or self.sleep_when_done:
+        # A day the floor cut short, a finished day (sleep_when_done) or an
+        # off-season idle day sleeps at once: the bed takes any hour and idling
+        # to 18:00 outdoors is pure exposure.
+        if storm or self._floor_abandoned or self.sleep_when_done or self._day_was_idle():
             return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
+
+    def _step_festival_escape(self, world: WorldState) -> TaskResult | None:
+        """Drive off a festival map the ROM dropped the farmer on (Star Night)."""
+        from harvest.planner.tasks.festival_escape import (
+            FESTIVAL_MAPS,
+            FestivalEscapeTask,
+        )
+
+        tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if tilemap not in FESTIVAL_MAPS:
+            self._festival_escape = None
+            return None
+        if self._festival_escape is None:
+            self._festival_escape = FestivalEscapeTask(seed=int(self._active_day[1]))
+            self._festival_escape.reset(world)
+            print(f"[MULTI_DAY] Festival map 0x{tilemap:02X}: roaming until the ROM sends us home")
+        result = self._festival_escape.step(world)
+        if result.status == TaskStatus.FAILURE:
+            return None
+        return result
+
+    def _day_was_idle(self) -> bool:
+        """Off-season day with no real work: bed at once instead of at 18:00.
+
+        The bed takes A at 06:00 outside storms (measured: Winter D1, Spring
+        D3, Summer D13 all advance in 650-1700 frames); the 18:00 wait only
+        exists so the 5pm ShippingScene can pay goods already in the bin.
+        """
+        decision = self._last_day_decision
+        if decision is None or decision.facts.is_storm:
+            return False
+        from harvest.planner.day_phase_calendar import SEASON_FALL, SEASON_WINTER
+
+        season, _day = self._active_day
+        if int(season) not in (SEASON_FALL, SEASON_WINTER):
+            return False
+        return not any(
+            r.get("status") == "success" and r.get("phase") not in _MOVEMENT_PHASES
+            for r in self._last_day_phase_results
+        )
 
     def _continue_d2_clear(self, world: WorldState) -> TaskResult | None:
         """Keep --stop-after-d2-clear from idling after an unfinished day plan."""
@@ -857,6 +903,9 @@ class MultiDayPlannerTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        escape = self._step_festival_escape(world)
+        if escape is not None:
+            return escape
         if self._phase == "settle_morning":
             return self._step_settle_morning(world)
         if self._phase != "sleep":
@@ -890,6 +939,10 @@ COW_ROUTE_MAX_FAILURES = 1
 # it, every season. Flip on once the animal-shop route is ROM-proven.
 COW_PURCHASE_ENABLED = False
 _COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
+# Phases that only move or equip the farmer; a day of just these did no work.
+_MOVEMENT_PHASES = frozenset(
+    {"EXIT_TO_FARM", "EXIT_HOUSE", "ENSURE_WATERING_CAN", "NAV_CROP", "DYNAMIC_OUTDOOR_PLAN"}
+)
 
 
 def _merge_deferred_rows(
