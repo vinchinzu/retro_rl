@@ -456,12 +456,14 @@ class DogReleaseTask(Task):
         self._tries = 0
         self._child: Optional[Task] = None
         self._queue: List[np.ndarray] = []
+        self._off_farm = 0
 
     def reset(self, world: WorldState) -> None:
         self._step = 0
         self._tries = 0
         self._child = None
         self._queue = []
+        self._off_farm = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -474,7 +476,9 @@ class DogReleaseTask(Task):
         from harvest.planner.tasks.navigation import MultiMapNavTask
 
         self._step += 1
-        if not dog_pickup_stuck(world.ram):
+        # Raw 0x0800, not dog_pickup_stuck: the door warp sets 0x0080 for a few
+        # frames (0x4C81) and must not read as "released".
+        if not _game_state(world.ram) & DOG_PICKUP_ANIM_FLAG:
             return TaskResult(status=TaskStatus.SUCCESS, reason="dog flag clear")
         if self._step > self.timeout or self._tries > self.max_tries:
             return TaskResult(status=TaskStatus.FAILURE, reason="dog flag stuck")
@@ -485,7 +489,15 @@ class DogReleaseTask(Task):
         tilemap = int(read_ram_value(world.ram, "tilemap"))
         if not is_farm_tilemap(tilemap):
             if not is_house_tilemap(tilemap):
-                return TaskResult(status=TaskStatus.FAILURE, reason="dog release: off farm")
+                # Warp frames read as another tilemap; wait them out.
+                self._off_farm += 1
+                if self._off_farm > 600:
+                    return TaskResult(status=TaskStatus.FAILURE, reason="dog release: off farm")
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="dog release: waiting out a warp",
+                )
             if not isinstance(self._child, ExitToFarmTask):
                 self._child = ExitToFarmTask()
                 self._child.reset(world)

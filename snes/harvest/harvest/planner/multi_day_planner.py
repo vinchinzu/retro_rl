@@ -930,8 +930,14 @@ class MultiDayPlannerTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         result = self._step_inner(world)
         if result.action is not None:
-            from harvest.planner.tasks.home_recover import strip_dog_hug_press
+            from harvest.planner.tasks.home_recover import (
+                DogReleaseTask,
+                strip_dog_hug_press,
+            )
 
+            # The release task's own A beside the dog is the point.
+            if isinstance(self._current_task, DogReleaseTask):
+                return result
             fixed = strip_dog_hug_press(result.action.action, world.ram)
             if fixed is not result.action.action:
                 result = replace(result, action=ActionResult(fixed))
