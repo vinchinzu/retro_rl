@@ -398,6 +398,7 @@ STATUS; everything below started from a pin and stays here.
 | spring, 24k/3k day floor | `Y1_D3_Morning` | Summer D1, $4,630, floor cut work 8/28 days |
 | spring, 48k/15k floor (now default) | `Y1_D3_Morning` | Summer D1, $5,150, 357,020 f, 352 s (run29: $5,540, 453k f, 1,073 s) |
 | spring, sleep-when-done off | `Y1_D3_Morning` | Summer D1, $4,840, 452,999 f |
+| spring, main `43859bcf` (dog guard keeps the text-box A) | `Y1_D3_Morning` | Summer D1, **$5,540**, 310,183 f, 311 s (= run29 money, 3.5x faster) |
 | summer | `Y1_Summer_D1_Pin` | Fall D1, $9,880, 362,335 f (last session: +$840 per summer) |
 | fall to the ending | `LN_integ_fall_d1` | Y3 Summer D30 credits, 1,554,115 f, 1,524 s, $29,650, Clean, 1 rescue |
 

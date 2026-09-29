@@ -29,7 +29,8 @@ That shell is not Gate B.
   guard actions. Passes the forced Star Night (Y1, Y2) and New Year (Y2, Y3)
   festivals. The farm only runs grape trips in Spring Y1 and plants nothing
   after, so money ends at $3,600 (rr-bu62.22).
-  `recordings/full_year/power_on_to_ending.json`.
+  `recordings/full_year/power_on_to_ending.json`. Re-run on `43859bcf`: the
+  same 845,653 frames and ending.
 - Integration `HarvestMoon-Snes`. ROM `roms/Harvest Moon.sfc` through
   `retro_setup` (SHA1 gate).
 - Clean power-on bootstrap (2026-08-01): title, new diary, name `AAAA`,
