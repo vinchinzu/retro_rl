@@ -99,6 +99,7 @@ class MultiDayPlannerTask(Task):
     )
     floor: DayFloor = field(default_factory=DayFloor.from_env)
     scene_guard: SceneGuard = field(default_factory=SceneGuard)
+    _child_pressed: bool = field(default=False, init=False)
     _day_bad: bool = field(default=False, init=False)
     _floor_abandoned: bool = field(default=False, init=False)
     _floor_reason: str = field(default="", init=False)
@@ -698,6 +699,12 @@ class MultiDayPlannerTask(Task):
         return self._safe_step(world)
 
     def _safe_step(self, world: WorldState) -> TaskResult:
+        result = self._safe_step_inner(world)
+        action = getattr(getattr(result, "action", None), "action", None)
+        self._child_pressed = action is not None and bool(np.any(np.asarray(action)))
+        return result
+
+    def _safe_step_inner(self, world: WorldState) -> TaskResult:
         try:
             return self._current_task.step(world)
         except Exception as exc:  # a task bug is a failed phase, not a dead run
@@ -857,7 +864,9 @@ class MultiDayPlannerTask(Task):
                 return dismiss_dialogue_result(
                     self._step_count, buttons=("a",), pulse_every=2, reason="shipping scene"
                 )
-            held = self.scene_guard.observe(world.ram, self._step_count)
+            held = self.scene_guard.observe(
+                world.ram, self._step_count, child_pressed=self._child_pressed
+            )
             if held:
                 return dismiss_dialogue_result(
                     self._step_count, buttons=held, pulse_every=2, reason="scene guard"

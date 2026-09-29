@@ -39,6 +39,18 @@ class SceneGuardTests(unittest.TestCase):
         for i in range(30):
             self.assertIsNone(guard.observe(_ram(lock=0, text=100 + i), i))
 
+    def test_pressing_child_owns_the_scene(self) -> None:
+        guard = SceneGuard(quiet_frames=5, bound=50)
+        ram = _ram(lock=0, text=0x0368)
+        out = [guard.observe(ram, i, child_pressed=True) for i in range(200)]
+        self.assertTrue(all(o is None for o in out))
+
+    def test_plain_dialogue_never_gets_b(self) -> None:
+        guard = SceneGuard(quiet_frames=2, bound=100)
+        ram = _ram(lock=0, text=0x0368)
+        out = [guard.observe(ram, i) for i in range(100)]
+        self.assertNotIn(("b",), out)
+
     def test_menu_gets_b_first(self) -> None:
         guard = SceneGuard(quiet_frames=2, bound=30)
         ram = _ram(lock=0, text=0x10, cursor=1)
