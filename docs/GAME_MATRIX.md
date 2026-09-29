@@ -54,7 +54,7 @@ Manifest count: **38**.
 | `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Gravity on the Phantoon tip (rr-kw8t); then Maridia → LN → Tourian+credits |
 | `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | verified_capture | M8 | bronze | clean | yes | none for credits; live policy's Level 9 lookahead stages run below real time (rr-yzb4) |
 | `nes/zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
-| `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Ending contract TBD (maturity not promoted). Power-on farm plants nothing after Spring Y1 (rr-bu62.22), so Gate B (rr-5in, Summer D1 with harvest income) stays open.  |
+| `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Ending contract TBD (maturity not promoted). Power-on farm economy is weak ($5,730 at the ending, rr-bu62.25); Gate B (rr-5in) not re-scored.  |
 | `snes/alttp_rando` / A Link to the Past Randomizer | top_down_navigation, metroidvania_navigation | P7 | scaffolded | M1 | bronze | clean | no | M1 FirstPlay (Link's House) on JP 1.0; ./play records; ALTTPR patch + multi-seed next |
 | `snes/sm_rando` / Super Metroid Randomizer | metroidvania_navigation | P7 | playable_boot | M1 | bronze | clean | no | M1 real-ROM SolverSession vertical slice, held-out Landing BC candidate, and multi-seed early tip S/T dry-run (fixture seeds, vanilla substrate) done; real shuffled seed ROM / generator still open for live multi-seed claims |
 

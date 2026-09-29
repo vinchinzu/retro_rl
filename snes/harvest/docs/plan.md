@@ -7,14 +7,14 @@ Tracker: `bd ready -l harvest -l spine`. One living residual:
 
 ## Next
 
-The power-on run now reaches the ROM ending (STATUS, 2026-09-29), with an idle
-farm. Epic `rr-bu62`; `bd ready -l harvest`.
+The power-on run now reaches the ROM ending with a working farm (STATUS,
+2026-09-29). Epic `rr-bu62`; `bd ready -l harvest`.
 
-1. Power-on farm income (`rr-bu62.22`, branch `harvest/poweron`): D2 now
-   buys, plants, waters and harvests, but a power-on `--until-ending` run
-   wedges on Spring D6 holding a large rock with no open ground
-   (`rr-bu62.24`), and Summer D1 money is $3,220 (`rr-bu62.25`). Merge only
-   after power-on reaches the ending. Then Gate B (`rr-5in`).
+1. Economy on a power-on farm (`rr-bu62.25`): the working-farm ending run
+   holds $5,730, far below the pin chain ($29,650). Daily hand clear is off
+   for power-on because a lifted boulder wedged the wild north yard; a real
+   disposal target would let it back on (`rr-bu62.26`). Then Gate B
+   (`rr-5in`).
 2. Decide the ending contract (manifest `ending_definition` is TBD) before
    promoting maturity: credits alone, or year 3 credits with a score.
 3. Pre-sleep dog release (`rr-bu62.21`): the stuck 0x0800 flag is only

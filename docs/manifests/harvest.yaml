@@ -15,18 +15,17 @@ transfer_value: high
 ending_definition: published multi-year / marriage / farm objective (contract TBD)
 start_contract: power_on_new_game
 completion_contract: campaign_objective
-best_manifest: snes/harvest/recordings/full_year/power_on_to_ending.json
+best_manifest: snes/harvest/recordings/full_year/power_on_to_ending_farm.json
 best_video: null
 assist_contract: null
 status_doc: snes/harvest/docs/STATUS.md
 plan_doc: snes/harvest/docs/plan.md
 last_verified: 2026-09-29
 blocker: >
-  Ending contract TBD (maturity not promoted). Power-on farm plants nothing
-  after Spring Y1 (rr-bu62.22), so Gate B (rr-5in, Summer D1 with harvest
-  income) stays open.
+  Ending contract TBD (maturity not promoted). Power-on farm economy is weak
+  ($5,730 at the ending, rr-bu62.25); Gate B (rr-5in) not re-scored.
 notes: >
   2026-09-29 rr-bu62: Clean continuous power-on to the ROM ending (Y3 Summer
-  D30 credits), 845,653 frames, 0 loads, 0 RAM writes, money $3,600. Gate A
-  closed (Day09 fixture). Pin chain Y1 Fall D1 to the ending reached $29,650.
+  D30 credits) with a working farm, 2,175,350 frames, 0 loads, 0 RAM writes,
+  $5,730 (924e3f11). Pin chain Y1 Fall D1 to the ending reached $29,650.
   Pioneer planning trunk; gates live in STATUS/plan; tracker is beads.

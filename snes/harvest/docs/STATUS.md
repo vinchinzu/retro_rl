@@ -5,21 +5,30 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M3 |
-| Best verified result | Clean continuous power-on to the ROM ending: Year 3 Summer D30 credits complete, 845,653 frames, 0 loads, 0 RAM writes (2026-09-29). The farm plants nothing after Spring Y1; money ends at $3,600. |
+| Best verified result | Clean continuous power-on to the ROM ending with a working farm: Year 3 Summer D30 credits complete, 2,175,350 frames, $5,730, 0 loads, 0 RAM writes (2026-09-29, `924e3f11`). |
 | Last verification | 2026-09-29 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
 
 Maturity is not promoted: the ending contract is still TBD (manifest), and
 the plan names year 3 credits *with a score*. Gate B is open. The open check
-is power-on through Summer D1 with harvest income and no mid-run load. The
-2026-09-29 power-on run reaches Summer D1 with grape income only ($3,600), so
-it does not close Gate B. A calendar shell from `Y1_Inside_House`
+is power-on through Summer D1 with harvest income and no mid-run load; the
+working-farm run below plants, harvests and ships every season but has not
+been scored against that gate on its own. A calendar shell from `Y1_Inside_House`
 (2026-07-28) reached Summer D1 with money still $100 and no harvest income.
 That shell is not Gate B.
 
 ## Verified
 
+- Power-on to the ending with a working farm (2026-09-29, main `924e3f11`,
+  rr-bu62.22/.24): one continuous `--power-on --until-ending` process on
+  defaults. D2 buys seeds; every Spring and Summer plants, waters, harvests and
+  ships (14 harvest routes); Fall and Winter sleep early; the forced festivals
+  pass. Year 3 Summer D30 ending credits complete. 2,175,350 frames, 2,128 s
+  wall, $5,730. Clean: initial loads 0, mid-run loads 0, RAM writes 0, no
+  assists. 1 rescue (Y2 Spring D17 warp to tilemap 0x5F), 2 day-floor trips.
+  The same frame count on the `harvest/poweron` branch tip.
+  `recordings/full_year/power_on_to_ending_farm.json`.
 - Power-on to the ending (2026-09-29, main `dda54bbd`, rr-bu62): one
   continuous `--power-on --until-ending` process. Title, new diary, Spring D1,
   then every day to Year 3 Summer D30; the ROM ending plays and the run stops
