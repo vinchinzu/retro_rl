@@ -200,16 +200,44 @@ def make_harvest_env(
     *,
     require_rom: bool = True,
     render_mode: str | None = "rgb_array",
+    lean_step: bool = False,
     **kwargs,
 ):
-    """Create the Harvest environment through the shared game specification."""
+    """Create the Harvest environment through the shared game specification.
+
+    ``lean_step`` trims ``env.step`` to what the bot reads: it skips the
+    framebuffer copy and the scenario ``compute_step`` (per-frame info dict,
+    ~30% of ``env.step``; Harvest's scenario has no reward and ``done: never``).
+    Steps then return ``obs=None, reward=0.0, done=False, info={}`` and
+    ``env.render()`` fetches a fresh frame on demand.  Only for callers that
+    never read those step results (headless soaks, no video); RAM is unchanged.
+    """
 
     import stable_retro as retro
 
     register_harvest_integration(retro, require_rom=require_rom)
     kwargs.setdefault("inttype", retro.data.Integrations.ALL)
     kwargs.setdefault("use_restricted_actions", retro.Actions.ALL)
-    return SeasonalMapEnv(HARVEST_GAME.make_env(state, render_mode=render_mode, **kwargs))
+    env = HARVEST_GAME.make_env(state, render_mode=render_mode, **kwargs)
+    if lean_step:
+        _install_lean_step(env)
+    return SeasonalMapEnv(env)
+
+
+def _install_lean_step(env) -> None:
+    """Make ``env.step`` skip the screen copy and scenario info (see ``make_harvest_env``)."""
+    base = env.unwrapped
+
+    def _update_obs():
+        # img=None makes render() pull a fresh frame; ram non-None keeps
+        # step()'s "call reset first" guard satisfied.
+        base.img = None
+        if base.ram is None:
+            base.ram = base.get_ram()
+        return None
+
+    base._update_obs = _update_obs
+    base.compute_step = lambda: (0.0, False, {})
 
 
 def backup_mutable_start_state(state_name: str | None, record_name: str) -> str | None:

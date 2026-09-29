@@ -110,6 +110,21 @@ def is_travel_occupied_with(tile_at, tx: int, ty: int) -> bool:
     return False
 
 
+def travel_occupied_grid(tiles: np.ndarray) -> np.ndarray:
+    """Vectorised ``is_travel_occupied_with`` over a whole ``(H, W)`` tile grid.
+
+    A cell is occupied when it is travel-solid or lies in the 2x2 footprint of
+    an anchor at itself / left / up / up-left; identical to the per-cell rule.
+    """
+    occupied = np.isin(tiles, tuple(TRAVEL_SOLID_TILES))
+    anchors = np.isin(tiles, tuple(_TWO_BY_TWO_ANCHORS))
+    occupied |= anchors
+    occupied[:, 1:] |= anchors[:, :-1]
+    occupied[1:, :] |= anchors[:-1, :]
+    occupied[1:, 1:] |= anchors[:-1, :-1]
+    return occupied
+
+
 def is_travel_occupied(ram: np.ndarray, tx: int, ty: int) -> bool:
     """Refuse the cell and every sibling of a 2x2 stump/rock TL.
 

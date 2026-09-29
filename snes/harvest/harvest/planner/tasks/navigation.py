@@ -18,7 +18,12 @@ from harvest.tasks.nav import (
     TILE_SIZE,
 )
 from harvest.tasks.travel_walk import facing_tile
-from harvest.core.tile_catalog import ADDR_TILEMAP, ADDR_INPUT_LOCK
+from harvest.core.tile_catalog import (
+    ADDR_INPUT_LOCK,
+    ADDR_TILEMAP,
+    MAP_WIDTH,
+    metatile_grid_base,
+)
 from harvest.tasks.farm_ops import TileScanner
 
 from harvest.core.scene import classify_scene_from_ram
@@ -92,15 +97,18 @@ def find_frontier_path(
     fx, fy = final
     start_dist = abs(fx - sx) + abs(fy - sy)
     candidates: List[Tuple[Tuple[int, int, int], Tuple[int, int]]] = []
+    walkable = pathfinder._walk_test(ram, None, start)
+    base = metatile_grid_base(ram)
+    size = len(ram)
 
     for ty in range(max(0, sy - radius), min(63, sy + radius) + 1):
         for tx in range(max(0, sx - radius), min(63, sx + radius) + 1):
             if (tx, ty) == start:
                 continue
-            tid = get_tile_at(ram, tx, ty)
-            if tid in STALE_TILE_IDS:
+            addr = base + ty * MAP_WIDTH + tx
+            if (int(ram[addr]) if addr < size else 0) in STALE_TILE_IDS:
                 continue
-            if not pathfinder.is_walkable(ram, tx, ty, current_pos=start):
+            if not walkable(tx, ty):
                 continue
             dist = abs(fx - tx) + abs(fy - ty)
             progress = start_dist - dist
@@ -110,8 +118,11 @@ def find_frontier_path(
             candidates.append(((progress, axis_progress, -dist), (tx, ty)))
 
     candidates.sort(reverse=True)
+    if not candidates:
+        return None
+    tree = pathfinder.bfs_tree(ram, start)
     for _, goal in candidates[:max_candidates]:
-        path = pathfinder.find_path(ram, start, goal)
+        path = pathfinder.path_from_tree(tree, start, goal)
         if path:
             return path
     return None
