@@ -169,6 +169,10 @@ class LivestockSequenceTests(unittest.TestCase):
         self.assertIn("livestock_exit_south", names)
         self.assertIn("livestock_exit_remap", names)
         self.assertIn("livestock_off_door", names)
+        off_door = _find(seq, "livestock_off_door")
+        # Fixed-frame hold was dropped by the post-warp dead pad.
+        self.assertIsInstance(off_door, WalkUntilCoordTask)
+        self.assertEqual(off_door.direction, "right")
         self.assertNotIn("livestock_remap_left", names)
         self.assertNotIn("exit_livestock", names)
 

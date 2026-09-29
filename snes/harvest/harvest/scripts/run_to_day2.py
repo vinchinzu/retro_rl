@@ -840,6 +840,8 @@ def main() -> int:
                             source_state_sha256=source_state_sha256,
                         ),
                     }
+                    if args.save_end_state:
+                        _save_emulator_state(env, f"{args.save_end_state}_FAIL")
                     args.out.parent.mkdir(parents=True, exist_ok=True)
                     args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
                     print(json.dumps(report, indent=2), flush=True)
