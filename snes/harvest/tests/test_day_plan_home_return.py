@@ -623,6 +623,7 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         task.reset(world)
         task._drop_spot_navs = 3
         task._drop_deep_relocated = True  # deep south already tried
+        task._wander_drops = 3  # open-ground wander already tried
         task._drop_last_held = 0x0F
         task._drop_same_held = 2  # one more observation trips the gate
         task._drop_attempts = 2

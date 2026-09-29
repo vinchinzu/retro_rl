@@ -430,7 +430,12 @@ class ReturnHomeTask(Task):
             # A-drops in a debris field (rr-6g7g: CLEAR leaves held=0x0D).
             held = int(read_held_item(world.ram))
             at_drop = self._at_drop_spot(pos, front)
-            if self._drop_spot_navs >= 1 and self._wander_drops < 3:
+            if (
+                self._drop_spot_navs >= 1
+                and self._wander_drops < 3
+                and self._drop_same_held < self.drop_stuck_held_limit
+                and self._drop_attempts < self.drop_attempt_limit
+            ):
                 # Fixed drop spots ringed by debris refuse the item: walk to
                 # open ground and drop it there.
                 from harvest.planner.tasks.home_recover import WanderDropTask
