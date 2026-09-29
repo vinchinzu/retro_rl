@@ -322,6 +322,51 @@ class Pathfinder:
             return path[:max_steps]
         return path
 
+    def bfs_tree(
+        self,
+        ram: np.ndarray,
+        start: Tuple[int, int],
+    ) -> Dict[Tuple[int, int], Optional[Tuple[int, int]]]:
+        """Full BFS parent map from ``start`` (no goal, no override).
+
+        Parent pointers match ``find_path``'s: it stops once the goal is popped,
+        and a node's parent is fixed when first discovered, so the path to any
+        reachable goal is identical.  One tree replaces N failing ``find_path``
+        calls that each flood the whole reachable area.
+        """
+        walkable = self._walk_test(ram, None, start)
+        queue = deque([start])
+        came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
+        while queue:
+            cx, cy = queue.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = cx + dx, cy + dy
+                if (
+                    0 <= nx < MAP_WIDTH
+                    and 0 <= ny < MAP_WIDTH
+                    and (nx, ny) not in came_from
+                    and walkable(nx, ny)
+                ):
+                    came_from[(nx, ny)] = (cx, cy)
+                    queue.append((nx, ny))
+        return came_from
+
+    @staticmethod
+    def path_from_tree(
+        came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]],
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+    ) -> Optional[List[Tuple[int, int]]]:
+        if goal not in came_from:
+            return None
+        path: List[Tuple[int, int]] = []
+        cur = goal
+        while cur != start:
+            path.append(cur)
+            cur = came_from[cur]  # type: ignore[assignment]
+        path.reverse()
+        return path
+
     def find_hop_toward(
         self,
         ram: np.ndarray,
