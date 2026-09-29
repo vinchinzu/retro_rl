@@ -54,6 +54,15 @@ def _find_nav_path(
     hop = VIEWPORT_HOP_TILES + 3 if self._plot_phase == PlotPhase.REFILL else VIEWPORT_HOP_TILES
     nav_goal = goal
     if self._plot_phase == PlotPhase.REFILL and getattr(self, "_refill_multihop", False):
+        # A real full-map route beats the corridor heuristics: on a farm whose
+        # fence residue was never cleared the east crawl dead-ends at
+        # (30,28) while the y=31 gap at x~15 leads to the south lip in ~30
+        # steps.  Walk that route in viewport-sized chunks.
+        # Only after the heuristics have already failed once this refill.
+        if getattr(self, "_refill_nav_failures", 0) >= 1:
+            full = self._pathfinder.find_path(ram, start, goal)
+            if full:
+                return full[:hop]
         # Densify thrash → scripted charges. Rules live in pond_hop
         # (past-fence pure-south, N/S/E stall regions, near-F0 short lip).
         thrash = evaluate_corridor_thrash(

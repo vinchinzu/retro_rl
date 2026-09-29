@@ -52,6 +52,8 @@ from harvest.planner.tasks.navigation import (
 
 # ── MultiMapNavTask ───────────────────────────────────────────────
 
+SETTLE_HOLD_MAX = 400  # frames to wait out a warp's transition scene
+
 @dataclass
 class MultiMapNavTask(NavCorridor, Task):
     """Navigate a sequence of waypoints across multiple maps using BFS.
@@ -84,6 +86,7 @@ class MultiMapNavTask(NavCorridor, Task):
     _exit_walk_frames: int = field(default=0, init=False)
     _no_path_frames: int = field(default=0, init=False)
     _initial_settle: int = field(default=0, init=False)
+    _settle_hold: int = field(default=0, init=False)
     # Stagnant no-path recovery (SW farm pocket after CLEAR → house).
     _stuck_anchor: Optional[Tuple[int, int]] = field(default=None, init=False)
     _stuck_frames: int = field(default=0, init=False)
@@ -126,6 +129,7 @@ class MultiMapNavTask(NavCorridor, Task):
         self._exit_walk_frames = 0
         self._no_path_frames = 0
         self._initial_settle = 0
+        self._settle_hold = 0
         self._stuck_anchor = None
         self._stuck_frames = 0
         self._pixel_anchor = None
@@ -331,6 +335,21 @@ class MultiMapNavTask(NavCorridor, Task):
         # player moves and the viewport scrolls to load new tile data.
         SETTLE_FRAMES = self.initial_settle_frames
         if self._initial_settle < SETTLE_FRAMES:
+            # After a door/gate warp game_state 0x8000 (transition scene) stays
+            # set for ~300f and every button is dropped; a nav that starts
+            # walking then reads the dead pad as pixel-stuck and wanders back
+            # out the gate (power-on D2 shop trip, mountain berry entry).
+            if (
+                self._settle_hold < SETTLE_HOLD_MAX
+                and len(world.ram) > 0xD3
+                and int(world.ram[0xD3]) & 0x80
+            ):
+                self._settle_hold += 1
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action()),
+                    reason="settle: transition scene running",
+                )
             self._initial_settle += 1
             dismissed = nav_needs_menu_dismiss(world.ram, self._step_count)
             if dismissed is not None:

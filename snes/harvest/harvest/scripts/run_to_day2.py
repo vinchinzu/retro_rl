@@ -472,6 +472,15 @@ def _build_task(args: argparse.Namespace, start_key: tuple[int, int, int]) -> ob
                 days_between(start_key, target) + 5, bound[2] + 5, 4
             )
 
+    if getattr(args, "power_on", False) and "policy" not in extra:
+        # A power-on farm is all debris and the farmer owns no hammer or axe:
+        # daily CLEAR_FIELD hand-lifts boulders, ends the day holding a rock
+        # with no free tile to drop it on and wedges return_home (D6,
+        # rr-bu62.24). --end-of-spring already runs without it.
+        from harvest.planner.day_phase_types import DayPlannerPolicy
+
+        extra["policy"] = DayPlannerPolicy(include_field_clear=False)
+
     kwargs.update(extra)
     return MultiDayPlannerTask(**kwargs)
 

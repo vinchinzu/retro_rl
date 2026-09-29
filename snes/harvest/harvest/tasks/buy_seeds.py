@@ -62,7 +62,10 @@ SEED_BAG_PRICE = {"potato_seeds": 200, "corn_seeds": 300, "tomato_seeds": 300}
 SEED_STAND_Y = 342
 SEED_CLERK_RADIUS = 10
 SHOP_INTERIOR_SETTLE = 45
-TOWN_SETTLE_FRAMES = 40
+# The path->town warp leaves the pad dead until game_state 0x8000 (scene
+# transition) clears, ~300f after arrival (measured D2). A nav started earlier
+# presses into a dead pad, reads it as pixel-stuck and walks back out the gate.
+TOWN_SETTLE_FRAMES = 480
 # A pulses allowed per bag. Potato closes in a handful; the corn/tomato shelf
 # bags stream a 3-page description first (~17 pulses measured Summer D13).
 BUY_ATTEMPT_LIMIT = 28
@@ -127,7 +130,9 @@ def shop_interior_coords_settled(ram) -> bool:
 def town_coords_settled(ram) -> bool:
     """Path-left entry leaks ~(10,128) before the east-gate stand ~(756,422)."""
     pos = get_pos_from_ram(ram)
-    return int(pos.x) > 200
+    if int(pos.x) <= 200:
+        return False
+    return not (int(ram[0xD3]) & 0x80)  # game_state 0x8000: transition scene
 
 
 def first_shop_nav_segment(

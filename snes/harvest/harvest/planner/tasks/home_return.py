@@ -82,6 +82,7 @@ class ReturnHomeTask(Task):
     _drop_same_held: int = field(default=0, init=False)
     _drop_last_held: int = field(default=-1, init=False)
     _drop_deep_relocated: bool = field(default=False, init=False)
+    _wander_drops: int = field(default=0, init=False)
     _enter_retries: int = field(default=0, init=False)
     _exit_to_farm_retries: int = field(default=0, init=False)
     _mountain_return_attempts: int = field(default=0, init=False)
@@ -137,6 +138,7 @@ class ReturnHomeTask(Task):
         self._drop_same_held = 0
         self._drop_last_held = -1
         self._drop_deep_relocated = False
+        self._wander_drops = 0
         self._enter_retries = 0
         self._exit_to_farm_retries = 0
         self._mountain_return_attempts = 0
@@ -428,6 +430,27 @@ class ReturnHomeTask(Task):
             # A-drops in a debris field (rr-6g7g: CLEAR leaves held=0x0D).
             held = int(read_held_item(world.ram))
             at_drop = self._at_drop_spot(pos, front)
+            if (
+                self._drop_spot_navs >= 1
+                and self._wander_drops < 3
+                and self._drop_same_held < self.drop_stuck_held_limit
+                and self._drop_attempts < self.drop_attempt_limit
+            ):
+                # Fixed drop spots ringed by debris refuse the item: walk to
+                # open ground and drop it there.
+                from harvest.planner.tasks.home_recover import WanderDropTask
+
+                self._wander_drops += 1
+                print(
+                    f"[RETURN_HOME] Wander drop {self._wander_drops}/3 "
+                    f"held=0x{held:02X} pos=({pos.x},{pos.y})"
+                )
+                self._activate(
+                    "nav_drop_spot",
+                    WanderDropTask(start_dir=self._wander_drops),
+                    world,
+                )
+                return self._task.step(world)
             if not at_drop and self._drop_spot_navs < 3:
                 self._drop_spot_navs += 1
                 print(
