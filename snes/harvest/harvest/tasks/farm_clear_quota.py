@@ -385,6 +385,10 @@ def _remaining_debris(self, ram) -> list:
     scan_types = set(CLEARABLE_DEBRIS_TYPES)
     if self.handoff == "type_clear" and self._priority_spec:
         scan_types = set(self._priority_spec)
+    elif self.tools_missing and self.priority:
+        # Rock/stump without hammer/axe is not work this clear can finish;
+        # counting it made every Fall CLEAR_FIELD "partial_clear remaining=1".
+        scan_types &= set(self.priority)
     return TileScanner().scan(ram, self._scan_bounds(), types=scan_types)
 
 def _player_tile(self, ram) -> Tile:

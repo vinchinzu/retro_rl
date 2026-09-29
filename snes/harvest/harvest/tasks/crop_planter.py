@@ -257,6 +257,7 @@ class CropWaterTask(Task):
     _dry_crop_tiles_at_start: int = field(default=0, init=False)
     _had_seed_stock_at_start: bool = field(default=False, init=False)
     _acceptance_snapped: bool = field(default=False, init=False)
+    _season_checked: bool = field(default=False, init=False)
     # Planned centers that failed hoe/path — avoid infinite redetect loops.
     _rejected_plan_centers: Set[Tuple[int, int]] = field(default_factory=set, init=False)
     # Skill sequence for establish / water / full. Refill phases do not use it.
@@ -355,6 +356,7 @@ class CropWaterTask(Task):
         self._dry_crop_tiles_at_start = 0
         self._had_seed_stock_at_start = False
         self._acceptance_snapped = False
+        self._season_checked = False
         self._rejected_plan_centers = set()
         self._child = None
         self._armed_water_tiles = 0
@@ -422,6 +424,7 @@ class CropWaterTask(Task):
         self._dry_crop_tiles_at_start = 0
         self._had_seed_stock_at_start = False
         self._acceptance_snapped = False
+        self._season_checked = False
         self._rejected_plan_centers = set()
         self._child = None
         self._armed_water_tiles = 0
@@ -756,6 +759,18 @@ class CropWaterTask(Task):
         return self._terminal_result()
 
     def step(self, world: WorldState) -> TaskResult:
+        if not self._season_checked:
+            self._season_checked = True
+            from harvest.planner.day_plan_status import read_world_date
+
+            season, _day = read_world_date(world.ram)
+            if int(season) >= 2:
+                # NightlyFarmTilesCheck: Fall un-waters a watered growing tile
+                # (DEC, no stage gain); Winter skips crops. No fall seed exists
+                # in the ROM, so watering here is pure walking (12 tiles/day).
+                reason = "no_work: off-season (Fall/Winter crops cannot grow)"
+                print(f"[CROP] Complete (no_work): {reason}")
+                return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
         if self._state == CropState.DONE and self._child is None:
             return self._terminal_result()
         if self._use_legacy_dispatch():
