@@ -662,7 +662,10 @@ def main() -> int:
     source_state_sha256 = _file_sha256(source_state) if source_state else None
     env = AuditedEnv(
         make_harvest_env(
-            state=None if args.power_on else args.state, render_mode="rgb_array"
+            state=None if args.power_on else args.state,
+            render_mode="rgb_array",
+            lean_step=args.video is None
+            and os.environ.get("HARVEST_LEAN_STEP", "1") != "0",
         ),
         capabilities=AuditCapabilities.all("harvest.run_to_day2"),
     )
