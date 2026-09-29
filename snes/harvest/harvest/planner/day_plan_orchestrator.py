@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
-from harvest.core.recovery import RecoveryTask
+from harvest.core.recovery import PhaseFaultInjector, RecoveryTask
 from harvest.core.task_progress import (
     GOAL_STALL_FRAMES,
     MOTION_STALL_FRAMES,
@@ -83,6 +83,16 @@ def _phase_watchdog_frames(spec: PhaseSpec) -> int:
     return 0
 
 
+_ENV_FAULTS: list = []
+
+
+def _env_fault_injector() -> Optional[PhaseFaultInjector]:
+    """One injector per process so its draw sequence spans every day."""
+    if not _ENV_FAULTS:
+        _ENV_FAULTS.append(PhaseFaultInjector.from_env())
+    return _ENV_FAULTS[0]
+
+
 def _tag_d2_spec(spec: PhaseSpec) -> PhaseSpec:
     """Copy a live D2 child so catalog singletons stay untagged."""
     params = dict(spec.params)
@@ -144,6 +154,10 @@ class DayPlanTask(Task):
     phase_sequence: Optional[List[PhaseSpec]] = None
     state_name: Optional[str] = None
     policy: DayPlannerPolicy = field(default_factory=DayPlannerPolicy)
+    # Test hook (HARVEST_FAULT_PHASES): force phase kinds to fail or stall.
+    fault_injector: Optional[PhaseFaultInjector] = None
+    _fault_key: object = field(default=None, init=False)
+    _fault_mode: Optional[str] = field(default=None, init=False)
 
     _schedule: PhaseSchedule = field(
         default_factory=lambda: PhaseSchedule.from_phases([]),
@@ -1107,6 +1121,33 @@ class DayPlanTask(Task):
                 stalled_result = self._d2_stall(spec, world, status)
                 if stalled_result is not None:
                     return stalled_result
+
+            injector = self.fault_injector or _env_fault_injector()
+            if injector is not None and not spec.params.get("d2_expanded"):
+                key = (self._phase_index, spec.phase)
+                if self._fault_key != key:
+                    self._fault_key = key
+                    self._fault_mode = injector.decide(spec.kind, spec.phase)
+                    if self._fault_mode == "fail":
+                        failed = self._handle_failed_phase(
+                            spec, TaskStatus.FAILURE, "injected fault", world
+                        )
+                        if failed is None:
+                            continue
+                        return failed
+                if self._fault_mode == "stall":
+                    # Child never runs: only a watchdog or the day floor ends it.
+                    budget = _phase_watchdog_frames(spec)
+                    if budget and self._step_count - self._phase_started_at > budget:
+                        failed = self._handle_failed_phase(
+                            spec, TaskStatus.FAILURE, "injected stall watchdog", world
+                        )
+                        if failed is None:
+                            continue
+                        return failed
+                    return TaskResult(
+                        status=TaskStatus.RUNNING, action=ActionResult(make_action())
+                    )
 
             budget = _phase_watchdog_frames(spec)
             if budget and self._step_count - self._phase_started_at > budget:

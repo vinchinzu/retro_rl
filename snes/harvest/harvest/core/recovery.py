@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import random
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Sequence
+from typing import Callable, Mapping, Optional, Sequence
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
@@ -145,4 +147,153 @@ def _enum_text(value: SceneLocation | str) -> str:
     return value.value if isinstance(value, SceneLocation) else str(value)
 
 
-__all__ = ["RecoveryTask"]
+# ROM truth (HM-Decomp bank_82 UpdateTime, NightReset): the clock caps at 18:00
+# and nothing ever forces the day to end. Only the bed (time_running bit 1,
+# bank_81 $81D8xx) reaches NightReset, so a farmer that never gets home stays
+# outdoors forever. The floor below is therefore the only thing that ends a
+# bad day; the ROM will not do it for us.
+DAY_WORK_FRAME_BUDGET = 24_000
+DAY_CLOCK_HOUR = 18
+DAY_CLOCK_GRACE_FRAMES = 3_000
+MAX_RESCUES_PER_DAY = 8
+
+
+@dataclass
+class DayFloor:
+    """Per-day frame budget and clock deadline for the work window.
+
+    Pure logic: the planner feeds it the step count and the game hour and gets
+    back a reason string when the day's remaining phases must be abandoned.
+    ``bad_days`` counts consecutive days that hit the floor, for reporting.
+    """
+
+    frame_budget: int = DAY_WORK_FRAME_BUDGET
+    clock_hour: int = DAY_CLOCK_HOUR
+    clock_grace: int = DAY_CLOCK_GRACE_FRAMES
+    max_rescues: int = MAX_RESCUES_PER_DAY
+    bad_days: int = 0
+    total_bad_days: int = 0
+    rescues: int = 0
+    _started_at: int = field(default=0, init=False)
+    _late_since: Optional[int] = field(default=None, init=False)
+    _tripped: bool = field(default=False, init=False)
+
+    @classmethod
+    def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "DayFloor":
+        env = os.environ if env is None else env
+        floor = cls()
+        raw = env.get("HARVEST_DAY_FRAME_BUDGET")
+        if raw:
+            floor.frame_budget = int(raw)
+        raw = env.get("HARVEST_DAY_CLOCK_GRACE")
+        if raw:
+            floor.clock_grace = int(raw)
+        return floor
+
+    def begin_day(self, step: int) -> None:
+        self._started_at = int(step)
+        self._late_since = None
+        self._tripped = False
+        self.rescues = 0
+
+    def check(self, step: int, hour: int) -> Optional[str]:
+        """Reason to abandon the day's work, or None. Fires once per day."""
+        if self._tripped:
+            return None
+        elapsed = int(step) - self._started_at
+        if self.frame_budget > 0 and elapsed > self.frame_budget:
+            return self._trip(f"day frame budget {self.frame_budget} exceeded")
+        if hour >= self.clock_hour:
+            if self._late_since is None:
+                self._late_since = int(step)
+            if self.clock_grace >= 0 and step - self._late_since > self.clock_grace:
+                return self._trip(
+                    f"clock at {hour}:00 for {self.clock_grace} frames"
+                )
+        return None
+
+    def _trip(self, reason: str) -> str:
+        self._tripped = True
+        return reason
+
+    def end_day(self, *, clean: bool) -> None:
+        """Roll the consecutive-bad-day counter (reporting only)."""
+        if clean and not self._tripped and self.rescues == 0:
+            self.bad_days = 0
+        else:
+            self.bad_days += 1
+            self.total_bad_days += 1
+
+    def note_bad(self) -> None:
+        """Mark today bad (a failure was recorded) without aborting."""
+        self._tripped = True
+
+    def next_rescue(self) -> bool:
+        """Spend one rescue. False when the farmer is provably wedged."""
+        self.rescues += 1
+        return self.rescues <= self.max_rescues
+
+
+_FAULT_MODES = ("fail", "stall")
+
+
+@dataclass
+class PhaseFaultInjector:
+    """Test hook: force chosen phase kinds to fail or stall.
+
+    ``HARVEST_FAULT_PHASES="crop:fail,harvest:stall,nav:fail"`` (kind names, as
+    in ``PhaseKind``); ``HARVEST_FAULT_RATE`` (0..1, default 1) fails only that
+    share of phase starts, drawn from ``HARVEST_FAULT_SEED``. A ``*`` kind hits
+    every phase except the end-of-day route (return_home / sleep).
+    """
+
+    faults: dict[str, str] = field(default_factory=dict)
+    rate: float = 1.0
+    seed: int = 0
+    _rng: random.Random = field(init=False, repr=False)
+    fired: list[tuple[str, str]] = field(default_factory=list, init=False)
+
+    def __post_init__(self) -> None:
+        self._rng = random.Random(self.seed)
+
+    @classmethod
+    def from_env(cls, env: Optional[Mapping[str, str]] = None) -> Optional["PhaseFaultInjector"]:
+        env = os.environ if env is None else env
+        raw = env.get("HARVEST_FAULT_PHASES", "").strip()
+        if not raw:
+            return None
+        faults: dict[str, str] = {}
+        for item in raw.split(","):
+            kind, _, mode = item.strip().partition(":")
+            mode = mode or "fail"
+            if kind and mode in _FAULT_MODES:
+                faults[kind.lower()] = mode
+        if not faults:
+            return None
+        return cls(
+            faults=faults,
+            rate=float(env.get("HARVEST_FAULT_RATE", "1") or 1),
+            seed=int(env.get("HARVEST_FAULT_SEED", "0") or 0),
+        )
+
+    def decide(self, kind: object, phase: str) -> Optional[str]:
+        """Fault mode for a phase start, or None. Never touches end-of-day."""
+        name = str(getattr(kind, "value", kind)).lower()
+        if name in {"return_home", "sleep"}:
+            return None
+        mode = self.faults.get(name) or self.faults.get("*")
+        if mode is None:
+            return None
+        if self._rng.random() >= self.rate:
+            return None
+        self.fired.append((phase, mode))
+        print(f"[FAULT] injecting {mode} into phase {phase} ({name})")
+        return mode
+
+
+__all__ = [
+    "DAY_WORK_FRAME_BUDGET",
+    "DayFloor",
+    "PhaseFaultInjector",
+    "RecoveryTask",
+]
