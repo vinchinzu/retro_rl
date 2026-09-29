@@ -97,6 +97,14 @@ class ShopRouteTests(unittest.TestCase):
         set_player_pos(world.ram, 756, 422)
         self.assertTrue(town_coords_settled(world.ram))
 
+    def test_transition_scene_is_not_settled(self) -> None:
+        world = make_transition_world(0x04, current_tile=(0, 8))
+        set_player_pos(world.ram, 744, 424)
+        world.ram[0xD3] = 0xC4  # game_state 0xC4xx: 0x8000 scene running
+        self.assertFalse(town_coords_settled(world.ram))
+        world.ram[0xD3] = 0x44
+        self.assertTrue(town_coords_settled(world.ram))
+
     def test_segment_choice_follows_live_tilemap(self) -> None:
         self.assertEqual(first_shop_nav_segment(0x00), "farm_to_path")
         self.assertIsNone(
