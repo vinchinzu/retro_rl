@@ -19,6 +19,20 @@ def _world(tilemap: int):
 
 
 class FestivalEscapeTests(unittest.TestCase):
+    def test_scripted_phase_then_logged_random_fallback(self) -> None:
+        import contextlib
+        import io
+
+        t = FestivalEscapeTask(scripted_budget=50, seed=1)
+        w = _world(0x0A)
+        t.reset(w)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            for _ in range(120):
+                self.assertEqual(t.step(w).status, TaskStatus.RUNNING)
+        self.assertIn("random roam fallback", buf.getvalue())
+        self.assertEqual(buf.getvalue().count("fallback"), 1)
+
     def test_runs_and_is_deterministic(self) -> None:
         a, b = FestivalEscapeTask(seed=3), FestivalEscapeTask(seed=3)
         w = _world(0x0A)
