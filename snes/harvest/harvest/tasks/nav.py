@@ -35,6 +35,7 @@ from harvest.tasks.travel_walk import (
     MAX_IGNORED_HOLD_FRAMES,
     is_travel_occupied,
     is_travel_occupied_with,
+    travel_occupied_grid,
     player_is_busy,
     read_player_action,
     read_player_direction,
@@ -212,15 +213,32 @@ class Pathfinder:
             addr = base + ty * MAP_WIDTH + tx
             return int(ram[addr]) if addr < size else 0
 
+        # One vectorised pass over the whole grid replaces the per-cell
+        # is_travel_occupied_with (6 tile reads + footprint tuples per call).
+        count = MAP_WIDTH * MAP_HEIGHT
+        flat = np.zeros(count, dtype=np.uint8)
+        avail = max(0, min(count, size - base))
+        if avail:
+            flat[:avail] = ram[base:base + avail]
+        grid = flat.reshape(MAP_HEIGHT, MAP_WIDTH)
+        occupied = travel_occupied_grid(grid).ravel().tolist()
+        tile_ok = np.isin(flat, tuple(walkable_tiles)).tolist()
+
         def walkable(tx: int, ty: int) -> bool:
             if current_pos and (tx, ty) == current_pos:
                 return True
             if (tx, ty) in no_go or (tx, ty) in base_no_go or (tx, ty) in temp_blocked:
                 return False
-            tile_id = tile_at(tx, ty)
-            if is_travel_occupied_with(tile_at, tx, ty):
-                return False
-            if tile_id in walkable_tiles:
+            if 0 <= tx < MAP_WIDTH and 0 <= ty < MAP_HEIGHT:
+                idx = ty * MAP_WIDTH + tx
+                if occupied[idx]:
+                    return False
+                tile_walkable = tile_ok[idx]
+            else:
+                if is_travel_occupied_with(tile_at, tx, ty):
+                    return False
+                tile_walkable = tile_at(tx, ty) in walkable_tiles
+            if tile_walkable:
                 return True
             if (tx, ty) in walkable_coords:
                 return True
