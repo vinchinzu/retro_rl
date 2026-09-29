@@ -103,6 +103,7 @@ class MultiDayPlannerTask(Task):
     _child_pressed: bool = field(default=False, init=False)
     _day_bad: bool = field(default=False, init=False)
     _floor_abandoned: bool = field(default=False, init=False)
+    _dog_released_today: bool = field(default=False, init=False)
     _floor_reason: str = field(default="", init=False)
     _max_days_warned: bool = field(default=False, init=False)
 
@@ -121,6 +122,7 @@ class MultiDayPlannerTask(Task):
         self._was_storm_yesterday = False
         self._day_bad = False
         self._floor_abandoned = False
+        self._dog_released_today = False
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -406,6 +408,7 @@ class MultiDayPlannerTask(Task):
         if phase == "plan_day":
             self.floor.begin_day(self._step_count)
             self._floor_abandoned = False
+            self._dog_released_today = False
             self._floor_reason = ""
         task.reset(world)
 
@@ -726,9 +729,20 @@ class MultiDayPlannerTask(Task):
                 return self._abandon_day(world, f"plan build error {type(exc).__name__}")
             self._activate("plan_day", day_task, world)
         elif self._phase == "rescue":
-            from harvest.planner.tasks.home_recover import RescueWalkTask
+            from harvest.planner.tasks.home_recover import (
+                DogReleaseTask,
+                RescueWalkTask,
+                dog_pickup_stuck,
+            )
 
-            self._activate("rescue", RescueWalkTask(attempt=self.floor.rescues), world)
+            if dog_pickup_stuck(world.ram):
+                # Bed/lunch/interact are dead until the dog animation is closed.
+                print("[MULTI_DAY] Rescue: dog pickup flag (0x0800) stuck; releasing dog")
+                self._activate("rescue", DogReleaseTask(), world)
+            else:
+                self._activate(
+                    "rescue", RescueWalkTask(attempt=self.floor.rescues), world
+                )
         elif self._phase == "wait_shipping":
             self._activate(
                 "wait_shipping", self._build_farm_shipping_wait_task(), world
@@ -736,7 +750,19 @@ class MultiDayPlannerTask(Task):
         elif self._phase == "return_home":
             self._activate("return_home", self._build_return_home_task(), world)
         elif self._phase == "sleep":
-            self._activate("sleep", self._build_sleep_task(), world)
+            from harvest.planner.tasks.home_recover import (
+                DogReleaseTask,
+                dog_pickup_stuck,
+            )
+
+            if dog_pickup_stuck(world.ram) and not self._dog_released_today:
+                # Release first; the rescue branch hands on to return_home -> sleep.
+                self._dog_released_today = True
+                self._phase = "rescue"
+                print("[MULTI_DAY] Dog pickup flag (0x0800) stuck before sleep; releasing dog")
+                self._activate("rescue", DogReleaseTask(), world)
+            else:
+                self._activate("sleep", self._build_sleep_task(), world)
         else:
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -902,6 +928,22 @@ class MultiDayPlannerTask(Task):
         )
 
     def step(self, world: WorldState) -> TaskResult:
+        result = self._step_inner(world)
+        if result.action is not None:
+            from harvest.planner.tasks.home_recover import (
+                DogReleaseTask,
+                strip_dog_hug_press,
+            )
+
+            # The release task's own A beside the dog is the point.
+            if isinstance(self._current_task, DogReleaseTask):
+                return result
+            fixed = strip_dog_hug_press(result.action.action, world.ram)
+            if fixed is not result.action.action:
+                result = replace(result, action=ActionResult(fixed))
+        return result
+
+    def _step_inner(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         escape = self._step_festival_escape(world)
         if escape is not None:

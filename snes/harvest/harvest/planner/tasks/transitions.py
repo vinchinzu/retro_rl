@@ -142,6 +142,9 @@ class ExitBuildingTask(Task):
 
     _step_count: int = field(default=0, init=False)
     _path_index: int = field(default=0, init=False)
+    _exit_last_x: int = field(default=-1, init=False)
+    _exit_stall: int = field(default=0, init=False)
+    _exit_down_left: int = field(default=0, init=False)
     _path_frame: int = field(default=0, init=False)
     _target_seen_frames: int = field(default=0, init=False)
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
@@ -153,6 +156,9 @@ class ExitBuildingTask(Task):
         self._navigator = Navigator(self._pathfinder)
 
     def reset(self, world: WorldState) -> None:
+        self._exit_last_x = -1
+        self._exit_stall = 0
+        self._exit_down_left = 0
         self._step_count = 0
         self._path_index = 0
         self._path_frame = 0
@@ -216,6 +222,21 @@ class ExitBuildingTask(Task):
     def _house_exit_action(self) -> np.ndarray:
         pos = self._navigator.current_pos
         if pos.y < HOUSE_EXIT_LOWER_Y - 10:
+            # From the bed stand (70,86) the blind rightward walk runs into the
+            # furniture at x~89 and stalls forever (rr-bu62.20). Step down off
+            # that row for a while whenever the x walk stops making progress.
+            if self._exit_down_left > 0:
+                self._exit_down_left -= 1
+                return make_action(down=True)
+            if pos.x == self._exit_last_x:
+                self._exit_stall += 1
+            else:
+                self._exit_stall = 0
+                self._exit_last_x = pos.x
+            if self._exit_stall >= 20:
+                self._exit_stall = 0
+                self._exit_down_left = 30
+                return make_action(down=True)
             if pos.x < HOUSE_EXIT_RIGHT_X - 8:
                 return make_action(right=True, b=True)
             return make_action(down=True, b=True)
