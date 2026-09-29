@@ -15,6 +15,7 @@ from typing import List, Optional
 
 import numpy as np
 
+from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.planner.tasks.home_approach import (
     EAST_AROUND_FENCE_X,
     deep_south_of_house,
@@ -322,3 +323,53 @@ def short_east_north_actions() -> List[np.ndarray]:
     )
     actions.extend(make_action() for _ in range(6))
     return actions
+
+
+_RESCUE_DIRECTIONS = ("up", "right", "down", "left")
+
+
+class RescueWalkTask(Task):
+    """Shake a wedged farmer loose before ``return_home`` is rebuilt.
+
+    Clears any open dialogue/menu, then walks a short square whose starting
+    side rotates with ``attempt`` so successive rescues push different ways
+    (a fence corner, a debris tile, a door lip). Always ends SUCCESS: the
+    caller judges progress by whether the next ``return_home`` gets home.
+    """
+
+    name = "rescue_walk"
+
+    def __init__(self, attempt: int = 0, leg_frames: int = 36, legs: int = 8) -> None:
+        self.attempt = int(attempt)
+        self.leg_frames = leg_frames
+        self.legs = legs
+        self._step = 0
+
+    def reset(self, world: WorldState) -> None:
+        self._step = 0
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        from harvest.core.scene import classify_scene_from_ram
+        from harvest.planner.day_plan_status import is_house_tilemap
+        from harvest.tasks.primitives import dismiss_dialogue_result
+
+        self._step += 1
+        scene = classify_scene_from_ram(world.ram)
+        if is_house_tilemap(scene.tilemap):
+            return TaskResult(status=TaskStatus.SUCCESS, reason="rescue: already in house")
+        if scene.needs_input_dismiss and self._step < 600:
+            return dismiss_dialogue_result(
+                self._step, buttons=("b", "a"), pulse_every=1, reason="rescue: clear scene"
+            )
+        leg = (self._step - 1) // self.leg_frames
+        if leg >= self.legs:
+            return TaskResult(status=TaskStatus.SUCCESS, reason="rescue walk done")
+        direction = _RESCUE_DIRECTIONS[(self.attempt + leg) % 4]
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**{direction: True})),
+            reason=f"rescue walk {direction}",
+        )
