@@ -414,7 +414,7 @@ class SceneGuard:
     frames, and records what appeared so the run teaches us the scene id.
     """
 
-    def __init__(self, quiet_frames: int = 150, bound: int = 480) -> None:
+    def __init__(self, quiet_frames: int = 300, bound: int = 480) -> None:
         self.quiet_frames = quiet_frames
         self.bound = bound
         self.log: list[dict[str, object]] = []
@@ -427,8 +427,15 @@ class SceneGuard:
     def active(self) -> bool:
         return self._active > 0
 
-    def observe(self, ram: np.ndarray, step: int = 0) -> tuple[str, ...] | None:
-        """Buttons to pulse this frame, or None when the scene is not ours."""
+    def observe(
+        self, ram: np.ndarray, step: int = 0, child_pressed: bool = False
+    ) -> tuple[str, ...] | None:
+        """Buttons to pulse this frame, or None when the scene is not ours.
+
+        ``child_pressed``: the active task pressed a button last frame. A task
+        that is pressing owns the scene (berry pick, shop, tape), so the quiet
+        window only counts frames in which it pressed nothing.
+        """
         scene = classify_scene_from_ram(ram)
         if not scene.needs_input_dismiss or scene_indicates_ending(scene):
             self._sig, self._quiet, self._active, self._gave_up = None, 0, 0, False
@@ -447,6 +454,9 @@ class SceneGuard:
             self._sig, self._quiet, self._gave_up = sig, 0, False
             return None
         if self._gave_up:
+            return None
+        if child_pressed and not self._active:
+            self._quiet = 0
             return None
         self._quiet += 1
         if not self._active and self._quiet < self.quiet_frames:
@@ -474,7 +484,8 @@ class SceneGuard:
             return None
         if scene.mode == SceneMode.MENU and self._active <= self.bound // 3:
             return ("b",)
-        return ("a",) if self._active % 6 else ("b",)
+        # A only: B on a plain dialogue can answer "No" to a prompt.
+        return ("a",)
 
 
 __all__ = [
