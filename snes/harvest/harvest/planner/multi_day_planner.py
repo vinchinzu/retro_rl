@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field, replace
 from typing import Optional, Sequence, Tuple
 
@@ -88,8 +89,17 @@ class MultiDayPlannerTask(Task):
     # Day floor (rr-bu62.4): no single day may end the run. The ROM never ends
     # a day by clock (bank_82 UpdateTime caps hour at 18), so a day that stalls
     # is ended here: budget/deadline -> return_home -> rescue walk -> sleep.
+    # ROM (bank_82 NightReset): shipping-bin money is paid by AddMoney at the
+    # overnight reset whatever the hour, and stamina refills only there, so
+    # nothing is gained by staying up. Sleep as soon as the day's work ends;
+    # False (HARVEST_SLEEP_WHEN_DONE=0) restores the wait for the 5pm scene
+    # and the 18:00 bed gate.
+    sleep_when_done: bool = field(
+        default_factory=lambda: os.environ.get("HARVEST_SLEEP_WHEN_DONE", "1") != "0"
+    )
     floor: DayFloor = field(default_factory=DayFloor.from_env)
     scene_guard: SceneGuard = field(default_factory=SceneGuard)
+    _child_pressed: bool = field(default=False, init=False)
     _day_bad: bool = field(default=False, init=False)
     _floor_abandoned: bool = field(default=False, init=False)
     _floor_reason: str = field(default="", init=False)
@@ -270,7 +280,7 @@ class MultiDayPlannerTask(Task):
         storm = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
         # A day the floor cut short sleeps at once: the bed takes any hour and
         # idling to 18:00 outdoors is exactly the exposure the floor removes.
-        if storm or self._floor_abandoned:
+        if storm or self._floor_abandoned or self.sleep_when_done:
             return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
@@ -317,6 +327,8 @@ class MultiDayPlannerTask(Task):
         ShippingScene dialogue runs before return-home/sleep. Wallet credit is
         still NightReset ``AddMoney``; this wait is the farm-side window.
         """
+        if self.sleep_when_done:
+            return False
         try:
             from harvest.tasks.harvest_task import read_shipping_money
 
@@ -687,6 +699,12 @@ class MultiDayPlannerTask(Task):
         return self._safe_step(world)
 
     def _safe_step(self, world: WorldState) -> TaskResult:
+        result = self._safe_step_inner(world)
+        action = getattr(getattr(result, "action", None), "action", None)
+        self._child_pressed = action is not None and bool(np.any(np.asarray(action)))
+        return result
+
+    def _safe_step_inner(self, world: WorldState) -> TaskResult:
         try:
             return self._current_task.step(world)
         except Exception as exc:  # a task bug is a failed phase, not a dead run
@@ -846,7 +864,9 @@ class MultiDayPlannerTask(Task):
                 return dismiss_dialogue_result(
                     self._step_count, buttons=("a",), pulse_every=2, reason="shipping scene"
                 )
-            held = self.scene_guard.observe(world.ram, self._step_count)
+            held = self.scene_guard.observe(
+                world.ram, self._step_count, child_pressed=self._child_pressed
+            )
             if held:
                 return dismiss_dialogue_result(
                     self._step_count, buttons=held, pulse_every=2, reason="scene guard"
