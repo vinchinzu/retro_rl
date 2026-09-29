@@ -18,14 +18,14 @@ from harvest.planner.crop_planner import (
 SEASONAL_CROPS: dict[int, tuple[str, ...]] = {
     SEASON_SPRING: ("potato", "turnip"),
     SEASON_SUMMER: ("corn", "tomato"),
-    SEASON_FALL: ("eggplant",),
+    # The ROM has no fall seed (seed counters: grass/corn/tomato/potato/turnip).
+    SEASON_FALL: (),
     SEASON_WINTER: (),
 }
 
 DEFAULT_SEASONAL_SEED: dict[int, str] = {
     SEASON_SPRING: "potato",
     SEASON_SUMMER: "corn",
-    SEASON_FALL: "eggplant",
 }
 
 
@@ -67,53 +67,57 @@ def next_crop_in_rotation(
 
 # ── Festival Calendar ───────────────────────────────────────────────────
 
-# Town festivals by (season_id, day_of_month):
-# Spring: D8 (Flower Festival), D23 (Horse Race)
-# Summer: D1 (Fireworks), D20 (Cow Festival)
-# Fall: D12 (Harvest Festival), D20 (Egg Festival)
-# Winter: D10 (Thanksgiving), D24 (Star Night), D30 (New Year's Eve)
+# ROM-verified (bank_82 WeatherTomorrow $828CF9, measured on pins 2026-09-28).
+# Each night the ROM computes the NEXT day's forecast byte ($098C) from today's
+# date: `day == N` writes the festival code for D(N+1). SetWeatherFlags copies
+# it at rollover and, for codes >= 6, leaves today's flags ($0196) empty, so a
+# festival morning looks like plain calm weather. Proof: Y1_D22_Town_Eve holds
+# forecast 6 at D22 18:13 and the recorded festival ends on D24 morning.
+#
+# There is NO Summer festival, no Spring D8 festival, no Horse Race, no
+# Fireworks, no Cow Festival and no "New Year's Eve" on Winter D30 in this
+# ROM. Winter D30's eve forecasts the New Year (code 0x0A) for the next Spring
+# D1, and only when that rollover increments the year (Y2+).
+FORECAST_FESTIVAL_CODES: dict[tuple[int, int], int] = {
+    (SEASON_SPRING, 23): 0x06,  # Flower Festival
+    (SEASON_FALL, 12): 0x07,  # Harvest Festival
+    (SEASON_WINTER, 10): 0x08,  # Thanksgiving
+    (SEASON_WINTER, 24): 0x09,  # Star Night
+    (SEASON_SPRING, 1): 0x0A,  # New Year (Y2+ only)
+    (SEASON_FALL, 20): 0x0B,  # Egg Festival
+}
+
 FESTIVAL_CALENDAR: dict[tuple[int, int], str] = {
-    (SEASON_SPRING, 8): "Flower Festival",
-    (SEASON_SPRING, 23): "Horse Race",
-    (SEASON_SUMMER, 1): "Fireworks",
-    (SEASON_SUMMER, 20): "Cow Festival",
+    (SEASON_SPRING, 23): "Flower Festival",
     (SEASON_FALL, 12): "Harvest Festival",
     (SEASON_FALL, 20): "Egg Festival",
     (SEASON_WINTER, 10): "Thanksgiving",
     (SEASON_WINTER, 24): "Star Night",
-    (SEASON_WINTER, 30): "New Year's Eve",
 }
-
-# Task recording mappings for festivals
-FESTIVAL_RECORDINGS: dict[tuple[int, int], str] = {
-    (SEASON_SPRING, 8): "spring_festival",
-    (SEASON_SPRING, 23): "spring_festival",
-    (SEASON_SUMMER, 1): "spring_festival",
-    (SEASON_SUMMER, 20): "spring_festival",
-    (SEASON_FALL, 12): "spring_festival",
-    (SEASON_FALL, 20): "spring_festival",
-    (SEASON_WINTER, 10): "spring_festival",
-    (SEASON_WINTER, 24): "spring_festival",
-    (SEASON_WINTER, 30): "spring_festival",
-}
+NEW_YEAR_DATE = (SEASON_SPRING, 1)
+NEW_YEAR_NAME = "New Year"
 
 
-def is_festival_day(season: int | str, day: int) -> bool:
-    """Return True if (season, day) is a town festival day."""
+def festival_name_for_date(
+    season: int | str, day: int, year: int = 0
+) -> Optional[str]:
+    """Festival name for a ROM ``year`` (0-based, as in RAM) date, or None."""
     s = normalize_season(season)
-    return (s, int(day)) in FESTIVAL_CALENDAR
-
-
-def festival_name_for_date(season: int | str, day: int) -> Optional[str]:
-    """Return festival name for (season, day) or None."""
-    s = normalize_season(season)
+    if (s, int(day)) == NEW_YEAR_DATE:
+        return NEW_YEAR_NAME if int(year) >= 1 else None
     return FESTIVAL_CALENDAR.get((s, int(day)))
 
 
-def festival_recording_for_date(season: int | str, day: int) -> str:
-    """Return recorded task name for (season, day) festival."""
-    s = normalize_season(season)
-    return FESTIVAL_RECORDINGS.get((s, int(day)), "spring_festival")
+def is_festival_day(season: int | str, day: int, year: int = 0) -> bool:
+    """Return True if the date is a town festival day (see table note)."""
+    return festival_name_for_date(season, day, year) is not None
+
+
+def forecast_code_for_date(year: int, season: int | str, day: int) -> int:
+    """ROM forecast byte the night before this date, for festival dates else 0."""
+    if festival_name_for_date(season, day, year) is None:
+        return 0
+    return FORECAST_FESTIVAL_CODES[(normalize_season(season), int(day))]
 
 
 ATTEND_FESTIVAL_PHASE = PhaseSpec(
@@ -124,18 +128,16 @@ ATTEND_FESTIVAL_PHASE = PhaseSpec(
 )
 
 
-def attend_festival_phase(season: int | str, day: int) -> PhaseSpec:
+def attend_festival_phase(season: int | str, day: int, year: int = 0) -> PhaseSpec:
     """Build a PhaseSpec to attend today's festival in town."""
     s = normalize_season(season)
     d = int(day)
-    name = festival_name_for_date(s, d) or "Festival"
-    task_name = festival_recording_for_date(s, d)
     return PhaseSpec(
         "ATTEND_FESTIVAL",
         PhaseKind.RECORDED,
         {
-            "task_name": task_name,
-            "festival_name": name,
+            "task_name": "spring_festival",
+            "festival_name": festival_name_for_date(s, d, year) or "Festival",
             "season": s,
             "day": d,
         },
@@ -160,21 +162,21 @@ SUNDAY_MOUNTAIN_PHASE = PhaseSpec(
 )
 
 
-# ── Storms: Hurricanes (Summer) & Blizzards (Winter) ────────────────────
+# ── Storms: hurricanes (Summer only) ────────────────────────────────────
 
+# $098C forecast codes. Code 3 comes only from Hurricane_Chance_Table, which is
+# non-zero for Summer alone: the ROM has no blizzard. Winter snow is code 2 (or
+# rain) and lands in $0196 as 0x08; Year-1 Winter can also roll the one-off
+# "fair" (code 4, $0196 0x200).
 WEATHER_SUNNY = 0
 WEATHER_RAIN = 1
 WEATHER_SNOW = 2
 WEATHER_HURRICANE = 3
-WEATHER_BLIZZARD = 3
+WEATHER_FAIR = 4
 
 
 def is_storm_weather(weather_code: int, season: int = 0) -> bool:
-    """Return True if weather_code indicates a hurricane or blizzard.
-
-    In HM SNES, weather code 3 triggers hurricane (summer) or blizzard (winter).
-    During storms, the player is trapped indoors and cannot leave the farmhouse.
-    """
+    """True when a FORECAST byte says hurricane (the eve, not the day itself)."""
     return int(weather_code) == WEATHER_HURRICANE
 
 
@@ -183,14 +185,12 @@ def is_storm_day(
     weather_code: Optional[int] = None,
     *,
     is_hurricane: Optional[bool] = None,
-    is_blizzard: Optional[bool] = None,
 ) -> bool:
-    """Return True if today is a storm day confining the farmer indoors."""
-    if is_hurricane or is_blizzard:
+    """Return True if today is a hurricane day confining the farmer indoors."""
+    if is_hurricane:
         return True
     if weather_code is not None:
-        s = normalize_season(season)
-        return is_storm_weather(weather_code, s)
+        return is_storm_weather(weather_code, normalize_season(season))
     return False
 
 
@@ -219,10 +219,11 @@ __all__ = [
     "default_crop_for_season",
     "next_crop_in_rotation",
     "FESTIVAL_CALENDAR",
-    "FESTIVAL_RECORDINGS",
+    "FORECAST_FESTIVAL_CODES",
+    "NEW_YEAR_DATE",
+    "forecast_code_for_date",
     "is_festival_day",
     "festival_name_for_date",
-    "festival_recording_for_date",
     "ATTEND_FESTIVAL_PHASE",
     "attend_festival_phase",
     "SUNDAY_CHURCH_PHASE",
@@ -231,7 +232,7 @@ __all__ = [
     "WEATHER_RAIN",
     "WEATHER_SNOW",
     "WEATHER_HURRICANE",
-    "WEATHER_BLIZZARD",
+    "WEATHER_FAIR",
     "is_storm_weather",
     "is_storm_day",
     "REPAIR_CROPS_PHASE",

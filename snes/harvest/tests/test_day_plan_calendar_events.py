@@ -119,12 +119,12 @@ class CalendarCropRotationTests(unittest.TestCase):
     def test_seasonal_crop_definitions(self) -> None:
         self.assertEqual(seasonal_crops_for_season(SEASON_SPRING), ("potato", "turnip"))
         self.assertEqual(seasonal_crops_for_season(SEASON_SUMMER), ("corn", "tomato"))
-        self.assertEqual(seasonal_crops_for_season(SEASON_FALL), ("eggplant",))
+        self.assertEqual(seasonal_crops_for_season(SEASON_FALL), ())
         self.assertEqual(seasonal_crops_for_season(SEASON_WINTER), ())
 
         self.assertEqual(default_crop_for_season(SEASON_SPRING), "potato")
         self.assertEqual(default_crop_for_season(SEASON_SUMMER), "corn")
-        self.assertEqual(default_crop_for_season(SEASON_FALL), "eggplant")
+        self.assertIsNone(default_crop_for_season(SEASON_FALL))
         self.assertIsNone(default_crop_for_season(SEASON_WINTER))
 
     def test_next_crop_in_rotation(self) -> None:
@@ -132,7 +132,7 @@ class CalendarCropRotationTests(unittest.TestCase):
         self.assertEqual(next_crop_in_rotation(SEASON_SPRING, "turnip"), "potato")
         self.assertEqual(next_crop_in_rotation(SEASON_SUMMER, "corn"), "tomato")
         self.assertEqual(next_crop_in_rotation(SEASON_SUMMER, "tomato"), "corn")
-        self.assertEqual(next_crop_in_rotation(SEASON_FALL, "eggplant"), "eggplant")
+        self.assertIsNone(next_crop_in_rotation(SEASON_FALL, "eggplant"))
 
     def test_summer_crop_rotation_in_build_day_phases(self) -> None:
         # Summer with corn
@@ -243,74 +243,31 @@ class SundayScheduleTests(unittest.TestCase):
 
 
 class FestivalCalendarTests(unittest.TestCase):
-    """Test all 9 festivals across the four seasons."""
+    """ROM festival days (bank_82 WeatherTomorrow); see day_phase_calendar."""
 
-    def test_all_nine_festivals_detected(self) -> None:
+    def test_rom_festival_days_detected(self) -> None:
         expected = [
-            (SEASON_SPRING, 8, "Flower Festival"),
-            (SEASON_SPRING, 23, "Horse Race"),
-            (SEASON_SUMMER, 1, "Fireworks"),
-            (SEASON_SUMMER, 20, "Cow Festival"),
+            (SEASON_SPRING, 23, "Flower Festival"),
             (SEASON_FALL, 12, "Harvest Festival"),
             (SEASON_FALL, 20, "Egg Festival"),
             (SEASON_WINTER, 10, "Thanksgiving"),
             (SEASON_WINTER, 24, "Star Night"),
-            (SEASON_WINTER, 30, "New Year's Eve"),
         ]
-        self.assertEqual(len(FESTIVAL_CALENDAR), 9)
+        self.assertEqual(len(FESTIVAL_CALENDAR), 5)
         for season, day, expected_name in expected:
             self.assertTrue(is_festival_day(season, day), f"Expected festival at {season}:{day}")
             self.assertEqual(festival_name_for_date(season, day), expected_name)
 
-        # Non-festival days
+        # The old table's Spring D8 / Summer / Winter D30 festivals do not exist.
+        self.assertFalse(is_festival_day(SEASON_SPRING, 8))
+        self.assertFalse(is_festival_day(SEASON_SUMMER, 1))
+        self.assertFalse(is_festival_day(SEASON_SUMMER, 20))
+        self.assertFalse(is_festival_day(SEASON_WINTER, 30))
         self.assertFalse(is_festival_day(SEASON_SPRING, 1))
         self.assertFalse(is_festival_day(SEASON_SUMMER, 15))
-        self.assertFalse(is_festival_day(SEASON_FALL, 5))
-        self.assertFalse(is_festival_day(SEASON_WINTER, 1))
-
-    def test_festival_day_schedules_early_chores_and_attendance(self) -> None:
-        # Flower festival: Spring Day 8
-        phases = build_day_phases(
-            None,
-            season=SEASON_SPRING,
-            day=8,
-            hour=6,
-            has_harvest=True,
-            has_waterable=True,
-            has_chickens=True,
-            policy=DayPlannerPolicy(
-                include_festivals=True,
-                include_harvest=True,
-                include_watering=True,
-                include_chickens=True,
-                include_shop_run=True,
-            ),
-        )
-        names = [p.phase for p in phases]
-
-        # Farm chores happen early
-        self.assertIn("COOP_CHORES", names)
-        self.assertIn("HARVEST_ROUTE", names)
-        self.assertIn("CROP_WATER", names)
-
-        # Shops are closed
-        self.assertNotIn("BUY_SEEDS", names)
-
-        # Festival attendance scheduled
-        self.assertIn("ATTEND_FESTIVAL", names)
-        attend_idx = names.index("ATTEND_FESTIVAL")
-        harvest_idx = names.index("HARVEST_ROUTE")
-        water_idx = names.index("CROP_WATER")
-        self.assertLess(harvest_idx, attend_idx)
-        self.assertLess(water_idx, attend_idx)
-
-        # Optional failure policy
-        attend_phase = next(p for p in phases if p.phase == "ATTEND_FESTIVAL")
-        self.assertEqual(attend_phase.failure_policy, "optional")
-        self.assertEqual(attend_phase.params.get("festival_name"), "Flower Festival")
 
     def test_festival_day_defers_seeds_with_shop_closed_festival(self) -> None:
-        ram = _make_ram(season=SEASON_SPRING, day=8, hour=6)
+        ram = _make_ram(season=SEASON_SPRING, day=23, hour=6)
         decision = build_day_plan_decision(
             ram=ram,
             policy=DayPlannerPolicy(include_shop_run=True, include_planting=True),
@@ -319,6 +276,28 @@ class FestivalCalendarTests(unittest.TestCase):
         self.assertEqual(decision.facts.festival_name, "Flower Festival")
         deferred_reasons = {item.phase: item.reason for item in decision.deferred}
         self.assertEqual(deferred_reasons.get("BUY_SEEDS"), "shop_closed_festival")
+
+    def test_festival_attendance_is_opt_in(self) -> None:
+        """The only festival macro is a whole-day Spring recording; never blind-replay it."""
+        kwargs = dict(
+            season=SEASON_SPRING,
+            day=23,
+            hour=6,
+            has_waterable=True,
+            has_chickens=True,
+        )
+        default = [p.phase for p in build_day_phases(None, **kwargs)]
+        self.assertNotIn("ATTEND_FESTIVAL", default)
+        self.assertNotIn("BUY_SEEDS", default)
+        attend = build_day_phases(
+            None, **kwargs, policy=DayPlannerPolicy(attend_festivals=True)
+        )
+        names = [p.phase for p in attend]
+        self.assertIn("ATTEND_FESTIVAL", names)
+        self.assertLess(names.index("CROP_WATER"), names.index("ATTEND_FESTIVAL"))
+        phase = next(p for p in attend if p.phase == "ATTEND_FESTIVAL")
+        self.assertEqual(phase.failure_policy, "optional")
+        self.assertEqual(phase.params.get("festival_name"), "Flower Festival")
 
 
 class RainyDayTests(unittest.TestCase):
@@ -353,7 +332,6 @@ class StormAndRecoveryTests(unittest.TestCase):
         self.assertFalse(is_storm_weather(WEATHER_SUNNY))
         self.assertFalse(is_storm_weather(WEATHER_RAIN))
         self.assertTrue(is_storm_day(SEASON_SUMMER, WEATHER_HURRICANE))
-        self.assertTrue(is_storm_day(SEASON_WINTER, WEATHER_HURRICANE))
 
     def test_storm_confinement_phases(self) -> None:
         phases = build_day_phases(
@@ -449,10 +427,9 @@ class MultiDayPlannerCalendarIntegrationTests(unittest.TestCase):
         day_task_summer = task._build_day_task(world_summer)
         self.assertEqual(day_task_summer.seed_type, "corn")
 
-        # Fall world
+        # Fall world: the ROM has no fall seed, so the bag type is irrelevant
         world_fall = SimpleNamespace(ram=_make_ram(season=SEASON_FALL, day=5))
-        day_task_fall = task._build_day_task(world_fall)
-        self.assertEqual(day_task_fall.seed_type, "eggplant")
+        task._build_day_task(world_fall)
 
     def test_multi_day_planner_overnight_storm_tracking(self) -> None:
         task = MultiDayPlannerTask()

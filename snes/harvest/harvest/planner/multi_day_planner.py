@@ -148,9 +148,13 @@ class MultiDayPlannerTask(Task):
         from harvest.planner.day_plan_status import resolve_seed_type_from_ram
 
         season, day = read_world_date(world.ram)
+        from harvest.planner.world_probe import WorldProbe
+
+        year = WorldProbe.from_inputs(ram=world.ram).year()
         day_policy = day_planner_policy_for_season(
             season,
             replace(self.policy, include_end_day=False),
+            year=year,
         )
         if (
             self._cow_failure_season == int(season)
@@ -240,9 +244,29 @@ class MultiDayPlannerTask(Task):
         # waiting for the 18:00 bed gate never ends. The bed accepts sleep at
         # any hour (measured Summer D12: day 12 -> 13 at 06:00).
         storm = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
-        if storm:
+        if storm or self._day_was_idle():
             return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
+
+    def _day_was_idle(self) -> bool:
+        """Off-season day with no real work: bed at once instead of at 18:00.
+
+        The bed takes A at 06:00 outside storms (measured: Winter D1, Spring
+        D3, Summer D13 all advance in 650-1700 frames); the 18:00 wait only
+        exists so the 5pm ShippingScene can pay goods already in the bin.
+        """
+        decision = self._last_day_decision
+        if decision is None or decision.facts.is_storm:
+            return False
+        from harvest.planner.day_phase_calendar import SEASON_FALL, SEASON_WINTER
+
+        season, _day = self._active_day
+        if int(season) not in (SEASON_FALL, SEASON_WINTER):
+            return False
+        return not any(
+            r.get("status") == "success" and r.get("phase") not in _MOVEMENT_PHASES
+            for r in self._last_day_phase_results
+        )
 
     def _continue_d2_clear(self, world: WorldState) -> TaskResult | None:
         """Keep --stop-after-d2-clear from idling after an unfinished day plan."""
@@ -735,6 +759,10 @@ COW_ROUTE_MAX_FAILURES = 1
 # it, every season. Flip on once the animal-shop route is ROM-proven.
 COW_PURCHASE_ENABLED = False
 _COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
+# Phases that only move or equip the farmer; a day of just these did no work.
+_MOVEMENT_PHASES = frozenset(
+    {"EXIT_TO_FARM", "EXIT_HOUSE", "ENSURE_WATERING_CAN", "NAV_CROP", "DYNAMIC_OUTDOOR_PLAN"}
+)
 
 
 def _merge_deferred_rows(
