@@ -546,3 +546,80 @@ class DogReleaseTask(Task):
             + [make_action()] * 20
         )
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+
+class WanderDropTask(Task):
+    """Find open ground by walking, then drop the held item in front.
+
+    A carried rock/weed cannot be put down facing a blocked tile, and the
+    fixed drop spots south of the house are ringed by south-field debris
+    (power-on D25: held 0x0F, 8 rescues).  Walk each direction in turn until
+    the farmer really moves, then pulse A facing that free tile.
+    """
+
+    name = "wander_drop"
+    _DIRS = ("right", "left", "up", "down")
+
+    def __init__(self, start_dir: int = 0, timeout: int = 900) -> None:
+        self.start_dir = start_dir
+        self.timeout = timeout
+        self._step = 0
+        self._leg = 0
+        self._leg_frames = 0
+        self._origin: Optional[Point] = None
+        self._phase = "walk"
+        self._drop_frames = 0
+
+    def reset(self, world: WorldState) -> None:
+        self._step = 0
+        self._leg = 0
+        self._leg_frames = 0
+        self._origin = None
+        self._phase = "walk"
+        self._drop_frames = 0
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        from harvest.core.animal_status import read_held_item
+        from harvest.tasks.nav import get_pos_from_ram
+
+        self._step += 1
+        if read_held_item(world.ram) == 0:
+            return TaskResult(status=TaskStatus.SUCCESS, reason="wander drop: hands clear")
+        if self._step > self.timeout or self._leg >= 8:
+            return TaskResult(status=TaskStatus.FAILURE, reason="wander drop: no open ground")
+        pos = get_pos_from_ram(world.ram)
+        if self._origin is None:
+            self._origin = pos
+        direction = self._DIRS[(self.start_dir + self._leg) % 4]
+        if self._phase == "walk":
+            self._leg_frames += 1
+            if abs(pos.x - self._origin.x) + abs(pos.y - self._origin.y) >= 14:
+                self._phase = "drop"
+                self._drop_frames = 0
+            elif self._leg_frames > 30:
+                self._leg += 1
+                self._leg_frames = 0
+                self._origin = pos
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(**{direction: True})),
+                reason=f"wander drop: walk {direction}",
+            )
+        self._drop_frames += 1
+        if self._drop_frames > 30:
+            # Front tile refused the item; try the next direction from here.
+            self._leg += 1
+            self._phase = "walk"
+            self._leg_frames = 0
+            self._origin = pos
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        if self._drop_frames % 8 in (1, 2):
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action(a=True, **{direction: True})),
+                reason="wander drop: A",
+            )
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
