@@ -66,6 +66,13 @@ FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
     # Well body.  These are visually solid even when the live tile ID is 0xA1.
     (15, 26), (16, 26), (17, 26),
     (15, 27), (16, 27), (17, 27),
+    # Tool-shed body (ROM-measured 2026-09-28 by teleport+hold probes on the
+    # Summer D30 farm): live ids read 0xA1 but the farmer stops. The door
+    # column (26,28)-(26,29) and its flanking (25,29) stay open.
+    (24, 26), (25, 26), (26, 26), (27, 26), (28, 26),
+    (24, 27), (25, 27), (26, 27), (27, 27), (28, 27),
+    (24, 28), (25, 28), (27, 28), (28, 28),
+    (24, 29), (25, 29), (27, 29), (28, 29),
 }) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | SOUTH_STREAM_FC_BANKS
 
 # ── Farm water sources (ROM-mapped, spring farm tilemap 0x00) ──────────────
