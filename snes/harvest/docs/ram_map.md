@@ -105,6 +105,43 @@ comparison can cross a year. `run_to_day2 --until-year N` (1-based) plus the
 existing `--until-season/--until-day` name an inclusive morning target; without
 `--until-year` the target is in the start year.
 
+## Year-conditional events (non-festival, non-weather)
+
+Scouted from the decomp (`bank_83` morning/date dispatcher `$83CD..$83E4CA`,
+`bank_81`) with a ROM event-script decoder (event = `UNK_LoadCCDataLong`
+group X / event Y, scripts in bank B3). All 30 `!year` reads were classified;
+flag bits are from `HM-Decomp/TODO.txt` (`$7F1F64` upgrades, `$7F1F66` wife,
+`$7F1F68`/`$7F1F6A` events). The decomp disassembly is partly misaligned, so
+conditions are hand-checked and the "bot-reachable" rows were ROM-probed.
+Probes are what-if pins (evening before, date edited in the save state), 2 days
+with the normal planner on main `d213f635` (SceneGuard present).
+
+| event (group/id) | trigger | what it does | needs input / blocks | bot-reachable | ROM result |
+|---|---|---|---|---|---|
+| Y2 Summer D1 6:00 (`$83E340`, 0A/4) | year=1 season=1 day=1, hour 6:00:00, wherever the farmer is (bed) | time-stopped text box 0x0479 | text auto-clears or SceneGuard pulses A | yes | day ends in bed; guard logged text 0x0479 "gave up" but planner continued (Summer D1 is also the festival day, calendar lane) |
+| **Y3 Summer D29 6:00 (`$83E340`, 0A/5)** | year=2 season=1 day=29, 6:00:00 | time-stopped text box 0x047A (1146), then D30 = ending | one text box | yes, mandatory | passed: guard handled text 0x047A in the house, day slept, D30 reached (`ev_Y3S1D29`, 13997f) |
+| Y3 Summer D30 (`$83DED3`) | year=2 season=1 day=30 | ending, see "Ending sequence" | none (wait) | yes | see above |
+| Y2+ money event (`$83D0FF`, 13/0) | year>0, 6:00:00, `$0196&0x1A==0` (clear weather), money >= 3000G, flag68 bit 0x0400 unset | visitor NPC on the farm road, text 333-335, takes 2000G, sets flag68 0x0800 once | dialogue 0x014D/0x014E pulsed by guard; the NPC sprite blocks the farm road (nav "yield to sprite", pixel-stuck ~10k frames) | only if money >= 3000G (bot reached 7060G in Y1) | fired Y2 Spring D5: -2000G, MOUNTAIN_BERRY timed out (12001f), return_home recovered, day ended in bed (26k frames vs ~14k) |
+| Y2+ Fall/Winter visitor (`$83DCDF`, 21/0) | year>0, season>=2, day 2-7/13-17/25-28, clear weather, flag6A bit 0x0200 unset, weekday Mon-Fri | 2-op script chaining a nested CC scene (group 0x21, visitor-style) | none seen | maybe | probed Y2 Fall D3 (weekday Mon): no dialogue appeared, day ended in bed (`ev_Y2Fall`, 13648f); whether the event fired silently is unproven |
+| Y2+ Saturday event (`$83D163`, 16/0) | (year>0 or Winter), Saturday 6:00:00, clear weather, house upgraded (flag64 & 0xC0), flag68 bit 0x4000 unset | yes/no question (texts 801-803), happiness +/-20, sets flag68 0x8000, flag6A 0x2 | a choice prompt | no: bot never upgrades the house | ruled out on paper |
+| Post-collapse wake (`$83E407`, 0D/0, 0D/1) | wake after passing out (flag5C bit 7); in Y2+ (or Y1 Winter) 0D/0 once then 0D/1 | doctor scene, texts 1086/374 | text | only if the farmer collapses at 2:00 | not probed (bot sleeps before then) |
+| Cow year event (`bank_81 $81E80E`, 00/7C) | year>0, flag66 bit 0x8000 unset, touching an adult cow | cow scene | scripted | no: bot owns no cows | ruled out |
+| Marriage / kid / girl-heart events (`$83DABF..$83DD95`, groups 1-0x1D, 0x44/0x45) | flags 66/6A/6C (wife bits, hearts >= 200, kid ages) | wife/child cutscenes | text | no: never married, no kids, hearts low | ruled out |
+| Sprinkler shop unlock (`bank_81 $81AFxx`) | year>=1 or Summer D20+ | shop stock only | none | n/a | no event |
+| Year-1-only (`$83CFA4`, `$83DDB9`, bank_81 `$81F14E`, thunder/snowstorm in NightReset) | year==0 | tutorials, thunder, special weather | | n/a | absent after Y1 |
+
+Probe status: the 2000G-event run was repeated with SceneGuard disabled locally
+(`quiet_frames=10**9`, uncommitted) and was frame-identical (26192f), so the guard
+did not change that day; the sprite blocking the road, not a dialogue, cost the
+frames. `--until-ending` from a Y3 Summer D24 evening what-if pin ran the planner
+through D25-D29 and the ending (77783f, `ev_D25`, "ending credits complete").
+
+Risk ranking for a farm/ship/sleep/festival bot: (1) the Y2+ money event, the
+only one with a physical blocker and a 2000G cost (needs 3000G banked);
+(2) Y3 Summer D29 and Y2 Summer D1 text boxes (harmless, guard-handled);
+(3) Y2+ Fall/Winter visitor; (4) post-collapse wake; everything else needs a
+wife, kids, cows or a house upgrade.
+
 ## Scene modes (derived)
 
 `harvest/core/scene.py` classifies tilemap + locks into NORMAL, DIALOGUE, MENU,
