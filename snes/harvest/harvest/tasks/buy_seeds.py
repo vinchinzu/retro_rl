@@ -53,10 +53,19 @@ SHOP_RETURN_SEGMENTS: Tuple[str, ...] = (
 
 # buy_potato_seeds_d2: first A is at (182,342) tile (11,21) face up.
 SEED_CLERK_PX = (182, 342)
+# The shelf bags in the general store are the items on sale: A facing one
+# streams its description, then the buy prompt (cursor 0 = buy). One stand per
+# bag along y=342 (measured Summer D13: corn x=152 and tomato x=168 each took
+# 300 G and added one bag; potato x=182 in spring).
+SEED_STAND_X = {"potato_seeds": 182, "corn_seeds": 152, "tomato_seeds": 168}
+SEED_BAG_PRICE = {"potato_seeds": 200, "corn_seeds": 300, "tomato_seeds": 300}
+SEED_STAND_Y = 342
 SEED_CLERK_RADIUS = 10
 SHOP_INTERIOR_SETTLE = 45
 TOWN_SETTLE_FRAMES = 40
-BUY_ATTEMPT_LIMIT = 8
+# A pulses allowed per bag. Potato closes in a handful; the corn/tomato shelf
+# bags stream a 3-page description first (~17 pulses measured Summer D13).
+BUY_ATTEMPT_LIMIT = 28
 ENTER_PULSE_LIMIT = 90
 POTATO_BAG_PRICE = 200
 
@@ -91,11 +100,21 @@ def shop_door_px() -> Tuple[int, int]:
     return found[1].target_px
 
 
-def at_seed_clerk(ram, *, radius: int = SEED_CLERK_RADIUS) -> bool:
+def seed_stand_px(stock_field: str = "potato_seeds") -> Tuple[int, int]:
+    """Shop-floor stand under the shelf bag for ``stock_field``."""
+    return (SEED_STAND_X.get(stock_field, SEED_CLERK_PX[0]), SEED_STAND_Y)
+
+
+def at_seed_clerk(
+    ram,
+    *,
+    radius: int = SEED_CLERK_RADIUS,
+    stand: Tuple[int, int] = SEED_CLERK_PX,
+) -> bool:
     pos = get_pos_from_ram(ram)
     return (
-        abs(int(pos.x) - SEED_CLERK_PX[0]) <= radius
-        and abs(int(pos.y) - SEED_CLERK_PX[1]) <= radius
+        abs(int(pos.x) - stand[0]) <= radius
+        and abs(int(pos.y) - stand[1]) <= radius
     )
 
 
@@ -184,8 +203,18 @@ class BuySeedsTask(Task):
     _buy_queue: deque = field(default_factory=deque, init=False, repr=False)
     _last_reason: str = field(default="start", init=False)
     _path_settle: int = field(default=0, init=False)
+    _align_steps: int = field(default=0, init=False)
+
+    def __post_init__(self) -> None:
+        if self.bag_price == POTATO_BAG_PRICE:
+            self.bag_price = SEED_BAG_PRICE.get(self.stock_field, POTATO_BAG_PRICE)
+
+    @property
+    def stand_px(self) -> Tuple[int, int]:
+        return seed_stand_px(self.stock_field)
 
     def reset(self, world: WorldState) -> None:
+        self._align_steps = 0
         self._step_count = 0
         self._child = None
         self._child_name = ""
@@ -331,7 +360,7 @@ class BuySeedsTask(Task):
                 self._child_name = "shop_settle"
                 self._last_reason = "shop interior settle"
                 return
-            if at_seed_clerk(world.ram):
+            if at_seed_clerk(world.ram, stand=SEED_CLERK_PX) or at_seed_clerk(world.ram, stand=self.stand_px):
                 self._child = None
                 self._child_name = "buy"
                 self._phase = "buy"
@@ -367,6 +396,26 @@ class BuySeedsTask(Task):
         self._child = self._nav_for(nxt, world)
         self._child_name = nxt
         self._last_reason = f"nav {nxt}"
+
+    def _align_to_stand(self, world: WorldState) -> Optional[TaskResult]:
+        """Walk along the shelf from the proven potato hop to this seed's stand.
+
+        The shop nav is only proven to (182,342); the other shelf bags are a
+        straight walk left/right along y=342 (measured Summer D13).
+        """
+        want = self.stand_px[0]
+        x = int(get_pos_from_ram(world.ram).x)
+        if abs(x - want) <= 1:
+            return None
+        self._align_steps += 1
+        if self._align_steps > 240:
+            return None  # let the buy loop fail with its own reason
+        direction = "left" if x > want else "right"
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action(**{direction: True})),
+            reason=f"align to {self.stock_field} stand x={want} from {x}",
+        )
 
     def _queue_buy(self, world: WorldState, *, lock: int) -> TaskResult:
         if self._buy_attempts >= BUY_ATTEMPT_LIMIT * self._bags_target():
@@ -551,7 +600,9 @@ class BuySeedsTask(Task):
             if lock in {0, 2, 4} and self._buy_attempts > 0:
                 # Dialogue still up — keep A pulses. Buy is cursor 0.
                 return self._queue_buy(world, lock=lock)
-            if at_seed_clerk(world.ram) or self._buy_attempts == 0:
+            if lock == 1 and self._buy_attempts == 0 and self._align_to_stand(world) is not None:
+                return self._align_to_stand(world)
+            if at_seed_clerk(world.ram, stand=self.stand_px) or self._buy_attempts == 0:
                 return self._queue_buy(world, lock=lock)
             self._phase = "nav"
             self._arm_nav(world)
@@ -654,6 +705,9 @@ __all__ = [
     "PATH_TILEMAP",
     "POTATO_BAG_PRICE",
     "SEED_CLERK_PX",
+    "SEED_BAG_PRICE",
+    "SEED_STAND_X",
+    "seed_stand_px",
     "SHOP_NAV_SEGMENTS",
     "SHOP_RETURN_SEGMENTS",
     "SHOP_TILEMAP",

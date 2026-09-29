@@ -393,7 +393,10 @@ def day_planner_policy_for_season(
         include_field_clear=policy.include_field_clear,
         include_watering=policy.include_watering,
         include_planting=planting and policy.include_planting,
-        include_berry_run=policy.include_berry_run,
+        # The grape route is only proven in spring; in Summer the picks come
+        # back "unverified after 3 picks" and strand the farmer on the mountain
+        # map (run summer5 D16).
+        include_berry_run=policy.include_berry_run and season_id == 0,
         include_shop_run=policy.include_shop_run,
         include_end_day=policy.include_end_day,
         include_spa=policy.include_spa,

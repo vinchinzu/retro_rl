@@ -18,8 +18,11 @@ from harvest.planner.day_phase_catalog import BUY_SEEDS_PHASE, buy_seeds_phase
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.planner.tasks.navigation import CrossMapRecordedTask
 from harvest.tasks.buy_seeds import (
+    SEED_BAG_PRICE,
     SEED_CLERK_PX,
     BuySeedsTask,
+    at_seed_clerk,
+    seed_stand_px,
     first_shop_nav_segment,
     first_shop_return_segment,
     purchase_closed,
@@ -177,6 +180,36 @@ class CrossMapShopRejectTests(unittest.TestCase):
             done = task.step(world)
             self.assertEqual(done.status, TaskStatus.FAILURE)
             self.assertIn("shop miss", done.reason or "")
+
+
+class SeedStandTests(unittest.TestCase):
+    """Summer shelf bags: each seed is bought from its own stand (ROM-measured)."""
+
+    def test_stand_and_price_follow_the_seed(self) -> None:
+        self.assertEqual(seed_stand_px("potato_seeds"), SEED_CLERK_PX)
+        self.assertEqual(seed_stand_px("corn_seeds"), (152, 342))
+        self.assertEqual(seed_stand_px("tomato_seeds"), (168, 342))
+        corn = BuySeedsTask(stock_field="corn_seeds")
+        self.assertEqual(corn.bag_price, 300)
+        self.assertEqual(corn.stand_px, (152, 342))
+        self.assertEqual(BuySeedsTask().bag_price, SEED_BAG_PRICE["potato_seeds"])
+        self.assertEqual(BuySeedsTask(bag_price=123).bag_price, 123)
+
+    def test_at_seed_clerk_is_relative_to_the_stand(self) -> None:
+        import numpy as np
+        from harvest.core.tile_catalog import ADDR_X, ADDR_Y
+
+        ram = np.zeros(0x2000, dtype=np.uint8)
+        ram[ADDR_X], ram[ADDR_X + 1] = 152, 0
+        ram[ADDR_Y], ram[ADDR_Y + 1] = 342 & 0xFF, 342 >> 8
+        self.assertFalse(at_seed_clerk(ram))  # potato stand is 30px away
+        self.assertTrue(at_seed_clerk(ram, stand=seed_stand_px("corn_seeds")))
+
+    def test_summer_seed_phases_use_the_live_shop_task(self) -> None:
+        for crop in ("corn", "tomato"):
+            phase = buy_seeds_phase(recording_name="buy_summer", seed_type=crop)
+            self.assertEqual(phase.kind, BUY_SEEDS_PHASE.kind)
+            self.assertEqual(phase.params["stock_field"], f"{crop}_seeds")
 
 
 if __name__ == "__main__":

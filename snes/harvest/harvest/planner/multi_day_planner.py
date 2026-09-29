@@ -722,7 +722,9 @@ class MultiDayPlannerTask(Task):
         return self._handle_result(world, self._current_task.step(world))
 
 
-COW_ROUTE_MAX_FAILURES = 3
+# One failed try burns a whole day (multi_nav timeout ~13k frames), so give the
+# unproven cow route a single attempt per season.
+COW_ROUTE_MAX_FAILURES = 1
 _COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
 
 

@@ -339,7 +339,7 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         self.assertIn("NAV_FARM_EXIT", names)
         self.assertIn("BUY_SEEDS", names)
 
-    def test_summer_morning_buys_summer_seed_recording(self) -> None:
+    def test_summer_morning_buys_corn_through_the_live_shop_task(self) -> None:
         phases = build_day_phases(
             None,
             weekday=3,
@@ -352,8 +352,10 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         names = self._phase_names(phases)
         self.assertIn("BUY_SEEDS", names)
         buy = phases[names.index("BUY_SEEDS")]
-        self.assertEqual(buy.params["recording_name"], "buy_summer")
-        self.assertEqual(buy.params["recording_start"], 0)
+        # Live RAM-closed buy at the corn shelf bag, not the buy_summer tape
+        # (which only ever walked into the shop and never bought).
+        self.assertEqual(buy.kind, "shop_buy")
+        self.assertEqual(buy.params["stock_field"], "corn_seeds")
 
     def test_winter_morning_skips_seed_shop_and_planting(self) -> None:
         phases = build_day_phases(

@@ -125,6 +125,24 @@ SHED_SEED_SPECS: Dict[str, ShedShelfSpec] = {
         inside_stand_px=(96, 118),
         inside_settle_frames=40,
     ),
+    # DATA16_81BE0F rows for the seed ids (sprite x,y): corn 5 (144,96),
+    # tomato 6 (160,96), potato 7 (176,96), turnip 8 (192,96); grass 0x0C
+    # (96,96) stands at x=96, y=96+22=118. Stand at the sprite tile centre.
+    "corn": ShedShelfSpec(
+        item_id=seed_item_id("corn"),
+        inside_stand_px=(152, 118),
+        inside_settle_frames=40,
+    ),
+    "tomato": ShedShelfSpec(
+        item_id=seed_item_id("tomato"),
+        inside_stand_px=(168, 118),
+        inside_settle_frames=40,
+    ),
+    "turnip": ShedShelfSpec(
+        item_id=seed_item_id("turnip"),
+        inside_stand_px=(200, 118),
+        inside_settle_frames=40,
+    ),
 }
 
 

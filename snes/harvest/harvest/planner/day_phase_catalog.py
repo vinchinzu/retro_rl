@@ -146,6 +146,9 @@ BUY_SEEDS_PHASE = PhaseSpec(
 )
 
 
+LIVE_SHOP_SEED_TYPES = frozenset({"corn", "tomato"})
+
+
 def buy_seeds_phase(
     *,
     recording_name: str | None = None,
@@ -156,6 +159,17 @@ def buy_seeds_phase(
     params = dict(BUY_SEEDS_PHASE.params)
     if seed_type is not None:
         params["seed_type"] = seed_type
+    if seed_type in LIVE_SHOP_SEED_TYPES:
+        # Summer corn/tomato: the same RAM-closed shop buy as potato, at the
+        # stand under that shelf bag. The recorded CrossMap tape only ever
+        # ended in the shop and never bought.
+        params["stock_field"] = f"{seed_type}_seeds"
+        return PhaseSpec(
+            BUY_SEEDS_PHASE.phase,
+            BUY_SEEDS_PHASE.kind,
+            params,
+            failure_policy=BUY_SEEDS_PHASE.failure_policy,
+        )
     if recording_name:
         params["recording_name"] = recording_name
         # Summer still uses the recorded CrossMap until a nav+RAM buy lands.
