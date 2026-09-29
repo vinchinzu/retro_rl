@@ -135,6 +135,11 @@ def _uses_d2_exhaustive_clear(season: int | None, day: int | None) -> bool:
     return int(season or 0) == 0 and int(day or 0) == 2
 
 
+def _clear_after_shop(policy: DayPlannerPolicy, season: int | None, day: int | None) -> bool:
+    """Post-shop clear: the D2 tactic is required even when daily CLEAR_FIELD is off."""
+    return bool(policy.include_field_clear or _uses_d2_exhaustive_clear(season, day))
+
+
 def _daytime_clear_phase(season: int | None, day: int | None) -> PhaseSpec:
     """D2 uses the exhaustive tactic; other days keep quota CLEAR_FIELD."""
     if _uses_d2_exhaustive_clear(season, day):
@@ -245,7 +250,10 @@ def build_day_phases(
             is_festival = probe.is_festival()
 
     # Fill remaining defaults
-    if has_plant_capacity is None:
+    if has_plant_capacity is None or _uses_d2_exhaustive_clear(season, day):
+        # D2's own tactic clears and plants the pockets. A power-on D2 farm is
+        # still all debris, so "no ring has bare capacity" there is not a
+        # reason to skip the seed shop (it left the whole spring grape-only).
         has_plant_capacity = True
     if weekday is None:
         weekday = 1
@@ -385,7 +393,7 @@ def build_day_phases(
         phases.extend(seed_buy_phases)
         # Shop hop used to starve morning CLEAR. After a real buy we are back
         # on the farm with time left — clear before go-home.
-        if seed_buy_phases and has_debris and policy.include_field_clear:
+        if seed_buy_phases and has_debris and _clear_after_shop(policy, season, day):
             phases.append(_daytime_clear_phase(season, day))
     elif seed_buy_phases:
         # Keep-alive farm: still buy seeds early so plant/water is not starved.
@@ -587,7 +595,7 @@ def build_outdoor_day_phases(
     if berry_before_clear:
         phases.extend(other_berry_phases)
         phases.extend(seed_buy_phases)
-        if seed_buy_phases and has_debris and policy.include_field_clear:
+        if seed_buy_phases and has_debris and _clear_after_shop(policy, season, day):
             phases.append(_daytime_clear_phase(season, day))
     elif seed_buy_phases:
         if restock_berries_first:
