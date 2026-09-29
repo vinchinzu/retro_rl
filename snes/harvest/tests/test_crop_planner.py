@@ -180,22 +180,21 @@ class CropPlannerTests(unittest.TestCase):
         self.assertEqual(crop.name, "corn")
         self.assertGreater(crop.harvests_from_planting_day(12), 1)
 
-    def test_fall_has_eggplant_and_winter_has_no_plantable_crops(self) -> None:
+    def test_only_spring_and_summer_are_planting_seasons(self) -> None:
+        """ROM: no fall seed exists (seed counters are grass/corn/tomato/potato/
+        turnip). Fall is harvest-and-water; winter has no farming."""
         from harvest.planner.crop_planner import (
             is_crop_planting_season,
             resolve_seed_type_for_date,
             should_buy_seeds_for_date,
-            choose_crop_for_date,
         )
 
-        self.assertTrue(is_crop_planting_season("fall"))
+        self.assertTrue(is_crop_planting_season("spring"))
+        self.assertTrue(is_crop_planting_season("summer"))
+        self.assertFalse(is_crop_planting_season("fall"))
         self.assertFalse(is_crop_planting_season("winter"))
-        crop = choose_crop_for_date("fall", 1)
-        self.assertIsNotNone(crop)
-        assert crop is not None
-        self.assertEqual(crop.name, "eggplant")
-        self.assertEqual(resolve_seed_type_for_date("fall", 5), "eggplant")
-        self.assertTrue(should_buy_seeds_for_date("fall", 5))
+        self.assertFalse(should_buy_seeds_for_date("fall", 5))
+        self.assertIsNone(resolve_seed_type_for_date("fall", 5))
         self.assertIsNone(resolve_seed_type_for_date("winter", 10))
         self.assertFalse(should_buy_seeds_for_date("winter", 5))
 

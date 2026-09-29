@@ -34,6 +34,7 @@ from harvest.tasks.travel_walk import (
     MAX_BUSY_SUPPRESS_FRAMES,
     MAX_IGNORED_HOLD_FRAMES,
     is_travel_occupied,
+    is_travel_occupied_with,
     player_is_busy,
     read_player_action,
     read_player_direction,
@@ -181,6 +182,56 @@ class Pathfinder:
             return True
         return False
 
+    def _walk_test(
+        self,
+        ram: np.ndarray,
+        walkable_override: Optional[Set[int]] = None,
+        current_pos: Optional[Tuple[int, int]] = None,
+    ):
+        """Closure equal to ``is_walkable(ram, x, y, ...)`` with state hoisted.
+
+        BFS calls ``is_walkable`` thousands of times per search, and each call
+        re-derived the tilemap sets and the grid base (a 4096-byte
+        count_nonzero per tile read): ~96% of a Summer harvest day's CPU.
+        Semantics are identical; ``test_walk_test_matches_is_walkable`` pins it.
+        """
+        from harvest.core.tile_catalog import MAP_HEIGHT, metatile_grid_base
+
+        base = metatile_grid_base(ram)
+        size = len(ram)
+        no_go = self.no_go_tiles
+        base_no_go = self.base_no_go_tiles(ram)
+        temp_blocked = self.temp_blocked
+        walkable_tiles = self.base_walkable_tiles(ram)
+        walkable_coords = self.base_walkable_coords(ram)
+        extra = self.extra_walkable
+
+        def tile_at(tx: int, ty: int) -> int:
+            if tx < 0 or ty < 0 or tx >= MAP_WIDTH or ty >= MAP_HEIGHT:
+                return 0
+            addr = base + ty * MAP_WIDTH + tx
+            return int(ram[addr]) if addr < size else 0
+
+        def walkable(tx: int, ty: int) -> bool:
+            if current_pos and (tx, ty) == current_pos:
+                return True
+            if (tx, ty) in no_go or (tx, ty) in base_no_go or (tx, ty) in temp_blocked:
+                return False
+            tile_id = tile_at(tx, ty)
+            if is_travel_occupied_with(tile_at, tx, ty):
+                return False
+            if tile_id in walkable_tiles:
+                return True
+            if (tx, ty) in walkable_coords:
+                return True
+            if (tx, ty) in extra:
+                return True
+            if walkable_override and (tx, ty) in walkable_override:
+                return True
+            return False
+
+        return walkable
+
     def block_push_facing(self, ram: np.ndarray, facing: Tuple[int, int], *, pixel_moved: bool = False) -> bool:
         """Mark a push-facing neighbor non-walkable (shared travel policy)."""
         return block_push_facing(
@@ -199,6 +250,7 @@ class Pathfinder:
         if start == goal:
             return []
 
+        walkable = self._walk_test(ram, walkable_override, start)
         queue = deque([start])
         came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {
             start: None
@@ -225,13 +277,7 @@ class Pathfinder:
                         came_from[(nx, ny)] = (cx, cy)
                         continue
 
-                    if self.is_walkable(
-                        ram,
-                        nx,
-                        ny,
-                        walkable_override=walkable_override,
-                        current_pos=start,
-                    ):
+                    if walkable(nx, ny):
                         came_from[(nx, ny)] = (cx, cy)
                         queue.append((nx, ny))
 
@@ -273,6 +319,7 @@ class Pathfinder:
         if max_steps <= 0:
             return None
 
+        walkable = self._walk_test(ram, walkable_override, start)
         queue: deque[Tuple[Tuple[int, int], int]] = deque([(start, 0)])
         came_from: Dict[Tuple[int, int], Optional[Tuple[int, int]]] = {start: None}
         best = start
@@ -291,13 +338,7 @@ class Pathfinder:
                     continue
                 if (nx, ny) in came_from:
                     continue
-                if not self.is_walkable(
-                    ram,
-                    nx,
-                    ny,
-                    walkable_override=walkable_override,
-                    current_pos=start,
-                ):
+                if not walkable(nx, ny):
                     continue
                 came_from[(nx, ny)] = (cx, cy)
                 queue.append(((nx, ny), depth + 1))

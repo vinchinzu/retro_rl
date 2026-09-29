@@ -171,12 +171,9 @@ class CalendarCropRotationTests(unittest.TestCase):
         self.assertTrue(tomato_buy)
         self.assertEqual(tomato_buy[0].params.get("seed_type"), "tomato")
 
-    def test_fall_eggplant_rotation_in_build_day_phases(self) -> None:
-        policy_fall = DayPlannerPolicy(
-            include_shop_run=True,
-            include_planting=True,
-            fall_crop="eggplant",
-        )
+    def test_fall_plans_no_seed_shop_trip(self) -> None:
+        """No fall seed exists in the ROM; a BUY_SEEDS trip buys nothing."""
+        policy_fall = DayPlannerPolicy(include_shop_run=True, include_planting=True)
         phases_fall = build_day_phases(
             None,
             season=SEASON_FALL,
@@ -185,9 +182,7 @@ class CalendarCropRotationTests(unittest.TestCase):
             has_seeds=False,
             policy=policy_fall,
         )
-        eggplant_buy = [p for p in phases_fall if p.phase == "BUY_SEEDS"]
-        self.assertTrue(eggplant_buy)
-        self.assertEqual(eggplant_buy[0].params.get("seed_type"), "eggplant")
+        self.assertFalse([p for p in phases_fall if p.phase == "BUY_SEEDS"])
 
 
 class SundayScheduleTests(unittest.TestCase):

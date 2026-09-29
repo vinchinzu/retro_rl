@@ -445,7 +445,14 @@ def choose_crop_for_date(season: int | str, day: int, *, layout_tiles: int = 8) 
 
 
 def is_crop_planting_season(season: int | str) -> bool:
-    return normalize_season(season) in (SEASON_SPRING, SEASON_SUMMER, SEASON_FALL)
+    """Spring and summer only.
+
+    The ROM has no fall seed: the seed counters are grass, corn, tomato,
+    potato and turnip (ram.asm !seeds_*_N) and the shop shelf sells no fifth
+    bag. Fall is harvest-and-water for what summer left; planning "eggplant"
+    sent the farmer on a shop trip for a bag that does not exist.
+    """
+    return normalize_season(season) in (SEASON_SPRING, SEASON_SUMMER)
 
 
 def crops_for_season(season: int | str) -> tuple[CropSpec, ...]:

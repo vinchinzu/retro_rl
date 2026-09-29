@@ -158,6 +158,12 @@ class MultiDayPlannerTask(Task):
             and day_policy.include_cows
         ):
             day_policy = replace(day_policy, include_cows=False)
+        if not COW_PURCHASE_ENABLED and day_policy.include_cows:
+            from harvest.planner.day_plan_status import ram_has_cows
+
+            # Owned cows still get chores; the unproven purchase route stays off.
+            if not ram_has_cows(world.ram):
+                day_policy = replace(day_policy, include_cows=False)
         # Determine target seed for the season
         target_seed = None
         if self.crop_rotation and season in self.crop_rotation:
@@ -725,6 +731,9 @@ class MultiDayPlannerTask(Task):
 # One failed try burns a whole day (multi_nav timeout ~13k frames), so give the
 # unproven cow route a single attempt per season.
 COW_ROUTE_MAX_FAILURES = 1
+# rr-4zvl: NAV_TO_ANIMAL_SHOP times out (multi_nav) and a whole day goes with
+# it, every season. Flip on once the animal-shop route is ROM-proven.
+COW_PURCHASE_ENABLED = False
 _COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
 
 

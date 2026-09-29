@@ -90,24 +90,33 @@ _TWO_BY_TWO_ANCHORS = frozenset(
 )
 
 
+def is_travel_occupied_with(tile_at, tx: int, ty: int) -> bool:
+    """``is_travel_occupied`` over any ``tile_at(x, y)`` reader.
+
+    Lets a BFS read tiles from a hoisted grid base instead of re-deriving it
+    (a 4096-byte count_nonzero) on every one of the ~6 reads per cell.
+    """
+    if is_travel_solid(tile_at(tx, ty)):
+        return True
+    for dx, dy in ((0, 0), (-1, 0), (0, -1), (-1, -1)):
+        ax, ay = tx + dx, ty + dy
+        if ax < 0 or ay < 0 or ax >= MAP_WIDTH or ay >= MAP_HEIGHT:
+            continue
+        tid = tile_at(ax, ay)
+        if tid not in _TWO_BY_TWO_ANCHORS:
+            continue
+        if (tx, ty) in debris_footprint((ax, ay), tid):
+            return True
+    return False
+
+
 def is_travel_occupied(ram: np.ndarray, tx: int, ty: int) -> bool:
     """Refuse the cell and every sibling of a 2x2 stump/rock TL.
 
     Live RAM often keeps 0x0D/0x09 only on the top-left; the other three
     metatiles stay dirt/0x00 while the sprite still occupies the quad.
     """
-    if is_travel_solid(get_tile_at(ram, tx, ty)):
-        return True
-    for dx, dy in ((0, 0), (-1, 0), (0, -1), (-1, -1)):
-        ax, ay = tx + dx, ty + dy
-        if ax < 0 or ay < 0 or ax >= MAP_WIDTH or ay >= MAP_HEIGHT:
-            continue
-        tid = get_tile_at(ram, ax, ay)
-        if tid not in _TWO_BY_TWO_ANCHORS:
-            continue
-        if (tx, ty) in debris_footprint((ax, ay), tid):
-            return True
-    return False
+    return is_travel_occupied_with(lambda x, y: get_tile_at(ram, x, y), tx, ty)
 
 
 def read_player_action(ram: np.ndarray) -> int:
