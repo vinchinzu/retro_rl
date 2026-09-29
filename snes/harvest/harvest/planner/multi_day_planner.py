@@ -8,12 +8,17 @@ from typing import Optional, Sequence, Tuple
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
+from harvest.core.recovery import DayFloor
 from harvest.core.scene import (
+    SceneGuard,
     classify_scene_from_ram,
     morning_scene_ready,
     scene_indicates_ending,
 )
-from harvest.core.shipping_credit import SHIPPING_SCENE_HOUR
+from harvest.core.shipping_credit import (
+    SHIPPING_SCENE_HOUR,
+    shipping_scene_needs_dismiss,
+)
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.day_plan_decision import (
@@ -28,6 +33,7 @@ from harvest.planner.day_plan_status import (
     is_house_tilemap,
     read_world_date,
     read_world_day_time,
+    read_world_ymd,
 )
 from harvest.planner.day_plan_tasks import (
     FarmShippingWaitTask,
@@ -49,6 +55,9 @@ class MultiDayPlannerTask(Task):
     tasks_dir: str = TASKS_DIR
     until_season: int = 0
     until_day: int = 30
+    # 0-based year of the exclusive (until_season, until_day) bound; 0 keeps
+    # the Year-1 meaning, later years are past every Year-1 target.
+    until_year: int = 0
     target_days: Optional[int] = None
     max_days: int = 40
     morning_settle_frames: int = 10
@@ -76,6 +85,15 @@ class MultiDayPlannerTask(Task):
     # A stranded return_home is the dominant terminal killer of long runs. Give
     # it a few fresh attempts (nav state is rebuilt each time) before failing.
     max_return_home_retries: int = 3
+    # Day floor (rr-bu62.4): no single day may end the run. The ROM never ends
+    # a day by clock (bank_82 UpdateTime caps hour at 18), so a day that stalls
+    # is ended here: budget/deadline -> return_home -> rescue walk -> sleep.
+    floor: DayFloor = field(default_factory=DayFloor.from_env)
+    scene_guard: SceneGuard = field(default_factory=SceneGuard)
+    _day_bad: bool = field(default=False, init=False)
+    _floor_abandoned: bool = field(default=False, init=False)
+    _floor_reason: str = field(default="", init=False)
+    _max_days_warned: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "plan_day"
@@ -90,6 +108,8 @@ class MultiDayPlannerTask(Task):
         self._day_failures.clear()
         self._day_journal.clear()
         self._was_storm_yesterday = False
+        self._day_bad = False
+        self._floor_abandoned = False
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -118,6 +138,15 @@ class MultiDayPlannerTask(Task):
         return tuple(dict(item) for item in self._day_journal)
 
     @property
+    def floor_report(self) -> dict[str, object]:
+        """Consecutive/total bad days and every scene the guard had to clear."""
+        return {
+            "consecutive_bad_days": self.floor.bad_days,
+            "total_bad_days": self.floor.total_bad_days,
+            "scene_guard": [dict(row) for row in self.scene_guard.log],
+        }
+
+    @property
     def current_task(self) -> Optional[Task]:
         return self._current_task
 
@@ -139,8 +168,7 @@ class MultiDayPlannerTask(Task):
     def _target_reached(self, ram: np.ndarray) -> bool:
         if self.target_days is not None:
             return self._days_completed >= self.target_days
-        current = read_world_date(ram)
-        return current > (self.until_season, self.until_day)
+        return read_world_ymd(ram) > (self.until_year, self.until_season, self.until_day)
 
     def _build_day_task(self, world: WorldState):
         from harvest.planner.day_phase_types import day_planner_policy_for_season
@@ -244,7 +272,9 @@ class MultiDayPlannerTask(Task):
         # waiting for the 18:00 bed gate never ends. The bed accepts sleep at
         # any hour (measured Summer D12: day 12 -> 13 at 06:00).
         storm = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
-        if storm or self._day_was_idle():
+        # A day the floor cut short, or an off-season idle day, sleeps at once:
+        # the bed takes any hour and idling to 18:00 outdoors is pure exposure.
+        if storm or self._floor_abandoned or self._day_was_idle():
             return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
@@ -339,6 +369,10 @@ class MultiDayPlannerTask(Task):
         self._current_task = task
         self._active_day = read_world_date(world.ram)
         print(f"[MULTI_DAY] Start {phase} date={self._active_day[0]}:{self._active_day[1]}")
+        if phase == "plan_day":
+            self.floor.begin_day(self._step_count)
+            self._floor_abandoned = False
+            self._floor_reason = ""
         task.reset(world)
 
     def _record_day_failure(self, world: WorldState, status: TaskStatus | str, reason: str) -> None:
@@ -353,6 +387,8 @@ class MultiDayPlannerTask(Task):
             "step": int(self._step_count),
         }
         self._day_failures.append(row)
+        self._day_bad = True
+        self.floor.note_bad()
         print(
             "[MULTI_DAY] Failed day checkpoint "
             f"date={season}:{day} phase={self._phase} status={status_text}: {reason}"
@@ -375,14 +411,50 @@ class MultiDayPlannerTask(Task):
         """External watchdog hook: abandon current daytime work and try to sleep."""
         if self._target_reached(world.ram):
             return False
-        if self._phase == "sleep":
+        if self._phase in {"sleep", "rescue", "return_home"} and not self.floor.next_rescue():
+            # Every rescue of this day has been spent: provably wedged.
             return False
+        self._capture_day_plan_outcomes()
         self._record_day_failure(world, "watchdog", reason)
+        self._floor_abandoned = True
         self._phase = "return_home"
         self._current_task = None
+        self._return_home_retries = 0
         self._active_day = read_world_date(world.ram)
         print(f"[MULTI_DAY] Watchdog forced return_home: {reason}")
         return True
+
+    def _abandon_day(self, world: WorldState, reason: str) -> TaskResult:
+        """Floor tripped: drop the remaining phases and go home to bed."""
+        self._capture_day_plan_outcomes()
+        self._record_day_failure(world, "floor", reason)
+        self._floor_abandoned = True
+        self._floor_reason = reason
+        self._phase = "return_home"
+        self._current_task = None
+        self._return_home_retries = 0
+        print(f"[MULTI_DAY] Day floor: {reason}; abandoning phases, return_home")
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+    def _rescue(self, world: WorldState, reason: str) -> TaskResult:
+        """Return-home or sleep failed for good: shake loose and try again.
+
+        Only a farmer that is still stuck after ``floor.max_rescues`` fresh
+        attempts on one day is failed as wedged; nothing else ends the run.
+        """
+        self._record_day_failure(world, "rescue", reason)
+        if not self.floor.next_rescue():
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"wedged after {self.floor.max_rescues} rescues: {reason}",
+            )
+        self._floor_abandoned = True
+        self._phase = "rescue"
+        self._current_task = None
+        print(
+            f"[MULTI_DAY] Rescue {self.floor.rescues}/{self.floor.max_rescues}: {reason}"
+        )
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
     def _capture_day_plan_outcomes(self) -> None:
         """Snapshot DayPlanTask phase results before switching to return/sleep."""
@@ -484,11 +556,17 @@ class MultiDayPlannerTask(Task):
             "harvested_count": harvested_total,
             "establish_planted": establish_planted,
             "planned_phases": planned,
+            "bad_day": bool(self._day_bad),
+            "floor_reason": self._floor_reason,
+            "rescues": int(self.floor.rescues),
+            "consecutive_bad_days": int(self.floor.bad_days),
             "phase_results": phase_results,
             "deferred": deferred,
             "step": int(self._step_count),
         }
         self._day_journal.append(row)
+        self.floor.end_day(clean=not self._day_bad)
+        self._day_bad = False
         self._was_storm_yesterday = is_storm_day
         succeeded = [r["phase"] for r in phase_results if r.get("status") == "success"]
         skipped = [r["phase"] for r in phase_results if r.get("status") == "skipped"]
@@ -496,7 +574,8 @@ class MultiDayPlannerTask(Task):
         print(
             f"[MULTI_DAY] Day journal {season}:{day} -> {end_season}:{end_day} "
             f"ok={succeeded or ['(none)']} skipped={skipped or ['(none)']} "
-            f"no_work={no_work or ['(none)']} money={money}"
+            f"no_work={no_work or ['(none)']} money={money} "
+            f"bad_days={self.floor.bad_days}"
         )
 
     def _finish_sleep(self, world: WorldState, reason: str = "day advanced") -> TaskResult:
@@ -572,7 +651,7 @@ class MultiDayPlannerTask(Task):
             if self._phase == "sleep":
                 return self._finish_sleep(world, "ending reached")
             return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
-        if self._phase in {"plan_day", "wait_shipping", "return_home"} and read_world_date(
+        if self._phase in {"plan_day", "wait_shipping", "return_home", "rescue"} and read_world_date(
             world.ram
         ) != self._active_day:
             if self._phase == "plan_day":
@@ -597,10 +676,25 @@ class MultiDayPlannerTask(Task):
         if self._target_reached(world.ram):
             return TaskResult(status=TaskStatus.SUCCESS, reason="target date reached")
         if self._days_completed >= self.max_days:
-            return TaskResult(status=TaskStatus.FAILURE, reason="max_days reached")
+            if self.target_days is not None:
+                return TaskResult(status=TaskStatus.FAILURE, reason="max_days reached")
+            # A date target ends on the date; a day counter must not end a
+            # 300-day run that is still moving.
+            if not self._max_days_warned:
+                self._max_days_warned = True
+                print(f"[MULTI_DAY] max_days={self.max_days} passed; date target still governs")
 
         if self._phase == "plan_day":
-            self._activate("plan_day", self._build_day_task(world), world)
+            try:
+                day_task = self._build_day_task(world)
+            except Exception as exc:  # planner bug must not end the run
+                print(f"[MULTI_DAY] plan_day build failed: {type(exc).__name__}: {exc}")
+                return self._abandon_day(world, f"plan build error {type(exc).__name__}")
+            self._activate("plan_day", day_task, world)
+        elif self._phase == "rescue":
+            from harvest.planner.tasks.home_recover import RescueWalkTask
+
+            self._activate("rescue", RescueWalkTask(attempt=self.floor.rescues), world)
         elif self._phase == "wait_shipping":
             self._activate(
                 "wait_shipping", self._build_farm_shipping_wait_task(), world
@@ -614,7 +708,19 @@ class MultiDayPlannerTask(Task):
                 status=TaskStatus.FAILURE,
                 reason=f"unknown planner phase {self._phase}",
             )
-        return self._current_task.step(world)
+        return self._safe_step(world)
+
+    def _safe_step(self, world: WorldState) -> TaskResult:
+        try:
+            return self._current_task.step(world)
+        except Exception as exc:  # a task bug is a failed phase, not a dead run
+            import traceback
+
+            traceback.print_exc()
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"exception {type(exc).__name__}: {exc}",
+            )
 
     def _handle_result(self, world: WorldState, result: TaskResult) -> TaskResult:
         if result.status == TaskStatus.RUNNING:
@@ -638,6 +744,13 @@ class MultiDayPlannerTask(Task):
                 return TaskResult(
                     status=TaskStatus.RUNNING, action=ActionResult(make_action())
                 )
+            if self._phase == "rescue":
+                self._phase = "return_home"
+                self._current_task = None
+                self._return_home_retries = 0
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            if self._phase == "sleep":
+                return self._rescue(world, f"sleep failed: {reason}")
             if self._phase == "return_home":
                 tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
                 if read_world_date(world.ram) != self._active_day:
@@ -683,6 +796,7 @@ class MultiDayPlannerTask(Task):
                         status=TaskStatus.RUNNING,
                         action=ActionResult(make_action()),
                     )
+                return self._rescue(world, f"return_home failed: {reason}")
             return TaskResult(
                 status=result.status,
                 reason=f"{self._phase} failed: {reason}",
@@ -729,6 +843,11 @@ class MultiDayPlannerTask(Task):
             self._phase = "return_home"
             self._current_task = None
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        if self._phase == "rescue":
+            self._phase = "return_home"
+            self._current_task = None
+            self._return_home_retries = 0
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
         if self._phase == "return_home":
             self._phase = "sleep"
             self._current_task = None
@@ -746,10 +865,26 @@ class MultiDayPlannerTask(Task):
         self._step_count += 1
         if self._phase == "settle_morning":
             return self._step_settle_morning(world)
+        if self._phase != "sleep":
+            if shipping_scene_needs_dismiss(world.ram):
+                return dismiss_dialogue_result(
+                    self._step_count, buttons=("a",), pulse_every=2, reason="shipping scene"
+                )
+            held = self.scene_guard.observe(world.ram, self._step_count)
+            if held:
+                return dismiss_dialogue_result(
+                    self._step_count, buttons=held, pulse_every=2, reason="scene guard"
+                )
+        if self.policy.include_end_day and self._phase in {"plan_day", "wait_shipping"}:
+            _day, hour, _minute = read_world_day_time(world.ram)
+            floor_reason = self.floor.check(self._step_count, hour)
+            if floor_reason is not None:
+                return self._abandon_day(world, floor_reason)
         if self._current_task is None:
             return self._handle_result(world, self._start_phase(world))
 
-        return self._handle_result(world, self._current_task.step(world))
+        result = self._safe_step(world)
+        return self._handle_result(world, result)
 
 
 # One failed try burns a whole day (multi_nav timeout ~13k frames), so give the

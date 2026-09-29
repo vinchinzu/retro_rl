@@ -1,6 +1,6 @@
 """Calibrate ``spring_opt.CostModel`` frame costs from real campaign logs.
 
-Parses `[RUN] f=<frame> date=S<season>D<day> HH:MM $<money> ...` heartbeat
+Parses `[RUN] f=<frame> date=[Y<year>]S<season>D<day> HH:MM $<money> ...` heartbeat
 lines and `[DAY_PLAN] Starting phase N/M: NAME (kind)` / `[DAY_PLAN] NAME ->
 ...` / `[DAY_PLAN] Phase NAME FAILURE: ...` phase markers out of
 `logs/spring_d3_30/run*.log`, and reports measured frame deltas per phase
@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-_RUN_RE = re.compile(r"^\[RUN\] f=(\d+) date=S(\d)D(\d+) ")
+_RUN_RE = re.compile(r"^\[RUN\] f=(\d+) date=(?:Y\d+)?S(\d)D(\d+) ")
 _START_RE = re.compile(r"^\[DAY_PLAN\] Starting phase \d+/\d+: (\w+)")
 _END_OK_RE = re.compile(r"^\[DAY_PLAN\] (\w+) -> (.*)$")
 _END_FAIL_RE = re.compile(r"^\[DAY_PLAN\] Phase (\w+) FAILURE: (.*)$")

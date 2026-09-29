@@ -277,6 +277,7 @@ def build_run_progress_record(
     from harvest.core.stamina import Stamina
     from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, TILE_SIZE
 
+    year = int(read_ram_value(ram, "year") or 0)
     season = int(read_ram_value(ram, "season") or 0)
     day = int(read_ram_value(ram, "day") or 0)
     hour = int(read_ram_value(ram, "hour") or 0)
@@ -309,6 +310,7 @@ def build_run_progress_record(
         "planner_frames": int(planner_frames),
         "wall_seconds": round(float(wall_seconds), 1),
         "date": {
+            "year": year,
             "season": season,
             "day": day,
             "hour": hour,
@@ -350,6 +352,7 @@ def checkpoint_progress_key(record: Mapping[str, Any]) -> Tuple[Any, ...]:
     d2 = record.get("d2") or {}
     debris = record.get("debris") or {}
     return (
+        date.get("year"),
         date.get("season"),
         date.get("day"),
         record.get("phase"),
@@ -384,8 +387,12 @@ def format_run_progress_line(record: Mapping[str, Any]) -> str:
             f"/s{debris.get('stones')}/r{debris.get('large_rocks')}"
             f"/u{debris.get('trees_or_stumps')}"
         )
+    # Year 1 keeps the legacy ``S<n>D<n>`` shape (log parsers); later years
+    # carry a 1-based ``Y<n>`` prefix so a rollover is visible.
+    year0 = int(date.get("year") or 0)
+    year_txt = f"Y{year0 + 1}" if year0 else ""
     return (
-        f"[RUN] f={record.get('frame')} date=S{date.get('season')}D{date.get('day')} "
+        f"[RUN] f={record.get('frame')} date={year_txt}S{date.get('season')}D{date.get('day')} "
         f"{int(date.get('hour') or 0):02d}:{int(date.get('minute') or 0):02d} "
         f"${date.get('money')} phase={record.get('phase')} "
         f"{record.get('progress_text') or ''}"

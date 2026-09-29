@@ -42,6 +42,8 @@ from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
 from harvest.core.task_progress import RunProgressSidecar, format_run_progress_line
 from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQUENCES
+from harvest.planner.day_plan_status import format_world_date, read_world_ymd
+from harvest.planner.tasks.ending import EndingTask, is_ending_date, read_ending_signals
 from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.nav import make_action
@@ -166,6 +168,23 @@ def _parse_args(argv=None) -> argparse.Namespace:
         help="Season index for --until-day (default: start season)",
     )
     p.add_argument(
+        "--until-year",
+        type=int,
+        default=None,
+        help=(
+            "1-based game year for --until-day/--until-season (default: start "
+            "year). Alone: stop at Spring D1 of that year."
+        ),
+    )
+    p.add_argument(
+        "--until-ending",
+        action="store_true",
+        help=(
+            "Play until the ROM ending (Y3 Summer D30 wake) has run to its "
+            "terminal screen; success = credits complete, recorded in the out JSON"
+        ),
+    )
+    p.add_argument(
         "--end-of-spring",
         action="store_true",
         help="Run until Summer morning (MultiDay until Spring 30 exclusive end)",
@@ -273,6 +292,7 @@ def _world(env, frame: int = 0) -> WorldState:
 
 def _date_fields(ram) -> dict[str, int]:
     return {
+        "year": int(read_ram_value(ram, "year")),
         "season": int(read_ram_value(ram, "season")),
         "day": int(read_ram_value(ram, "day")),
         "hour": int(read_ram_value(ram, "hour")),
@@ -332,7 +352,59 @@ def _d2_counts(ram) -> dict:
     return row
 
 
-def _build_task(args: argparse.Namespace, start_season: int) -> object:
+DAYS_PER_SEASON = 30
+
+
+def _ymd_text(key: tuple[int, int, int]) -> str:
+    return f"Y{key[0] + 1}S{key[1]}D{key[2]}"
+
+
+SEASONS_PER_YEAR = 4
+
+
+def _day_ordinal(key: tuple[int, int, int]) -> int:
+    year, season, day = key
+    return (year * SEASONS_PER_YEAR + season) * DAYS_PER_SEASON + day
+
+
+def days_between(start: tuple[int, int, int], end: tuple[int, int, int]) -> int:
+    """Calendar days from ``start`` to ``end`` ((year0, season, day) keys)."""
+    return max(0, _day_ordinal(end) - _day_ordinal(start))
+
+
+def _previous_day(key: tuple[int, int, int]) -> tuple[int, int, int]:
+    """The day before ``key``; clamps at Y1 Spring D0 (nothing earlier)."""
+    year, season, day = key
+    if day > 1:
+        return (year, season, day - 1)
+    if season > 0:
+        return (year, season - 1, DAYS_PER_SEASON)
+    if year > 0:
+        return (year - 1, SEASONS_PER_YEAR - 1, DAYS_PER_SEASON)
+    return (0, 0, 0)
+
+
+def resolve_until_target(
+    args: argparse.Namespace, start_key: tuple[int, int, int]
+) -> tuple[int, int, int] | None:
+    """Inclusive morning target as (year0, season, day), or None if unset.
+
+    ``--until-day`` alone keeps its Year-1-era meaning relative to the start
+    date (start year and season); ``--until-year`` names the 1-based year and
+    defaults an unspecified season/day to Spring D1.
+    """
+    if args.until_day is None and args.until_year is None:
+        return None
+    year = start_key[0] if args.until_year is None else max(0, args.until_year - 1)
+    if args.until_season is not None:
+        season = args.until_season
+    else:
+        season = start_key[1] if args.until_year is None else 0
+    day = args.until_day if args.until_day is not None else 1
+    return (year, season, day)
+
+
+def _build_task(args: argparse.Namespace, start_key: tuple[int, int, int]) -> object:
     extra: dict = {}
     if getattr(args, "stop_after_d2_clear", False):
         from harvest.planner.day_phase_types import DayPlannerPolicy
@@ -342,6 +414,8 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
         if (
             args.days is not None
             or args.until_day is not None
+            or args.until_year is not None
+            or args.until_ending
             or args.end_of_spring
         ):
             raise SystemExit(
@@ -371,10 +445,9 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
         )
 
     target_days = args.days
-    until_day = args.until_day
-    until_season = args.until_season if args.until_season is not None else start_season
+    target = resolve_until_target(args, start_key)
 
-    if target_days is None and until_day is None:
+    if target_days is None and target is None and not args.until_ending:
         target_days = 1
 
     kwargs: dict = {"max_days": 40}
@@ -382,19 +455,22 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
         kwargs["target_days"] = target_days
         kwargs["max_days"] = max(target_days + 1, 2)
 
-    if until_day is not None:
-        # Inclusive morning target → exclusive MultiDay bound (day-1).
-        # Example: --until-day 4 → stop when date > Spring 3 → D4 morning.
-        # Cross-season: --until-season 1 --until-day 1 → exclusive (1, 0).
-        if until_day <= 1 and until_season > 0:
-            kwargs["until_season"] = until_season - 1
-            kwargs["until_day"] = 30
-        else:
-            kwargs["until_season"] = until_season
-            kwargs["until_day"] = max(0, until_day - 1)
+    if args.until_ending:
+        # No date target: the ending itself (Y3 Summer D30 wake) ends the run.
+        kwargs["until_year"] = 99
+        kwargs["max_days"] = 400
+    elif target is not None:
+        # Inclusive morning target -> exclusive MultiDay bound (previous day).
+        # Example: --until-day 4 -> stop when date > Spring 3 -> D4 morning.
+        # Cross-season: --until-season 1 --until-day 1 -> exclusive (1, 30).
+        # Cross-year: Y2 Spring D1 -> exclusive Y1 Winter D30.
+        bound = _previous_day(target)
+        kwargs["until_year"], kwargs["until_season"], kwargs["until_day"] = bound
         if target_days is None:
             kwargs.pop("target_days", None)
-            kwargs["max_days"] = max(kwargs.get("until_day", 30) + 5, 4)
+            kwargs["max_days"] = max(
+                days_between(start_key, target) + 5, bound[2] + 5, 4
+            )
 
     kwargs.update(extra)
     return MultiDayPlannerTask(**kwargs)
@@ -402,29 +478,24 @@ def _build_task(args: argparse.Namespace, start_season: int) -> object:
 
 def _goal_reached(
     *,
-    start: tuple[int, int],
-    end: tuple[int, int],
+    start: tuple[int, int, int],
+    end: tuple[int, int, int],
     days_completed: int | None,
     args: argparse.Namespace,
 ) -> bool:
-    if end <= start and not args.end_of_spring:
-        # Still allow end-of-spring only if we somehow wrap? No.
-        if end == start:
-            return False
+    """Date goals over (year0, season, day) keys, so a year rollover orders right."""
     if args.end_of_spring:
         # Summer (or later) morning after finishing Spring 30 overnight.
-        return end > (0, 30)
+        return end > (0, 0, 30)
     if end <= start:
         return False
-    if args.until_day is not None:
-        until_season = (
-            args.until_season if args.until_season is not None else start[0]
-        )
-        return end >= (until_season, args.until_day)
+    target = resolve_until_target(args, start)
+    if target is not None:
+        return end >= target
     if args.days is not None:
         if days_completed is not None:
             return days_completed >= args.days
-        return end[0] > start[0] or end[1] >= start[1] + args.days
+        return end[:2] > start[:2] or end[2] >= start[2] + args.days
     return end > start
 
 
@@ -648,6 +719,10 @@ def main() -> int:
         overnights_budget = 32
     elif args.days is not None:
         overnights_budget = args.days
+    elif args.until_ending:
+        overnights_budget = 300
+    elif args.until_year is not None:
+        overnights_budget = max(2, (args.until_year - 1) * 120 + (args.until_season or 0) * 30 + (args.until_day or 1) + 2)
     elif args.until_day is not None:
         overnights_budget = max(2, args.until_day + 2)
     else:
@@ -662,7 +737,10 @@ def main() -> int:
     source_state_sha256 = _file_sha256(source_state) if source_state else None
     env = AuditedEnv(
         make_harvest_env(
-            state=None if args.power_on else args.state, render_mode="rgb_array"
+            state=None if args.power_on else args.state,
+            render_mode="rgb_array",
+            lean_step=args.video is None
+            and os.environ.get("HARVEST_LEAN_STEP", "1") != "0",
         ),
         capabilities=AuditCapabilities.all("harvest.run_to_day2"),
     )
@@ -777,7 +855,7 @@ def main() -> int:
         start_fields = _date_fields(world.ram)
         start_season = start_fields["season"]
         start_day = start_fields["day"]
-        start_key = (start_season, start_day)
+        start_key = (start_fields["year"], start_season, start_day)
 
         # Gate B full / rr-5in: power-on lands Spring D1 town; multi-day alone
         # cannot do six talks + truck + shed + sleep. Run TownDay1Handoff first.
@@ -889,7 +967,7 @@ def main() -> int:
             # Keep start_key as power-on D1 for continuous claim goal checks;
             # multi-day internal date is live from RAM on reset.
 
-        task = _build_task(args, start_season)
+        task = _build_task(args, start_key)
         task.reset(world)
 
         plan_label = args.day_plan or (
@@ -899,8 +977,9 @@ def main() -> int:
             plan_label = f"d1_handoff+{plan_label}"
         print(
             f"[RUN] state={'power_on' if args.power_on else args.state} plan={plan_label} "
-            f"start=S{start_season}D{start_day} "
-            f"days={args.days} until=({args.until_season},{args.until_day}) "
+            f"start=Y{start_key[0] + 1}S{start_key[1]}D{start_key[2]} "
+            f"days={args.days} until=({args.until_year},{args.until_season},{args.until_day}) "
+            f"until_ending={args.until_ending} "
             f"end_of_spring={args.end_of_spring} max_frames={args.max_frames}",
             flush=True,
         )
@@ -913,10 +992,30 @@ def main() -> int:
         weed_checkpoint_saved: Path | None = None
         # Multi-day budget is independent of handoff frames already spent.
         planner_start_frame = frames
-        last_logged_day = (
-            int(read_ram_value(world.ram, "season")),
-            int(read_ram_value(world.ram, "day")),
-        )
+        last_logged_day = read_world_ymd(world.ram)
+        # --until-ending: a finished credits screen is the success signal.
+        ending_task: EndingTask | None = None
+        ending_report: dict[str, object] = {
+            "started": False,
+            "finished": False,
+            "handoff_frame": None,
+            "handoff_date": None,
+            "peak_index": 0,
+            "final": None,
+        }
+
+        def _start_ending(active_world, why: str) -> EndingTask:
+            nonlocal ending_task
+            ending_task = EndingTask()
+            ending_task.reset(active_world)
+            ending_report["handoff_frame"] = frames
+            ending_report["handoff_date"] = format_world_date(active_world.ram)
+            print(
+                f"[RUN] ending handoff ({why}) date={format_world_date(active_world.ram)} "
+                f"frame={frames}",
+                flush=True,
+            )
+            return ending_task
 
         def _sidecar_write(active_task, active_world, *, d2_status=None):
             if sidecar is None:
@@ -937,12 +1036,27 @@ def main() -> int:
 
         while args.max_frames <= 0 or frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
+            if (
+                args.until_ending
+                and ending_task is None
+                and is_ending_date(*read_world_ymd(world.ram))
+            ):
+                # Slept into Y3 Summer D30: the ROM plays the ending on its own
+                # (no input needed); stop day-planning and wait it out.
+                task = _start_ending(world, "ending date reached")
             result = task.step(world)
             frames += 1
 
-            season = int(read_ram_value(world.ram, "season"))
-            day = int(read_ram_value(world.ram, "day"))
-            current = (season, day)
+            year, season, day = read_world_ymd(world.ram)
+            current = (year, season, day)
+            if ending_task is not None:
+                sig = ending_task.signals
+                ending_report["started"] = bool(sig is not None and sig.started) or bool(
+                    ending_report["started"]
+                )
+                ending_report["peak_index"] = max(
+                    int(ending_report["peak_index"]), ending_task.peak_index
+                )
 
             if args.save_after_weeds is not None and weed_checkpoint_saved is None:
                 clear_task = _active_farm_clear_task(task)
@@ -981,13 +1095,31 @@ def main() -> int:
 
             if current != last_logged_day:
                 print(
-                    f"[RUN] day change S{last_logged_day[0]}D{last_logged_day[1]} "
-                    f"-> S{season}D{day} at frame={frames}",
+                    f"[RUN] day change {_ymd_text(last_logged_day)} "
+                    f"-> {_ymd_text(current)} at frame={frames}",
                     flush=True,
                 )
                 last_logged_day = current
 
-            if result.status == TaskStatus.SUCCESS:
+            if (
+                result.status == TaskStatus.SUCCESS
+                and args.until_ending
+                and ending_task is None
+                and "ending" in (result.reason or "")
+            ):
+                # The planner saw the ROM start the ending; let it finish.
+                task = _start_ending(world, result.reason or "ending reached")
+                result = task.step(world)
+            if (
+                result.status == TaskStatus.SUCCESS
+                and ending_task is not None
+                and task is ending_task
+            ):
+                ending_report["finished"] = True
+                reason = result.reason or "ending credits complete"
+                terminal = True
+                break
+            elif result.status == TaskStatus.SUCCESS:
                 if args.stop_after_d2_clear:
                     d2_status = _d2_clear_status(task, world.ram)
                     from harvest.planner.d2_work import confirm_d2_complete
@@ -1041,7 +1173,7 @@ def main() -> int:
                         minute = int(read_ram_value(world.ram, "minute"))
                         money = int(read_ram_value(world.ram, "money"))
                         print(
-                            f"[RUN] f={frames} date=S{season}D{day} "
+                            f"[RUN] f={frames} date={_ymd_text(current) if year else f'S{season}D{day}'} "
                             f"{hour:02d}:{minute:02d} ${money} phase={phase} {progress}",
                             flush=True,
                         )
@@ -1067,7 +1199,12 @@ def main() -> int:
         )
         scene = classify_scene_from_ram(world.ram)
         end_fields = _date_fields(world.ram)
-        end_key = (end_fields["season"], end_fields["day"])
+        end_key = (end_fields["year"], end_fields["season"], end_fields["day"])
+        if ending_task is not None and ending_task.signals is not None:
+            ending_report["final"] = ending_task.signals.to_dict()
+            ending_report["peak_index"] = max(
+                int(ending_report["peak_index"]), ending_task.peak_index
+            )
         days_completed = getattr(task, "_days_completed", None)
         journal = list(getattr(task, "day_journal", ()) or ())
         advanced = end_key > start_key
@@ -1104,6 +1241,9 @@ def main() -> int:
                 and d2_status.is_complete
                 and d2_two_settled_observations
             )
+        elif args.until_ending:
+            success = bool(ending_report["finished"])
+            goal = success
         else:
             success = bool(goal and advanced and morning_ok)
 
@@ -1157,6 +1297,10 @@ def main() -> int:
             "days": args.days,
             "until_day": args.until_day,
             "until_season": args.until_season,
+            "until_year": args.until_year,
+            "until_ending": bool(args.until_ending),
+            "ending": ending_report if args.until_ending else None,
+            "end_date": _ymd_text(end_key),
             "end_of_spring": bool(args.end_of_spring),
             "frames": frames,
             "wall_seconds": round(time.monotonic() - t0, 1),
@@ -1177,7 +1321,7 @@ def main() -> int:
                 success
                 and args.power_on
                 and money_ok
-                and end_key > (0, 30)
+                and end_key > (0, 0, 30)
             ),
             "d2_farm": (
                 {
@@ -1191,7 +1335,8 @@ def main() -> int:
             ),
             "reason": (
                 reason
-                if success and (args.stop_after_d2_shipping or args.stop_after_d2_clear)
+                if success
+                and (args.stop_after_d2_shipping or args.stop_after_d2_clear or args.until_ending)
                 else "goal reached"
             )
             if success
