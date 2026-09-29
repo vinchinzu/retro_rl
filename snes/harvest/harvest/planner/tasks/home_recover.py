@@ -373,3 +373,153 @@ class RescueWalkTask(Task):
             action=ActionResult(make_action(**{direction: True})),
             reason=f"rescue walk {direction}",
         )
+
+
+# ── Dog pickup flag (rr-bu62.19) ──────────────────────────────────────────
+# bank_84 Event_UNKDogRelated: a fresh A with empty hands beside the dog starts
+# the pickup/drop animation and sets game_state 0x0800.  The dog script only
+# finishes it outdoors, so walking into the house mid-animation leaves 0x0800
+# stuck: bed A, lunch and every other interaction are dead for the rest of the
+# day (Fall soak D27, power-on D16).  A second A beside the dog clears it.
+DOG_PICKUP_ANIM_FLAG = 0x0800
+DOG_CARRYING_FLAG = 0x0080
+DOG_POS_ADDR = 0x11F2C  # WRAM $7F1F2C dog_pos_X, then dog_pos_Y
+DOG_A_RADIUS_PX = 24
+_A_INDEX = int(np.argmax(make_action(a=True)))
+_B_INDEX = int(np.argmax(make_action(b=True)))
+
+
+def _game_state(ram: np.ndarray) -> int:
+    return int(ram[0xD2]) | (int(ram[0xD3]) << 8)
+
+
+def dog_pickup_stuck(ram: np.ndarray) -> bool:
+    """0x0800 set while not carrying the dog: an unfinished pickup animation."""
+    gs = _game_state(ram)
+    return bool(gs & DOG_PICKUP_ANIM_FLAG) and not gs & DOG_CARRYING_FLAG
+
+
+def dog_position(ram: np.ndarray) -> Optional[Point]:
+    from harvest.core.ram_catalog import live_wram_base
+
+    idx = DOG_POS_ADDR + live_wram_base(ram)
+    if idx + 3 >= len(ram):
+        return None
+    x = int(ram[idx]) | (int(ram[idx + 1]) << 8)
+    y = int(ram[idx + 2]) | (int(ram[idx + 3]) << 8)
+    if x == 0 and y == 0:
+        return None
+    return Point(x, y)
+
+
+def dog_adjacent(ram: np.ndarray, radius: int = DOG_A_RADIUS_PX) -> bool:
+    from harvest.core.animal_status import read_held_item
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.day_plan_status import is_farm_tilemap
+
+    if not is_farm_tilemap(int(read_ram_value(ram, "tilemap"))):
+        return False
+    dog = dog_position(ram)
+    if dog is None or read_held_item(ram) != 0:
+        return False
+    px = int(read_ram_value(ram, "player_x"))
+    py = int(read_ram_value(ram, "player_y"))
+    return abs(px - dog.x) <= radius and abs(py - dog.y) <= radius
+
+
+def strip_dog_hug_press(action, ram: np.ndarray):
+    """Swap A for B while the dog is beside the farmer with empty hands.
+
+    A dismiss/interact pulse there would start the pickup animation.  B still
+    closes text boxes; a task that truly needs A simply retries once the dog
+    wanders off.
+    """
+    if action is None or len(action) <= max(_A_INDEX, _B_INDEX):
+        return action
+    if not action[_A_INDEX] or not dog_adjacent(ram):
+        return action
+    out = np.array(action, copy=True)
+    out[_A_INDEX] = 0
+    out[_B_INDEX] = 1
+    return out
+
+
+class DogReleaseTask(Task):
+    """Outdoors, walk to the dog and press A until the stuck 0x0800 clears."""
+
+    name = "dog_release"
+
+    def __init__(self, timeout: int = 4000, max_tries: int = 8) -> None:
+        self.timeout = timeout
+        self.max_tries = max_tries
+        self._step = 0
+        self._tries = 0
+        self._child: Optional[Task] = None
+        self._queue: List[np.ndarray] = []
+
+    def reset(self, world: WorldState) -> None:
+        self._step = 0
+        self._tries = 0
+        self._child = None
+        self._queue = []
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        from harvest.core.ram_catalog import read_ram_value
+        from harvest.maps.map_types import Waypoint
+        from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
+        from harvest.planner.tasks.inventory_exit import ExitToFarmTask
+        from harvest.planner.tasks.navigation import MultiMapNavTask
+
+        self._step += 1
+        if not dog_pickup_stuck(world.ram):
+            return TaskResult(status=TaskStatus.SUCCESS, reason="dog flag clear")
+        if self._step > self.timeout or self._tries > self.max_tries:
+            return TaskResult(status=TaskStatus.FAILURE, reason="dog flag stuck")
+        if self._queue:
+            return TaskResult(
+                status=TaskStatus.RUNNING, action=ActionResult(self._queue.pop(0))
+            )
+        tilemap = int(read_ram_value(world.ram, "tilemap"))
+        if not is_farm_tilemap(tilemap):
+            if not is_house_tilemap(tilemap):
+                return TaskResult(status=TaskStatus.FAILURE, reason="dog release: off farm")
+            if not isinstance(self._child, ExitToFarmTask):
+                self._child = ExitToFarmTask()
+                self._child.reset(world)
+            res = self._child.step(world)
+            if res.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                return res
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=res.action or ActionResult(make_action()),
+                reason="dog release: leaving building",
+            )
+        dog = dog_position(world.ram)
+        if dog is None:
+            return TaskResult(status=TaskStatus.FAILURE, reason="dog release: no dog")
+        if self._child is None or isinstance(self._child, ExitToFarmTask):
+            self._child = MultiMapNavTask(
+                name="nav_dog",
+                waypoints=[
+                    Waypoint(tilemap=0x00, target_px=(int(dog.x) - 16, int(dog.y)), radius=12)
+                ],
+                timeout=1200,
+                initial_settle_frames=0,
+            )
+            self._child.reset(world)
+        res = self._child.step(world)
+        if res.status == TaskStatus.RUNNING:
+            return res
+        # Arrived (or gave up): face the dog and press A once, then re-check.
+        self._child = None
+        self._tries += 1
+        self._queue = (
+            [make_action(right=True)] * 6
+            + [make_action()] * 4
+            + [make_action(a=True)]
+            + [make_action()] * 20
+        )
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
