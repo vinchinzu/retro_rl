@@ -25,6 +25,7 @@ from harvest.tasks.nav import (
     get_pos_from_ram,
     get_tile_at,
     make_action,
+    tile_dist,
 )
 from harvest.tasks.farm_ops import TileScanner
 
@@ -669,12 +670,42 @@ class HarvestTask(Task):
             return self._fallback_action(goal), True
         return action, False
 
+    def _stand_provably_unreachable(self, ram: np.ndarray) -> bool:
+        """True when BFS over the loaded viewport cannot reach the stand.
+
+        A fully grown ring seals its own centre (every neighbour is a crop
+        tile), and the old walk-until-timeout discovery cost ~6000f per stand:
+        Summer D30 spent all 24k watchdog frames on one corn target. Only
+        judged inside the viewport hop range, where BFS is not stale.
+        """
+        cur = self._navigator.current_tile
+        stand = self._current_stand
+        if cur == stand or tile_dist(cur, stand) > 7:
+            return False
+        return self._pathfinder.find_path(ram, cur, stand) is None
+
     def _step_target_nav(self, world: WorldState) -> TaskResult:
         self._target_nav_steps += 1
-        action, blocked = self._navigate_to_tile(world.ram, self._current_stand)
+        sealed = self._target_nav_steps == 1 and self._stand_provably_unreachable(world.ram)
+        if sealed:
+            action, blocked = self._fallback_action(self._current_stand), True
+        else:
+            action, blocked = self._navigate_to_tile(world.ram, self._current_stand)
         self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
+        # BFS plans through crop tiles (they are in FARM_WALKABLE) and the walls
+        # are discovered by bumping; once the last ring tile is temp-blocked the
+        # stand is sealed. Re-check while blocked instead of idling out the
+        # 600f stall budget (x3 stands x N targets = the whole watchdog).
+        if (
+            not sealed
+            and blocked
+            and self._nav_stall_steps in (3, 40, 120)
+            and self._stand_provably_unreachable(world.ram)
+        ):
+            sealed = True
         if action is not None and (
-            self._nav_stall_steps > TARGET_NAV_STALL_LIMIT
+            sealed
+            or self._nav_stall_steps > TARGET_NAV_STALL_LIMIT
             or self._target_nav_steps > TARGET_NAV_TOTAL_LIMIT
         ):
             if self._advance_stand_choice():
