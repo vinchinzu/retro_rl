@@ -1,0 +1,616 @@
+# AUDIT 2026-09-30: PR-022 reopened. This is a historical model, not an
+# accepted execution schedule: bought slot 0 cannot reach 200; births and
+# dated happiness repair are absent; duplication recipes lack live proof.
+# Rebuild after PR-048, F7/F5 and rr-ux6x.16.7. Do not advance a campaign
+# from these commitments merely because an intent is journaled.
+target:
+  ranch_mastery: 999
+  ending: "0x25"
+  power_berry_n: 10
+index_note: "Y1 Spring D1 morning = 0. Y3 Summer D30 morning = 299. Slack = latest_index - committed_index."
+milestones:
+  - id: "power_berry_n"
+    term: "stamina"
+    date: "Y3 Summer D29"
+    committed_index: 298
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 0
+    depends_on: ["berry_field_1", "berry_field_2", "berry_stump", "berry_statue", "berry_cave", "berry_indoor", "berry_goddess", "berry_dup_cave", "berry_dup_indoor", "berry_dup_transition"]
+    note: "Best ending at $83F097 accepts power_berry_N only when it is exactly 10. Do not pass 10."
+    target: 10
+    designed: 7
+    duplication: 3
+  - id: "berry_field_1"
+    term: "power_berry"
+    date: "Y1 Spring D1"
+    committed_index: 0
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 298
+    depends_on: []
+    note: "Hoe 1/64, one spawn a day."
+    eat: true
+    edge: "designed"
+  - id: "berry_field_2"
+    term: "power_berry"
+    date: "Y1 Spring D2"
+    committed_index: 1
+    earliest_index: 1
+    earliest: "Y1 Spring D2"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 297
+    depends_on: ["berry_field_1"]
+    note: "The day after field berry 1."
+    eat: true
+    edge: "designed"
+  - id: "berry_stump"
+    term: "power_berry"
+    date: "Y1 Spring D3"
+    committed_index: 2
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 296
+    depends_on: []
+    note: "Axe stump, 1/16."
+    eat: true
+    edge: "designed"
+  - id: "berry_statue"
+    term: "power_berry"
+    date: "Y1 Spring D4"
+    committed_index: 3
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 295
+    depends_on: []
+    note: "Hammer statue, 1/4, retries the same day."
+    eat: true
+    edge: "designed"
+  - id: "berry_cave"
+    term: "power_berry"
+    date: "Y1 Spring D5"
+    committed_index: 4
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 294
+    depends_on: []
+    note: "Tilemap $29 entry. Eat off that map to leave the bit clear."
+    eat: true
+    edge: "designed"
+  - id: "berry_indoor"
+    term: "power_berry"
+    date: "Y1 Fall D20"
+    committed_index: 79
+    earliest_index: 79
+    earliest: "Y1 Fall D20"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 219
+    depends_on: ["festival_indoor_arm"]
+    note: "House entry after the Fall D20 arm."
+    eat: true
+    edge: "designed"
+  - id: "berry_goddess"
+    term: "power_berry"
+    date: "Y1 Spring D6"
+    committed_index: 5
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 293
+    depends_on: []
+    note: "Cursor 1. Cursor 0 is happiness -30 and is not the plan."
+    eat: true
+    edge: "designed"
+  - id: "berry_dup_cave"
+    term: "power_berry"
+    date: "Y1 Spring D5"
+    committed_index: 4
+    earliest_index: 4
+    earliest: "Y1 Spring D5"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 294
+    depends_on: ["berry_cave"]
+    note: "Off-map cave eat, then re-enter $29 once. Not a fourth designed berry."
+    eat: true
+    edge: "duplication"
+  - id: "berry_dup_indoor"
+    term: "power_berry"
+    date: "Y1 Fall D20"
+    committed_index: 79
+    earliest_index: 79
+    earliest: "Y1 Fall D20"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 219
+    depends_on: ["berry_indoor"]
+    note: "Off-map indoor eat, then one more house entry. Stop there."
+    eat: true
+    edge: "duplication"
+  - id: "berry_dup_transition"
+    term: "power_berry"
+    date: "Y1 Spring D1"
+    committed_index: 0
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 298
+    depends_on: ["berry_field_1"]
+    note: "Screen-transition edge ($0196 bit $4000) on one held berry. One eat, not a loop."
+    eat: true
+    edge: "duplication"
+  - id: "cow_slot0"
+    term: "cows"
+    date: "Y1 Summer D13"
+    committed_index: 42
+    earliest_index: 42
+    earliest: "Y1 Summer D13"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 256
+    depends_on: ["brush", "milker", "cover"]
+    note: "Slot 0 mask $0001 matches no stall, so this cow never reaches 200. It still fills cow_N."
+    slot: 0
+    feedable: false
+  - id: "cow_feedable_01"
+    term: "cow_happiness"
+    date: "Y1 Summer D15"
+    committed_index: 44
+    earliest_index: 44
+    earliest: "Y1 Summer D15"
+    latest_index: 238
+    latest: "Y2 Winter D29"
+    slack_days: 194
+    depends_on: ["cow_slot0"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 2
+    feedable: true
+  - id: "cow_feedable_02"
+    term: "cow_happiness"
+    date: "Y1 Summer D16"
+    committed_index: 45
+    earliest_index: 45
+    earliest: "Y1 Summer D16"
+    latest_index: 239
+    latest: "Y2 Winter D30"
+    slack_days: 194
+    depends_on: ["cow_feedable_01"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 3
+    feedable: true
+  - id: "cow_feedable_03"
+    term: "cow_happiness"
+    date: "Y1 Summer D17"
+    committed_index: 46
+    earliest_index: 46
+    earliest: "Y1 Summer D17"
+    latest_index: 240
+    latest: "Y3 Spring D1"
+    slack_days: 194
+    depends_on: ["cow_feedable_02"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 4
+    feedable: true
+  - id: "cow_feedable_04"
+    term: "cow_happiness"
+    date: "Y1 Summer D18"
+    committed_index: 47
+    earliest_index: 47
+    earliest: "Y1 Summer D18"
+    latest_index: 241
+    latest: "Y3 Spring D2"
+    slack_days: 194
+    depends_on: ["cow_feedable_03"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 5
+    feedable: true
+  - id: "cow_feedable_05"
+    term: "cow_happiness"
+    date: "Y1 Summer D21"
+    committed_index: 50
+    earliest_index: 50
+    earliest: "Y1 Summer D21"
+    latest_index: 242
+    latest: "Y3 Spring D3"
+    slack_days: 192
+    depends_on: ["cow_feedable_04"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 6
+    feedable: true
+  - id: "cow_feedable_06"
+    term: "cow_happiness"
+    date: "Y1 Summer D22"
+    committed_index: 51
+    earliest_index: 51
+    earliest: "Y1 Summer D22"
+    latest_index: 243
+    latest: "Y3 Spring D4"
+    slack_days: 192
+    depends_on: ["cow_feedable_05"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 7
+    feedable: true
+  - id: "cow_feedable_07"
+    term: "cow_happiness"
+    date: "Y1 Summer D23"
+    committed_index: 52
+    earliest_index: 52
+    earliest: "Y1 Summer D23"
+    latest_index: 245
+    latest: "Y3 Spring D6"
+    slack_days: 193
+    depends_on: ["cow_feedable_06"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 8
+    feedable: true
+  - id: "cow_feedable_08"
+    term: "cow_happiness"
+    date: "Y1 Summer D24"
+    committed_index: 53
+    earliest_index: 53
+    earliest: "Y1 Summer D24"
+    latest_index: 246
+    latest: "Y3 Spring D7"
+    slack_days: 193
+    depends_on: ["cow_feedable_07"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 9
+    feedable: true
+  - id: "cow_feedable_09"
+    term: "cow_happiness"
+    date: "Y1 Summer D25"
+    committed_index: 54
+    earliest_index: 54
+    earliest: "Y1 Summer D25"
+    latest_index: 247
+    latest: "Y3 Spring D8"
+    slack_days: 193
+    depends_on: ["cow_feedable_08"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 10
+    feedable: true
+  - id: "cow_feedable_10"
+    term: "cow_happiness"
+    date: "Y1 Summer D27"
+    committed_index: 56
+    earliest_index: 56
+    earliest: "Y1 Summer D27"
+    latest_index: 248
+    latest: "Y3 Spring D9"
+    slack_days: 192
+    depends_on: ["cow_feedable_09"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 11
+    feedable: true
+  - id: "cow_feedable_11"
+    term: "cow_happiness"
+    date: "Y1 Summer D28"
+    committed_index: 57
+    earliest_index: 57
+    earliest: "Y1 Summer D28"
+    latest_index: 249
+    latest: "Y3 Spring D10"
+    slack_days: 192
+    depends_on: ["cow_feedable_10"]
+    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    buy_order: 12
+    feedable: true
+  - id: "hen"
+    term: "chickens"
+    date: "Y1 Summer D1"
+    committed_index: 30
+    earliest_index: 30
+    earliest: "Y1 Summer D1"
+    latest_index: 189
+    latest: "Y2 Fall D10"
+    slack_days: 159
+    depends_on: ["cover"]
+    note: "Incubate one egg at a time to chicks_N 12. A death is not a berry: it decrements the counter."
+    target: 12
+  - id: "brush"
+    term: "tools"
+    date: "Y1 Summer D1"
+    committed_index: 30
+    earliest_index: 30
+    earliest: "Y1 Summer D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 268
+    depends_on: []
+    note: "In hand before the first cow. Shelf $4C, 800G."
+  - id: "milker"
+    term: "tools"
+    date: "Y1 Summer D2"
+    committed_index: 31
+    earliest_index: 31
+    earliest: "Y1 Summer D2"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 267
+    depends_on: ["brush"]
+    note: "In hand before the first cow. Shelf $4B, 1800G."
+  - id: "house_upgrade_1"
+    term: "house"
+    date: "Y1 Summer D1"
+    committed_index: 30
+    earliest_index: 30
+    earliest: "Y1 Summer D1"
+    latest_index: 30
+    latest: "Y1 Summer D1"
+    slack_days: 0
+    depends_on: []
+    note: "Y1 summer order, 5000G. The first completion is four mornings later and can carry the clock."
+  - id: "house_level_2"
+    term: "house"
+    date: "Y1 Summer D16"
+    committed_index: 45
+    earliest_index: 45
+    earliest: "Y1 Summer D16"
+    latest_index: 188
+    latest: "Y2 Fall D9"
+    slack_days: 143
+    depends_on: ["house_upgrade_1"]
+    note: "Bit $0080 on this morning. Child nights need it. The clock gift must already have fired."
+  - id: "wife_bit"
+    term: "married"
+    date: "Y2 Fall D9"
+    committed_index: 188
+    earliest_index: 45
+    earliest: "Y1 Summer D16"
+    latest_index: 188
+    latest: "Y2 Fall D9"
+    slack_days: 0
+    depends_on: ["house_level_2"]
+    note: "Proposal fall-through is hearts >= 250. This is the latest morning that still yields both children on Y3 Summer D29."
+  - id: "child_1"
+    term: "children"
+    date: "Y2 Fall D29"
+    committed_index: 208
+    earliest_index: 65
+    earliest: "Y1 Fall D6"
+    latest_index: 208
+    latest: "Y2 Fall D29"
+    slack_days: 0
+    depends_on: ["wife_bit"]
+    note: "Night 20 after the wife bit, hearts >= 450, house bit $0080."
+  - id: "child_2"
+    term: "children"
+    date: "Y3 Summer D29"
+    committed_index: 298
+    earliest_index: 155
+    earliest: "Y2 Summer D6"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 0
+    depends_on: ["child_1"]
+    note: "Night 110 after the wife bit. kid1_age >= 90. Y2 Fall D10 puts this flag on the D30 morning, which is late."
+  - id: "wife_hearts_d29"
+    term: "girls"
+    date: "Y3 Summer D29"
+    committed_index: 298
+    earliest_index: 188
+    earliest: "Y2 Fall D9"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 0
+    depends_on: ["wife_bit"]
+    note: "Hour-18 house entry at 498-511 so the night -2 lands on 496-509. The other four girls stay at 496-511."
+    window_lo: 496
+    window_hi: 511
+  - id: "clock_arm"
+    term: "clock"
+    date: "Y1 Summer D1"
+    committed_index: 30
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 34
+    latest: "Y1 Summer D5"
+    slack_days: 4
+    depends_on: []
+    note: "Year-0 quote window runs through Y1 Summer D30. Under the F5 house dates the gift is earlier, so the arm has to be set by then."
+    calendar_latest_index: 59
+  - id: "clock_gift"
+    term: "clock"
+    date: "Y1 Summer D5"
+    committed_index: 34
+    earliest_index: 34
+    earliest: "Y1 Summer D5"
+    latest_index: 44
+    latest: "Y1 Summer D15"
+    slack_days: 10
+    depends_on: ["clock_arm", "house_upgrade_1"]
+    note: "First-completion souvenir. Bit $0080 already set skips the score store."
+  - id: "turtle_shell"
+    term: "turtle"
+    date: "Y2 Fall D20"
+    committed_index: 199
+    earliest_index: 79
+    earliest: "Y1 Fall D20"
+    latest_index: 199
+    latest: "Y2 Fall D20"
+    slack_days: 0
+    depends_on: []
+    note: "Fall D20 before 15:00, both years. One /2 result is the shell; the other is the indoor arm. After Y2 the bit stays clear."
+    chances: [79, 199]
+  - id: "festival_indoor_arm"
+    term: "festival"
+    date: "Y1 Fall D20"
+    committed_index: 79
+    earliest_index: 79
+    earliest: "Y1 Fall D20"
+    latest_index: 199
+    latest: "Y2 Fall D20"
+    slack_days: 120
+    depends_on: ["turtle_shell"]
+    note: "Fall D20 /2 arm, not itself an eat. The indoor berry is the eat."
+    eat: false
+  - id: "crop_turnip"
+    term: "crops"
+    date: "Y3 Spring D29"
+    committed_index: 268
+    earliest_index: 19
+    earliest: "Y1 Spring D20"
+    latest_index: 269
+    latest: "Y3 Spring D30"
+    slack_days: 1
+    depends_on: []
+    note: "56 bags, 504 shipped, inside 496-511. Close by Y3 Spring D30. Latest pack is the commitment; earliest pack is the other bound."
+    target: 504
+    window_lo: 496
+    window_hi: 511
+    quotas:
+      - year: 1
+        season: "Spring"
+        day: 30
+        shipped: 168
+      - year: 2
+        season: "Spring"
+        day: 30
+        shipped: 168
+      - year: 3
+        season: "Spring"
+        day: 30
+        shipped: 168
+  - id: "crop_potato"
+    term: "crops"
+    date: "Y3 Spring D30"
+    committed_index: 269
+    earliest_index: 129
+    earliest: "Y2 Spring D10"
+    latest_index: 269
+    latest: "Y3 Spring D30"
+    slack_days: 0
+    depends_on: []
+    note: "56 bags, 504 shipped, inside 496-511. Close by Y3 Spring D30. Latest pack is the commitment; earliest pack is the other bound."
+    target: 504
+    window_lo: 496
+    window_hi: 511
+    quotas:
+      - year: 1
+        season: "Spring"
+        day: 30
+        shipped: 168
+      - year: 2
+        season: "Spring"
+        day: 30
+        shipped: 168
+      - year: 3
+        season: "Spring"
+        day: 30
+        shipped: 168
+  - id: "crop_tomato"
+    term: "crops"
+    date: "Y1 Summer D29"
+    committed_index: 58
+    earliest_index: 58
+    earliest: "Y1 Summer D29"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 240
+    depends_on: []
+    note: "8 bags on Summer D1, 72 tiles, 7 harvests, 504. Later than D1 drops the seventh harvest past D29."
+    target: 504
+    window_lo: 496
+    window_hi: 511
+    quotas:
+      - year: 1
+        season: "Summer"
+        day: 30
+        shipped: 168
+      - year: 2
+        season: "Summer"
+        day: 30
+        shipped: 168
+      - year: 3
+        season: "Summer"
+        day: 29
+        shipped: 168
+    latest_plant_index: 270
+    committed_plant_index: 30
+  - id: "crop_corn"
+    term: "crops"
+    date: "Y1 Summer D29"
+    committed_index: 58
+    earliest_index: 58
+    earliest: "Y1 Summer D29"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 240
+    depends_on: []
+    note: "8 bags on Summer D1, 72 tiles, 7 harvests, 504. Later than D1 drops the seventh harvest past D29."
+    target: 504
+    window_lo: 496
+    window_hi: 511
+    quotas:
+      - year: 1
+        season: "Summer"
+        day: 30
+        shipped: 168
+      - year: 2
+        season: "Summer"
+        day: 30
+        shipped: 168
+      - year: 3
+        season: "Summer"
+        day: 29
+        shipped: 168
+    latest_plant_index: 270
+    committed_plant_index: 30
+  - id: "cover"
+    term: "development"
+    date: "Y2 Summer D17"
+    committed_index: 166
+    earliest_index: 10
+    earliest: "Y1 Spring D11"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 132
+    depends_on: []
+    note: "Stable cover is spring/summer grass. Last work morning is Y3 Summer D29. A hurricane on the sleep into D30 can destroy more tiles than the slack."
+    planted_grass: 2961
+    minimum_tiles: 2950
+    tile_slack: 11
+    clear_pin_tile_slack: 18
+    bags_paid: 328
+  - id: "money_hold"
+    term: "money"
+    date: "Y3 Spring D16"
+    committed_index: 255
+    earliest_index: 255
+    earliest: "Y3 Spring D16"
+    latest_index: 299
+    latest: "Y3 Summer D30"
+    slack_days: 44
+    depends_on: []
+    note: "F5 holds 620,000G from this morning by cutting milk and egg ships, not crop ships. The D30 reading has to sit in 99840-655350G."
+    hold_g: 620000
+    end_g: 620000
+    window_lo: 99840
+    window_hi: 655350
+  - id: "happiness"
+    term: "happiness"
+    date: "Y3 Summer D29"
+    committed_index: 298
+    earliest_index: 0
+    earliest: "Y1 Spring D1"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 0
+    depends_on: []
+    note: "Nine calf namings on or before Y3 Summer D29. 992 scores 31. The stored clamp is 999."
+    namings: 9
+    minimum: 992
