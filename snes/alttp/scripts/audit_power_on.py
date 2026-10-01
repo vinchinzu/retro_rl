@@ -54,6 +54,16 @@ def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dic
     through = meta.get("through")
     if through == "sanctuary":
         return bool(story["sanctuary_completed"])
+    if through in ("sanctuary_exit", "eastern_grounds"):
+        screen = 0x13 if through == "sanctuary_exit" else 0x1E
+        standing = int(final["link_y"]) // 512 * 8 + int(final["link_x"]) // 512
+        return bool(
+            final["has_control"] and not final["indoors"] and not final["dark_world"]
+            and int(final["screen_id"]) == screen and standing == screen
+            and final["has_fighter_sword"] and final["has_lamp"] and final["hp"] > 0
+            and story["follower"] == 0 and story["progress"] == 2
+            and story["progress_flags"] & 4 and story["max_hp"] == 32
+        )
     if through == "zelda":
         return bool(final["has_control"] and final["in_zelda_cell"] and final["has_zelda_follower"])
     hop = hop_for(through)

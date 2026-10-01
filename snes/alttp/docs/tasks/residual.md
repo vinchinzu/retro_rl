@@ -1,48 +1,53 @@
 # ALttP route residual — 2026-10-01
 
-The Clean continuous tip remains room `0x50`. This sitting did not move it.
+The Clean continuous tip remains room `0x50`. No STATUS promotion.
 
-## rr-eog9.1 Sanctuary heart chest — collected
+## rr-eog9.3 — Eastern grounds reached; next rr-eog9.4
 
-The previous unreachable conclusion was false. A chest is selected by its
-attribute byte, not by requiring the interaction probe to hit the top-left
-`$06E0` location. `Link_PerformOpenChest` also requires facing UP; the
-previous RIGHT-only target poses could never open it.
+The original `0x1D` north-lip belief stays dead: none of the 23 east exits
+is reachable from `(2664, 1544)` on ordinary walkable tiles. Changing the
+south-border entry within the reachable western band does not connect it
+to the eastern bank. Do not repeat that direct screen-graph route.
 
-From the exact escort terminal `(1272, 568)`, the measured button route is:
+The current walker baseline from `Play_eog9_2` continued farther south,
+then failed at `(3936, 2460)`, standing quadrant `0x27` of loaded area
+`0x1E`, with HP 32/32. Two missing behaviors caused that later failure:
+outdoor stairs (`attr 0x22`) were walls, and the walker searched only for
+border exits when its target was an internal quadrant of the loaded 2×2
+area. Both are fixed in the existing tile planner/walker. The unused
+module-level probe CLI was removed; the library and pin/play interfaces stay.
 
-1. DOWN to `heart_aisle_south` `(1272, 640)`.
-2. LEFT to `heart_west_south` `(1240, 640)`.
-3. UP to `heart_south_lip` `(1240, 600)`.
-4. RIGHT one pixel to `heart_open_front` `(1241, 600)`.
-5. UP one frame to face north, then A; advance the receipt text with A/B.
+Verified path: `0x13 → 0x14 → 0x15 → 0x1D → 0x25 → 0x2D → 0x2E → 0x26
+→ 0x1E`. Segment from the actual Sanctuary exit: 3848f, PolicyGuard 1442
+checks/45 detours, 1626 disclosed restores, zero non-rollout loads, zero
+writes, no damage or deaths. Inventory is unchanged. Same-pin forward tape
+replay: zero desync/loads/writes.
 
-Use tolerance 0 at all four approach points. Geometry is in
-`maps/room_12.json`. At the old south stop, the UP probe `(1247, 606)`
-misses at tile `(27, 11)`. One pixel RIGHT changes it to `(1248, 606)`,
-tile `(28, 11)`, attr `0x58`, and opens the chest. The priests need not move.
+Composed forward **power-on Survival replay**: 41305f, zero desync, zero
+state loads, zero deaths. Seven disclosed last-heart refills restored 14
+hearts in the opening prefix; the new overworld segment has none.
+Progression and capacity writes remain zero. This is development evidence,
+not a Clean or continuous-tier promotion.
 
-`recordings/sanctuary_20261001/heart_controller.json` records the source
-replay: all 36,675 frames matched the original tape CRCs, then 256 appended
-button frames collected SanctuaryHeart. Independent replay of the combined
-36,931-frame tape (`heart_replay.json`) also passed with zero desyncs and
-max/current HP `32/32`. Max HP increased `24 -> 32` and
-current HP `10 -> 32`; live chest bit `$0402 & 0x0100` and room save bit
-`0x0010` are set. `Play_eog9_1.state` was saved in the integration directory
-with provenance. The combined tape is `heart_controller.tape.npz`.
+Leave RAM: outdoors, loaded/standing screen `0x1E`, module/submodule
+`0x09/0x00`, `(3328, 2047)`, control ready, sword/lamp `1`, keys `0xFF`,
+follower `$F3CC=0`, progress `$F3C5=2`, flags `$F3C6=0x15`, HP `32/32`,
+rupees `0`, bombs `0`. `Play_eog9_3.state` is saved with provenance pointing
+to the 41305f power-on replay. Evidence:
+`recordings/eog9_crossing_20261001/{controller,replay,power_on_replay}.json`
+and `{crossing,power_on}.tape.npz`.
 
-Leave glance: room `0x12`, module/submodule `0x07/0x00`, `(1241, 600)`,
-facing UP, control ready, sword `1`, lamp `1`, keys `0`, follower `$F3CC=0`,
-progress `$F3C5=2`, flags `$F3C6=0x15`, max/current HP `32/32`.
-Full run: zero state loads, seven disclosed Survival HP refills inherited
-from the escort prefix. Heart tail: zero writes, including zero capacity
-or progression writes. This is assisted development evidence.
+Tests: real-ROM crossing regression passes from `Play_eog9_2`; an offline
+corridor test checks that stairs connect two internal quadrants. Forward
+replay acceptance rejects the old southeast `0x27` pose even though `$8A`
+is already `0x1E`. Whole hut/hedge/lobby route tests remain open.
 
-`SanctuaryExit` is a separate resumed pin from IcePalaceEntry, outdoors
-on screen `0x13` at `(1880, 1083)`, with max HP `64` and later equipment.
-It is not the three-heart escort tape terminal used by this bead.
+Next: `rr-eog9.4`, hut entry/dialogue/resources from `Play_eog9_3`, using
+`maps/screen_1e_sahasrahla.json`. Do not load `EasternPalaceEntry` or
+`SanctuaryExit`. Roadside cuts previously produced no drops; `rr-yx26`
+tracks actual gathering without inventory writes. Epic remains in progress,
+3 of 8 children closed. No hut, hedge, or lobby action has run from this
+predecessor; `.7` still needs the production CLI composition.
 
-Next: `rr-eog9.2`, measure the south exit from `Play_eog9_1`. Later beads
-were not started. Did not STATUS-promote or treat a loaded pin as power-on.
 Did not write follower, sword, keys, capacity, or progression. Did not copy
 approach geometry into Python or overwrite `recordings/verified_tip_run.json`.

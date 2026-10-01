@@ -47,11 +47,47 @@
       "xy": [1241, 600],
       "role": "approach",
       "notes": "One pixel RIGHT from heart_south_lip, then UP for one frame to face north. A probes (1248,606), tile (28,11), attr 0x58. Advance receipt dialogue with alternating A/B. Verified opened bit 0x0100, max_hp 24->32, hp 10->32, control restored."
+    },
+    {
+      "label": "sanctuary_south_door_approach",
+      "xy": [
+        1272,
+        944
+      ],
+      "role": "approach",
+      "notes": "Validated south-door approach from Play_eog9_1 and the full Survival heart tape. Follow the west-side retreat and center aisle before holding DOWN."
     }
   ],
-  "doors": [],
+  "doors": [
+    {
+      "label": "sanctuary_door_to_0x13",
+      "direction": "DOWN",
+      "outdoors": true,
+      "screenId": 19,
+      "approachXy": [
+        1272,
+        944
+      ],
+      "landingXy": [
+        1880,
+        1083
+      ],
+      "role": "primary",
+      "path": [
+        "heart_west_south",
+        "heart_aisle_south",
+        "sanctuary_south_door_approach"
+      ],
+      "pathTolerances": {
+        "default": 2
+      },
+      "pushFrames": 120,
+      "notes": "Validated via room_engine from Play_eog9_1 (isolated 525f) and the exact full Survival heart tape (526f). Control-ready overworld screen 0x13 at (1880,1083), HP 32/32, follower 0, progress 2. Overlay 0x96 (no rain); music changed 0x14->0x02. Zero exit-tail writes or state loads. Assisted development evidence; Clean tip remains room 0x50."
+    }
+  ],
   "notes": [
     "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes.",
-    "Heart chest opened from the sanctuary_20261001 tape terminal using button inputs. The prior top-left-only interaction assumption was false. No capacity or progression writes."
+    "Heart chest opened from the sanctuary_20261001 tape terminal using button inputs. The prior top-left-only interaction assumption was false. No capacity or progression writes.",
+    "Sanctuary south exit measured from the collected-heart predecessor on 2026-10-01. Exit reports: recordings/sanctuary_20261001/exit_controller.json and exit_replay.json."
   ]
 }

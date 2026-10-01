@@ -1023,8 +1023,16 @@ arrows; check the z3 boss requirement.
   Learned: eastern.yaml has no room path to Armos Knights other than the Eastern Palace region. Connections are one internal door and the Light World exit. No path avoids the failed 0xA9 chest. Left open.
   knights; the last one changes behaviour. Read `nes/zelda_i/dungeon/gohma.py`
   for the phase-machine shape.
-- [ ] **AP-105 · Eastern step 7: approach.** Needs AP-082, AP-084, AP-086.
-  Sanctuary → Eastern entrance.
+- [ ] **AP-105 · Eastern step 7: approach and resource gathering.** Tracked under epic `rr-eog9`; route work is incomplete.
+  Breakdown:
+  - **AP-105a (`rr-eog9.1`) · Sanctuary heart:** Closed. Button-input replay opened the Sanctuary Heart Container (`0xEA79`), raising max/current HP from 24 to 32; see `recordings/sanctuary_20261001/heart_replay.json`.
+  - **AP-105b (`rr-eog9.2`) · Sanctuary south exit:** Closed. Independent forward replay reached outdoors Screen `0x13`, control ready at `(1880, 1083)`; see `recordings/sanctuary_20261001/exit_replay.json`.
+  - **AP-105c (`rr-eog9.3`) · Overworld traversal:** Closed on 2026-10-01. The direct east exits from the `0x1D` north lip remain inaccessible. The real predecessor walk instead follows `0x13 → 0x14 → 0x15 → 0x1D → 0x25 → 0x2D → 0x2E → 0x26 → 0x1E`, using outdoor stair attribute `0x22` and an internal quadrant goal. Segment 3848f, loaded/standing `0x1E` at `(3328, 2047)`, HP 32/32, no damage/writes, inventory unchanged. Forward power-on Survival replay: 41305f, zero desync/loads/deaths, seven disclosed prefix HP refills, progression/capacity writes zero. `Play_eog9_3` saved from this result; reports/tapes in `recordings/eog9_crossing_20261001/`. Roadside drops remain unproved and are now `rr-yx26`.
+  - **AP-105d (`rr-eog9.4`) · Sahasrahla's hut:** Next ready boundary from `Play_eog9_3`. Dialogue and resource collection have not run from this predecessor.
+  - **AP-105e (`rr-eog9.5`) · Eastern Palace hedge maze:** Not run; blocked on the hut/Screen `0x1E` predecessor.
+  - **AP-105f (`rr-eog9.6`) · Eastern Palace entrance transition:** Not run from the Sanctuary predecessor; the isolated `EasternPalaceEntry` lobby hop does not establish natural entry.
+  - **AP-105g (`rr-eog9.7`) · Assisted spine extension:** Not run; depends on a proved route through the entrance.
+  - **AP-105h (`rr-eog9.8`) · Route tests and map verification:** Whole entrance route remains unrun. Crossing ROM regression passes (`tests/test_overworld.py::test_eastern_grounds_from_sanctuary_exit`); this does not close the hut/hedge/lobby gate.
 - [x] 2026-09-30 · evidence: Whatif_Eastern_armos isolated: $F374 0x00 to 0x04 source=play ledger frame 1835 writes=0 after heart $F36C 0x18 to 0x20. Ancilla 0x29 then receipt 0x22. $F3CC stayed 5. Not continuous and not the Sanctuary chain. **AP-106 · Eastern step 8: chain + rung C2.** Acceptance: pendant bit
   (candidate `$F374`) rises in play.
 

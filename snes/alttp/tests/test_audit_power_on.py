@@ -14,6 +14,35 @@ from alttp.scripts import audit_power_on as audit
 
 
 @pytest.mark.parametrize(
+    "through, screen, x, y, source_ok, capacity, accepted",
+    [
+        ("sanctuary_exit", 0x13, 1880, 1083, True, 32, True),
+        ("eastern_grounds", 0x1E, 3328, 2047, True, 32, True),
+        ("eastern_grounds", 0x1E, 3936, 2460, True, 32, False),
+        ("eastern_grounds", 0x1E, 3328, 2047, False, 32, False),
+        ("eastern_grounds", 0x1E, 3328, 2047, True, 24, False),
+        ("eastern_grounds", 0x1D, 2664, 1544, True, 32, False),
+    ],
+)
+def test_overworld_replay_goal_checks_the_standing_quadrant(
+    through: str, screen: int, x: int, y: int, source_ok: bool,
+    capacity: int, accepted: bool,
+) -> None:
+    final = {
+        "has_control": True, "indoors": False, "dark_world": False,
+        "screen_id": screen, "link_x": x, "link_y": y,
+        "has_fighter_sword": True, "has_lamp": True, "hp": 32,
+    }
+    story = {
+        "follower": 0, "progress": 2, "progress_flags": 0x15,
+        "max_hp": capacity,
+    }
+    assert audit.replay_goal_accepted(
+        {"through": through, "source_ok": source_ok}, final, story
+    ) is accepted
+
+
+@pytest.mark.parametrize(
     "source_ok, progress, flags, follower, submodule, accepted",
     [
         (True, 1, 0, 1, 0, False),  # Sanctuary arrival before Zelda/priest dialogue.

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_1e_eastern",
+  "outdoors": true,
+  "screenId": 30,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Eastern Palace entrance (screen 0x1E)",
+  "measured": "2026-09-30",
+  "sourceState": "EasternPalaceEntry",
+  "z3Label": "Eastern Palace",
+  "points": [
+    {
+      "label": "eastern_door",
+      "xy": [3920, 1579],
+      "role": "approach",
+      "notes": "Outdoor control after DOWN out of room 0xC9. Standing quadrant is 0x1F; screen id stays 0x1E."
+    }
+  ],
+  "doors": [
+    {
+      "label": "eastern_door_to_0xc9",
+      "direction": "UP",
+      "toRoom": 201,
+      "outdoors": false,
+      "approachXy": [3920, 1579],
+      "landingXy": [4856, 6616],
+      "role": "entrance",
+      "path": ["eastern_door"],
+      "pushFrames": 40,
+      "notes": "Isolated walk-in UP to room 0xC9 (4856,6616) control frame 157, hp 0x18. Not continuous."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 40,
+    "maxCycles": 50,
+    "skirmishMaxDistance": 60,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [3904, 1563, 3936, 1595],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Big area origin (3072,1536). $8A is 0x1E. Do not record the east quadrant 0x1F as the screen id.",
+    "Buttons only. Not continuous."
+  ]
+}

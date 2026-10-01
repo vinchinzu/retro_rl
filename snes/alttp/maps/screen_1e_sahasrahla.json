@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_1e_sahasrahla",
+  "outdoors": true,
+  "screenId": 30,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Sahasrahla's hut (screen 0x1E)",
+  "measured": "2026-09-30",
+  "sourceState": "EasternPalaceEntry",
+  "z3Label": "Sahasrahlas Hut",
+  "points": [
+    {
+      "label": "hut_door",
+      "xy": [3312, 1856],
+      "role": "approach",
+      "notes": "Outdoor control in front of the hut. Stair attr 0x22 is walkable in play and is not in the overworld walker set."
+    }
+  ],
+  "doors": [
+    {
+      "label": "hut_door_to_0x05",
+      "direction": "UP",
+      "toRoom": 5,
+      "outdoors": false,
+      "approachXy": [3312, 1856],
+      "landingXy": [2680, 8664],
+      "role": "entrance",
+      "path": ["hut_door"],
+      "pushFrames": 40,
+      "notes": "Isolated UP from (3312,1856) to room 0x0105 (2680,8664) mode 0x07 sub 0x00 hp 0x18. Same screen id 0x1E as Eastern Palace, different z3 label. Not continuous."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 40,
+    "maxCycles": 50,
+    "skirmishMaxDistance": 60,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [3296, 1840, 3328, 1872],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Reached from the Eastern Palace outdoor stand by a south-then-west walk. Plain body BFS does not cross attr 0x22.",
+    "Buttons only. Not continuous."
+  ]
+}
