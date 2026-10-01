@@ -14,10 +14,44 @@
       ],
       "role": "waypoint",
       "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "sanctuary_heart_chest",
+      "xy": [
+        1248,
+        592
+      ],
+      "role": "waypoint",
+      "notes": "SanctuaryHeart z3 0xEA79 tile (28,10) loc $0538 attr 0x58, also (29,10) (28,11) (29,11). Origin (1248, 592). Chest interaction selects attr 0x58 and requires facing UP; it does not require probing the top-left loc tile. Validated from the escort tape via heart_aisle_south, heart_west_south, heart_south_lip, heart_open_front."
+    },
+    {
+      "label": "heart_aisle_south",
+      "xy": [1272, 640],
+      "role": "waypoint",
+      "notes": "Walk DOWN from escort_north_landing; use tolerance 0 for the heart approach."
+    },
+    {
+      "label": "heart_west_south",
+      "xy": [1240, 640],
+      "role": "waypoint",
+      "notes": "Walk LEFT from heart_aisle_south, below the priest; tolerance 0."
+    },
+    {
+      "label": "heart_south_lip",
+      "xy": [1240, 600],
+      "role": "waypoint",
+      "notes": "Walk UP from heart_west_south; tolerance 0. A here misses because the probe is (1247,606), tile (27,11). One pixel RIGHT remains reachable."
+    },
+    {
+      "label": "heart_open_front",
+      "xy": [1241, 600],
+      "role": "approach",
+      "notes": "One pixel RIGHT from heart_south_lip, then UP for one frame to face north. A probes (1248,606), tile (28,11), attr 0x58. Advance receipt dialogue with alternating A/B. Verified opened bit 0x0100, max_hp 24->32, hp 10->32, control restored."
     }
   ],
   "doors": [],
   "notes": [
-    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes.",
+    "Heart chest opened from the sanctuary_20261001 tape terminal using button inputs. The prior top-left-only interaction assumption was false. No capacity or progression writes."
   ]
 }
