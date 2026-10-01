@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 17,
+  "roomHex": "0x11",
+  "name": "Escape sewer push block stairs",
+  "measured": "2026-10-01",
+  "sourceState": "DevSanctuary_Zelda",
+  "points": [
+    {
+      "label": "escort_south_hall",
+      "xy": [
+        888,
+        904
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_corner",
+      "xy": [
+        952,
+        904
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_hall",
+      "xy": [
+        952,
+        800
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_north_hall",
+      "xy": [
+        888,
+        800
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_block_approach",
+      "xy": [
+        888,
+        648
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_block_west",
+      "xy": [
+        872,
+        600
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_block_north",
+      "xy": [
+        872,
+        568
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_spiral_mouth",
+      "xy": [
+        888,
+        568
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
+  ],
+  "doors": [],
+  "notes": [
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
+  ]
+}

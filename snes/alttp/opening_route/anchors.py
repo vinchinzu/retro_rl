@@ -18,8 +18,12 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
 from alttp.ram import (
+    HYRULE_CASTLE_B1_EAST_ROOM,
+    HYRULE_CASTLE_B1_PIT_ROOM,
+    HYRULE_CASTLE_B1_WEST_ROOM,
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_MAIN_WEST_ROOM,
+    HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
     HYRULE_CASTLE_NW_ROOM,
     HYRULE_CASTLE_SCREEN,
     SANCTUARY_ROOM,
@@ -478,6 +482,58 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             ),
         ),
         MultiTruthAnchor(
+            anchor_id="HyruleCastle_NorthConnector_0x01",
+            name="Hyrule Castle north connector (room 0x01)",
+            tier="route",
+            room_base_id=HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_01",
+            notes=(
+                "East landing from 0x50. Well approach is the next hop, not this room id.",
+                "Geometry: maps/room_01.json.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_B1West_0x81",
+            name="Hyrule Castle B1 west (room 0x81)",
+            tier="route",
+            room_base_id=HYRULE_CASTLE_B1_WEST_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_81",
+            notes=(
+                "West door from 0x82. Gold cell door is a later hop.",
+                "Geometry: maps/room_81.json. No glance band.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_B1East_0x82",
+            name="Hyrule Castle B1 east (room 0x82)",
+            tier="route",
+            room_base_id=HYRULE_CASTLE_B1_EAST_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_82",
+            notes=(
+                "South door from the 0x72 north ledge. Bridge walk is the next hop.",
+                "Geometry: maps/room_82.json.",
+            ),
+        ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_B1_0x72",
+            name="Hyrule Castle B1 pit (room 0x72)",
+            tier="route",
+            room_base_id=HYRULE_CASTLE_B1_PIT_ROOM,
+            require_indoors=True,
+            require_fighter_sword=True,
+            graph_node_id="room_72",
+            notes=(
+                "Well UP from 0x01. Leave band is the stair column, not the whole room.",
+                "Geometry: maps/room_72.json north stair landing.",
+            ),
+        ),
+        MultiTruthAnchor(
             anchor_id="HyruleCastle_MainHall_WestDoorApproach",
             name="Main hall west door approach (side corridor)",
             tier="approach",
@@ -548,7 +604,11 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
 # Most-specific first for continuous tip resolution (graph_node_id).
 # Mantle has no RAM signature yet — stay on the graph only, not tip order.
 TIP_ANCHOR_ORDER: tuple[str, ...] = (
-    # Continuous post-main-hall nodes listed before earlier spine anchors.
+    # Later spine rooms before earlier ones. Room ids do not overlap.
+    "HyruleCastle_B1West_0x81",
+    "HyruleCastle_B1East_0x82",
+    "HyruleCastle_B1_0x72",
+    "HyruleCastle_NorthConnector_0x01",
     "HyruleCastle_NW_0x50",
     "HyruleCastle_MainWest_0x60",
     "HyruleCastle_MainHall",  # earlier continuous spine checkpoint

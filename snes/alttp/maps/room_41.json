@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 65,
+  "roomHex": "0x41",
+  "name": "Escape sewer dark hallway",
+  "measured": "2026-10-01",
+  "sourceState": "DevSanctuary_Zelda",
+  "points": [
+    {
+      "label": "escort_south_hall",
+      "xy": [
+        760,
+        2256
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_corner",
+      "xy": [
+        936,
+        2232
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_spiral_mouth",
+      "xy": [
+        936,
+        2104
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
+  ],
+  "doors": [],
+  "notes": [
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
+  ]
+}

@@ -65,7 +65,7 @@ class KnownDoor:
     label: str
     direction: str  # LEFT | RIGHT | UP | DOWN
     to_room: int | None = None
-    approach_xy: tuple[int, int] = (0, 0)
+    approach_xy: tuple[int, int] | None = (0, 0)
     landing_xy: tuple[int, int] | None = None
     outdoors: bool = False
     screen_id: int | None = None
@@ -93,7 +93,9 @@ class KnownDoor:
             "toRoomHex": (
                 f"0x{self.to_room & 0xFF:02X}" if self.to_room is not None else None
             ),
-            "approachXy": list(self.approach_xy),
+            "approachXy": (
+                None if self.approach_xy is None else list(self.approach_xy)
+            ),
             "landingXy": list(self.landing_xy) if self.landing_xy else None,
             "outdoors": self.outdoors,
             "screenId": self.screen_id,
@@ -107,7 +109,17 @@ class KnownDoor:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> KnownDoor:
-        approach = data.get("approachXy") or data.get("approach_xy") or [0, 0]
+        if "approachXy" in data:
+            raw_approach = data["approachXy"]
+        elif "approach_xy" in data:
+            raw_approach = data["approach_xy"]
+        else:
+            raw_approach = None
+        approach = (
+            None
+            if not raw_approach
+            else (int(raw_approach[0]), int(raw_approach[1]))
+        )
         landing_raw = data.get("landingXy", data.get("landing_xy"))
         landing = None
         if landing_raw is not None:
@@ -120,7 +132,7 @@ class KnownDoor:
             label=str(data["label"]),
             direction=str(data["direction"]).upper(),
             to_room=None if to_room is None else int(to_room),
-            approach_xy=(int(approach[0]), int(approach[1])),
+            approach_xy=approach,
             landing_xy=landing,
             outdoors=bool(data.get("outdoors", False)),
             screen_id=(
@@ -231,11 +243,7 @@ class RoomMap:
             if pt is None:
                 continue
             out.append((pt.x, pt.y, label, d.tolerance_for(label)))
-        # Ensure door approach coords are last (geometry authority: door.approach_xy).
-        ax, ay = d.approach_xy
-        if not out or (out[-1][0], out[-1][1]) != (ax, ay):
-            out.append((ax, ay, f"{d.label}_approach", d.tolerance_for("default")))
-        return tuple(out)
+        return self._with_approach(d, out)
 
     def recovery_waypoints_for_door(
         self, door: KnownDoor | str
@@ -250,9 +258,19 @@ class RoomMap:
             if pt is None:
                 continue
             out.append((pt.x, pt.y, label, d.tolerance_for(label)))
-        ax, ay = d.approach_xy
+        return self._with_approach(d, out)
+
+    def _with_approach(
+        self, door: KnownDoor, out: list[tuple[int, int, str, int]]
+    ) -> tuple[tuple[int, int, str, int], ...]:
+        """Append ``approachXy`` when the map has one. A missing point is not (0, 0)."""
+        if door.approach_xy is None:
+            return tuple(out)
+        ax, ay = door.approach_xy
         if not out or (out[-1][0], out[-1][1]) != (ax, ay):
-            out.append((ax, ay, f"{d.label}_approach", d.tolerance_for("default")))
+            out.append(
+                (ax, ay, f"{door.label}_approach", door.tolerance_for("default"))
+            )
         return tuple(out)
 
     def compact_summary(self) -> dict[str, Any]:
@@ -279,7 +297,9 @@ class RoomMap:
                         else ("outdoors" if d.outdoors else None)
                     ),
                     "role": d.role,
-                    "approach": list(d.approach_xy),
+                    "approach": (
+                        None if d.approach_xy is None else list(d.approach_xy)
+                    ),
                     "path": list(d.path),
                     "recoveryPath": list(d.recovery_path),
                 }

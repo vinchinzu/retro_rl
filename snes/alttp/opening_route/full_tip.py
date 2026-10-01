@@ -115,8 +115,9 @@ def run_to_verified_tip(
     get_segment_fn: _SegmentLookup = get_segment,
     settle_fn: _SettleFn = primitives.settle_control,
     segment_ids: Sequence[str] = VERIFIED_TIP_SEGMENT_IDS,
+    success: str = N_ROOM_50,
 ) -> FullTipResult:
-    """Power on once and run the continuous opening chain through room ``0x50``.
+    """Power on once and run ``segment_ids``. Default stop is room ``0x50``.
 
     Injectable ``boot_fn`` and ``get_segment_fn`` make the composition testable
     without an emulator.  Production callers should use the defaults.  This
@@ -125,9 +126,18 @@ def run_to_verified_tip(
     """
     owns_env = env is None
     active_env = build_boot_env() if env is None else env
+    if success == N_ROOM_50:
+        stop_note = (
+            "Stops at verified continuous tip room_50; "
+            "planned Zelda/Sanctuary legs are not run."
+        )
+    else:
+        stop_note = (
+            f"Power-on spine continues through {success}; no mid-run state load."
+        )
     notes = [
         "Clean power-on composition; one environment is kept for all segments.",
-        "Stops at verified continuous tip room_50; planned Zelda/Sanctuary legs are not run.",
+        stop_note,
     ]
     try:
         boot_result = boot_fn(active_env, close=False)
@@ -200,7 +210,11 @@ def run_to_verified_tip(
                 notes=notes,
             )
         tip_node = resolve_continuous_tip_node(final)
-        if tip_node != N_ROOM_50:
+        if tip_node != success:
+            if success == N_ROOM_50:
+                mismatch = f"expected verified tip {N_ROOM_50!r}, resolved {tip_node!r}"
+            else:
+                mismatch = f"expected stop {success!r}, resolved {tip_node!r}"
             return FullTipResult(
                 ok=False,
                 phase="tip_mismatch",
@@ -209,7 +223,7 @@ def run_to_verified_tip(
                 tip_node=tip_node,
                 boot=boot,
                 segments=evidence_rows,
-                blocker=f"expected verified tip {N_ROOM_50!r}, resolved {tip_node!r}",
+                blocker=mismatch,
                 notes=notes,
             )
         return FullTipResult(

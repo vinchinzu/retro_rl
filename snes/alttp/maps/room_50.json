@@ -7,11 +7,69 @@
   "sourceState": "CastleRoom50",
   "z3Label": "Hyrule Castle",
   "points": [
-    {"label": "entry_spawn", "xy": [448, 2680], "role": "spawn", "notes": "CastleRoom50"},
-    {"label": "entry_from_0x60", "xy": [376, 3088], "role": "spawn", "notes": "Landing from room 0x60 north; natural tip ~y=3008"},
-    {"label": "east_door_approach", "xy": [480, 2680], "role": "approach", "notes": "Hold RIGHT → room 0x01"},
-    {"label": "west_extent", "xy": [352, 2678], "role": "waypoint", "notes": "West walk bound (wall; no door/stairs isolated)"},
-    {"label": "south_extent", "xy": [432, 2712], "role": "waypoint", "notes": "South walk bound without pathing to south seam"}
+    {
+      "label": "entry_spawn",
+      "xy": [
+        448,
+        2680
+      ],
+      "role": "spawn",
+      "notes": "CastleRoom50"
+    },
+    {
+      "label": "entry_from_0x60",
+      "xy": [
+        376,
+        3088
+      ],
+      "role": "spawn",
+      "notes": "Landing from room 0x60 north; natural tip ~y=3008"
+    },
+    {
+      "label": "east_door_approach",
+      "xy": [
+        480,
+        2680
+      ],
+      "role": "approach",
+      "notes": "Hold RIGHT \u2192 room 0x01"
+    },
+    {
+      "label": "west_extent",
+      "xy": [
+        352,
+        2678
+      ],
+      "role": "waypoint",
+      "notes": "West walk bound (wall; no door/stairs isolated)"
+    },
+    {
+      "label": "south_extent",
+      "xy": [
+        432,
+        2712
+      ],
+      "role": "waypoint",
+      "notes": "South walk bound without pathing to south seam"
+    },
+    {
+      "label": "escort_north_hall",
+      "xy": [
+        376,
+        2680
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_south_door",
+      "xy": [
+        376,
+        3008
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
   ],
   "doors": [
     {
@@ -19,11 +77,21 @@
       "direction": "RIGHT",
       "toRoom": 1,
       "toRoomHex": "0x01",
-      "approachXy": [480, 2680],
-      "landingXy": [499, 120],
+      "approachXy": [
+        480,
+        2680
+      ],
+      "landingXy": [
+        499,
+        120
+      ],
       "role": "zelda_path",
-      "path": ["east_door_approach"],
-      "pathTolerances": {"default": 12},
+      "path": [
+        "east_door_approach"
+      ],
+      "pathTolerances": {
+        "default": 12
+      },
       "pushFrames": 80,
       "notes": "Only physical forward exit. Natural entry from real 0x50 predecessor (CastleRoom60 north + clear). Landing y jumps multi-screen to ~0x01 y=120."
     },
@@ -32,11 +100,21 @@
       "direction": "DOWN",
       "toRoom": 96,
       "toRoomHex": "0x60",
-      "approachXy": [376, 3080],
-      "landingXy": [376, 3128],
+      "approachXy": [
+        376,
+        3080
+      ],
+      "landingXy": [
+        376,
+        3128
+      ],
       "role": "backtrack",
-      "path": ["entry_from_0x60"],
-      "pathTolerances": {"default": 16},
+      "path": [
+        "entry_from_0x60"
+      ],
+      "pathTolerances": {
+        "default": 16
+      },
       "pushFrames": 120,
       "notes": "Reverse of room_60 north; approach near south seam after clear"
     }
@@ -49,15 +127,39 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 80
   },
-  "walkBbox": [352, 2664, 499, 3088],
+  "walkBbox": [
+    352,
+    2664,
+    499,
+    3088
+  ],
   "hostilesAtEntry": [
-    {"type": "0x42", "xy": [368, 2783]},
-    {"type": "0x4b", "xy": [384, 2816]},
-    {"type": "0x41", "xy": [392, 2785]}
+    {
+      "type": "0x42",
+      "xy": [
+        368,
+        2783
+      ]
+    },
+    {
+      "type": "0x4b",
+      "xy": [
+        384,
+        2816
+      ]
+    },
+    {
+      "type": "0x41",
+      "xy": [
+        392,
+        2785
+      ]
+    }
   ],
   "notes": [
-    "2026-08-02 exhaustive probe (grid + rays after clear, west wall holds): only exits are east→0x01 and south→0x60. No stairs to B1 isolated in this room.",
+    "2026-08-02 exhaustive probe (grid + rays after clear, west wall holds): only exits are east\u21920x01 and south\u21920x60. No stairs to B1 isolated in this room.",
     "Forward Zelda-path hop is east_to_0x01 (natural_entry). B1 stairs remain open beyond the 0x01/0x52 chain.",
-    "Authority: maps/room_50.json"
+    "Authority: maps/room_50.json",
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
   ]
 }

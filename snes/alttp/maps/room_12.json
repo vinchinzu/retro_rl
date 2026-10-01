@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 18,
+  "roomHex": "0x12",
+  "name": "Sanctuary",
+  "measured": "2026-10-01",
+  "sourceState": "DevSanctuary_Zelda",
+  "points": [
+    {
+      "label": "escort_north_landing",
+      "xy": [
+        1272,
+        568
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
+  ],
+  "doors": [],
+  "notes": [
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
+  ]
+}

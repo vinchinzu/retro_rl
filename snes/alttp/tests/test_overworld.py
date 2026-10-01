@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 from alttp.overworld import (
+    OwTiles,
     direction_to_screen,
     next_direction_to_hyrule_castle,
     next_screen_in_path,
     shortest_screen_path,
+    standing_screen,
 )
 from alttp.ram import (
     HYRULE_CASTLE_SCREEN,
@@ -49,6 +53,32 @@ def test_direction_helpers() -> None:
     assert direction_to_screen(0x2C, 0x24) == "UP"
     assert direction_to_screen(0x24, 0x1C) == "UP"
     assert direction_to_screen(0x1C, 0x1B) == "LEFT"
+
+
+def _tiles(screen: int, big: bool) -> OwTiles:
+    shape = (128, 128) if big else (64, 64)
+    return OwTiles(
+        origin_x=0,
+        origin_y=0,
+        cols=shape[1],
+        rows=shape[0],
+        screen=screen,
+        big=big,
+        attr=np.zeros(shape, dtype=np.uint8),
+        map16=np.zeros(shape, dtype=np.uint16),
+        liftable=np.zeros(shape, dtype=np.bool_),
+    )
+
+
+def test_standing_screen_splits_a_big_area() -> None:
+    small = _tiles(0x13, False)
+    assert standing_screen(small, 10, 10) == 0x13
+    assert standing_screen(small, 512, 512) == 0x13
+    big = _tiles(0x1B, True)
+    assert standing_screen(big, 10, 10) == 0x1B
+    assert standing_screen(big, 512, 10) == 0x1C
+    assert standing_screen(big, 10, 512) == 0x23
+    assert standing_screen(big, 512, 512) == 0x24
 
 
 def test_porch_escape_then_north() -> None:

@@ -76,6 +76,11 @@ COURTYARD_SECRET_POCKET_TOLERANCE = 48
 MAIN_DOOR_APPROACH_X, MAIN_DOOR_APPROACH_Y = main_door().approach_xy
 MAIN_DOOR_APPROACH_TOLERANCE = main_door().tolerance_for("main_door_approach", 24)
 COURTYARD_SOUTH_CORRIDOR_Y = _map_point_xy("south_corridor", (2100, 2024))[1]
+# Hedge is approach_x+8. Climb only from this column (map point door_column).
+DOOR_COLUMN_X = _map_point_xy(
+    "door_column", (MAIN_DOOR_APPROACH_X, COURTYARD_SOUTH_CORRIDOR_Y)
+)[0]
+DOOR_COLUMN_SLACK = main_door().tolerance_for("door_column", 4)
 
 
 def cut_push(
@@ -304,23 +309,35 @@ def approach_main_door(env: BootEnv) -> RoutePhaseResult:
                 if snapshot_env(env).link_y > before[1]:
                     break
 
-    # West along corridor to door x.
-    for _ in range(120):
+    # West onto the door column. approach_x+8 (2048) is hedge; north from
+    # there stalls near y=1955. UP is not a wiggle — it enters that hedge.
+    for _ in range(160):
         snap = snapshot_env(env)
         if in_main_hall(snap) or near_main_door(snap):
             break
-        if snap.link_x <= MAIN_DOOR_APPROACH_X + 8:
+        on_column = snap.link_x <= DOOR_COLUMN_X + DOOR_COLUMN_SLACK
+        on_row = snap.link_y >= COURTYARD_SOUTH_CORRIDOR_Y - 12
+        if on_column and on_row:
             break
         before = (snap.link_x, snap.link_y)
-        frames += cut_push(env, "LEFT", walk=14, swings=2)
+        if not on_row:
+            frames += cut_push(env, "DOWN", walk=10, swings=1)
+        else:
+            face = "LEFT" if snap.link_x > DOOR_COLUMN_X else "RIGHT"
+            frames += cut_push(env, face, walk=14, swings=2)
         if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
-            for face in ("DOWN", "UP"):
-                frames += cut_push(env, face, walk=10, swings=1)
-                frames += cut_push(env, "LEFT", walk=12, swings=2)
-                if snapshot_env(env).link_x < before[0]:
-                    break
+            fight = primitives.fight_nearby(
+                env,
+                max_distance=96,
+                attack_distance=40,
+                max_cycles=30,
+                stop_when=lambda e: (
+                    in_main_hall(snapshot_env(e)) or near_main_door(snapshot_env(e))
+                ),
+            )
+            frames += fight.frames
 
-    # North to door approach y.
+    # North only while still on the door column.
     for _ in range(160):
         snap = snapshot_env(env)
         if in_main_hall(snap) or near_main_door(snap):
@@ -334,24 +351,37 @@ def approach_main_door(env: BootEnv) -> RoutePhaseResult:
         if abs(dx) <= 16 and abs(dy) <= 16:
             break
         before = (snap.link_x, snap.link_y)
-        if abs(dx) > 6:
-            face = "RIGHT" if dx > 0 else "LEFT"
-            frames += cut_push(env, face, walk=10, swings=1)
-        if abs(dy) > 6:
+        if abs(dx) > DOOR_COLUMN_SLACK:
+            if snap.link_y < COURTYARD_SOUTH_CORRIDOR_Y - 12:
+                frames += cut_push(env, "DOWN", walk=10, swings=1)
+            else:
+                face = "RIGHT" if dx > 0 else "LEFT"
+                frames += cut_push(env, face, walk=10, swings=2)
+        elif abs(dy) > 6:
             face = "DOWN" if dy > 0 else "UP"
             frames += cut_push(env, face, walk=10, swings=1)
         if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
-            for face in ("UP", "LEFT", "RIGHT", "DOWN"):
-                frames += cut_push(env, face, walk=10, swings=1)
-                if (snapshot_env(env).link_x, snapshot_env(env).link_y) != before:
-                    break
+            fight = primitives.fight_nearby(
+                env,
+                max_distance=96,
+                attack_distance=40,
+                max_cycles=30,
+                stop_when=lambda e: (
+                    in_main_hall(snapshot_env(e)) or near_main_door(snapshot_env(e))
+                ),
+            )
+            frames += fight.frames
+            if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
+                frames += cut_push(env, "DOWN", walk=8, swings=1)
 
-    # Clear nearby soldiers before trigger.
+    # Clear nearby soldiers before trigger. Do not chase once the door is in reach.
     fight = primitives.fight_nearby(
         env,
         max_distance=100,
         max_cycles=150,
-        stop_when=lambda e: in_main_hall(snapshot_env(e)),
+        stop_when=lambda e: (
+            in_main_hall(snapshot_env(e)) or near_main_door(snapshot_env(e))
+        ),
     )
     frames += fight.frames
 

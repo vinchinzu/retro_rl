@@ -270,18 +270,24 @@ def _build_registry() -> dict[str, ScriptSegment]:
     """Lazy registry so heavy route modules import only when needed.
 
     Live segments must be able to succeed under their exit contract.
-    ``main_hall_to_zelda`` is not registered — Zelda rescue is planned; the
-    measured continuous prefix is ``castle_dungeon_prefix``.
+    The rescue suffix starts at the real B1 west predecessor; the measured
+    castle prefix remains registered separately.
     """
     from alttp.opening_route import (
         castle_dungeon,
         castle_to_sword,
         escort_to_sanctuary,
+        main_hall_to_zelda,
         pocket_to_main_hall,
         secret_entrance_clear,
     )
     from alttp.ram import (
+        HYRULE_CASTLE_B1_EAST_ROOM,
+        HYRULE_CASTLE_B1_PIT_ROOM,
+        HYRULE_CASTLE_B1_WEST_ROOM,
         HYRULE_CASTLE_MAIN_HALL_ROOM,
+        HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
+        HYRULE_CASTLE_NW_ROOM,
         HYRULE_CASTLE_SCREEN,
         SECRET_PASSAGE_ROOM,
     )
@@ -368,6 +374,105 @@ def _build_registry() -> dict[str, ScriptSegment]:
             label="Main hall → west 0x60 → NW chamber 0x50",
             graph_edge_id="main_hall_west_to_0x60+room_60_north_to_0x50",
         ),
+        "room_50_east_to_0x01": ScriptSegment(
+            segment_id="room_50_east_to_0x01",
+            play_fn=castle_dungeon.run_east_to_0x01,
+            entry=EntryRequirement(
+                description="Indoors NW chamber 0x50 with fighter sword + control",
+                room_base_id=HYRULE_CASTLE_NW_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_control=True,
+                graph_node_id="room_50",
+                anchor_ids=("HyruleCastle_NW_0x50",),
+            ),
+            exit=ExitPredicate(
+                description="East door lands north connector 0x01",
+                acceptance_keys=("at_door_dest",),
+                graph_node_id="room_01",
+                verification="natural_entry",
+            ),
+            label="NW chamber 0x50 east → room 0x01",
+            graph_edge_id="room_50_east_to_0x01",
+        ),
+        "room_01_down_to_0x72": ScriptSegment(
+            segment_id="room_01_down_to_0x72",
+            play_fn=castle_dungeon.run_down_to_0x72,
+            entry=EntryRequirement(
+                description="Indoors north connector 0x01 with fighter sword + control",
+                room_base_id=HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_control=True,
+                graph_node_id="room_01",
+            ),
+            exit=ExitPredicate(
+                description="North-wall well UP lands B1 pit 0x72",
+                acceptance_keys=("at_door_dest",),
+                graph_node_id="room_72",
+                verification="natural_entry",
+            ),
+            label="Room 0x01 well UP → room 0x72",
+            graph_edge_id="room_01_down_to_0x72",
+        ),
+        "room_72_south_to_0x82": ScriptSegment(
+            segment_id="room_72_south_to_0x82",
+            play_fn=castle_dungeon.run_south_to_0x82,
+            entry=EntryRequirement(
+                description="Indoors B1 pit 0x72 with fighter sword + control",
+                room_base_id=HYRULE_CASTLE_B1_PIT_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_control=True,
+                graph_node_id="room_72",
+                anchor_ids=("HyruleCastle_B1_0x72",),
+            ),
+            exit=ExitPredicate(
+                description="South door from the north ledge lands B1 east 0x82",
+                acceptance_keys=("at_door_dest",),
+                graph_node_id="room_82",
+                verification="natural_entry",
+            ),
+            label="Room 0x72 key door and south → room 0x82",
+            graph_edge_id="room_72_south_to_0x82",
+        ),
+        "room_82_west_to_0x81": ScriptSegment(
+            segment_id="room_82_west_to_0x81",
+            play_fn=castle_dungeon.run_west_to_0x81,
+            entry=EntryRequirement(
+                description="Indoors B1 east 0x82 with fighter sword + control",
+                room_base_id=HYRULE_CASTLE_B1_EAST_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_control=True,
+                graph_node_id="room_82",
+                anchor_ids=("HyruleCastle_B1East_0x82",),
+            ),
+            exit=ExitPredicate(
+                description="West bridge door lands B1 west 0x81",
+                acceptance_keys=("at_door_dest",),
+                graph_node_id="room_81",
+                verification="natural_entry",
+            ),
+            label="Room 0x82 west → room 0x81",
+            graph_edge_id="room_82_west_to_0x81",
+        ),
+        "room_81_to_zelda": ScriptSegment(
+            segment_id="room_81_to_zelda",
+            play_fn=main_hall_to_zelda.run_from_b1_west,
+            entry=EntryRequirement(
+                description="Controllable B1 west 0x81 with fighter sword",
+                room_base_id=HYRULE_CASTLE_B1_WEST_ROOM,
+                require_indoors=True, require_fighter_sword=True,
+                require_control=True, graph_node_id="room_81",
+            ),
+            exit=ExitPredicate(
+                description="Zelda follows after B3 cell dialogue",
+                acceptance_keys=("zelda_follower", "in_zelda_cell"),
+                graph_node_id="room_80", verification="isolated",
+            ),
+            label="B1 west → small key → B3 big key → Zelda rescue",
+        ),
         "escort_to_sanctuary": ScriptSegment(
             segment_id="escort_to_sanctuary",
             play_fn=escort_to_sanctuary.run_from_escort,
@@ -379,8 +484,8 @@ def _build_registry() -> dict[str, ScriptSegment]:
                 graph_node_id="room_80",
             ),
             exit=ExitPredicate(
-                description="Indoors Sanctuary room 0x12",
-                acceptance_keys=("in_sanctuary",),
+                description="Sanctuary dialogue complete, Zelda safely delivered",
+                acceptance_keys=("in_sanctuary", "sanctuary_completed"),
                 graph_node_id="sanctuary",
                 verification="planned",
             ),

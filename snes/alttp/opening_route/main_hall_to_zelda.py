@@ -1,14 +1,8 @@
-"""Planned Zelda-path helpers (not a live continuous segment).
+"""B1 west → B3 keys → Zelda rescue.
 
-The measured first-dungeon prefix lives in
-:mod:`alttp.opening_route.castle_dungeon` (``0x61 → 0x60 → 0x50``).
-
-This module keeps map-derived helpers and acceptance keys for the future
-main-hall → Zelda cell hop. It is **not** registered in the Segment registry
-(a segment must be able to succeed under its exit contract; Zelda follower
-is not measured yet).
-
-Use ``castle_dungeon_prefix`` for continuous play through room ``0x50``.
+The castle prefix is owned by castle_dungeon. The rescue suffix walks
+measured room geometry and earns both keys through controller play.
+Legacy main-hall diagnostics remain separate from that prefix.
 """
 
 from __future__ import annotations
@@ -153,3 +147,130 @@ def run_from_state(
     from alttp.opening_route.runner import run_from_state as _run_from_state
 
     return _run_from_state(state_name, run_from_main_hall, close=close)
+
+
+def run_from_b1_west(env: object, *, source: str = "state_load_dev") -> SegmentResult:
+    """Walk the real stairs and earn both keys through play before rescuing Zelda.
+
+    The cell is in B3 room 0x80, reached through 0x71 and 0x70. The old
+    west_to_0x80 map edge is a wall, not a dungeon transition. Combat uses
+    the existing tactics; any restore lookahead must be disclosed by the
+    caller's audit and verified separately with a forward input replay.
+    """
+    from alttp.primitives import (
+        PrimitiveResult, Waypoint, collect_nearby, fight_nearby, interact_until, move_to,
+        move_until, settle_control,
+    )
+    from alttp.opening_route.castle_dungeon import earn_castle_big_key
+    from alttp.route_report import phase_from_primitive
+
+    phases: list[RoutePhaseResult] = []
+
+    def record(label, result):
+        phases.append(phase_from_primitive(label, result))
+        if not result.ok:
+            raise RuntimeError(result.reason)
+        return result
+
+    def walk(room, label, tolerance=1):
+        point = load_room_map(f"room_{room:02x}").point(label)
+        if point is None:
+            raise RuntimeError(f"missing geometry room_{room:02x}:{label}")
+        waypoint = Waypoint(point.x, point.y, tolerance=tolerance, room=room, label=label)
+        moved = move_to(env, waypoint, step_size=1, max_frames=900)
+        frames = moved.frames
+        for _ in range(2):
+            if moved.ok or moved.snapshot.has_control:
+                break
+            settled = settle_control(env, max_frames=480)
+            frames += settled.frames
+            if not settled.ok:
+                moved = settled
+                break
+            moved = move_to(env, waypoint, step_size=1, max_frames=900)
+            frames += moved.frames
+        return record(label, PrimitiveResult(moved.ok, moved.reason, frames, moved.snapshot))
+
+    def push(label, button, predicate, limit=600, settle=True):
+        record(label, move_until(env, (button,), predicate, max_frames=limit, step_size=1))
+        if settle:
+            record(label + "_settle", settle_control(env, max_frames=480))
+
+    def fight(label, distance=180):
+        record(label, fight_nearby(
+            env, max_distance=distance, attack_distance=50, max_cycles=450,
+        ))
+        record(label + "_settle", settle_control(env, max_frames=480))
+
+    blocker = ""
+    try:
+        snap = snapshot_env(env)
+        if not in_room(snap, 0x81) or snap.follower != 0 or not snap.has_control:
+            raise RuntimeError("rescue requires controllable 0x81 without follower")
+        for label in ("rescue_lower_corner", "rescue_lower_north", "rescue_stair_foot"):
+            walk(0x81, label)
+        push("east_stair", "UP", lambda s: s.layer == 0 and s.has_control)
+        walk(0x81, "rescue_stair_head")
+        walk(0x81, "rescue_upper_corner", 0)
+        walk(0x81, "rescue_upper_south", 0)
+        walk(0x81, "rescue_west_stair")
+        push("west_stair", "UP", lambda s: s.layer == 1 and s.has_control)
+        walk(0x81, "rescue_north_door")
+        push("north_to_71", "UP", lambda s: in_room(s, 0x71))
+        fight("west_shutter_guard")
+        walk(0x71, "rescue_east_door")
+        walk(0x71, "rescue_east_guard")
+        fight("east_key_guard")
+        record("small_key_pickup", collect_nearby(
+            env, (0xE4,), max_distance=300, max_frames=600,
+        ))
+        if snapshot_env(env).num_keys < 1:
+            raise RuntimeError("east guard key was not earned")
+        walk(0x71, "rescue_alcove_nw")
+        # NW diagonal enters the west mouth, then the room scroll settles.
+        record("alcove_wrap", move_until(
+            env, ("UP", "LEFT"), lambda s: s.link_x <= 688 and s.has_control,
+            max_frames=400, step_size=1,
+        ))
+        walk(0x71, "rescue_east_door")
+        walk(0x71, "rescue_key_door")
+        record("key_door_settle", settle_control(env, max_frames=480))
+        walk(0x71, "rescue_north_landing")
+        push("north_lower_stair", "UP", lambda s: s.layer == 1 and s.has_control)
+        walk(0x71, "rescue_spiral_align")
+        walk(0x71, "rescue_spiral_mouth")
+        push("down_to_70", "UP", lambda s: in_room(s, 0x70))
+        walk(0x70, "rescue_stair_hall")
+        walk(0x70, "rescue_down_stair")
+        push("down_to_80", "UP", lambda s: in_room(s, 0x80))
+        walk(0x80, "rescue_first_guard")
+        fight("cell_entry_guard", 160)
+        walk(0x80, "rescue_south_mid")
+        walk(0x80, "rescue_ball_approach")
+        key = earn_castle_big_key(env, source=source, max_decisions=6000)
+        phases.append(RoutePhaseResult(
+            phase="earn_big_key", ok=key.ok, frames=key.frames,
+            snapshot=key.snapshot, detail=key.blocker or "; ".join(key.notes),
+        ))
+        if not key.ok:
+            raise RuntimeError(key.blocker)
+        walk(0x80, "rescue_cell_align")
+        # UP into the lock opens the cell and starts Zelda's first message.
+        push("cell_unlock", "UP", lambda s: s.is_text_mode, 240, settle=False)
+        record("zelda_dialogue", interact_until(
+            env, lambda s: s.has_zelda_follower, max_cycles=200,
+        ))
+        record("rescue_settle", settle_control(env, max_frames=480))
+    except RuntimeError as exc:
+        blocker = str(exc)
+    snap = snapshot_env(env)
+    return SegmentResult(
+        ok=not blocker and snap.has_zelda_follower and snap.in_zelda_cell,
+        phase="zelda_rescued" if not blocker else (phases[-1].phase if phases else "entry"),
+        frames=sum(p.frames for p in phases), snapshot=snap, phases=phases,
+        source=source,
+        acceptance={"zelda_follower": snap.has_zelda_follower, "in_zelda_cell": snap.in_zelda_cell},
+        blocker=blocker,
+        notes=["Both small key and big key earned through controller play.",
+               "Controller-only suffix; audit and replay the power-on prefix separately."],
+    )

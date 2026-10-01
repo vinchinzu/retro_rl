@@ -6,15 +6,123 @@
   "measured": "2026-08-01",
   "sourceState": "CastleMain",
   "points": [
-    {"label": "entry_spawn", "xy": [760, 3520], "role": "spawn", "notes": "CastleMain load; south of carpet"},
-    {"label": "natural_clear_left", "xy": [688, 3464], "role": "waypoint", "notes": "Measured after natural-tip room clear; move left off carpet before north"},
-    {"label": "natural_clear_north", "xy": [688, 3314], "role": "waypoint", "notes": "Measured natural-entry side corridor recovery"},
-    {"label": "south_mid", "xy": [720, 3400], "role": "waypoint", "notes": "Between entry and side corridor"},
-    {"label": "hall_corridor", "xy": [720, 3320], "role": "waypoint", "notes": "Side-corridor y; unlocks west/east doors"},
-    {"label": "west_mid", "xy": [600, 3320], "role": "waypoint", "notes": ""},
-    {"label": "west_door_approach", "xy": [520, 3320], "role": "approach", "notes": "Hold LEFT → room 0x60"},
-    {"label": "east_door_approach", "xy": [960, 3320], "role": "approach", "notes": "Hold RIGHT → room 0x62"},
-    {"label": "south_door_approach", "xy": [760, 3496], "role": "approach", "notes": "Hold DOWN → outdoors courtyard 0x1B"}
+    {
+      "label": "entry_spawn",
+      "xy": [
+        760,
+        3520
+      ],
+      "role": "spawn",
+      "notes": "CastleMain load; south of carpet"
+    },
+    {
+      "label": "natural_clear_left",
+      "xy": [
+        688,
+        3464
+      ],
+      "role": "waypoint",
+      "notes": "Measured after natural-tip room clear; move left off carpet before north"
+    },
+    {
+      "label": "natural_clear_north",
+      "xy": [
+        688,
+        3314
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural-entry side corridor recovery"
+    },
+    {
+      "label": "south_mid",
+      "xy": [
+        720,
+        3400
+      ],
+      "role": "waypoint",
+      "notes": "Between entry and side corridor"
+    },
+    {
+      "label": "hall_corridor",
+      "xy": [
+        720,
+        3320
+      ],
+      "role": "waypoint",
+      "notes": "Side-corridor y; unlocks west/east doors"
+    },
+    {
+      "label": "west_mid",
+      "xy": [
+        600,
+        3320
+      ],
+      "role": "waypoint",
+      "notes": ""
+    },
+    {
+      "label": "west_door_approach",
+      "xy": [
+        520,
+        3320
+      ],
+      "role": "approach",
+      "notes": "Hold LEFT \u2192 room 0x60"
+    },
+    {
+      "label": "east_door_approach",
+      "xy": [
+        960,
+        3320
+      ],
+      "role": "approach",
+      "notes": "Hold RIGHT \u2192 room 0x62"
+    },
+    {
+      "label": "south_door_approach",
+      "xy": [
+        760,
+        3496
+      ],
+      "role": "approach",
+      "notes": "Hold DOWN \u2192 outdoors courtyard 0x1B"
+    },
+    {
+      "label": "escort_west_hall",
+      "xy": [
+        624,
+        3320
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_west_corner",
+      "xy": [
+        624,
+        3248
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_north_corner",
+      "xy": [
+        760,
+        3208
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_north_door",
+      "xy": [
+        760,
+        3120
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
   ],
   "doors": [
     {
@@ -22,25 +130,51 @@
       "direction": "LEFT",
       "toRoom": 96,
       "toRoomHex": "0x60",
-      "approachXy": [520, 3320],
-      "landingXy": [511, 3320],
+      "approachXy": [
+        520,
+        3320
+      ],
+      "landingXy": [
+        511,
+        3320
+      ],
       "role": "zelda_path",
-      "path": ["south_mid", "hall_corridor", "west_mid", "west_door_approach"],
-      "recoveryPath": ["natural_clear_left", "natural_clear_north"],
-      "pathTolerances": {"south_mid": 16, "default": 12},
+      "path": [
+        "south_mid",
+        "hall_corridor",
+        "west_mid",
+        "west_door_approach"
+      ],
+      "recoveryPath": [
+        "natural_clear_left",
+        "natural_clear_north"
+      ],
+      "pathTolerances": {
+        "south_mid": 16,
+        "default": 12
+      },
       "pushFrames": 300,
-      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain. Natural post-clear fallback: LEFT to x≈688, UP to y≈3314, then west door."
+      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain. Natural post-clear fallback: LEFT to x\u2248688, UP to y\u22483314, then west door."
     },
     {
       "label": "east_to_0x62",
       "direction": "RIGHT",
       "toRoom": 98,
       "toRoomHex": "0x62",
-      "approachXy": [960, 3320],
+      "approachXy": [
+        960,
+        3320
+      ],
       "landingXy": null,
       "role": "alternate",
-      "path": ["south_mid", "hall_corridor", "east_door_approach"],
-      "pathTolerances": {"default": 12},
+      "path": [
+        "south_mid",
+        "hall_corridor",
+        "east_door_approach"
+      ],
+      "pathTolerances": {
+        "default": 12
+      },
       "pushFrames": 300,
       "notes": ""
     },
@@ -50,11 +184,21 @@
       "toRoom": null,
       "outdoors": true,
       "screenId": 27,
-      "approachXy": [760, 3496],
-      "landingXy": [2040, 1740],
+      "approachXy": [
+        760,
+        3496
+      ],
+      "landingXy": [
+        2040,
+        1740
+      ],
       "role": "backtrack",
-      "path": ["south_door_approach"],
-      "pathTolerances": {"default": 12},
+      "path": [
+        "south_door_approach"
+      ],
+      "pathTolerances": {
+        "default": 12
+      },
       "pushFrames": 300,
       "notes": ""
     }
@@ -67,17 +211,41 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 80
   },
-  "walkBbox": [576, 3176, 960, 3520],
+  "walkBbox": [
+    576,
+    3176,
+    960,
+    3520
+  ],
   "hostilesAtEntry": [
-    {"type": "0x42", "xy": [704, 3296]},
-    {"type": "0x4b", "xy": [720, 3360]},
-    {"type": "0x4b", "xy": [800, 3360]}
+    {
+      "type": "0x42",
+      "xy": [
+        704,
+        3296
+      ]
+    },
+    {
+      "type": "0x4b",
+      "xy": [
+        720,
+        3360
+      ]
+    },
+    {
+      "type": "0x4b",
+      "xy": [
+        800,
+        3360
+      ]
+    }
   ],
   "z3Label": "Hyrule Castle",
   "notes": [
-    "Side corridor y≈3320 unlocks west/east doors.",
-    "Pure UP on carpet mid-line wedges at y≈3352.",
+    "Side corridor y\u22483320 unlocks west/east doors.",
+    "Pure UP on carpet mid-line wedges at y\u22483352.",
     "US/JP vanilla room ids match for this layout (logic labels from z3-json-data).",
-    "Authority: maps/room_61.json (load via alttp.room_sense.load_room_map)."
+    "Authority: maps/room_61.json (load via alttp.room_sense.load_room_map).",
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
   ]
 }

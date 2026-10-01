@@ -7,12 +7,96 @@
   "sourceState": "CastleRoom51",
   "z3Label": "Throne Room",
   "points": [
-    {"label": "entry_spawn", "xy": [760, 2985], "role": "spawn", "notes": "CastleRoom51"},
-    {"label": "south_door_approach", "xy": [760, 2990], "role": "approach", "notes": "Hold DOWN → room 0x61"},
-    {"label": "north_extent", "xy": [760, 2620], "role": "waypoint", "notes": "North walk toward mantle"},
-    {"label": "mantle_zelda", "xy": [760, 2631], "role": "waypoint", "notes": "CastleMantleZelda load (follower=1)"},
-    {"label": "west_extent", "xy": [640, 2984], "role": "waypoint", "notes": ""},
-    {"label": "east_extent", "xy": [880, 2984], "role": "waypoint", "notes": ""}
+    {
+      "label": "entry_spawn",
+      "xy": [
+        760,
+        2985
+      ],
+      "role": "spawn",
+      "notes": "CastleRoom51"
+    },
+    {
+      "label": "south_door_approach",
+      "xy": [
+        760,
+        2990
+      ],
+      "role": "approach",
+      "notes": "Hold DOWN \u2192 room 0x61"
+    },
+    {
+      "label": "north_extent",
+      "xy": [
+        760,
+        2620
+      ],
+      "role": "waypoint",
+      "notes": "North walk toward mantle"
+    },
+    {
+      "label": "mantle_zelda",
+      "xy": [
+        760,
+        2631
+      ],
+      "role": "waypoint",
+      "notes": "CastleMantleZelda load (follower=1)"
+    },
+    {
+      "label": "west_extent",
+      "xy": [
+        640,
+        2984
+      ],
+      "role": "waypoint",
+      "notes": ""
+    },
+    {
+      "label": "east_extent",
+      "xy": [
+        880,
+        2984
+      ],
+      "role": "waypoint",
+      "notes": ""
+    },
+    {
+      "label": "escort_mantle_dialogue",
+      "xy": [
+        760,
+        2631
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_mantle_south",
+      "xy": [
+        760,
+        2620
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_mantle_west",
+      "xy": [
+        728,
+        2620
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_mantle_push",
+      "xy": [
+        728,
+        2608
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
   ],
   "doors": [
     {
@@ -20,13 +104,23 @@
       "direction": "DOWN",
       "toRoom": 97,
       "toRoomHex": "0x61",
-      "approachXy": [760, 2985],
-      "landingXy": [760, 3000],
+      "approachXy": [
+        760,
+        2985
+      ],
+      "landingXy": [
+        760,
+        3000
+      ],
       "role": "backtrack",
-      "path": ["entry_spawn"],
-      "pathTolerances": {"default": 16},
+      "path": [
+        "entry_spawn"
+      ],
+      "pathTolerances": {
+        "default": 16
+      },
       "pushFrames": 40,
-      "notes": "Spawn is already on south seam; pure DOWN (~16f). Clear may pull north — prefer --no-clear from CastleRoom51."
+      "notes": "Spawn is already on south seam; pure DOWN (~16f). Clear may pull north \u2014 prefer --no-clear from CastleRoom51."
     }
   ],
   "clearPolicy": {
@@ -37,14 +131,38 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 80
   },
-  "walkBbox": [640, 2620, 880, 3000],
+  "walkBbox": [
+    640,
+    2620,
+    880,
+    3000
+  ],
   "hostilesAtEntry": [
-    {"type": "0x41", "xy": [656, 2928]},
-    {"type": "0x41", "xy": [864, 2928]},
-    {"type": "0x41", "xy": [664, 2932]}
+    {
+      "type": "0x41",
+      "xy": [
+        656,
+        2928
+      ]
+    },
+    {
+      "type": "0x41",
+      "xy": [
+        864,
+        2928
+      ]
+    },
+    {
+      "type": "0x41",
+      "xy": [
+        664,
+        2932
+      ]
+    }
   ],
   "notes": [
     "North of main hall; escort/mantle states load here with Zelda follower.",
-    "Authority: maps/room_51.json"
+    "Authority: maps/room_51.json",
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
   ]
 }

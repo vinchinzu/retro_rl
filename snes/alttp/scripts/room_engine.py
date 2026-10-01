@@ -2,6 +2,7 @@
 
 Usage:
   uv run python alttp/scripts/room_engine.py list
+  uv run python alttp/scripts/room_engine.py lint
   uv run python alttp/scripts/room_engine.py show room_61
   uv run python alttp/scripts/room_engine.py show room_61 --json
   SDL_VIDEODRIVER=dummy uv run python alttp/scripts/room_engine.py run room_61 \\
@@ -17,6 +18,8 @@ import json
 import os
 import sys
 from pathlib import Path
+
+from alttp.room_map import MAPS_DIR, RoomMap
 
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -36,6 +39,107 @@ def cmd_list(_: argparse.Namespace) -> int:
         if m.source_state:
             print(f"             state: {m.source_state}")
     return 0
+
+# KnownDoor.tolerance_for default. Thresholds sit just past the measured box
+# (room_62 north approach is 4px above walkBbox). walkBbox alone is not the
+# room: room_61 west and room_82 west are named points outside that box.
+_DOOR_SEAM_PX = 12
+
+
+def _room_extent(room: RoomMap) -> tuple[int, int, int, int] | None:
+    xs: list[int] = [point.x for point in room.points]
+    ys: list[int] = [point.y for point in room.points]
+    if room.walk_bbox is not None:
+        x0, y0, x1, y1 = room.walk_bbox
+        xs.extend((x0, x1))
+        ys.extend((y0, y1))
+    if not xs:
+        return None
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _approach_inside(extent: tuple[int, int, int, int], xy: tuple[int, int]) -> bool:
+    x0, y0, x1, y1 = extent
+    ax, ay = xy
+    seam = _DOOR_SEAM_PX
+    return (x0 - seam) <= ax <= (x1 + seam) and (y0 - seam) <= ay <= (y1 + seam)
+
+
+def lint_room(name: str, room: RoomMap) -> list[str]:
+    """Door-label, path-point, and approach-extent problems for one map."""
+    problems: list[str] = []
+    counts: dict[str, int] = {}
+    for door in room.doors:
+        counts[door.label] = counts.get(door.label, 0) + 1
+    for label, count in counts.items():
+        if count > 1:
+            problems.append(f"{name}: door label {label!r} is not unique ({count})")
+    points = {p.label for p in room.points}
+    extent = _room_extent(room)
+    extent_text = (
+        "none"
+        if extent is None
+        else f"({extent[0]},{extent[1]})-({extent[2]},{extent[3]})"
+    )
+    for door in room.doors:
+        for kind, labels in (
+            ("path", door.path),
+            ("recoveryPath", door.recovery_path),
+        ):
+            for label in labels:
+                if label not in points:
+                    problems.append(
+                        f"{name}: door {door.label!r} {kind} point {label!r} "
+                        "does not exist"
+                    )
+        if door.approach_xy is None:
+            continue
+        if extent is None or not _approach_inside(extent, door.approach_xy):
+            ax, ay = door.approach_xy
+            problems.append(
+                f"{name}: door {door.label!r} approach ({ax},{ay}) "
+                f"outside room {extent_text}"
+            )
+    return problems
+
+
+def lint_maps(maps_dir: Path | None = None) -> list[str]:
+    """Load every ``maps/*.json`` and return lint problems (empty means clean)."""
+    root = MAPS_DIR if maps_dir is None else Path(maps_dir)
+    paths = sorted(p for p in root.glob("*.json") if p.is_file())
+    if not paths:
+        return [f"{root}: no map json"]
+    problems: list[str] = []
+    for path in paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("room map must be an object")
+            room = RoomMap.from_dict(data, map_id=path.stem)
+        except (
+            OSError,
+            json.JSONDecodeError,
+            ValueError,
+            KeyError,
+            TypeError,
+            IndexError,
+        ) as exc:
+            problems.append(f"{path.name}: load failed: {exc}")
+            continue
+        problems.extend(lint_room(path.name, room))
+    return problems
+
+
+def cmd_lint(_: argparse.Namespace) -> int:
+    problems = lint_maps()
+    if problems:
+        for line in problems:
+            print(line, file=sys.stderr)
+        return 1
+    n = len([p for p in MAPS_DIR.glob("*.json") if p.is_file()])
+    print(f"lint ok: {n} maps")
+    return 0
+
 
 def cmd_show(args: argparse.Namespace) -> int:
     from alttp.room_sense import load_room_map
@@ -158,6 +262,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p_list = sub.add_parser("list", help="List maps/*.json")
     p_list.set_defaults(func=cmd_list)
+
+    p_lint = sub.add_parser("lint", help="Load maps/*.json and check door geometry")
+    p_lint.set_defaults(func=cmd_lint)
 
     p_show = sub.add_parser("show", help="Compact map summary (agent context)")
     p_show.add_argument("map_id", help="e.g. room_61 or 0x61")

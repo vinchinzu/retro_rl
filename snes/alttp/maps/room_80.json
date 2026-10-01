@@ -7,25 +7,159 @@
   "sourceState": "CastleZeldaFollower",
   "z3Label": "Hyrule Castle - Zelda's Chest",
   "points": [
-    {"label": "entry_spawn", "xy": [352, 4168], "role": "spawn", "notes": "CastleZeldaFollower; $F3CC==1"},
-    {"label": "west_extent", "xy": [320, 4168], "role": "waypoint", "notes": ""},
-    {"label": "east_extent", "xy": [424, 4288], "role": "waypoint", "notes": "SE walk bound from spawn"},
-    {"label": "north_extent", "xy": [352, 4144], "role": "waypoint", "notes": ""},
-    {"label": "south_extent", "xy": [352, 4288], "role": "waypoint", "notes": ""}
+    {
+      "label": "entry_spawn",
+      "xy": [
+        352,
+        4168
+      ],
+      "role": "spawn",
+      "notes": "CastleZeldaFollower; $F3CC==1"
+    },
+    {
+      "label": "west_extent",
+      "xy": [
+        320,
+        4168
+      ],
+      "role": "waypoint",
+      "notes": ""
+    },
+    {
+      "label": "east_extent",
+      "xy": [
+        424,
+        4288
+      ],
+      "role": "waypoint",
+      "notes": "SE walk bound from spawn"
+    },
+    {
+      "label": "north_extent",
+      "xy": [
+        352,
+        4144
+      ],
+      "role": "waypoint",
+      "notes": ""
+    },
+    {
+      "label": "south_extent",
+      "xy": [
+        352,
+        4288
+      ],
+      "role": "waypoint",
+      "notes": ""
+    },
+    {
+      "label": "rescue_first_guard",
+      "xy": [
+        80,
+        4240
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_south_mid",
+      "xy": [
+        208,
+        4280
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_ball_approach",
+      "xy": [
+        416,
+        4280
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_cell_align",
+      "xy": [
+        352,
+        4230
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_zelda",
+      "xy": [
+        352,
+        4168
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "escort_cell_exit",
+      "xy": [
+        352,
+        4256
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_west_hall",
+      "xy": [
+        160,
+        4256
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_west_corner",
+      "xy": [
+        160,
+        4224
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_stair_hall",
+      "xy": [
+        80,
+        4224
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_stair_mouth",
+      "xy": [
+        80,
+        4150
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
   ],
   "doors": [
     {
-      "label": "east_to_0x81",
-      "direction": "RIGHT",
-      "toRoom": 129,
-      "toRoomHex": "0x81",
-      "approachXy": [400, 4168],
-      "landingXy": null,
-      "role": "zelda_path",
-      "path": ["east_extent"],
-      "pathTolerances": {"default": 12},
-      "pushFrames": 200,
-      "notes": "Door not isolated from CastleZeldaFollower spawn (room is tight; exit may need prior unlock path)"
+      "label": "up_to_0x70",
+      "direction": "UP",
+      "toRoom": 112,
+      "approachXy": [
+        80,
+        4176
+      ],
+      "landingXy": [
+        81,
+        3638
+      ],
+      "role": "backtrack",
+      "path": [],
+      "pushFrames": 60,
+      "notes": "Measured B3 upper-floor spiral back to B2; floor FD -> FE. Cell gold lock is internal, not an east border exit."
     }
   ],
   "clearPolicy": {
@@ -36,11 +170,18 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 40
   },
-  "walkBbox": [320, 4144, 424, 4288],
+  "walkBbox": [
+    320,
+    4144,
+    424,
+    4288
+  ],
   "hostilesAtEntry": [],
   "notes": [
     "Rescue acceptance room: follower $F3CC==1. Chest is Zelda's lamp in rando logic.",
     "Doors not yet isolated from this save-state; map is geometry seed only.",
-    "Authority: maps/room_80.json"
+    "Authority: maps/room_80.json",
+    "2026-10-01: removed fictitious east_to_0x81 border exit. Zelda is reached by spiral stairs 0x71 -> 0x70 -> 0x80; the gold lock is inside 0x80.",
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
   ]
 }

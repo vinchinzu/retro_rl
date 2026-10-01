@@ -7,12 +7,186 @@
   "sourceState": "CastleB1WestRoom",
   "z3Label": "Hyrule Castle",
   "points": [
-    {"label": "entry_spawn", "xy": [912, 4496], "role": "spawn", "notes": "CastleB1WestRoom south door area"},
-    {"label": "green_room", "xy": [776, 4316], "role": "waypoint", "notes": "CastleB1GreenRoom load"},
-    {"label": "zelda_west", "xy": [632, 4152], "role": "waypoint", "notes": "CastleZeldaB1West; near north door to 0x71"},
-    {"label": "east_door_approach", "xy": [960, 4496], "role": "approach", "notes": "Hold RIGHT → room 0x82"},
-    {"label": "north_door_approach", "xy": [632, 4140], "role": "approach", "notes": "Hold UP → room 0x71"},
-    {"label": "west_to_0x80_approach", "xy": [608, 4168], "role": "approach", "notes": "West wall at Zelda-cell y-band; LEFT needs a small key"}
+    {
+      "label": "entry_spawn",
+      "xy": [
+        912,
+        4496
+      ],
+      "role": "spawn",
+      "notes": "CastleB1WestRoom south door area"
+    },
+    {
+      "label": "green_room",
+      "xy": [
+        776,
+        4316
+      ],
+      "role": "waypoint",
+      "notes": "CastleB1GreenRoom load"
+    },
+    {
+      "label": "zelda_west",
+      "xy": [
+        632,
+        4152
+      ],
+      "role": "waypoint",
+      "notes": "CastleZeldaB1West; near north door to 0x71"
+    },
+    {
+      "label": "east_door_approach",
+      "xy": [
+        960,
+        4496
+      ],
+      "role": "approach",
+      "notes": "Hold RIGHT \u2192 room 0x82"
+    },
+    {
+      "label": "north_door_approach",
+      "xy": [
+        632,
+        4140
+      ],
+      "role": "approach",
+      "notes": "Hold UP \u2192 room 0x71"
+    },
+    {
+      "label": "west_to_0x80_approach",
+      "xy": [
+        608,
+        4168
+      ],
+      "role": "approach",
+      "notes": "West wall at Zelda-cell y-band; LEFT needs a small key"
+    },
+    {
+      "label": "rescue_lower_corner",
+      "xy": [
+        916,
+        4485
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_lower_north",
+      "xy": [
+        916,
+        4277
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_stair_foot",
+      "xy": [
+        792,
+        4277
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_stair_head",
+      "xy": [
+        792,
+        4192
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_upper_corner",
+      "xy": [
+        864,
+        4192
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_upper_south",
+      "xy": [
+        864,
+        4408
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_west_stair",
+      "xy": [
+        632,
+        4408
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "rescue_north_door",
+      "xy": [
+        632,
+        4140
+      ],
+      "role": "waypoint",
+      "notes": "Measured natural predecessor path 2026-10-01; no coordinate writes."
+    },
+    {
+      "label": "escort_north_hall",
+      "xy": [
+        632,
+        4264
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_west_corner",
+      "xy": [
+        696,
+        4264
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_west_south",
+      "xy": [
+        696,
+        4336
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_corner",
+      "xy": [
+        920,
+        4336
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_south",
+      "xy": [
+        920,
+        4488
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_door",
+      "xy": [
+        992,
+        4488
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
   ],
   "doors": [
     {
@@ -20,11 +194,21 @@
       "direction": "RIGHT",
       "toRoom": 130,
       "toRoomHex": "0x82",
-      "approachXy": [960, 4496],
-      "landingXy": [1002, 4496],
+      "approachXy": [
+        960,
+        4496
+      ],
+      "landingXy": [
+        1002,
+        4496
+      ],
       "role": "primary",
-      "path": ["east_door_approach"],
-      "pathTolerances": {"default": 12},
+      "path": [
+        "east_door_approach"
+      ],
+      "pathTolerances": {
+        "default": 12
+      },
       "pushFrames": 100,
       "notes": "Measured from CastleB1WestRoom"
     },
@@ -33,26 +217,24 @@
       "direction": "UP",
       "toRoom": 113,
       "toRoomHex": "0x71",
-      "approachXy": [632, 4140],
-      "landingXy": [632, 4113],
+      "approachXy": [
+        632,
+        4140
+      ],
+      "landingXy": [
+        632,
+        4113
+      ],
       "role": "zelda_path",
-      "path": ["zelda_west", "north_door_approach"],
-      "pathTolerances": {"default": 12},
+      "path": [
+        "zelda_west",
+        "north_door_approach"
+      ],
+      "pathTolerances": {
+        "default": 12
+      },
       "pushFrames": 80,
-      "notes": "From CastleZeldaB1West UP 26f → 0x71"
-    },
-    {
-      "label": "west_to_0x80",
-      "direction": "LEFT",
-      "toRoom": 128,
-      "toRoomHex": "0x80",
-      "approachXy": [608, 4168],
-      "landingXy": null,
-      "role": "zelda_path",
-      "path": ["zelda_west", "west_to_0x80_approach"],
-      "pathTolerances": {"default": 12},
-      "pushFrames": 80,
-      "notes": "Still locked. CastleB1SecondKey wrap leftover 0x81 (632,4155) keys=1 $F3CC==0: (611,4169) LEFT y-sweep 4144–4216 stays 0x81 keys=1 (608,4169). Small key never spent. $F366==0 $F367==0 (no big key). Overlay is the gold jail door. Do not claim isolated."
+      "notes": "From CastleZeldaB1West UP 26f \u2192 0x71"
     }
   ],
   "clearPolicy": {
@@ -63,17 +245,54 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 100
   },
-  "walkBbox": [608, 4140, 1002, 4496],
+  "walkBbox": [
+    608,
+    4140,
+    1002,
+    4496
+  ],
   "hostilesAtEntry": [
-    {"type": "0x42", "xy": [688, 4318]},
-    {"type": "0x42", "xy": [736, 4367]},
-    {"type": "0x41", "xy": [756, 4419]},
-    {"type": "0x41", "xy": [720, 4353]},
-    {"type": "0x41", "xy": [756, 4415]}
+    {
+      "type": "0x42",
+      "xy": [
+        688,
+        4318
+      ]
+    },
+    {
+      "type": "0x42",
+      "xy": [
+        736,
+        4367
+      ]
+    },
+    {
+      "type": "0x41",
+      "xy": [
+        756,
+        4419
+      ]
+    },
+    {
+      "type": "0x41",
+      "xy": [
+        720,
+        4353
+      ]
+    },
+    {
+      "type": "0x41",
+      "xy": [
+        756,
+        4415
+      ]
+    }
   ],
   "notes": [
     "B1 west wing: green room combat (CastleB1GreenRoom) + Zelda-side north to 0x71.",
     "Hostiles listed from green-room state; WestRoom spawn may be cleared.",
-    "Authority: maps/room_81.json"
+    "Authority: maps/room_81.json",
+    "2026-10-01: removed fictitious west_to_0x80 border exit. Zelda is reached by spiral stairs 0x71 -> 0x70 -> 0x80; the gold lock is inside 0x80.",
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
   ]
 }

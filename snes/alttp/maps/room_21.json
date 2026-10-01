@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 33,
+  "roomHex": "0x21",
+  "name": "Escape sewer rat key maze",
+  "measured": "2026-10-01",
+  "sourceState": "DevSanctuary_Zelda",
+  "points": [
+    {
+      "label": "escort_south_hall",
+      "xy": [
+        760,
+        1400
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_internal_north_door",
+      "xy": [
+        760,
+        1296
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_upper_center",
+      "xy": [
+        760,
+        1184
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_key_hall",
+      "xy": [
+        600,
+        1184
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_key_rat",
+      "xy": [
+        600,
+        1128
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_east_hall",
+      "xy": [
+        888,
+        1184
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    },
+    {
+      "label": "escort_north_key_door",
+      "xy": [
+        888,
+        1088
+      ],
+      "role": "waypoint",
+      "notes": "Controller-play escort measurement from natural-derived DevSanctuary_Zelda (development probe)."
+    }
+  ],
+  "doors": [],
+  "notes": [
+    "Escort points measured through play on 2026-10-01; no room, camera, key, follower, or story writes."
+  ]
+}

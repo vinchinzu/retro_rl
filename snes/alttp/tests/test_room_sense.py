@@ -304,6 +304,10 @@ def test_room_72_south_to_0x82_door() -> None:
     assert door.direction == "DOWN"
     assert door.to_room == HYRULE_CASTLE_B1_EAST_ROOM
     assert "pit_guard_cleared" in door.path
+    lip = m.point("key_door_lip")
+    assert lip is not None
+    assert (lip.x, lip.y) == (1320, 3776)
+    assert m.door("south_to_0x82").path == ("pit_guard_cleared", "south_door_approach")  # type: ignore[union-attr]
 
 
 def test_room_82_west_to_0x81_door() -> None:

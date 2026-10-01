@@ -82,6 +82,9 @@ N_ROOM_80 = "room_80"
 N_CASTLE_MANTLE = "castle_mantle"
 N_SEWERS_DARK = "sewers_dark"
 N_SANCTUARY = "sanctuary"  # indoor room 0x12; abstract escort goal name
+# Eastern Palace lobby and the hall north of it. Isolated, not on the Sanctuary plan.
+N_ROOM_C9 = "room_c9"
+N_ROOM_B9 = "room_b9"
 
 # Alias for callers that prefer the room_id pattern.
 N_ROOM_12 = N_SANCTUARY
@@ -375,8 +378,10 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
             "note": (
                 "Measured exploration chain: 0x01→0x52→0x62 (clear required in "
                 "0x52). B1 well room_01_down_to_0x72 is natural_entry (trigger "
-                "UP); reverse room_72_north_to_0x01 stays isolated. Cell door "
-                "0x81 west_to_0x80 still needs a small key."
+                "UP); reverse room_72_north_to_0x01 stays isolated. Measured rescue "
+                "suffix walks 0x81 -> 0x71 (guard small key) -> 0x70 -> 0x80 "
+                "(trooper big key, cell lock, Zelda dialogue). Survival replay "
+                "does not promote this Clean graph edge."
             ),
         },
     ),
@@ -511,6 +516,27 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         meta={
             "to_room_base_id": SANCTUARY_ROOM,
             "z3_label": "Sanctuary Push Door",
+        },
+    ),
+    # Eastern lobby → north hall. Off the Sanctuary plan (empty paths).
+    EscapeHop(
+        hop_id="room_c9_north_to_0xb9",
+        source_id=N_ROOM_C9,
+        target_id=N_ROOM_B9,
+        direction="north",
+        requires=frozenset({CAP_FIGHTER_SWORD}),
+        verification=VERIFICATION_ISOLATED,
+        provenance="room_engine.room_c9.north_to_0xb9+EasternPalaceEntry",
+        goal="reach_room_b9_from_eastern_lobby",
+        paths=frozenset(),
+        meta={
+            "to_room_base_id": 0xB9,
+            "door_label": "north_to_0xb9",
+            "map_id": "room_c9",
+            "note": (
+                "EasternPalaceEntry room 0xC9. Center pot opens the shutter; "
+                "slot-1 north reaches 0xB9. Isolated save-state edge, not natural."
+            ),
         },
     ),
 )
@@ -734,6 +760,28 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
                 SANCTUARY_ROOM,
                 z3_label="Sanctuary",
                 extra={"node_alias": "room_12"},
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_C9,
+            name="Eastern Palace lobby (0xC9)",
+            area="eastern_palace",
+            tags=frozenset({"indoors", "dungeon", "isolated"}),
+            meta=_room_meta(
+                0xC9,
+                z3_label="Eastern Palace",
+                extra={"map_id": "room_c9"},
+            ),
+        ),
+        GraphNode(
+            node_id=N_ROOM_B9,
+            name="Eastern Palace north hall (0xB9)",
+            area="eastern_palace",
+            tags=frozenset({"indoors", "dungeon", "isolated"}),
+            meta=_room_meta(
+                0xB9,
+                z3_label="Eastern Palace",
+                extra={"map_id": "room_b9"},
             ),
         ),
     )

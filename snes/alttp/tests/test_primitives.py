@@ -5,8 +5,19 @@ from __future__ import annotations
 import numpy as np
 
 from alttp.primitives import (
+    ANCILLA_FLOOR,
+    ANCILLA_TIMER,
+    ANCILLA_TYPE,
+    ANCILLA_X_HIGH,
+    ANCILLA_X_LOW,
+    ANCILLA_Y_HIGH,
+    ANCILLA_Y_LOW,
+    SPRITE_AI,
     SPRITE_BLUE_SOLDIER,
+    SPRITE_DIRECTION,
+    SPRITE_FLOOR,
     SPRITE_HEART,
+    SPRITE_HIT_TIMER,
     SPRITE_HP,
     SPRITE_SMALL_KEY,
     SPRITE_STATE,
@@ -16,6 +27,7 @@ from alttp.primitives import (
     SPRITE_Y_HIGH,
     SPRITE_Y_LOW,
     Waypoint,
+    active_ancillae,
     active_sprites,
     collect_nearby,
     fight_nearby,
@@ -25,6 +37,7 @@ from alttp.primitives import (
     settle_control,
     sprites_of_type,
 )
+from alttp.startup import snapshot_env
 from alttp.ram import (
     INDOORS,
     LINK_ACTION,
@@ -66,6 +79,10 @@ def _set_sprite(
     y: int,
     state: int = 9,
     hp: int = 4,
+    ai_state: int = 0,
+    direction: int = 0,
+    floor: int = 0,
+    hit_timer: int = 0,
 ) -> None:
     writes[SPRITE_STATE + slot] = state
     writes[SPRITE_TYPE + slot] = sprite_type
@@ -74,6 +91,29 @@ def _set_sprite(
     writes[SPRITE_X_HIGH + slot] = (x >> 8) & 0xFF
     writes[SPRITE_Y_LOW + slot] = y & 0xFF
     writes[SPRITE_Y_HIGH + slot] = (y >> 8) & 0xFF
+    writes[SPRITE_AI + slot] = ai_state
+    writes[SPRITE_DIRECTION + slot] = direction
+    writes[SPRITE_FLOOR + slot] = floor
+    writes[SPRITE_HIT_TIMER + slot] = hit_timer
+
+
+def _set_ancilla(
+    writes: dict[int, int],
+    slot: int,
+    *,
+    ancilla_type: int,
+    x: int,
+    y: int,
+    floor: int = 0,
+    timer: int = 0,
+) -> None:
+    writes[ANCILLA_TYPE + slot] = ancilla_type
+    writes[ANCILLA_X_LOW + slot] = x & 0xFF
+    writes[ANCILLA_X_HIGH + slot] = (x >> 8) & 0xFF
+    writes[ANCILLA_Y_LOW + slot] = y & 0xFF
+    writes[ANCILLA_Y_HIGH + slot] = (y >> 8) & 0xFF
+    writes[ANCILLA_FLOOR + slot] = floor
+    writes[ANCILLA_TIMER + slot] = timer
 
 
 class FakeEnv:
@@ -191,6 +231,52 @@ def test_active_sprites_uses_16bit_coords() -> None:
     assert s.y == 0x02B0
     assert s.hp == 3
     assert s.state == 9
+    assert s.ai_state == 0
+    assert s.direction == 0
+    assert s.floor == 0
+    assert s.hit_timer == 0
+
+
+def test_sprite_ai_direction_floor_and_hit_timer() -> None:
+    """Synthetic RAM for the fields measured on CastleB1Guard type 0x41."""
+    env = FakeEnv()
+    _set_sprite(
+        env.writes,
+        3,
+        sprite_type=SPRITE_BLUE_SOLDIER,
+        x=0x0140,
+        y=0x0288,
+        ai_state=0x04,
+        direction=0x02,
+        floor=0x01,
+        hit_timer=0x9D,
+    )
+    sprite = active_sprites(env)[0]
+    assert sprite.slot == 3
+    assert sprite.ai_state == 0x04
+    assert sprite.direction == 0x02
+    assert sprite.floor == 0x01
+    assert sprite.hit_timer == 0x9D
+
+
+def test_active_ancillae_keeps_link_shots_and_bombs() -> None:
+    env = FakeEnv(link_x=100, link_y=80)
+    _set_ancilla(env.writes, 0, ancilla_type=0x00, x=1, y=1)
+    _set_ancilla(env.writes, 1, ancilla_type=0x07, x=0x0210, y=0x0134, timer=0x30)
+    _set_ancilla(env.writes, 2, ancilla_type=0x20, x=50, y=50)  # bedspread
+    _set_ancilla(
+        env.writes, 4, ancilla_type=0x09, x=120, y=90, floor=1, timer=8
+    )
+    # Soldier arrow is a sprite, not an ancilla slot.
+    _set_sprite(env.writes, 0, sprite_type=0x1B, x=130, y=90, hp=0)
+
+    found = active_ancillae(env)
+    assert [(a.slot, a.ancilla_type) for a in found] == [(1, 0x07), (4, 0x09)]
+    bomb, arrow = found
+    assert bomb.x == 0x0210 and bomb.y == 0x0134 and bomb.timer == 0x30
+    assert arrow.floor == 1 and arrow.timer == 8
+    assert arrow.distance_to(snapshot_env(env)) == 30
+    assert active_sprites(env)[0].sprite_type == 0x1B
 
 
 def test_sprites_of_type_filters_and_max_distance() -> None:

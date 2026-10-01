@@ -29,6 +29,12 @@
       "notes": "Connecting corridor y≈2024 between east hedges and door axis"
     },
     {
+      "label": "door_column",
+      "xy": [2040, 2024],
+      "role": "waypoint",
+      "notes": "Door x on the south corridor. x=2048 is hedge; do not climb north from there."
+    },
+    {
       "label": "main_door_approach",
       "xy": [2040, 1790],
       "role": "approach",
@@ -50,10 +56,11 @@
       "approachXy": [2040, 1790],
       "landingXy": [760, 3520],
       "role": "zelda_path",
-      "path": ["open_gardens", "south_corridor", "main_door_approach"],
+      "path": ["open_gardens", "south_corridor", "door_column", "main_door_approach"],
       "pathTolerances": {
         "open_gardens": 48,
         "south_corridor": 36,
+        "door_column": 4,
         "main_door_approach": 16,
         "default": 20
       },

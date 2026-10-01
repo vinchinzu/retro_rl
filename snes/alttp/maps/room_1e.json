@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 30,
+  "roomHex": "0x1E",
+  "name": "Ice Palace north of the entrance stairs",
+  "measured": "2026-09-30",
+  "sourceState": "Scan_ice_0x1e",
+  "points": [],
+  "doors": [
+    {
+      "label": "north_to_0x0e",
+      "direction": "UP",
+      "toRoom": 14,
+      "toRoomHex": "0x0E",
+      "role": "backtrack",
+      "notes": "Slot 2 type 0x18 pos $125C. UP from the Scan_ice_0x1e landing (7289,822) enters room 0x0E at (7288,308). The type byte stays 0x18. Door-only skeleton; approach xy omitted."
+    },
+    {
+      "label": "east_shutter",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x18 pos $17F4. No path from the stair landing. RIGHT from (7289,822) stops at (7304,822). Stopping lock."
+    },
+    {
+      "label": "west_shutter",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x18 pos $17C4. Reachable door-family tile (7365,888) stays in 0x1E on UP, DOWN, LEFT, and RIGHT. Stopping lock."
+    },
+    {
+      "label": "south_regular",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x00 pos $1D5C. No path from the stair landing. DOWN from (7289,822) stops at (7289,960), still 0x1E. Stopping lock."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x1E", "xy": [7584, 656], "notes": "crystal switch, hp 0"},
+    {"type": "0x23", "xy": [7520, 592], "notes": "red bari"},
+    {"type": "0x23", "xy": [7568, 592], "notes": "red bari"},
+    {"type": "0x23", "xy": [7520, 672], "notes": "red bari"},
+    {"type": "0x23", "xy": [7568, 672], "notes": "red bari"},
+    {"type": "0x8F", "xy": [7296, 896], "notes": "zol"},
+    {"type": "0x8F", "xy": [7248, 960], "notes": "zol"}
+  ],
+  "notes": [
+    "Scan_ice_0x1e, kind scan. Floor byte 0xFF. Chests none.",
+    "fight_nearby 40 cycles from the landing left door types 0x18,0x18,0x18,0x00 unchanged.",
+    "Big key 0x0040 and the small key on this pin are the parallel poke, not rises in play.",
+    "Whatif_Ice_0x1e_bk0 layer 0 flood from the landing is 184 floor/door/stair tiles, cols 5-26 rows 37-58. Border unknowns: 0x24 at (7,57), 0xF9 at (27,48), 0x30 at (16,36). Crystal tile (52,18), east shutter, and resting block (47,48) byte 0x75 are outside it.",
+    "Standing on 0x24 at (6,56) did not change the attribute grid or door types. RIGHT from floor (25-26,48) did not enter 0xF9.",
+    "Isolated development. Not natural."
+  ]
+}

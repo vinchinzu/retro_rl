@@ -5,6 +5,7 @@ USA vanilla opening route. Docs: `docs/STATUS.md` (planner owns it),
 `docs/TRIGGER_HANDOFF.md`, `docs/Z3_JSON_DATA.md`, `docs/ram_map.md`.
 Session: `.grok/skills/alttp-session/SKILL.md`.
 Tracker: `bd ready -l alttp -l spine`.
+Assist contract: [docs/ASSIST_CONTRACT.md](docs/ASSIST_CONTRACT.md).
 Living residual (overwrite this file only): `docs/tasks/residual.md`.
 Skull Woods `rr-lvnu` detail stays in `docs/tasks/SkullWoodsEntry-residual.md`. No indoor pin yet.
 
@@ -23,6 +24,13 @@ SDL_VIDEODRIVER=dummy uv run python alttp/scripts/run_to_verified_tip.py
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/run_opening_spine.py --through room_50 --no-video
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/castle_to_sword.py --natural
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/castle_dungeon_prefix.py
+
+export QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+uv run python alttp/scripts/audit_power_on.py controller \
+  --through sanctuary --out alttp/recordings/sanctuary_20261001/controller.json
+uv run python alttp/scripts/audit_power_on.py replay \
+  --tape alttp/recordings/sanctuary_20261001/controller.tape.npz \
+  --out alttp/recordings/sanctuary_20261001/replay.json
 
 uv run python alttp/scripts/room_engine.py list
 uv run python alttp/scripts/room_engine.py show room_61
@@ -45,7 +53,15 @@ uv run pytest alttp/tests -q
 ## Traps
 
 - Ladder: planned, then isolated, then natural_entry, then continuous. A save-state pin is not continuous.
-- Continuous tip is room `0x50`. `--through room_01`, `room_72`, and `zelda` fail closed. Do not overwrite `recordings/verified_tip_run.json` on a red.
+- Continuous tip is room `0x50`. `zelda` and `sanctuary` are development
+  Survival controller routes; their results do not promote the Clean tip.
+  Replay the committed tape and check `route_goal_ok` before quoting an
+  assisted result. Do not overwrite `recordings/verified_tip_run.json` on a
+  red.
+- Sanctuary acceptance is room `0x12`, control ready, follower `$F3CC == 0`,
+  progress `$F3C5 == 2`, and `$F3C6 & 0x04`. The controller may record only
+  disclosed Survival HP refills; progression and capacity writes must remain
+  zero.
 - Leave proof is a RAM glance (`alttp.screen_glance`), not an MP4.
 - Loader prefers `refs/z3-json-data/` when that checkout exists, else the committed dump. Import never downloads.
 - Stair destination settle is `DEST_SETTLE_MAX_FRAMES` (480). Do not change the global `settle_control` default (240).

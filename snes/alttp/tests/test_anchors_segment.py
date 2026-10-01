@@ -159,6 +159,10 @@ def test_segment_registry_has_continuous_segments() -> None:
     assert "sword_to_secret_entrance_clear" in reg
     assert "pocket_to_main_hall" in reg
     assert "castle_dungeon_prefix" in reg
+    assert "room_50_east_to_0x01" in reg
+    assert "room_01_down_to_0x72" in reg
+    assert "room_72_south_to_0x82" in reg
+    assert "room_82_west_to_0x81" in reg
     assert "main_hall_to_zelda" not in reg  # planned only; not a live segment
     assert "escort_to_sanctuary" in reg
     assert set(list_segments()) == set(reg)
@@ -172,11 +176,29 @@ def test_segment_registry_has_continuous_segments() -> None:
     escort = get_segment("escort_to_sanctuary")
     assert escort.exit.verification == "planned"
     assert escort.exit.graph_node_id == "sanctuary"
+    east = get_segment("room_50_east_to_0x01")
+    assert east.exit.verification == "natural_entry"
+    assert east.exit.graph_node_id == "room_01"
+    well = get_segment("room_01_down_to_0x72")
+    assert well.exit.verification == "natural_entry"
+    assert well.exit.acceptance_keys == ("at_door_dest",)
+    assert well.entry.graph_node_id == "room_01"
+    south = get_segment("room_72_south_to_0x82")
+    assert south.exit.verification == "natural_entry"
+    assert south.exit.graph_node_id == "room_82"
+    assert south.exit.acceptance_keys == ("at_door_dest",)
+    west = get_segment("room_82_west_to_0x81")
+    assert west.exit.verification == "natural_entry"
+    assert west.exit.graph_node_id == "room_81"
+    assert west.entry.graph_node_id == "room_82"
 
 
 def test_tip_resolution_most_specific() -> None:
-    assert TIP_ANCHOR_ORDER[0] == "HyruleCastle_NW_0x50"
-    assert TIP_ANCHOR_ORDER[1] == "HyruleCastle_MainWest_0x60"
+    assert TIP_ANCHOR_ORDER[0] == "HyruleCastle_B1West_0x81"
+    assert TIP_ANCHOR_ORDER[1] == "HyruleCastle_B1East_0x82"
+    assert TIP_ANCHOR_ORDER[2] == "HyruleCastle_B1_0x72"
+    assert TIP_ANCHOR_ORDER[3] == "HyruleCastle_NorthConnector_0x01"
+    assert TIP_ANCHOR_ORDER[4] == "HyruleCastle_NW_0x50"
     assert "HyruleCastle_MainHall" in TIP_ANCHOR_ORDER
 
     grounds = _snap(screen_id=0x1B, indoors=False, game_mode=0x09)
@@ -238,6 +260,43 @@ def test_tip_resolution_most_specific() -> None:
         game_mode=0x07,
     )
     assert resolve_continuous_tip_node(nw) == "room_50"
+
+    connector = _snap(
+        indoors=True,
+        room_id=0x01,
+        sword_level=1,
+        game_mode=0x07,
+    )
+    assert resolve_continuous_tip_node(connector) == "room_01"
+
+    pit = _snap(
+        indoors=True,
+        room_id=0x72,
+        sword_level=1,
+        link_x=1273,
+        link_y=3665,
+        game_mode=0x07,
+    )
+    assert resolve_continuous_tip_node(pit) == "room_72"
+
+    east_b1 = _snap(
+        indoors=True,
+        room_id=0x82,
+        sword_level=1,
+        game_mode=0x07,
+    )
+    assert resolve_continuous_tip_node(east_b1) == "room_82"
+    west_b1 = _snap(
+        indoors=True,
+        room_id=0x81,
+        sword_level=1,
+        game_mode=0x07,
+    )
+    assert resolve_continuous_tip_node(west_b1) == "room_81"
+    assert anchor_by_id("HyruleCastle_B1West_0x81") is not None
+    assert not anchor_by_id("HyruleCastle_B1West_0x81").matches(  # type: ignore[union-attr]
+        _snap(indoors=True, room_id=0x81, sword_level=0, game_mode=0x07)
+    )
 
     cell = _snap(
         indoors=True,
@@ -385,51 +444,26 @@ def test_main_hall_to_zelda_scaffold_offline() -> None:
     assert acc_w["left_main_hall_west"] is True
 
 
-def test_escort_scaffold_offline() -> None:
+def test_escort_rejects_unmeasured_cell_entry() -> None:
     import numpy as np
 
     from alttp.opening_route.escort_to_sanctuary import run_from_escort
     from alttp.ram import (
-        DARK_WORLD_FLAG,
-        FOLLOWER,
-        INDOORS,
-        LINK_ITEM_LAMP,
-        MODULE,
-        ROOM_ID,
-        SUBMODULE,
+        FOLLOWER, INDOORS, LINK_ITEM_LAMP, MODULE, ROOM_ID, SUBMODULE,
         wram_index,
     )
 
     class _EscortEnv:
-        def __init__(
-            self,
-            *,
-            room: int = 0x80,
-            follower: int = 1,
-            lamp: int = 1,
-        ) -> None:
-            self.room = room
-            self.follower = follower
-            self.lamp = lamp
-
         def get_ram(self) -> np.ndarray:
             ram = np.zeros(0x20000, dtype=np.uint8)
             ram[MODULE] = 0x07
-            ram[SUBMODULE] = 0x00
+            ram[SUBMODULE] = 0
             ram[INDOORS] = 1
-            ram[DARK_WORLD_FLAG] = 0
-            ram[ROOM_ID] = self.room & 0xFF
-            ram[wram_index(FOLLOWER)] = self.follower
-            ram[wram_index(LINK_ITEM_LAMP)] = self.lamp
+            ram[ROOM_ID] = 0x80
+            ram[wram_index(FOLLOWER)] = 1
+            ram[wram_index(LINK_ITEM_LAMP)] = 1
             return ram
 
-    env = _EscortEnv()
-    result = run_from_escort(env, source="test")
+    result = run_from_escort(_EscortEnv(), source="test")
     assert result.ok is False
-    assert result.phase == "not_implemented"
-    assert "not implemented" in result.blocker.lower()
-
-    sanc = _EscortEnv(room=SANCTUARY_ROOM)
-    result2 = run_from_escort(sanc, source="test")
-    assert result2.ok is True
-    assert result2.phase == "sanctuary_reached"
+    assert "real B3 cell exit" in result.blocker

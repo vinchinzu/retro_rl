@@ -24,13 +24,44 @@ from PIL import Image
 from alttp.opening_route.full_tip import run_to_verified_tip
 from alttp.opening_route.segment import get_segment
 from alttp.paths import INTEGRATION_DIR
-from alttp.ram import LINK_HP, LINK_MAX_HP, read_snapshot, snapshot_to_diag, wram_index
+from alttp.ram import LINK_HP, LINK_MAX_HP, SRAM_PROGRESS, SRAM_PROGRESS_FLAGS, read_snapshot, snapshot_to_diag, wram_index
 from alttp.scripts.replay_tape import _CommittedRecorder, _refuse_verified_tip_run
-from alttp.spine.hops import hops_through
+from alttp.spine.hops import hop_for, hops_through
 from alttp.spine.tape import LiveRun, ram_crc, write_pin_provenance
 from alttp.startup import build_blank_sram, build_boot_env, inject_sram_into_env
 from retro_harness.env import write_state_bytes
 from retro_harness.segment_runner import configure_headless
+
+
+def story_glance(env: Any) -> dict[str, Any]:
+    """Distinguish Sanctuary arrival from the completed Zelda/priest dialogue."""
+    ram = env.get_ram()
+    snap = read_snapshot(ram)
+    progress = int(ram[wram_index(SRAM_PROGRESS)])
+    flags = int(ram[wram_index(SRAM_PROGRESS_FLAGS)])
+    return {
+        "progress": progress, "progress_flags": flags,
+        "follower": snap.follower, "max_hp": int(ram[wram_index(LINK_MAX_HP)]),
+        "sanctuary_completed": (snap.in_sanctuary and snap.has_control
+                                and progress == 2 and bool(flags & 4) and snap.follower == 0),
+    }
+
+
+def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dict[str, Any]) -> bool:
+    """A synchronized failed controller tape is not a completed route."""
+    if not meta.get("source_ok"):
+        return False
+    through = meta.get("through")
+    if through == "sanctuary":
+        return bool(story["sanctuary_completed"])
+    if through == "zelda":
+        return bool(final["has_control"] and final["in_zelda_cell"] and final["has_zelda_follower"])
+    hop = hop_for(through)
+    if hop is None or not hop.success.startswith("room_"):
+        return False
+    expected = int(hop.success.removeprefix("room_"), 16)
+    return bool(final["has_control"] and final["indoors"] and final["room_base_id"] == expected
+                and final["has_fighter_sword"])
 
 
 class Survival:
@@ -163,8 +194,10 @@ def controller(args: Any) -> dict[str, Any]:
         report["frames"] = len(rec.buttons)
         for row in report["segments"]:
             row.update(source="controller_search", cleanChain=False, developmentOnly=True)
+        report["story"] = story_glance(raw)
         meta = {"start": args.start, "through": args.through, "survival": args.survival,
                 "source_ok": report["ok"], "source_final": report["final"], "stages": stages,
+                "source_story": report["story"],
                 "rom_sha256": hashlib.sha256((INTEGRATION_DIR / "rom.sfc").read_bytes()).hexdigest()}
         np.savez_compressed(
             args.out.with_suffix(".tape.npz"), buttons=np.stack(rec.buttons),
@@ -226,16 +259,21 @@ def replay(args: Any) -> dict[str, Any]:
                 if first is None:
                     first = index + 1
         final = snapshot_to_diag(read_snapshot(raw.get_ram()))
+        story = story_glance(raw)
         audit = asdict(live.report())
         if audit["set_state"] or audit["writes"] != len(survival.events):
             raise RuntimeError("forward replay has an unexpected load or write")
         save_end(raw, args.out, len(buttons))
+        synchronization_ok = (desynced == 0 and final == meta["source_final"]
+                              and ("source_story" not in meta or story == meta["source_story"]))
+        route_goal_ok = replay_goal_accepted(meta, final, story)
         return {
-            "ok": desynced == 0 and final == meta["source_final"],
+            "ok": synchronization_ok and route_goal_ok,
+            "synchronization_ok": synchronization_ok,
             "start": meta["start"],
-            "route_goal_ok": meta["source_ok"], "frames": len(buttons),
+            "route_goal_ok": route_goal_ok, "through": meta.get("through"), "frames": len(buttons),
             "desynced": desynced, "first_desync_frame": first, "final": final,
-            "audit": audit, "survival": survival.report(), "rooms": rooms,
+            "audit": audit, "survival": survival.report(), "rooms": rooms, "story": story,
             "hits": hits, "death_frames": death_frames,
             "clean_chain": (desynced == 0 and not meta["survival"]
                             and not audit["set_state"] and not audit["writes"]),

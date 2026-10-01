@@ -23,6 +23,7 @@ from alttp.opening_route.escape_graph import (
 from alttp.opening_route.room_engine import (
     DEST_SETTLE_MAX_FRAMES,
     at_door_destination,
+    door_table_requires_clear,
     in_room,
     run_room_edge,
 )
@@ -380,3 +381,40 @@ def test_isolated_stair_edge_dest_settle(
     dest_phase = next(p for p in result.phases if p.phase == "settle_destination")
     assert dest_phase.ok is True
     assert dest_phase.frames <= DEST_SETTLE_MAX_FRAMES
+
+
+def _door_slot(ram: np.ndarray, slot: int, typ: int, pos: int, direc: int) -> None:
+    ram[0x1980 + 2 * slot] = typ & 0xFF
+    ram[0x1981 + 2 * slot] = (typ >> 8) & 0xFF
+    ram[0x19A0 + 2 * slot] = pos & 0xFF
+    ram[0x19A1 + 2 * slot] = (pos >> 8) & 0xFF
+    ram[0x19C0 + 2 * slot] = direc & 0xFF
+    ram[0x19C1 + 2 * slot] = (direc >> 8) & 0xFF
+
+
+def test_door_table_requires_clear_only_for_shutters() -> None:
+    """A clear is a shutter slot. Regular, key, and empty slots stay walked alive."""
+    empty = np.zeros(0x2000, dtype=np.uint8)
+    assert door_table_requires_clear(empty) is False
+
+    regular = np.zeros(0x2000, dtype=np.uint8)
+    _door_slot(regular, 0, 0x40, 0x239C, 0)
+    assert door_table_requires_clear(regular) is False
+
+    small_key = np.zeros(0x2000, dtype=np.uint8)
+    _door_slot(small_key, 0, 0x1C, 0x123C, 0)
+    assert door_table_requires_clear(small_key) is False
+
+    # Type 0x00 with a position is a real open door, not an empty slot.
+    open_door = np.zeros(0x2000, dtype=np.uint8)
+    _door_slot(open_door, 3, 0x00, 0x0784, 2)
+    assert door_table_requires_clear(open_door) is False
+
+    for typ in (0x18, 0x36, 0x44, 0x48, 0x4A):
+        ram = np.zeros(0x2000, dtype=np.uint8)
+        _door_slot(ram, 2, typ, 0x0100, 1)
+        assert door_table_requires_clear(ram) is True
+
+    high_byte = np.zeros(0x2000, dtype=np.uint8)
+    _door_slot(high_byte, 0, 0x0140, 0x0001, 0)
+    assert door_table_requires_clear(high_byte) is False

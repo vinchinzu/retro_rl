@@ -18,7 +18,11 @@ from PIL import Image
 
 from alttp.opening_route.full_tip import run_to_verified_tip
 from alttp.paths import RECORDINGS_DIR
+from alttp.scripts.run_opening_spine import add_ledger, print_ledger
+from alttp.spine.ledger import RunLedger
 from alttp.startup import build_boot_env
+
+VERIFIED_TIP_RUN = RECORDINGS_DIR / "verified_tip_run.json"
 
 def _configure_headless() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -39,11 +43,20 @@ def main(argv: list[str] | None = None) -> int:
         default=RECORDINGS_DIR / "verified_tip_run.png",
         help="final-frame screenshot path",
     )
+    parser.add_argument(
+        "--ledger",
+        action="store_true",
+        help="Print rooms, hits, and inventory writes and add them to the JSON.",
+    )
     args = parser.parse_args(argv)
     _configure_headless()
 
     env = build_boot_env()
+    ledger: RunLedger | None = None
     try:
+        if args.ledger:
+            ledger = RunLedger()
+            ledger.attach(env)
         result = run_to_verified_tip(env, close=False)
         frame = env.render()  # type: ignore[attr-defined]
         if frame is not None:
@@ -53,9 +66,18 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         env.close()  # type: ignore[attr-defined]
 
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(result.to_report(), indent=2) + "\n")
-    print(f"Wrote {args.report}")
+    report = result.to_report()
+    if ledger is not None:
+        add_ledger(report, ledger)
+        print_ledger(ledger)
+    verified = VERIFIED_TIP_RUN.expanduser().resolve()
+    target = args.report.expanduser().resolve()
+    if result.ok or target != verified:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, indent=2) + "\n")
+        print(f"Wrote {args.report}")
+    else:
+        print("red run; not overwriting verified_tip_run.json")
     print(
         f"ok={result.ok} phase={result.phase} frames={result.frames} "
         f"tip={result.tip_node} blocker={result.blocker!r}"

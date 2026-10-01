@@ -18,17 +18,45 @@ ROOM_ID = 0xA0
 LINK_Y = 0x20
 LINK_X = 0x22
 LINK_DIRECTION = 0x2F
-LINK_ACTION = 0x5D
+LINK_ACTION = 0x5D  # link_player_handler_state; 0 at rest, 2 during recoil, 21 hold-up
+# link_incapacitated_timer. CastleB1Guard sword-hit counted 18,17,… while $5D stayed 2.
+LINK_KNOCKBACK = 0x0046
 SCREEN_ID = 0x008A
+# dung_cur_floor. CastleMain 0x00 (F1), CastleB1* 0xFF (B1), CastleB3 / cell 0xFD (B3).
+DUNGEON_FLOOR = 0x00A4
 DARK_WORLD_FLAG = 0x0FFF
 BG2_VOFS = 0x00E8
 CAMERA_X = 0xE2
+# link_is_on_lower_level. 0 on CastleMain and CastleB1Guard; 1 on CastleB1Pit.
+LINK_LAYER = 0x00EE
+# countdown_for_blink. Same hit counted 57,56,…; CastleB1Pit still held 0x11 at rest.
+LINK_IFRAMES = 0x031F
+# cur_palace_index_x2. Castle 0x02, EasternPalaceEntry 0x04, overworld / FighterSword 0xFF.
+# High byte $040D was 0 on those pins.
+DUNGEON_ID = 0x040C
+# Orange/blue peg state, low byte of the $C172 word. HeraEntry room 0x77,
+# crystal (3840, 3968), no RAM writes: 0 while the west alcove stopped at
+# (3792, 3979), 1 after slash+spin with the alcove open at (3704, 3979),
+# then 0 and the alcove stopped at (3792, 3979) again. $C173 and $0642 stayed 0.
+PEG_STATE = 0xC172
 LINK_HP = 0xF36D
 LINK_MAX_HP = 0xF36C
 EQUIP_SWORD = 0xF359
 LINK_ITEM_LAMP = 0xF34A
 NUM_KEYS = 0xF36F
 FOLLOWER = 0xF3CC  # tagalong / follower_indicator
+# link_ability_flags. Dash A-press mask is bit 0x04 (see the ability field).
+LINK_ABILITY = 0xF379
+ABILITY_DASH = 0x04
+# sram_progress_indicator. 0 on LinksHouseWake / FirstAction / HyruleCastleGrounds.
+# 1 on the sword-route pins, including CastleZeldaFollower. Value 3 is only on
+# the late dungeon-entry pins (Ice, PoD, Swamp, Thieves, YazeSlot000).
+SRAM_PROGRESS = 0xF3C5
+# sram_progress_flags. Bit 0x01 is clear on HyruleCastleGrounds (0x10) and set
+# on CourtyardSecretPocket and FighterSword (0x11). Bit 0x10 is already set
+# on the pre-sword pins; this scan never saw it clear.
+SRAM_PROGRESS_FLAGS = 0xF3C6
+PROGRESS_FLAG_UNCLE_GEAR = 0x01
 
 HYRULE_CASTLE_SCREEN = 0x1B
 LINKS_HOUSE_SCREEN = 0x2C
@@ -137,6 +165,12 @@ class AlttpSnapshot:
     lamp_level: int = 0
     num_keys: int = 0xFF
     follower: int = 0
+    dungeon_id: int = 0
+    floor: int = 0
+    layer: int = 0
+    hp: int = 0
+    iframes: int = 0
+    knockback: int = 0
 
     @property
     def room_base_id(self) -> int:
@@ -162,6 +196,11 @@ class AlttpSnapshot:
     def is_hold_up_item(self) -> bool:
         """True during post-item hold-up pose ($5D == 21). Blocks normal control."""
         return int(self.link_action) == LINK_ACTION_HOLD_UP_ITEM
+
+    @property
+    def link_state(self) -> int:
+        """Player handler state ($5D). Same byte as ``link_action``."""
+        return int(self.link_action)
 
     @property
     def on_castle_grounds(self) -> bool:
@@ -249,6 +288,243 @@ def read_u8_safe(ram: np.ndarray, addr: int) -> int:
     return int(ram[addr])
 
 
+# save_dung_info: one u16 per room, $F000 + 2*room, 0x140 rooms ($F000..$F27F).
+# Pass the full $A0 id. Link's house is 0x104; room_base_id masks that to 0x04.
+SAVE_DUNG_INFO = 0xF000
+SAVE_ROOM_COUNT = 0x140
+# Chest 0. FighterSword -> FighterSwordLamp sets it on room 0x104 (lamp).
+# CastleB3 -> CastleB3Boomerang sets the same bit on room 0x71.
+ROOM_FLAG_CHEST = 0x0010
+# Key or freestanding item. CastleB1Key live $0402 was already 0x4000 in room
+# 0x72; CastleB1SecondKey stored ($0402 >> 4) as this bit after leaving.
+ROOM_FLAG_KEY = 0x0400
+# One door bit. Same pair, room 0x72. CastleB1Pit live $0400 is 0x8000.
+# The other three door bits in 0x7000 did not change on the scanned pairs.
+ROOM_FLAG_DOOR = 0x8000
+# Boss-dead (diagram bit 0x0800) did not change on these pairs. Not decoded.
+
+
+@dataclass(frozen=True)
+class RoomFlagDiff:
+    """One save-word bit that differed between two pins."""
+
+    before_pin: str
+    after_pin: str
+    room: int
+    bit: int
+    name: str
+
+
+# Bits that actually flipped. Quadrant visits are listed so they are not
+# mistaken for chest / key / door. Boss-dead is absent.
+ROOM_FLAG_PIN_DIFFS: tuple[RoomFlagDiff, ...] = (
+    RoomFlagDiff("FighterSword", "FighterSwordLamp", 0x104, ROOM_FLAG_CHEST, "chest"),
+    RoomFlagDiff("CastleB3", "CastleB3Boomerang", 0x71, ROOM_FLAG_CHEST, "chest"),
+    RoomFlagDiff("CastleB1Key", "CastleB1SecondKey", 0x72, ROOM_FLAG_KEY, "key"),
+    RoomFlagDiff("CastleB1Key", "CastleB1SecondKey", 0x72, ROOM_FLAG_DOOR, "door"),
+    RoomFlagDiff("CastleB1Key", "CastleB1SecondKey", 0x72, 0x0003, "quadrants"),
+    RoomFlagDiff("CastleB1Key", "CastleB1SecondKey", 0x71, 0x0003, "quadrants"),
+    RoomFlagDiff("CastleB1Key", "CastleB1SecondKey", 0x81, 0x000F, "quadrants"),
+    RoomFlagDiff("CastleB1Key", "CastleB1SecondKey", 0x82, 0x000F, "quadrants"),
+)
+
+
+def room_flags(ram: np.ndarray, room: int) -> int:
+    """Save-RAM room word ``$F000 + 2*room`` (little-endian)."""
+    rid = int(room)
+    if rid < 0 or rid >= SAVE_ROOM_COUNT:
+        raise ValueError(f"room {rid:#x} outside save_dung_info")
+    addr = wram_index(SAVE_DUNG_INFO + 2 * rid)
+    return read_u8_safe(ram, addr) | (read_u8_safe(ram, addr + 1) << 8)
+
+
+def format_room_flag_diffs(
+    diffs: tuple[RoomFlagDiff, ...] = ROOM_FLAG_PIN_DIFFS,
+) -> str:
+    """Report lines: which bit changed on which pin pair."""
+    lines = []
+    for diff in diffs:
+        lines.append(
+            f"{diff.before_pin} -> {diff.after_pin} "
+            f"room=0x{diff.room:03X} bit=0x{diff.bit:04X} {diff.name}"
+        )
+    return "\n".join(lines)
+
+
+# save_ow_event_info: one byte per screen, $F280 + screen, screens 0x00..0x7F.
+# Bit 0x02 is the bombable secondary overlay. Bit 0x20 is the event overlay.
+# The castle bush hole sets neither. It is a memorized map16 change.
+SAVE_OW_EVENT_INFO = 0xF280
+OW_SCREEN_COUNT = 0x80
+OW_FLAG_BOMB_OVERLAY = 0x02
+OW_FLAG_EVENT_OVERLAY = 0x20
+# num_memorized_tiles counts bytes (+2 per change). Addrs $F800, values
+# $FA00, both u16. The value table stops at $FA40.
+MEMORIZED_TILE_COUNT = 0x04AC
+MEMORIZED_TILE_ADDR = 0xF800
+MEMORIZED_TILE_VALUE = 0xFA00
+MEMORIZED_TILE_MAX = 0x20
+# kTileBelow[0]. Secret byte 0x80 is "Hole". 0x212 is Warp (secret 0x82).
+OW_TILE_HOLE = 0x0DCC
+# ROM screen 0x1B secret list: pos 0x0570, data 0x80. Live lift wrote it.
+CASTLE_BUSH_HOLE_POS = 0x0570
+CASTLE_BUSH_HOLE_SCREEN = HYRULE_CASTLE_SCREEN
+
+
+def ow_flags(ram: np.ndarray, screen: int) -> int:
+    """``save_ow_event_info[screen]``. Not the opened bush-hole record."""
+    sid = int(screen) & 0xFF
+    if sid >= OW_SCREEN_COUNT:
+        raise ValueError(f"screen {sid:#x} outside save_ow_event_info")
+    return read_u8_safe(ram, wram_index(SAVE_OW_EVENT_INFO + sid))
+
+
+def memorized_tiles(ram: np.ndarray) -> tuple[tuple[int, int], ...]:
+    """Map16 changes kept for this overworld visit. ``(pos, value)``."""
+    count_at = wram_index(MEMORIZED_TILE_COUNT)
+    count = read_u8_safe(ram, count_at) | (read_u8_safe(ram, count_at + 1) << 8)
+    n = min(count >> 1, MEMORIZED_TILE_MAX)
+    found: list[tuple[int, int]] = []
+    for i in range(n):
+        addr_at = wram_index(MEMORIZED_TILE_ADDR + 2 * i)
+        value_at = wram_index(MEMORIZED_TILE_VALUE + 2 * i)
+        pos = read_u8_safe(ram, addr_at) | (read_u8_safe(ram, addr_at + 1) << 8)
+        value = read_u8_safe(ram, value_at) | (read_u8_safe(ram, value_at + 1) << 8)
+        found.append((pos, value))
+    return tuple(found)
+
+
+# Save block $F340..$F37B. Offsets are snesrev/zelda3 ``variables.h``
+# (``link_item_*`` and the following words). ``verified_on`` is a pin that
+# showed a distinctive live value, or ``unverified`` when the scanned pins
+# only read 0.
+INV_BLOCK_LO = 0xF340
+INV_BLOCK_HI = 0xF37B
+
+
+@dataclass(frozen=True)
+class InventoryField:
+    name: str
+    offset: int
+    size: int = 1
+    verified_on: str = "unverified"
+
+
+INVENTORY_FIELDS: tuple[InventoryField, ...] = (
+    InventoryField("bow", 0xF340),
+    InventoryField("boomerang", 0xF341, verified_on="CastleB3Boomerang"),
+    InventoryField("hookshot", 0xF342),
+    InventoryField("bombs", 0xF343),
+    InventoryField("powder", 0xF344),
+    InventoryField("fire_rod", 0xF345),
+    InventoryField("ice_rod", 0xF346),
+    InventoryField("bombos", 0xF347),
+    InventoryField("ether", 0xF348),
+    InventoryField("quake", 0xF349),
+    InventoryField("lamp", LINK_ITEM_LAMP, verified_on="FighterSwordLamp"),
+    InventoryField("hammer", 0xF34B),
+    InventoryField("flute", 0xF34C),
+    InventoryField("net", 0xF34D),
+    InventoryField("book", 0xF34E),
+    InventoryField("somaria", 0xF350),
+    InventoryField("byrna", 0xF351),
+    InventoryField("cape", 0xF352),
+    InventoryField("mirror", 0xF353),
+    InventoryField("gloves", 0xF354),
+    InventoryField("boots", 0xF355),
+    InventoryField("flippers", 0xF356),
+    InventoryField("pearl", 0xF357),
+    InventoryField("sword", EQUIP_SWORD, verified_on="FighterSword"),
+    InventoryField("shield", 0xF35A, verified_on="FighterSword"),
+    InventoryField("armor", 0xF35B),
+    InventoryField("bottle_1", 0xF35C),
+    InventoryField("bottle_2", 0xF35D),
+    InventoryField("bottle_3", 0xF35E),
+    InventoryField("bottle_4", 0xF35F),
+    InventoryField("rupees", 0xF362, 2),
+    InventoryField("compass", 0xF364, 2),
+    InventoryField("big_key", 0xF366, 2, "CastleMainZeldaBoomerang"),
+    InventoryField("dungeon_map", 0xF368, 2),
+    InventoryField("heart_pieces", 0xF36B),
+    InventoryField("max_hp", LINK_MAX_HP, verified_on="CastleB1Key"),
+    InventoryField("hp", LINK_HP, verified_on="CastleB1Key"),
+    InventoryField("magic", 0xF36E, verified_on="IcePalaceEntry"),
+    InventoryField("keys", NUM_KEYS, verified_on="CastleB1Key"),
+    InventoryField("pendants", 0xF374),
+    InventoryField("arrows", 0xF377),
+    # $07:9C2F loads $9BA2,X and ANDs this byte. Dash is action X=2, mask 0x04.
+    # Boots receipt Y=$4B ORs that bit at $09:8654 and writes $F355=1.
+    InventoryField("ability", LINK_ABILITY),
+    InventoryField("crystals", 0xF37A),
+)
+
+
+@dataclass(frozen=True)
+class AlttpInventory:
+    """Item block ``$F340..$F37B``. Multi-byte fields are little-endian."""
+
+    bow: int
+    boomerang: int
+    hookshot: int
+    bombs: int
+    powder: int
+    fire_rod: int
+    ice_rod: int
+    bombos: int
+    ether: int
+    quake: int
+    lamp: int
+    hammer: int
+    flute: int
+    net: int
+    book: int
+    somaria: int
+    byrna: int
+    cape: int
+    mirror: int
+    gloves: int
+    boots: int
+    flippers: int
+    pearl: int
+    sword: int
+    shield: int
+    armor: int
+    bottle_1: int
+    bottle_2: int
+    bottle_3: int
+    bottle_4: int
+    rupees: int
+    compass: int
+    big_key: int
+    dungeon_map: int
+    heart_pieces: int
+    max_hp: int
+    hp: int
+    magic: int
+    keys: int
+    pendants: int
+    arrows: int
+    ability: int
+    crystals: int
+
+
+def _read_inventory_value(ram: np.ndarray, field: InventoryField) -> int:
+    idx = wram_index(field.offset)
+    if field.size == 1:
+        return read_u8_safe(ram, idx)
+    if field.size == 2:
+        return read_u8_safe(ram, idx) | (read_u8_safe(ram, idx + 1) << 8)
+    raise ValueError(f"{field.name}: size {field.size}")
+
+
+def read_inventory(ram: np.ndarray) -> AlttpInventory:
+    """Read the save-block inventory from a stable-retro RAM buffer."""
+    values = {
+        field.name: _read_inventory_value(ram, field) for field in INVENTORY_FIELDS
+    }
+    return AlttpInventory(**values)
+
+
 def read_sword_level(ram: np.ndarray) -> int:
     """Read equip sword level from high WRAM ($F359)."""
     return read_u8_safe(ram, wram_index(EQUIP_SWORD))
@@ -273,6 +549,12 @@ def read_snapshot(ram: np.ndarray) -> AlttpSnapshot:
         lamp_level=read_u8_safe(ram, wram_index(LINK_ITEM_LAMP)),
         num_keys=read_u8_safe(ram, wram_index(NUM_KEYS)),
         follower=read_u8_safe(ram, wram_index(FOLLOWER)),
+        dungeon_id=read_u8(ram, DUNGEON_ID),
+        floor=read_u8(ram, DUNGEON_FLOOR),
+        layer=read_u8(ram, LINK_LAYER),
+        hp=read_u8_safe(ram, wram_index(LINK_HP)),
+        iframes=read_u8(ram, LINK_IFRAMES),
+        knockback=read_u8(ram, LINK_KNOCKBACK),
     )
 
 
@@ -291,6 +573,13 @@ def snapshot_to_diag(snapshot: AlttpSnapshot) -> dict[str, object]:
         "link_y": snapshot.link_y,
         "link_direction": snapshot.link_direction,
         "link_action": snapshot.link_action,
+        "link_state": snapshot.link_state,
+        "dungeon_id": snapshot.dungeon_id,
+        "floor": snapshot.floor,
+        "layer": snapshot.layer,
+        "hp": snapshot.hp,
+        "iframes": snapshot.iframes,
+        "knockback": snapshot.knockback,
         "dark_world": snapshot.dark_world,
         "has_control": snapshot.has_control,
         "is_text_mode": snapshot.is_text_mode,
@@ -310,6 +599,17 @@ def snapshot_to_diag(snapshot: AlttpSnapshot) -> dict[str, object]:
         "in_zelda_cell": snapshot.in_zelda_cell,
         "in_sanctuary": snapshot.in_sanctuary,
     }
+
+
+def format_pin_probe(name: str, snapshot: AlttpSnapshot) -> str:
+    """One pin line: room plus the AP-007 snapshot extras."""
+    return (
+        f"{name} room=0x{snapshot.room_base_id:02X} "
+        f"dungeon=0x{snapshot.dungeon_id:02X} floor=0x{snapshot.floor:02X} "
+        f"layer={snapshot.layer} state={snapshot.link_state} "
+        f"hp=0x{snapshot.hp:02X} iframes={snapshot.iframes} "
+        f"knockback={snapshot.knockback}"
+    )
 
 
 def player_has_control(env: object, _info: dict | None = None) -> bool:

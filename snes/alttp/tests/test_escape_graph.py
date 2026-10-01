@@ -24,6 +24,8 @@ from alttp.opening_route.escape_graph import (
     N_ROOM_60,
     N_ROOM_61,
     N_ROOM_80,
+    N_ROOM_B9,
+    N_ROOM_C9,
     N_SANCTUARY,
     N_SEWERS_DARK,
     NATURAL_HOUSE_EXIT_CAPABILITIES,
@@ -121,6 +123,7 @@ def test_verified_edges_are_continuous() -> None:
         (N_ROOM_72, N_ROOM_01),
         (N_ROOM_72, N_ROOM_82),
         (N_ROOM_82, N_ROOM_81),
+        (N_ROOM_C9, N_ROOM_B9),
     }
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
@@ -159,6 +162,14 @@ def test_verified_edges_are_continuous() -> None:
     assert west is not None
     assert west.verification == VERIFICATION_ISOLATED
     assert west.meta["door_label"] == "west_to_0x81"
+    eastern = graph.edge_for(N_ROOM_C9, N_ROOM_B9)
+    assert eastern is not None
+    assert eastern.verification == VERIFICATION_ISOLATED
+    assert eastern.meta["map_id"] == "room_c9"
+    assert eastern.meta["door_label"] == "north_to_0xb9"
+    assert eastern.direction == "north"
+    assert hops["room_c9_north_to_0xb9"].paths == frozenset()
+    assert hops["room_c9_north_to_0xb9"].verification == VERIFICATION_ISOLATED
 
 
 def test_multi_screen_55_connected() -> None:
