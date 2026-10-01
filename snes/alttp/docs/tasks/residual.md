@@ -60,12 +60,21 @@ Sanctuary, C1, or any later rung.
 
 ## Workflow and integrity findings
 
-Workflow `alttp-port-parallel-13` was active in phase **Lanes**, with
-`mgr-kholdstare` and `mgr-tablet` running when inspected. It edits isolated
-boss/tablet work, not the opening chain. Tracker headings: **87 open, 94
+Workflow `alttp-port-parallel-13` completed during this audit after about
+24.6 minutes. It edited isolated boss/tablet work, not the opening chain.
+Tracker headings remained **87 open, 94
 done, 17 blocked, 2 claimed**. AP-068 is still the lowest open number and
 depends on blocked AP-022. AP-113/AP-168 are claimed; AP-120 is done;
 AP-165 is blocked. Counts were read independently without changing ticks.
+
+Its final journal reports one south-window sword hit followed by death and
+no completed Desert tablet approach. An independent replay of the final
+Kholdstare source snapshot (`source_wave13/`) observed **four sword hits**
+and eight fire hits, but still died at frame **1,419**. It used **350
+restores and 5,464 RAM assignments** (four Link-coordinate assignments plus
+5,460 camera assignments). This is isolated progress, not a boss clear or
+any improvement to the power-on reach. The result differs from the lane's
+reported one-hit attempt; both remain failed attempts.
 
 1. **Write counters have an escape.** Stock `LiveRun` forwards
    `env.unwrapped` to the raw emulator. Helpers using
@@ -112,6 +121,9 @@ pin, or Grok runtime module was overwritten.
 - `shipped_room81.json`: ordinary unassisted CLI failure.
 - `moldorm_audit.json`, `kholdstare_audit.json`,
   `kholdstare_stock_audit.json`: isolated ROM audit evidence.
+- `kholdstare_wave13_audit.json`: independent final-wave Kholdstare test;
+  `workflow13_final_state.json` / `workflow13_final_journal.jsonl`: final
+  workflow report and lane outputs.
 - `pytest.log`: **297 passed, 8 deselected**, offline ALttP gate. These
   tests are separate from the ROM runs and do not establish route reach.
 
