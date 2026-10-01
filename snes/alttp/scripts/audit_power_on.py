@@ -41,6 +41,7 @@ def story_glance(env: Any) -> dict[str, Any]:
     flags = int(ram[wram_index(SRAM_PROGRESS_FLAGS)])
     return {
         "progress": progress, "progress_flags": flags,
+        "map_indicator": int(ram[wram_index(0xF3C7)]),
         "follower": snap.follower, "max_hp": int(ram[wram_index(LINK_MAX_HP)]),
         "sanctuary_completed": (snap.in_sanctuary and snap.has_control
                                 and progress == 2 and bool(flags & 4) and snap.follower == 0),
@@ -54,8 +55,17 @@ def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dic
     through = meta.get("through")
     if through == "sanctuary":
         return bool(story["sanctuary_completed"])
-    if through in ("sanctuary_exit", "eastern_grounds"):
+    if through in ("sanctuary_exit", "eastern_grounds", "sahasrahla_hut"):
         screen = 0x13 if through == "sanctuary_exit" else 0x1E
+        if through == "sahasrahla_hut":
+            from alttp.room_map import load_room_map
+
+            door = load_room_map("room_05").door("south_to_0x1e")
+            if door is None or door.landing_xy is None or story.get("map_indicator") != 3:
+                return False
+            if max(abs(int(final[key]) - value) for key, value in
+                   zip(("link_x", "link_y"), door.landing_xy)) > 4:
+                return False
         standing = int(final["link_y"]) // 512 * 8 + int(final["link_x"]) // 512
         return bool(
             final["has_control"] and not final["indoors"] and not final["dark_world"]
@@ -274,8 +284,10 @@ def replay(args: Any) -> dict[str, Any]:
         if audit["set_state"] or audit["writes"] != len(survival.events):
             raise RuntimeError("forward replay has an unexpected load or write")
         save_end(raw, args.out, len(buttons))
+        # New glance fields must not invalidate older tapes. Every recorded
+        # field still has to agree, and each route checks its own goal fields.
         synchronization_ok = (desynced == 0 and final == meta["source_final"]
-                              and ("source_story" not in meta or story == meta["source_story"]))
+                              and all(story.get(k) == v for k, v in meta.get("source_story", {}).items()))
         route_goal_ok = replay_goal_accepted(meta, final, story)
         return {
             "ok": synchronization_ok and route_goal_ok,

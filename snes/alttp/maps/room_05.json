@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 5,
+  "roomHex": "0x05",
+  "name": "Sahasrahla's hut",
+  "measured": "2026-10-01",
+  "sourceState": "Play_eog9_3",
+  "z3Label": "Sahasrahlas Hut",
+  "points": [
+    {
+      "label": "elder_front",
+      "xy": [
+        2672,
+        8592
+      ],
+      "role": "approach"
+    },
+    {
+      "label": "west_south",
+      "xy": [
+        2600,
+        8592
+      ],
+      "role": "waypoint"
+    },
+    {
+      "label": "west_north",
+      "xy": [
+        2600,
+        8544
+      ],
+      "role": "waypoint"
+    },
+    {
+      "label": "pot_left_aisle",
+      "xy": [
+        2665,
+        8544
+      ],
+      "role": "waypoint"
+    },
+    {
+      "label": "pot_left_front",
+      "xy": [
+        2665,
+        8536
+      ],
+      "role": "approach"
+    },
+    {
+      "label": "pot_right_front",
+      "xy": [
+        2681,
+        8536
+      ],
+      "role": "approach"
+    },
+    {
+      "label": "west_return",
+      "xy": [
+        2600,
+        8592
+      ],
+      "role": "waypoint"
+    },
+    {
+      "label": "exit_aisle",
+      "xy": [
+        2680,
+        8592
+      ],
+      "role": "waypoint"
+    },
+    {
+      "label": "south_door",
+      "xy": [
+        2680,
+        8664
+      ],
+      "role": "approach"
+    }
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x1e",
+      "direction": "DOWN",
+      "outdoors": true,
+      "screenId": 30,
+      "approachXy": [
+        2680,
+        8664
+      ],
+      "landingXy": [
+        3312,
+        1851
+      ],
+      "path": [
+        "west_north",
+        "west_return",
+        "exit_aisle",
+        "south_door"
+      ],
+      "pathTolerances": {
+        "default": 2
+      },
+      "pushFrames": 120,
+      "notes": "Mapped return via west aisle and below the elder, then south door. Control-ready screen0x1E landing (3312,1851)."
+    }
+  ],
+  "notes": [
+    "Full room ID 0x0105; lower southwest quadrant. Measured by controller inputs from the replay-derived Eastern grounds predecessor.",
+    "Elder type0x16 at (2672,8576). Messages0x32/0x33 mark the map: SRAM $F3C7 changes1->3 without a pendant or boots reward.",
+    "Pot fronts face UP, tap A, then throw. Left pot restores one heart when HP is low; full-HP probes gain no inventory. Three closed chests (50 rupees,3 bombs,50 rupees) remain behind live north door type0x28 (bombable); bombs/boots are absent."
+  ]
+}

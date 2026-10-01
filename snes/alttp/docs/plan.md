@@ -14,13 +14,15 @@ See [PORT_PLAN.md](PORT_PLAN.md) for the dungeon ladder and credits.
    → `0x80`, then walks the rescue and sewer route to Sanctuary. Reproduce
    the disclosed result with `audit_power_on.py --through sanctuary` and its
    tape replay.
-3. Continue epic `rr-eog9` at `rr-eog9.4`, from replay-derived
-   `Play_eog9_3` on loaded/standing screen `0x1E`, `(3328, 2047)`:
-   - Use `screen_1e_sahasrahla.json` for the hut approach and doorway. Fold
-     outdoor point navigation into the existing walker/Composer; do not add
-     a separate hut runner. Verify dialogue and each resource pickup in RAM.
-   - Earn roadside resources under `rr-yx26` if the hut needs bombs. The
-     crossing leaves rupees/bombs at zero; grass cutting alone is no payout.
+3. Continue epic `rr-eog9` at `rr-eog9.5`, from replay-derived
+   `Play_eog9_4` on screen `0x1E`, `(3312, 1851)`:
+   - The mapped hut visit is proved: Elder messages `0x32/0x33`, map indicator
+     `$F3C7: 1→3`, both accessible pots inspected, and return outdoors.
+     Full Survival replay: 43471f, zero desync/loads/deaths. Hut tail: 2166f,
+     no damage/refills/inventory change. Evidence: `recordings/eog9_hut_20261001/`.
+   - Earn roadside resources under `rr-yx26` before opening the hut rear
+     cache. Rupees/bombs remain zero; its three chests are behind a live
+     type `0x28` bombable wall. The left pot can restore one heart.
    - Then verify the hedge/Armos approach (`rr-eog9.5`) and lobby transition
      (`rr-eog9.6`) from that real predecessor, without loading `EasternPalaceEntry`.
    - Compose `--through eastern_entry` into the existing spine/audit CLIs

@@ -266,6 +266,92 @@ class ScriptSegment:
         }
 
 
+def visit_sahasrahla_hut(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
+    """Mapped hut visit from Eastern grounds; no pendant or bomb grants."""
+    from dataclasses import asdict
+
+    from alttp import primitives
+    from alttp.opening_route.room_engine import move_path_combat_aware, run_room_edge
+    from alttp.overworld import _dismiss_text
+    from alttp.ram import read_inventory, read_u16, wram_index
+    from alttp.room_map import load_room_map
+    from alttp.route_report import phase_from_primitive
+    from alttp.startup import snapshot_env
+
+    phases: list[RoutePhaseResult] = []
+    indoor = load_room_map("room_05")
+    before = read_inventory(env.get_ram())
+    marker_before = int(env.get_ram()[wram_index(0xF3C7)])
+
+    def record(label: str, result: Any) -> None:
+        phases.append(phase_from_primitive(label, result))
+        if not result.ok:
+            raise RuntimeError(result.reason)
+
+    def walk(label: str) -> None:
+        point = indoor.point(label)
+        if point is None:
+            raise RuntimeError(f"missing hut point {label}")
+        record(label, primitives.move_to(
+            env, primitives.Waypoint(point.x, point.y, tolerance=0, room=5, label=label),
+            step_size=1,
+        ))
+
+    def edge(map_id: str, door: str) -> None:
+        result = run_room_edge(env, map_id, door, clear=False, source=source)
+        phases.extend(result.phases)
+        if not result.ok:
+            raise RuntimeError(result.blocker)
+
+    blocker = ""
+    try:
+        if before.pendants or before.boots or before.bombs or marker_before != 1:
+            raise RuntimeError("hut visit requires the unvisited no-pendant, no-bomb predecessor")
+        edge("screen_1e_sahasrahla", "hut_door_to_0x05")
+        point = indoor.point("elder_front")
+        if point is None:
+            raise RuntimeError("missing elder approach")
+        record("elder_front", move_path_combat_aware(
+            env, [primitives.Waypoint(point.x, point.y, tolerance=1, room=5)],
+            room=5, policy=indoor.clear_policy, walker=True,
+        ))
+        record("talk_to_elder", primitives.run_script(env, ((('UP',), 1), (('A',), 1), ((), 6))))
+        if not snapshot_env(env).is_text_mode or read_u16(env.get_ram(), 0x1CF0) != 0x32:
+            raise RuntimeError("elder's no-pendant dialogue did not open")
+        closed, frames = _dismiss_text(env, 3000, max_pages=20)
+        record("elder_dialogue", primitives.PrimitiveResult(closed, "advance messages 0x32/0x33", frames, snapshot_env(env)))
+        if int(env.get_ram()[wram_index(0xF3C7)]) != 3:
+            raise RuntimeError("elder did not mark the pendant locations")
+        for label in ("west_south", "west_north", "pot_left_aisle", "pot_left_front", "pot_right_front"):
+            walk(label)
+            if not label.endswith("_front"):
+                continue
+            record(label + "_face", primitives.run_script(env, ((('UP',), 1),)))
+            record(label + "_lift", primitives.lift(env))
+            phases[-1].diag.update(sprites=[asdict(s) for s in primitives.active_sprites(env)])
+            record(label + "_throw", primitives.throw(env))
+            record(label + "_settle", primitives.run_script(env, (((), 60),)))
+            phases[-1].diag.update(inventory=asdict(read_inventory(env.get_ram())))
+        edge("room_05", "south_to_0x1e")
+    except RuntimeError as exc:
+        blocker = str(exc)
+    snap = snapshot_env(env)
+    after = read_inventory(env.get_ram())
+    marker = int(env.get_ram()[wram_index(0xF3C7)])
+    acceptance = {
+        "hut_completed": not blocker and not snap.indoors and snap.has_control
+        and snap.screen_id == 0x1E and marker == 3 and snap.follower == 0,
+    }
+    return SegmentResult(
+        ok=acceptance["hut_completed"], phase="hut_completed" if not blocker else "hut_blocked",
+        frames=sum(p.frames for p in phases), snapshot=snap, phases=phases,
+        source=source, acceptance=acceptance, blocker=blocker,
+        notes=[f"Map indicator {marker_before}->{marker}; inventory before={asdict(before)} after={asdict(after)}",
+               "Two accessible pots inspected; left pot can restore a heart. Rear 50 rupees/3 bombs/50 rupees chests remain closed behind type0x28 bombable wall; no bombs or boots.",
+               "Development predecessor evidence; no Clean tip promotion."],
+    )
+
+
 def _build_registry() -> dict[str, ScriptSegment]:
     """Lazy registry so heavy route modules import only when needed.
 
@@ -293,6 +379,20 @@ def _build_registry() -> dict[str, ScriptSegment]:
     )
 
     return {
+        "sahasrahla_hut": ScriptSegment(
+            segment_id="sahasrahla_hut", play_fn=visit_sahasrahla_hut,
+            entry=EntryRequirement(
+                description="Eastern grounds with sword, lamp, control and no follower",
+                screen_id=0x1E, require_indoors=False, require_fighter_sword=True,
+                require_lamp=True, graph_node_id="eastern_grounds",
+            ),
+            exit=ExitPredicate(
+                description="Elder marked pendants, accessible pots inspected, hut exited",
+                acceptance_keys=("hut_completed",), graph_node_id="sahasrahla_hut",
+                verification="planned",
+            ),
+            label="Eastern grounds → Sahasrahla dialogue and hut exit",
+        ),
         "castle_to_sword": ScriptSegment(
             segment_id="castle_to_sword",
             play_fn=castle_to_sword.run_from_castle_grounds,

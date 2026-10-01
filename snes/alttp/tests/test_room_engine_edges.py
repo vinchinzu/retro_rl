@@ -378,6 +378,43 @@ def test_isolated_stair_edge_dest_settle(
     assert result.snapshot.room_base_id == dest
     assert result.snapshot.has_control is True
     assert result.acceptance["at_door_dest"] is True
+
+
+@pytest.mark.rom
+def test_eog9_4_hut_entry_from_replay_predecessor() -> None:
+    """The mapped hut edge starts at the replay-derived outdoor predecessor."""
+    if not _pin_ready("Play_eog9_3"):
+        pytest.skip("ALTTP ROM or Play_eog9_3.state missing")
+
+    from alttp.opening_route.room_engine import run_room_edge as play
+    from alttp.rollout import restores
+    from alttp.spine.tape import LiveRun
+    from alttp.startup import build_boot_env
+
+    env = build_boot_env("Play_eog9_3")
+    try:
+        env.reset()  # type: ignore[attr-defined]
+        before = settle_control(env).snapshot
+        live = LiveRun(env, provider="alttp.eog9_4_hut_entry")
+        first_restore = restores()
+        result = play(
+            live.env,
+            "screen_1e_sahasrahla",
+            "hut_door_to_0x05",
+            clear=False,
+            source="state_load_dev",
+        )
+        live.note_rollout_restores(restores() - first_restore)
+        audit = live.fail_mid_run_state_load()
+    finally:
+        env.close()  # type: ignore[attr-defined]
+
+    assert not before.indoors and before.screen_id == 0x1E and before.has_control
+    assert result.ok is True, result.blocker
+    assert result.snapshot.indoors and result.snapshot.room_base_id == 0x05
+    assert result.snapshot.has_control
+    assert result.acceptance["at_door_dest"] is True
+    assert audit.writes == 0
     dest_phase = next(p for p in result.phases if p.phase == "settle_destination")
     assert dest_phase.ok is True
     assert dest_phase.frames <= DEST_SETTLE_MAX_FRAMES

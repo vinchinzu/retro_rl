@@ -59,10 +59,24 @@ def in_room(snap: AlttpSnapshot, room: int) -> bool:
     return snap.indoors and (not snap.dark_world) and snap.room_base_id == room
 
 
+def in_origin(snap: AlttpSnapshot, room_map: RoomMap) -> bool:
+    """True when Link is at the mapped indoor room or outdoor screen."""
+    if room_map.outdoors:
+        return (
+            not snap.indoors
+            and not snap.dark_world
+            and room_map.screen_id is not None
+            and snap.screen_id == room_map.screen_id
+        )
+    return in_room(snap, room_map.room_base_id)
+
+
 def at_door_destination(snap: AlttpSnapshot, door: KnownDoor) -> bool:
     """True when snapshot matches door exit (room or outdoors)."""
     if door.outdoors:
-        return not snap.indoors
+        return not snap.indoors and (
+            door.screen_id is None or snap.screen_id == door.screen_id
+        )
     if door.to_room is None:
         return False
     return in_room(snap, door.to_room)
@@ -739,6 +753,16 @@ def exit_via_door(
     frames += settle.frames
     start = settle.snapshot
 
+    def failed(pose: AlttpSnapshot, detail: str) -> RoutePhaseResult:
+        return RoutePhaseResult(
+            phase=phase_name,
+            ok=False,
+            frames=frames,
+            snapshot=pose,
+            detail=detail,
+            diag=snapshot_to_diag(pose),
+        )
+
     if at_door_destination(start, d):
         return RoutePhaseResult(
             phase=phase_name,
@@ -751,7 +775,39 @@ def exit_via_door(
             ),
             diag=snapshot_to_diag(start),
         )
-    if not in_room(start, room):
+    if room_map.outdoors:
+        if room_map.screen_id is None:
+            return failed(start, "outdoor map has no screen id")
+        if not in_origin(start, room_map):
+            return failed(
+                start,
+                f"not on outdoor screen 0x{room_map.screen_id:02X} "
+                f"(got 0x{start.screen_id:02X}, indoors={int(start.indoors)})",
+            )
+        # Reuse the loaded-area outdoor tile walker. It validates that this
+        # mapped target belongs to the loaded screen before following it.
+        from alttp.overworld import walk_to_screen
+
+        outdoor_waypoints = room_map.waypoints_for_door(d)
+        if not outdoor_waypoints:
+            return failed(start, f"outdoor door {d.label} has no mapped path")
+        for x, y, label, tolerance in outdoor_waypoints:
+            approach = walk_to_screen(
+                env,
+                room_map.screen_id,
+                target_xy=(x, y),
+                tolerance=min(tolerance, 4),
+                guard=True,
+            )
+            frames += int(approach.get("frames", 0))
+            snap = snapshot_env(env)
+            if not approach.get("ok") or not in_origin(snap, room_map):
+                return failed(
+                    snap,
+                    f"outdoor waypoint {label} failed: "
+                    f"{approach.get('reason', 'left mapped screen')}",
+                )
+    elif not in_room(start, room):
         return RoutePhaseResult(
             phase=phase_name,
             ok=False,
@@ -762,8 +818,9 @@ def exit_via_door(
         )
 
     wps: list[primitives.Waypoint] = []
-    for x, y, label, tol in room_map.waypoints_for_door(d):
-        wps.append(primitives.Waypoint(x, y, tolerance=tol, room=room, label=label))
+    if not room_map.outdoors:
+        for x, y, label, tol in room_map.waypoints_for_door(d):
+            wps.append(primitives.Waypoint(x, y, tolerance=tol, room=room, label=label))
 
     lift_wps = [
         wp
@@ -912,12 +969,15 @@ def exit_via_door(
 
     # Hold door direction through transition.
     before = snapshot_env(env)
-    push_limit = max(1, d.push_frames // 3)
+    push_limit = max(
+        1,
+        (d.push_frames + 2) // 3 if room_map.outdoors else d.push_frames // 3,
+    )
     for _ in range(push_limit):
         step_frames(env, action_for(d.direction), 3)
         frames += 3
         snap = snapshot_env(env)
-        if at_door_destination(snap, d) or not in_room(snap, room):
+        if at_door_destination(snap, d) or not in_origin(snap, room_map):
             edge = detect_edge(
                 before,
                 snap,
@@ -946,6 +1006,21 @@ def exit_via_door(
             )
 
     snap = snapshot_env(env)
+    if not snap.has_control and not snap.indoors:
+        # Outdoor entrances may spend the final push frames in an overworld
+        # transition module before the indoor room id becomes visible.
+        settled = primitives.settle_control(env, max_frames=DEST_SETTLE_MAX_FRAMES)
+        frames += settled.frames
+        snap = settled.snapshot
+        if settled.ok and at_door_destination(snap, d):
+            return RoutePhaseResult(
+                phase=phase_name,
+                ok=True,
+                frames=frames,
+                snapshot=snap,
+                detail=f"{d.direction} push settled in {room_label(snap.room_base_id)}",
+                diag=snapshot_to_diag(snap),
+            )
     return RoutePhaseResult(
         phase=phase_name,
         ok=False,
@@ -1000,7 +1075,7 @@ def run_room_edge(
         if acceptance_fn is not None:
             return acceptance_fn(s)
         return {
-            "in_origin_room": in_room(s, room_map.room_base_id),
+            "in_origin_room": in_origin(s, room_map),
             "at_door_dest": at_door_destination(s, door),
         }
 
@@ -1048,7 +1123,7 @@ def run_room_edge(
             extra_notes=["Already at door destination."],
         )
 
-    if clear:
+    if clear and not room_map.outdoors:
         clear_phase = clear_room(
             env,
             room_map,

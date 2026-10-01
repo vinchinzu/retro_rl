@@ -650,12 +650,12 @@ def _path_to_exit(
     return path
 
 
-def _dismiss_text(env: object, budget: int) -> tuple[bool, int]:
+def _dismiss_text(env: object, budget: int, *, max_pages: int = 6) -> tuple[bool, int]:
     """Advance a walked-into message. A closes one settled page. No RAM writes."""
     from alttp.startup import action_for, no_action, snapshot_env, step_frames
 
     used = 0
-    for _ in range(6):
+    for _ in range(max_pages):
         waited = 0
         ready = False
         while used < budget and waited < 400:
@@ -690,8 +690,10 @@ def walk_to_screen(
     *,
     max_frames: int = 20000,
     guard: bool = False,
+    target_xy: tuple[int, int] | None = None,
+    tolerance: int = 4,
 ) -> dict[str, object]:
-    """Walk tile paths and edge exits until Link stands on ``target_screen``.
+    """Walk tile paths to a standing screen or a point within that screen.
 
     Buttons only. Does not write RAM and does not load a state. A caller
     that starts from a pin has not made a continuous run. Internal quadrants
@@ -788,18 +790,26 @@ def walk_to_screen(
         here = standing_screen(tiles, snap.link_x, snap.link_y)
         if not trace or trace[-1] != here:
             trace.append(here)
-        if here == target:
-            return finish(True, "screen", snap)
+        if here == target and (target_xy is None or (
+            abs(snap.link_x - target_xy[0]) <= tolerance
+            and abs(snap.link_y - target_xy[1]) <= tolerance
+        )):
+            return finish(True, "point" if target_xy else "screen", snap)
         if plan is None:
             avoid = set(dead)
             if len(trace) >= 2:
                 avoid.add(trace[-2])
             chosen: tuple[ScreenEdge, list[tuple[str, tuple[int, int]]]] | None = None
             quadrants = {tiles.screen, tiles.screen + 1, tiles.screen + 8, tiles.screen + 9}
-            if tiles.big and target in quadrants:
-                path = find_overworld_path(tiles, (snap.link_x, snap.link_y), screen=target)
+            if (tiles.big and target in quadrants) or (target_xy and here == target):
+                path = find_overworld_path(
+                    tiles, (snap.link_x, snap.link_y),
+                    goal=target_xy, screen=None if target_xy else target,
+                )
                 if not path:
                     return finish(False, "no quadrant path", snap)
+                if target_xy and max(abs(path[-1][i] - target_xy[i]) for i in (0, 1)) > tolerance:
+                    return finish(False, "point not walkable", snap)
                 chosen = (ScreenEdge(path[-1], "NONE", target), _path_segments(path))
             exits = () if chosen else _exit_probes(
                 tiles, (snap.link_x, snap.link_y), target, skip, avoid
@@ -817,7 +827,8 @@ def walk_to_screen(
             plan = (chosen[0], chosen[1], 0)
         edge, segments, index = plan
         near_exit = (
-            abs(snap.link_x - edge.xy[0]) <= 6 and abs(snap.link_y - edge.xy[1]) <= 6
+            abs(snap.link_x - edge.xy[0]) <= (tolerance if target_xy else 6)
+            and abs(snap.link_y - edge.xy[1]) <= (tolerance if target_xy else 6)
         )
         if near_exit or index >= len(segments):
             button: str | None = edge.direction

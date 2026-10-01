@@ -131,6 +131,80 @@ def test_eastern_grounds_from_sanctuary_exit() -> None:
         raw.close()
 
 
+@pytest.mark.rom
+def test_sahasrahla_hut_from_eastern_grounds_predecessor() -> None:
+    """The real rr-eog9.3 checkpoint completes the mapped hut visit."""
+    from alttp.opening_route.segment import visit_sahasrahla_hut
+    from alttp.paths import INTEGRATION_DIR
+    from alttp.ram import (
+        FOLLOWER,
+        SRAM_PROGRESS,
+        SRAM_PROGRESS_FLAGS,
+        read_inventory,
+        read_u8_safe,
+        wram_index,
+    )
+    from alttp.rollout import restores
+    from alttp.scripts.pin_probe import open_pin
+    from alttp.spine.tape import LiveRun
+    from alttp.startup import snapshot_env
+
+    if not (INTEGRATION_DIR / "Play_eog9_3.state").is_file():
+        pytest.skip("requires the replay-derived Eastern grounds checkpoint")
+    raw = open_pin("Play_eog9_3")
+    try:
+        before_inv = read_inventory(raw.get_ram())
+        before_ram = raw.get_ram()
+        before_marker = read_u8_safe(before_ram, wram_index(0xF3C7))
+        before_progress = read_u8_safe(before_ram, wram_index(SRAM_PROGRESS))
+        before_flags = read_u8_safe(before_ram, wram_index(SRAM_PROGRESS_FLAGS))
+        before_follower = read_u8_safe(before_ram, wram_index(FOLLOWER))
+        live = LiveRun(raw, provider="alttp.eog9_4_sahasrahla_hut")
+        first_restore = restores()
+        result = visit_sahasrahla_hut(live.env, source="state_load_dev")
+        live.note_rollout_restores(restores() - first_restore)
+        audit = live.fail_mid_run_state_load()
+        snap = snapshot_env(live.env)
+        after_ram = live.env.get_ram()
+        after_inv = read_inventory(after_ram)
+        after_marker = read_u8_safe(after_ram, wram_index(0xF3C7))
+        after_progress = read_u8_safe(after_ram, wram_index(SRAM_PROGRESS))
+        after_flags = read_u8_safe(after_ram, wram_index(SRAM_PROGRESS_FLAGS))
+        after_follower = read_u8_safe(after_ram, wram_index(FOLLOWER))
+    finally:
+        raw.close()
+
+    assert before_marker == 1
+    assert before_progress == 2 and before_flags == 0x15
+    assert before_follower == 0
+    assert before_inv.hp == before_inv.max_hp
+    assert result.ok, result.blocker
+    assert result.acceptance["hut_completed"]
+    assert not snap.indoors and snap.screen_id == 0x1E and snap.has_control
+    assert snap.follower == after_follower == 0
+    from alttp.room_map import load_room_map
+
+    door = load_room_map("room_05").door("south_to_0x1e")
+    assert door is not None and door.landing_xy is not None
+    landing = door.landing_xy
+    assert abs(snap.link_x - landing[0]) <= 4
+    assert abs(snap.link_y - landing[1]) <= 4
+    assert after_marker == 3
+    assert after_progress == before_progress and after_flags == before_flags
+    assert after_inv == before_inv
+    assert after_follower == before_follower
+    assert audit.writes == 0
+    assert audit.set_state == audit.rollout_restores
+
+    entry = next(p for p in result.phases if p.phase == "settle_destination")
+    assert entry.ok and entry.snapshot.room_id == 0x0105
+    assert entry.snapshot.indoors and entry.snapshot.has_control
+    for pot in ("pot_left_front", "pot_right_front"):
+        for action in ("lift", "throw"):
+            phase = next(p for p in result.phases if p.phase == f"{pot}_{action}")
+            assert phase.ok, f"{pot}_{action}: {phase.detail}"
+
+
 def test_porch_escape_then_north() -> None:
     # Still too far left of the porch corridor → move right after clearing south.
     assert (

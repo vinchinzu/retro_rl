@@ -42,6 +42,35 @@ def test_overworld_replay_goal_checks_the_standing_quadrant(
     ) is accepted
 
 
+@pytest.mark.parametrize("marker, at_exit, source_ok, accepted", [
+    (3, True, True, True),
+    (1, True, True, False),
+    (None, True, True, False),
+    (3, False, True, False),
+    (3, True, False, False),
+])
+def test_hut_replay_requires_elder_marker_and_mapped_exit(
+    marker: int | None, at_exit: bool, source_ok: bool, accepted: bool,
+) -> None:
+    from alttp.room_map import load_room_map
+
+    door = load_room_map("room_05").door("south_to_0x1e")
+    assert door is not None and door.landing_xy is not None
+    x, y = door.landing_xy
+    final = {
+        "has_control": True, "indoors": False, "dark_world": False,
+        "screen_id": 0x1E, "link_x": x, "link_y": y if at_exit else y + 32,
+        "has_fighter_sword": True, "has_lamp": True, "hp": 32,
+    }
+    story = {
+        "follower": 0, "progress": 2, "progress_flags": 0x15,
+        "max_hp": 32, "map_indicator": marker,
+    }
+    assert audit.replay_goal_accepted(
+        {"through": "sahasrahla_hut", "source_ok": source_ok}, final, story
+    ) is accepted
+
+
 @pytest.mark.parametrize(
     "source_ok, progress, flags, follower, submodule, accepted",
     [
