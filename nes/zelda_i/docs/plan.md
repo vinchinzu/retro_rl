@@ -11,6 +11,16 @@ development on 2026-09-28. The MP4 is the run's button tape replayed from
 power-on with no lookahead (`scripts/replay_tape.py`). Numbers:
 [STATUS.md](STATUS.md), [PRE_L1.md](PRE_L1.md).
 
+2026-10-01, `rr-yzb4`: a 56 px hazard gate on the Patra join cut rollout
+checks by 7.8% and rollout frames by 7.4%, with the same stage length,
+health, and leave CRC; measured join time improved 5.6% (0.38x → 0.40x).
+The same gate on Ganon was reverted: it crossed 1x by spending 928 more game
+frames and 7.91s. The full Clean run and synced tape used both gates, so they
+are experiment evidence rather than verification of the final join-only code.
+The join still needs a faster policy, a result of at least 1x, and matched
+multi-offset pin evidence before another full run. See the current residual
+in [PRE_L1.md](PRE_L1.md).
+
 ### Next, in order
 
 Claim one bead. `bd ready -l zelda_i` is this list.

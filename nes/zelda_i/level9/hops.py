@@ -54,7 +54,7 @@ from zelda_i.level9.natural_path import (
     make_spectacle_rock_bomb_controller,
 )
 from zelda_i.ram import ADDR_MAGIC_KEY, read_u8
-from zelda_i.rollout import PolicyGuard
+from zelda_i.rollout import PolicyGuard, ROLLOUT_EVADE_TRIGGER_RADIUS
 from zelda_i.spine.hops import SpineHop
 
 
@@ -215,7 +215,11 @@ def level9_patra_chapter(
         controller = make_patra_join_unavailable_controller()
         controller.reason = "natural_suffix_join_not_selected"
         return (_stage("level9_natural_patra_join", controller),)
-    controller = PolicyGuard(GuardedController(make_natural_patra_join_controller()))
+    controller = PolicyGuard(
+        GuardedController(make_natural_patra_join_controller()),
+        # Match RolloutEvader's measured 24-frame reach gate.
+        trigger_radius=ROLLOUT_EVADE_TRIGGER_RADIUS,
+    )
     return (_stage("level9_natural_patra_join", controller),)
 
 

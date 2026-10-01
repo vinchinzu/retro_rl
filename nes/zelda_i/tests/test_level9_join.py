@@ -27,6 +27,7 @@ from zelda_i.level9.natural_path import (
     make_natural_patra_join_controller,
 )
 from zelda_i.ram import PLAY_MODE, ZeldaObject, ZeldaSnapshot
+from zelda_i.rollout import ROLLOUT_EVADE_TRIGGER_RADIUS
 
 
 def _make_snap(
@@ -164,6 +165,7 @@ def test_patra_chapter_wiring():
     name, ctrl, max_f = stages[0]
     assert name == "level9_natural_patra_join"
     assert isinstance(ctrl.inner.inner, NaturalPatraJoinController)
+    assert ctrl.trigger_radius == ROLLOUT_EVADE_TRIGGER_RADIUS
     assert max_f == 24000
 
     # When suffix join room is None, returns fail-closed unavailable controller
