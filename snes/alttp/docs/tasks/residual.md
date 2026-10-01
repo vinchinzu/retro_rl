@@ -1,52 +1,140 @@
-# Living residual
+# ALttP assisted power-on audit — 2026-10-01
 
-Planner owns `docs/STATUS.md`. Overwrite this file only. Leave proof is a RAM glance, not an MP4. A save-state pin is not continuous. Do not claim a new continuous tip. Do not overwrite `recordings/verified_tip_run.json` on a red.
+User-requested independent audit, bead `rr-yglb`. Used the ALttP session gates
+in `.grok/skills/alttp-session/SKILL.md`. Planner still owns `docs/STATUS.md`;
+this audit does not promote a gate or change AP lane claims. The previous
+residual is preserved in the frozen source copy.
 
-Session: `.grok/skills/alttp-session/SKILL.md`. Claim exactly one bead: `bd ready -l alttp -l spine`.
+## Actual reach
 
-## Spine leftover (2026-09-20)
+**HP-only assisted execution from a real core reset reaches castle B1 room
+`0x81`. Zelda is not rescued; Sanctuary and dungeon approaches remain outside
+the tested route.**
 
-Continuous tip is still room `0x50`. `--through room_01`, `room_72`, and `zelda` fail closed.
+Start: stable-retro state `NONE`, reset, blank SRAM prepared before frame 1,
+then title/name-entry/Link's House through controller inputs. No dungeon
+entry pin, equipment grant, key grant, follower write, or capacity grant.
+ROM SHA-256:
+`66871d66be19ad2c34c927d6b14cd8eb6fc3181965b6e517cb361f7316009cfb`.
 
-Graph class, not a STATUS promote:
+The development controller searched with seven restores and suppressed one
+redundant startup SRAM setup. Its committed tape was then replayed in a
+separate fresh environment. Every frame matched the full-RAM CRC. Search
+restores are development work, not a claim that the controller is Clean.
 
-| Hop | Class |
-|-----|--------|
-| `room_50_east_to_0x01` | natural_entry |
-| `room_01_down_to_0x72` | natural_entry (hold UP at the north-wall well; not DOWN) |
-| `room_72_north_to_0x01` | isolated reverse |
-| `room_72_south_to_0x82` | isolated |
-| `room_82_west_to_0x81` | isolated |
-| `room_01_to_zelda_cell` | planned |
-| `0x81` `west_to_0x80` | not isolated |
+| Measurement | Reached `0x81` | Attempted mapped Zelda edge |
+|---|---:|---:|
+| Committed frames from reset | 17,102 (~4:45 at 60 Hz) | 17,447 |
+| Replay desync frames | 0 | 0 |
+| Replay state loads | 0 | 0 |
+| HP writes | 2 | 2 |
+| Hearts restored | 4 | 4 |
+| Progression / capacity writes | 0 / 0 | 0 / 0 |
+| Death frames observed | 0 | 0 |
+| Final room / xy | `0x81` / `(996,4485)` | `0x81` / `(776,4256)` |
 
-Open red (`rr-ccxt.19`, state-load): `CastleB1SecondKey` wraps out of the `0x71` east pocket (NW lip UP+LEFT at y=3960; LEFT at pin y=3988 is the south jamb) onto `0x81` (632, 4155) keys=1, `$F3CC==0`, layer `$00EE==1`. LEFT at (608, 4169) stays `0x81`. Key not spent. `$F366`/`$F367` still 0. Gold jail door. `landingXy` still null.
+Refills: frame 13,850 in room `0x61`, and frame 16,585 in room `0x82`;
+each writes current HP `8→24`, retaining the existing three-heart capacity.
+Assist enabled from frame 1. Final glance: module/submodule `7/0`, sword
+`1`, lamp `1`, follower `$F3CC=0`, small keys `0`, floor `0xFF`, layer `1`.
 
-Well leftover, not continuous: `0x50` east lands `0x01` near (560, 120); walk to (760, 99) and hold UP to `0x72` near (1273, 3665). `CastleB1Key` on the north ledge spends the small key on the south key door.
+The tested path is House → castle grounds → secret hole/uncle → main hall
+`0x61` → `0x60` → `0x50` → `0x01` → `0x72` → `0x82` → `0x81`.
+`room_81:west_to_0x80` then spends 345 frames and fails **before reaching
+the door**, with `stuck before zelda_west`. This does not prove that the
+gold door rejected a key. The actual predecessor has no key or big key.
+AP-075's big-key pickup is isolated and is not composed into this path.
+The built-in `--through zelda` remains fail-closed.
 
-Glance windows in `alttp.screen_glance` (not the continuous tip): `ROOM_50` x[436, 492] y[2668, 2692]; `ROOM_01` x[756, 764] y[97, 124]; `ROOM_72` x[1260, 1285] y[3644, 3677]. Module `0x07`, submodule `0`, sword at least 1, follower unset. `leftover_from_snapshot` still returns leftover when misses is non-empty. `0x50` east landing near (560, 120) misses the `ROOM_01` well band.
+The ordinary shipped `run_spine --through room_81` command, without HP
+assist and using its default `YazeSlot000` start, died in `0x61` during
+`castle_dungeon_prefix`. Reported frames: 11,001. It did not reproduce the
+historical Clean `0x50` result in this audit. This is a different start from
+the `NONE` assisted test, so it is not a controlled measurement of HP's
+effect alone.
 
-`CastleZeldaFollower` is room `0x80` (352, 4168) with `$F3CC==1` as loaded. There is no pre-rescue cell pin.
+The local assist contract calls Survival development-only and does not
+accept it as continuous product evidence. The zero-load replay above proves
+physical reach under the disclosed assist; it does not promote Clean,
+Sanctuary, C1, or any later rung.
 
-## Dungeon-start pins (dev only)
+## Workflow and integrity findings
 
-Epic `rr-ldhk`. Not power-on, not continuous, not Sanctuary. Pokes stick at `$7EFxxx` (`assign(0xF3xx)` has no mapping). Do not poke `$F3CC`.
+Workflow `alttp-port-parallel-13` was active in phase **Lanes**, with
+`mgr-kholdstare` and `mgr-tablet` running when inspected. It edits isolated
+boss/tablet work, not the opening chain. Tracker headings: **87 open, 94
+done, 17 blocked, 2 claimed**. AP-068 is still the lowest open number and
+depends on blocked AP-022. AP-113/AP-168 are claimed; AP-120 is done;
+AP-165 is blocked. Counts were read independently without changing ticks.
 
-| Bead | Pin | Open next |
-|------|-----|-----------|
-| `rr-y8xg` | `EasternPalaceEntry` `0xC9` | `south_to_overworld` isolated. Next: north hall / `0xB9` |
-| `rr-alwe` | `DesertPalaceEntry` `0x84` | `north_to_0x74` isolated |
-| `rr-17wv` | `HeraEntry` `0x77` | probe isolated `west_down_to_0x87`; `room_engine` wedges on pegs |
-| `rr-9zkv` | `PalaceOfDarknessEntry` `0x4A` | `east_stairs_to_0x09` isolated; `in_room` rejects dark world |
-| `rr-q41r` | `SwampPalaceEntry` `0x28` | `south_to_overworld` isolated; `north_to_0x38` not isolated |
-| `rr-lvnu` | no indoor pin | dark-world overworld `0x5B`. Detail stays in [SkullWoodsEntry-residual.md](SkullWoodsEntry-residual.md). Next: overworld `0x40` entrance `0x29` to room `0x58` |
-| `rr-yk6q` | `ThievesTownEntry` `0xDB` | `south_to_outcasts` isolated; `east_to_0xDC` conveyor red |
-| `rr-3yxm` | `IcePalaceEntry` `0x0E` | Freezor melt + LEFT still `0x0E`. Next: Bari key / north stairs |
+1. **Write counters have an escape.** Stock `LiveRun` forwards
+   `env.unwrapped` to the raw emulator. Helpers using
+   `env.unwrapped.data.memory.assign` evade its RAM-write counter.
+   A frozen-source Kholdstare replay reports **0 writes** through stock
+   `LiveRun`; the same fight through a boundary that preserves auditing
+   across `unwrapped` reports **5,868 assignments**. Both runs have 379
+   `set_state` calls, eight fire hits, zero sword hits, and die at frame
+   1,472. Filed **`rr-0by1`**. Zero writes from the current wrapper are not
+   sufficient proof for helpers taking this path.
+2. **Kholdstare performs more than camera correction.** `_place` writes
+   Link x/y (`$20–$23`, four byte assignments) before the fight. Camera
+   `$E2/$E3/$E8/$E9` accounts for 5,864 more byte assignments. These are
+   isolated development pokes beyond the HP-only Survival contract.
+   The code's “BG2 writes ... only” wording does not describe all writes.
+   This result is the frozen version from the start of this audit; Grok
+   changed `kholdstare.py` afterward while workflow 13 continued.
+3. **Moldorm's success includes restore lookahead.** Independently reran
+   offset 0: heart taken in 982 frames, six strikes, no floor hit or HP
+   loss, **114 state restores**, no RAM assignments in this offset.
+   The source also has a conditional sprite-deflection write (`$0CAA +
+   slot`), which did not fire in this test. This verifies one isolated
+   offset, not the recorded 12-offset matrix or a power-on Hera route.
+   ALttP lookahead remains unruled in `ASSIST_CONTRACT.md`.
+4. **Done ticks are not completed route rungs.** AP-073/AP-074 describe
+   “continuous” results despite AP-022's restore blocker. AP-106 is called
+   “chain + rung C2” but cites a `Whatif_Eastern_armos` prize pickup and
+   explicitly says it is isolated. The actual Clean ladder still has all
+   15 rows open. The tip runner also undercounts total frames; use committed
+   step/tape counts rather than its `frames` field.
 
-## Next action
+## Reproduction and evidence
 
-One spine bead on the `0x81` west door. The small key did not spend. Big-key bytes were 0 on that load and were not tried. The follow-up named in the sitting was layer versus door type. Do not STATUS-promote. Do not call the well or this door continuous.
+Evidence root: `recordings/audit_power_on_20261001/` (game-local, gitignored).
+`identity.json` and `source/` preserve the dirty runtime and maps; imports
+were forced to that frozen copy. ROM/integration files are linked; the ROM
+hash is checked by the audit replay. No existing successful baseline, AP
+pin, or Grok runtime module was overwritten.
 
-## Non-claims
+- `power_on_controller.json` / `.tape.npz`: development search to `0x81`.
+- `power_on_replay.json`: independent 17,102-frame replay to `0x81`.
+- `first_blocker.json` / `.tape.npz`: same reset path plus failed west edge.
+- `final_replay.json`: independent 17,447-frame replay through that failure.
+- `shipped_room81.json`: ordinary unassisted CLI failure.
+- `moldorm_audit.json`, `kholdstare_audit.json`,
+  `kholdstare_stock_audit.json`: isolated ROM audit evidence.
+- `pytest.log`: **297 passed, 8 deselected**, offline ALttP gate. These
+  tests are separate from the ROM runs and do not establish route reach.
 
-Did not STATUS-promote. Did not treat a pin as power-on. Did not write `$F3CC`, sword, or keys. Did not delete `z3-json-data/` or re-commit `refs/z3-json-data/`. Loader prefers the gitignored refs checkout, then the committed JSON dump.
+From the repo root, reproduce on the current tree:
+
+```bash
+export QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+uv run python snes/alttp/scripts/audit_power_on.py controller \
+  --through room_81 --edge room_81:west_to_0x80 \
+  --out snes/alttp/recordings/candidates/audit_controller.json
+uv run python snes/alttp/scripts/audit_power_on.py replay \
+  --tape snes/alttp/recordings/candidates/audit_controller.tape.npz \
+  --out snes/alttp/recordings/candidates/audit_replay.json
+```
+
+For the exact audited runtime, prepend the absolute paths
+`recordings/audit_power_on_20261001/source` and `source/snes` to `PYTHONPATH`.
+Search-controller `ok` and replay `ok` have different meanings: the latter
+means exact reproduction, and `route_goal_ok` says whether the source
+reached its requested endpoint. A replay of a route failure can therefore
+pass synchronization.
+
+Next: fix the write-counter escape (`rr-0by1`), then build the missing
+natural path/key acquisition before the `0x81` Zelda door (existing
+`rr-ccxt.20/.21`, AP-076). Keep Kholdstare and Desert results isolated until
+the Sanctuary and item dependencies are actually chained.
