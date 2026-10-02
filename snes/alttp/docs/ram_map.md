@@ -335,3 +335,19 @@ locks=4, cell lock `$8758` (tile 44,14), and an empty door array.
 `$4200` and the location word is still `$8758`. Room `0x81` counts are
 both 0. A leftover `$8758` in that room's `$06E0` is the previous room,
 not a live lock.
+
+## Required enemy drops
+
+`sprite_die_action` is the 16-byte table at `$0CBA`. Value `1` makes the
+dying sprite become a small key (`0xE4`); `2` becomes a big key (`0xE5`),
+and `3` a rupee (`0xD9`). The room loader assigns the key marker to the
+preceding enemy in the room's sprite list. Sources:
+[variables.h](https://github.com/snesrev/zelda3/blob/master/src/variables.h)
+and [sprite.c](https://github.com/snesrev/zelda3/blob/master/src/sprite.c)
+(`Dungeon_LoadSingleSprite`, enemy death drop).
+
+Verified in room `0x21` on the replay-derived `DevEscort_RatKey` predecessor:
+rat slot 0 has marker `1`; nearby alcove rat slot 4 has marker `0`.
+The escort targets the marked rat, waits for its death/drop, collects the
+key, and checks `$F36F >= 1`. A nearby rat or an empty combat target list
+does not prove the required key was earned. No marker writes are used.

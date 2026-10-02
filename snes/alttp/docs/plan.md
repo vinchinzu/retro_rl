@@ -40,6 +40,26 @@ See [PORT_PLAN.md](PORT_PLAN.md) for the dungeon ladder and credits.
 6. Keep the graph capability-coarse. Promote a hop only from the predecessor the ladder names. The `0x55` key and shutter path stays alternate practice, not the Sanctuary plan.
 7. Leave `gauntlet/` and `romhack/` empty until the opening path is clean.
 
+## Opening combat and Clean escort
+
+Prioritize `rr-vlor`: earn the castle big key from its marked carrier
+without health refills. Measure the ball-and-chain weapon's reach as well
+as its body, and test the complete approach-and-strike policy from the real
+predecessor before attempting another full route.
+
+Then `rr-e8x7` removes escort transit damage one measured room at a time.
+Keep the existing mapped escort walker; the broad guarded rewrite was
+rejected after stalling the throne-room mantle. The sewer key fight targets
+`$0CBA == 1`, rather than the nearest rat. Preserve that required-drop goal
+and independently check key collection and the next door.
+
+Apply the Zelda I process: inspect hit causes before tuning, fight only
+when a required drop or door demands it, roll the complete policy including
+swings, evaluate timing offsets, then replay the committed tape from its
+actual predecessor. A whole no-refill suffix must precede no-assist
+power-on composition. Details and remaining gates are in
+[tasks/residual.md](tasks/residual.md).
+
 ## Non-goals
 
 - GT arena training.

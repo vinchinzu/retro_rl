@@ -558,13 +558,19 @@ class PolicyGuard:
                     frame: Frame = detour[t]
                 else:
                     frame = _action_frame(probe.step(snap))
+                    # The next stage owns input after the inner's goal.
+                    # Forecasting idle here can refuse a safe door approach
+                    # because an enemy would arrive after the real handoff.
+                    if getattr(probe, "success", False):
+                        return (None, False)
                 em.set_button_mask(_mask(frame), 0)
                 em.step()
                 self.frames_rolled += 1
                 snapped = read_snapshot(np.asarray(self._env.get_ram(), dtype=np.uint8))
                 in_detour = bool(detour) and (t + 1) <= len(detour)
-                left = int(snapped.room_id) != room or (
-                    armed and not snapped.has_control
+                left = (
+                    int(snapped.room_id) != room or snapped.layer != start.layer
+                    or snapped.floor != start.floor or (armed and not snapped.has_control)
                 )
                 if left:
                     if in_detour:

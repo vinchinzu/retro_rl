@@ -17,7 +17,78 @@ from alttp.ram import (
 )
 from alttp.room_map import load_room_map
 from alttp.route_report import RoutePhaseResult, SegmentResult, phase_from_primitive
-from alttp.startup import snapshot_env
+from alttp.startup import action_for, snapshot_env
+from retro_harness.input_script import FrameAction
+
+# snesrev/zelda3 sprite.c: death action 1 becomes sprite 0xE4 (small key).
+# This is observed inventory intent, not a slot number or an approach pose.
+_SPRITE_DIE_ACTION = 0x0CBA
+
+
+class _RatKeyFight:
+    """The guard rolls the actual approach-and-strike policy, including swings."""
+
+    def __init__(self) -> None:
+        from alttp.dungeon.nav import WalkCommit
+
+        self.commit = WalkCommit()
+        self.queue: list[FrameAction] = []
+        self.success = False
+        self.failed = False
+        self.env = None
+
+    def bind_env(self, env: object) -> None:
+        self.env = env
+
+    def step(self, snap: AlttpSnapshot) -> FrameAction:
+        from alttp.dungeon.nav import room_step
+        from alttp.opening_route.room_engine import _cardinal_toward, _path_segments
+        from alttp.rollout import strike_if_safe
+
+        if snap.num_keys >= 1 or primitives.sprites_of_type(self.env, (primitives.SPRITE_SMALL_KEY,)):
+            self.success = True
+            return FrameAction(list(action_for()), "rat key earned")
+        if self.queue:
+            return self.queue.pop(0)
+        ram = self.env.get_ram()
+        rats = [s for s in primitives.sprites_of_type(self.env, (0x6D,))
+                if s.floor == snap.layer and int(ram[_SPRITE_DIE_ACTION + s.slot]) == 1]
+        if not rats:
+            self.failed = True
+            return FrameAction(list(action_for()), "key rat missing")
+        target = min(rats, key=lambda s: s.distance_to(snap))
+        if target.hp <= 0:
+            return FrameAction(list(action_for()), "key rat dying")
+        if target.hit_timer & 0x80:
+            return FrameAction(list(action_for()), "rat hitstun")
+        if max(abs(target.x - snap.link_x), abs(target.y - snap.link_y)) <= 50:
+            script = strike_if_safe(self.env, target.slot)
+            if script:
+                self.queue = list(script[1:])
+                return script[0]
+        wp = primitives.Waypoint(target.x, target.y, tolerance=8, room=0x21, label="key rat")
+        segments = _path_segments(self.env, snap, wp)
+        desired = segments[0][0] if segments else _cardinal_toward(snap, wp)
+        button, self.commit = room_step(self.commit, desired)
+        return FrameAction(list(action_for(*((button,) if button else ()))), "rat approach")
+
+
+def _earn_rat_key(env: object) -> primitives.CombatResult:
+    from alttp.rollout import PolicyGuard
+
+    policy = PolicyGuard(_RatKeyFight())
+    policy.bind_env(env)
+    for frame in range(5400):
+        snap = snapshot_env(env)
+        if snap.game_mode == 0x12 or not in_room(snap, 0x21):
+            return primitives.CombatResult(False, "left rat fight or died", frame, snap)
+        if snap.num_keys >= 1 or primitives.sprites_of_type(env, (primitives.SPRITE_SMALL_KEY,)):
+            return primitives.CombatResult(True, "rat key earned", frame, snap)
+        action = policy.step(snap)
+        if policy.failed:
+            return primitives.CombatResult(False, "key rat missing", frame, snap)
+        env.step(action.action)  # type: ignore[attr-defined]
+    return primitives.CombatResult(False, "rat fight frame limit", 5400, snapshot_env(env))
 
 
 def evaluate_acceptance(
@@ -45,7 +116,8 @@ def run_from_escort(env: object, *, source: str = "state_load_dev") -> SegmentRe
     """Play the whole escort from the rescued Zelda cell predecessor.
 
     Survival health refills belong to the caller's audited wrapper. This
-    segment never writes RAM, restores a state, or grants an item.
+    segment never writes RAM or grants an item. Rat combat uses audited
+    ROM lookahead restores; the committed tape must replay without loads.
     """
     phases: list[RoutePhaseResult] = []
 
@@ -89,6 +161,25 @@ def run_from_escort(env: object, *, source: str = "state_load_dev") -> SegmentRe
             env, (button,), predicate, max_frames=limit, step_size=1,
         ))
         settle(label + "_settle")
+
+    def push_middle_block():
+        approach = load_room_map("room_11").point("escort_block_approach")
+        leave = load_room_map("room_11").point("escort_block_west")
+        if approach is None or leave is None:
+            raise RuntimeError("missing middle-block geometry")
+        for attempt in range(4):
+            walk(0x11, "block_approach", 0)
+            # A rat can knock Link out of the push column. Recover from the
+            # mapped approach immediately instead of holding UP at a wall.
+            record(f"push_middle_block_{attempt}", primitives.move_until(
+                env, ("UP",),
+                lambda s: s.link_y <= leave.y or abs(s.link_x - approach.x) > 4,
+                max_frames=400, step_size=1,
+            ))
+            settle("push_middle_block_settle")
+            if snapshot_env(env).link_y <= leave.y:
+                return
+        raise RuntimeError("middle-block push repeatedly displaced")
 
     def door(label: str, button: str, room: int):
         push(label, button, lambda s: in_room(s, room))
@@ -156,21 +247,17 @@ def run_from_escort(env: object, *, source: str = "state_load_dev") -> SegmentRe
             door("key_door_to_22", "UP", 0x22)
             path(0x22, "south_hall", "west_door")
             door("water_hall_to_21", "LEFT", 0x21)
-            path(0x21, "south_hall", "internal_north_door", "upper_center", "key_hall", "key_rat")
-            record("earn_rat_key", primitives.fight_nearby(
-                env, sprite_types=(0x6D,), room=0x21, max_distance=320,
-                attack_distance=50, max_cycles=450,
-                stop_when=lambda e: bool(primitives.sprites_of_type(e, (0xE4,))),
-            ))
+            path(0x21, "south_hall", "internal_north_door", "upper_center")
+            record("earn_rat_key", _earn_rat_key(env))
             record("collect_rat_key", primitives.collect_nearby(
                 env, (0xE4,), max_distance=400, max_frames=600,
             ))
             if snapshot_env(env).num_keys < 1:
                 raise RuntimeError("sewer rat key was not earned")
-            path(0x21, "key_hall", "east_hall", "north_key_door")
+            path(0x21, "east_hall", "north_key_door")
             door("rat_key_door_to_11", "UP", 0x11)
-            path(0x11, "south_hall", "east_corner", "east_hall", "north_hall", "block_approach", tolerance=0)
-            push("push_middle_block", "UP", lambda s: s.link_y <= 600, 400)
+            path(0x11, "south_hall", "east_corner", "east_hall", "north_hall", tolerance=0)
+            push_middle_block()
             path(0x11, "block_west", "block_north", "spiral_mouth", tolerance=0)
             door("last_spiral_to_02", "UP", 0x02)
             path(0x02, "east_hall", "north_center", "south_hall", "lever_south", "lever_pull", tolerance=0)

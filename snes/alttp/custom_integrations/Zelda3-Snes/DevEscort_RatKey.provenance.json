@@ -1,0 +1,10 @@
+{
+  "source_run": "DevAudit_zelda_replay -> guarded escort prefix",
+  "frame": 10639,
+  "git_sha": "e6589d2a5b4bdc87e368dc659fe506b01f0e8e91",
+  "dirty": true,
+  "kind": "scan",
+  "inherited_survival_refills": 11,
+  "inherited_restored_hearts": 22,
+  "notes": "Captured 10639 committed suffix frames after DevAudit_zelda_replay (26078f power-on prefix). Development scan; guarded prefix not landed. Real rescued-Zelda predecessor, follower 1, room 0x21, HP 16; not Clean or power-on."
+}
