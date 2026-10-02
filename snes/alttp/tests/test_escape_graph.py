@@ -24,6 +24,7 @@ from alttp.opening_route.escape_graph import (
     N_ROOM_60,
     N_ROOM_61,
     N_ROOM_80,
+    N_CASTLE_MANTLE,
     N_ROOM_B9,
     N_ROOM_C9,
     N_SANCTUARY,
@@ -115,16 +116,14 @@ def test_verified_edges_are_continuous() -> None:
             (N_ROOM_60, N_ROOM_50),
         }
     )
-    natural_entry_pairs = {
-        (N_ROOM_50, N_ROOM_01),
-        (N_ROOM_01, N_ROOM_72),
-    }
-    isolated_pairs = {
-        (N_ROOM_72, N_ROOM_01),
-        (N_ROOM_72, N_ROOM_82),
-        (N_ROOM_82, N_ROOM_81),
-        (N_ROOM_C9, N_ROOM_B9),
-    }
+    continuous_pairs.update({
+        (N_ROOM_50, N_ROOM_01), (N_ROOM_01, N_ROOM_72),
+        (N_ROOM_72, N_ROOM_82), (N_ROOM_82, N_ROOM_81),
+        (N_ROOM_01, N_ROOM_80), (N_ROOM_80, N_CASTLE_MANTLE),
+        (N_CASTLE_MANTLE, N_SEWERS_DARK), (N_SEWERS_DARK, N_SANCTUARY),
+    })
+    natural_entry_pairs = set()
+    isolated_pairs = {(N_ROOM_72, N_ROOM_01), (N_ROOM_C9, N_ROOM_B9)}
     for edge in graph.edges:
         pair = (edge.source_id, edge.target_id)
         if pair in continuous_pairs:
@@ -146,8 +145,7 @@ def test_verified_edges_are_continuous() -> None:
     assert stair.meta["door_label"] == "north_to_0x01"
     down = graph.edge_for(N_ROOM_01, N_ROOM_72)
     assert down is not None
-    assert down.verification == VERIFICATION_NATURAL_ENTRY
-    assert down.verification != VERIFICATION_CONTINUOUS
+    assert down.verification == VERIFICATION_CONTINUOUS
     assert down.meta["map_id"] == "room_01"
     assert down.meta["door_label"] == "down_to_0x72"
     assert down.direction == "north"
@@ -156,11 +154,11 @@ def test_verified_edges_are_continuous() -> None:
     assert hops["room_72_north_to_0x01"].verification == VERIFICATION_ISOLATED
     south = graph.edge_for(N_ROOM_72, N_ROOM_82)
     assert south is not None
-    assert south.verification == VERIFICATION_ISOLATED
+    assert south.verification == VERIFICATION_CONTINUOUS
     assert south.meta["door_label"] == "south_to_0x82"
     west = graph.edge_for(N_ROOM_82, N_ROOM_81)
     assert west is not None
-    assert west.verification == VERIFICATION_ISOLATED
+    assert west.verification == VERIFICATION_CONTINUOUS
     assert west.meta["door_label"] == "west_to_0x81"
     eastern = graph.edge_for(N_ROOM_C9, N_ROOM_B9)
     assert eastern is not None
@@ -200,10 +198,10 @@ def test_full_plan_with_natural_lamp_reaches_sanctuary() -> None:
     assert N_SEWERS_DARK in path
 
 
-def test_continuous_spine_ends_at_nw_chamber() -> None:
+def test_continuous_spine_ends_at_sanctuary() -> None:
     legs = continuous_spine_legs()
     assert legs[0].source_id == N_CASTLE_GROUNDS
-    assert legs[-1].target_id == N_ROOM_50
+    assert legs[-1].target_id == N_SANCTUARY
     assert any(leg.target_id == N_COURTYARD_SECRET_POCKET for leg in legs)
     graph = escape_route_graph()
     for leg in legs:

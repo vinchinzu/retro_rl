@@ -1,0 +1,624 @@
+{
+  "ok": true,
+  "synchronization_ok": true,
+  "start": "NONE",
+  "route_goal_ok": true,
+  "through": "sanctuary",
+  "frames": 36078,
+  "desynced": 0,
+  "first_desync_frame": null,
+  "final": {
+    "game_mode": 7,
+    "submodule": 0,
+    "room_id": 18,
+    "room_base_id": 18,
+    "room_hex": "0x12",
+    "indoors": true,
+    "screen_id": 0,
+    "screen_hex": "0x00",
+    "link_x": 1272,
+    "link_y": 568,
+    "link_direction": 2,
+    "link_action": 0,
+    "link_state": 0,
+    "dungeon_id": 0,
+    "floor": 0,
+    "layer": 0,
+    "hp": 10,
+    "iframes": 0,
+    "knockback": 0,
+    "dark_world": false,
+    "has_control": true,
+    "is_text_mode": false,
+    "on_castle_grounds": false,
+    "in_secret_passage": false,
+    "in_castle_interior": true,
+    "near_secret_hole": false,
+    "sword_level": 1,
+    "has_fighter_sword": true,
+    "lamp_level": 1,
+    "has_lamp": true,
+    "num_keys": 0,
+    "dungeon_key_count": 0,
+    "follower": 0,
+    "has_zelda_follower": false,
+    "is_hold_up_item": false,
+    "in_zelda_cell": false,
+    "in_sanctuary": true
+  },
+  "audit": {
+    "set_state": 0,
+    "rollout_restores": 0,
+    "writes": 0,
+    "sites": []
+  },
+  "survival": {
+    "enabled": false,
+    "active_from_frame": null,
+    "write_count": 0,
+    "hearts_restored": 0,
+    "first_refill_frame": null,
+    "progression_writes": 0,
+    "capacity_writes": 0,
+    "events": []
+  },
+  "rooms": [
+    {
+      "frame": 2836,
+      "indoors": true,
+      "location": 260,
+      "xy": [
+        2368,
+        8538
+      ],
+      "hp": 24,
+      "sword": 0,
+      "lamp": 0,
+      "keys": 255,
+      "follower": 0
+    },
+    {
+      "frame": 4059,
+      "indoors": false,
+      "location": 44,
+      "xy": [
+        2232,
+        2811
+      ],
+      "hp": 24,
+      "sword": 0,
+      "lamp": 1,
+      "keys": 255,
+      "follower": 5
+    },
+    {
+      "frame": 4718,
+      "indoors": false,
+      "location": 27,
+      "xy": [
+        2386,
+        2528
+      ],
+      "hp": 24,
+      "sword": 0,
+      "lamp": 1,
+      "keys": 255,
+      "follower": 5
+    },
+    {
+      "frame": 6280,
+      "indoors": true,
+      "location": 85,
+      "xy": [
+        2975,
+        2710
+      ],
+      "hp": 24,
+      "sword": 0,
+      "lamp": 1,
+      "keys": 255,
+      "follower": 5
+    },
+    {
+      "frame": 7387,
+      "indoors": false,
+      "location": 27,
+      "xy": [
+        2248,
+        1755
+      ],
+      "hp": 24,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 255,
+      "follower": 0
+    },
+    {
+      "frame": 13078,
+      "indoors": true,
+      "location": 97,
+      "xy": [
+        760,
+        3520
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 13528,
+      "indoors": true,
+      "location": 96,
+      "xy": [
+        448,
+        3320
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 13817,
+      "indoors": true,
+      "location": 80,
+      "xy": [
+        376,
+        3008
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 14239,
+      "indoors": true,
+      "location": 1,
+      "xy": [
+        560,
+        120
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 14671,
+      "indoors": true,
+      "location": 114,
+      "xy": [
+        1273,
+        3665
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 15464,
+      "indoors": true,
+      "location": 130,
+      "xy": [
+        1191,
+        4108
+      ],
+      "hp": 24,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 16149,
+      "indoors": true,
+      "location": 129,
+      "xy": [
+        996,
+        4485
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 17216,
+      "indoors": true,
+      "location": 113,
+      "xy": [
+        632,
+        4008
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 18944,
+      "indoors": true,
+      "location": 112,
+      "xy": [
+        161,
+        3641
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 19327,
+      "indoors": true,
+      "location": 128,
+      "xy": [
+        81,
+        4150
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 0
+    },
+    {
+      "frame": 22394,
+      "indoors": true,
+      "location": 112,
+      "xy": [
+        80,
+        3635
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 22738,
+      "indoors": true,
+      "location": 113,
+      "xy": [
+        672,
+        3659
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 23281,
+      "indoors": true,
+      "location": 129,
+      "xy": [
+        632,
+        4152
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 24108,
+      "indoors": true,
+      "location": 130,
+      "xy": [
+        1036,
+        4488
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 25159,
+      "indoors": true,
+      "location": 114,
+      "xy": [
+        1197,
+        4052
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 26039,
+      "indoors": true,
+      "location": 1,
+      "xy": [
+        760,
+        100
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 26323,
+      "indoors": true,
+      "location": 80,
+      "xy": [
+        448,
+        2680
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 27059,
+      "indoors": true,
+      "location": 96,
+      "xy": [
+        376,
+        3128
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 27365,
+      "indoors": true,
+      "location": 97,
+      "xy": [
+        560,
+        3320
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 27991,
+      "indoors": true,
+      "location": 81,
+      "xy": [
+        760,
+        2985
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 29020,
+      "indoors": true,
+      "location": 65,
+      "xy": [
+        760,
+        2496
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 29782,
+      "indoors": true,
+      "location": 66,
+      "xy": [
+        1449,
+        2102
+      ],
+      "hp": 16,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 30463,
+      "indoors": true,
+      "location": 50,
+      "xy": [
+        1272,
+        1975
+      ],
+      "hp": 24,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 31477,
+      "indoors": true,
+      "location": 34,
+      "xy": [
+        1272,
+        1496
+      ],
+      "hp": 24,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 32039,
+      "indoors": true,
+      "location": 33,
+      "xy": [
+        984,
+        1400
+      ],
+      "hp": 20,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 33081,
+      "indoors": true,
+      "location": 17,
+      "xy": [
+        888,
+        984
+      ],
+      "hp": 18,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 33932,
+      "indoors": true,
+      "location": 2,
+      "xy": [
+        1400,
+        75
+      ],
+      "hp": 10,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    },
+    {
+      "frame": 34863,
+      "indoors": true,
+      "location": 18,
+      "xy": [
+        1272,
+        568
+      ],
+      "hp": 10,
+      "sword": 1,
+      "lamp": 1,
+      "keys": 0,
+      "follower": 1
+    }
+  ],
+  "story": {
+    "progress": 2,
+    "progress_flags": 21,
+    "map_indicator": 1,
+    "follower": 0,
+    "max_hp": 24,
+    "sanctuary_completed": true
+  },
+  "hits": [
+    {
+      "frame": 12166,
+      "room": 85,
+      "damage": 4
+    },
+    {
+      "frame": 13919,
+      "room": 80,
+      "damage": 4
+    },
+    {
+      "frame": 15629,
+      "room": 130,
+      "damage": 4
+    },
+    {
+      "frame": 19602,
+      "room": 128,
+      "damage": 4
+    },
+    {
+      "frame": 31719,
+      "room": 34,
+      "damage": 2
+    },
+    {
+      "frame": 31779,
+      "room": 34,
+      "damage": 2
+    },
+    {
+      "frame": 32814,
+      "room": 33,
+      "damage": 2
+    },
+    {
+      "frame": 33142,
+      "room": 17,
+      "damage": 2
+    },
+    {
+      "frame": 33203,
+      "room": 17,
+      "damage": 2
+    },
+    {
+      "frame": 33421,
+      "room": 17,
+      "damage": 2
+    },
+    {
+      "frame": 33511,
+      "room": 17,
+      "damage": 2
+    }
+  ],
+  "death_frames": [],
+  "in_game_health_gains": [
+    {
+      "frame": 15339,
+      "room": 114,
+      "hp_gained": 8
+    },
+    {
+      "frame": 30206,
+      "room": 66,
+      "hp_gained": 8
+    }
+  ],
+  "captured_predecessors": {
+    "20698": [
+      "DevClean_Ball"
+    ],
+    "21805": [
+      "DevClean_Zelda"
+    ]
+  },
+  "clean_chain": true,
+  "source": "power_on_forward_replay",
+  "intervention": "Clean",
+  "development_only": false,
+  "wall_seconds": 31.684569097007625,
+  "start_setup": "reset, then blank SRAM, before frame 1",
+  "contract": "snes/alttp/docs/ASSIST_CONTRACT.md",
+  "rom_sha256": "66871d66be19ad2c34c927d6b14cd8eb6fc3181965b6e517cb361f7316009cfb",
+  "runtime_source": "/home/v/01_projects/11_games/retro_rl/snes/alttp"
+}

@@ -176,6 +176,70 @@ def _pin_ready(state: str) -> bool:
     return rom.is_file() and pin.is_file()
 
 
+@pytest.mark.rom
+@pytest.mark.parametrize("offset", (0, 7, 11))
+def test_clean_big_key_carrier_and_forward_replay(offset: int) -> None:
+    """A no-assist power-on-derived arrival must earn the key without damage."""
+    import gc
+    from dataclasses import asdict
+    import json
+
+    from alttp.opening_route.castle_dungeon import earn_castle_big_key
+    from alttp.ram import read_inventory, snapshot_to_diag
+    from alttp.rollout import restores
+    from alttp.scripts.replay_tape import _CommittedRecorder
+    from alttp.spine.tape import LiveRun, ram_crc
+    from alttp.startup import build_boot_env, no_action, snapshot_env
+    from retro_harness.env import read_state_bytes
+
+    if not _pin_ready("DevClean_Ball"):
+        pytest.skip("no-assist power-on-derived DevClean_Ball pin missing")
+    env = build_boot_env("DevClean_Ball")
+    try:
+        env.reset()
+        env.em.set_state(read_state_bytes(INTEGRATION_DIR / "DevClean_Ball.state"))
+        start_hp = snapshot_env(env).hp
+        recorder = _CommittedRecorder(env)
+        live = LiveRun(recorder.attach(), provider="clean_big_key_controller")
+        start_restores = restores()
+        for _ in range(offset):
+            live.env.step(no_action())
+        result = earn_castle_big_key(live.env, max_decisions=250)
+        assert result.ok, result.blocker
+        final = snapshot_env(env)
+        assert final.hp == start_hp == 16
+        assert final.follower == 0 and final.room_base_id == 0x80
+        assert read_inventory(env.get_ram()).big_key == 0x4000
+        live.note_rollout_restores(restores() - start_restores)
+        assert not live.report().mid_run_state_load
+        assert live.report().writes == 0
+        controller_audit = asdict(live.report())
+        buttons, crcs = recorder.buttons, recorder.crcs
+    finally:
+        env.close()
+    del live, recorder, env
+    gc.collect()
+
+    env = build_boot_env("DevClean_Ball")
+    try:
+        env.reset()
+        env.em.set_state(read_state_bytes(INTEGRATION_DIR / "DevClean_Ball.state"))
+        replay = LiveRun(env, provider="clean_big_key_replay")
+        for frame, (action, crc) in enumerate(zip(buttons, crcs), 1):
+            replay.env.step(action)
+            assert ram_crc(env.get_ram()) == crc, f"desync frame {frame}"
+        assert snapshot_env(env) == final
+        assert replay.report().set_state == replay.report().writes == 0
+        print("BIG_KEY " + json.dumps({
+            "offset": offset, "frames": len(buttons), "desynced": 0,
+            "final": snapshot_to_diag(final), "controller_audit": controller_audit,
+            "replay_audit": asdict(replay.report()), "source_pin": "DevClean_Ball",
+            "development_suffix_only": True,
+        }))
+    finally:
+        env.close()
+
+
 @pytest.mark.parametrize(
     "map_id,door_label,source_state,origin,dest,direction",
     F1_EDGES,
@@ -248,28 +312,28 @@ def test_run_room_edge_ok_when_already_at_f1_dest(
     assert result.frames == 0
 
 
-def test_room_50_east_graph_stays_natural_entry() -> None:
-    """Do not promote 0x50 east → 0x01 to continuous from isolated re-runs."""
+def test_room_50_east_graph_has_power_on_replay_evidence() -> None:
+    """The complete no-assist power-on replay now proves the east edge."""
     hops = {h.hop_id: h for h in escape_route_hops()}
     hop = hops["room_50_east_to_0x01"]
-    assert hop.verification == VERIFICATION_NATURAL_ENTRY
-    assert hop.verification != VERIFICATION_CONTINUOUS
+    assert hop.verification == VERIFICATION_CONTINUOUS
+    assert hop.meta["evidence"] == "recordings/clean_escape_20261002/replay.json"
     assert hop.meta["map_id"] == "room_50"
     assert hop.meta["door_label"] == "east_to_0x01"
     graph = escape_route_graph()
     edge = next(e for e in graph.edges if e.edge_id == "room_50_east_to_0x01")
     assert edge.source_id == N_ROOM_50
     assert edge.target_id == N_ROOM_01
-    assert edge.verification == VERIFICATION_NATURAL_ENTRY
+    assert edge.verification == VERIFICATION_CONTINUOUS
 
 
 def test_f1_chain_doors_are_not_graph_hops() -> None:
-    """0x01 east and 0x52 south stay map-only; graph hop to Zelda remains planned."""
+    """The optional F1 detour stays map-only; the B1 rescue aggregate is proved."""
     hops = {h.hop_id: h for h in escape_route_hops()}
     assert "room_01_east_to_0x52" not in hops
     assert "room_52_south_to_0x62" not in hops
-    planned = hops["room_01_to_zelda_cell"]
-    assert planned.verification == "planned"
+    rescued = hops["room_01_to_zelda_cell"]
+    assert rescued.verification == VERIFICATION_CONTINUOUS
 
 
 def test_settle_control_default_max_frames_stays_240() -> None:

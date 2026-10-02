@@ -48,7 +48,7 @@ Manifest count: **38**.
 | `nes/smb` / Super Mario Bros. | platforming | P3 | verified_capture | M8 | bronze | clean | yes | — |
 | `nes/smb3` / Super Mario Bros. 3 | platforming | P3 | segment_clear | M3 | bronze | clean | no | World 1-2 natural-entry clear |
 | `snes/SMW` / Super Mario World | platforming | P3 | instrumented | M2 | bronze | clean | no | normalize route tooling into maturity gates and continuous clear path |
-| `snes/alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | opening route only to castle grounds; sword/uncle segments next |
+| `snes/alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | C2 Eastern Palace prize from the Clean Sanctuary predecessor |
 | `nes/metroid` / Metroid | metroidvania_navigation, graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | morph return + (5,14) door for first missiles; then bombs |
 | `snes/smz3` / SMZ3 (Super Metroid + ALttP Combined Randomizer) | metroidvania_navigation, top_down_navigation | P4 | scaffolded | M2 | bronze | clean | no | map portal → settled Z3 Link; longer one-bot segment + video; dual-bot race later |
 | `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Gravity on the Phantoon tip (rr-kw8t); then Maridia → LN → Tourian+credits |

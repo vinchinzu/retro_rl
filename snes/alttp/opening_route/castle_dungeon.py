@@ -859,14 +859,15 @@ def earn_castle_big_key(
 ) -> SegmentResult:
     """Kill the castle guard from its natural arrival and take the big key.
 
-    Face the guard and tap the sword within 20px, including when Link may
-    take damage. The caller can supply disclosed HP assistance. This helper
-    writes no RAM and performs no restores. The key word at ``$F366`` must
-    rise through combat and pickup; Zelda interaction belongs to the caller.
+    Read the required-drop marker, then forecast complete approach, swing
+    and recovery candidates, including the flail. Only no-damage candidates
+    are committed. The key word at ``$F366`` must rise through combat and
+    pickup; Zelda interaction belongs to the caller. Restores are development
+    lookahead only and must be removed by the caller's forward tape replay.
     """
     notes = [
-        "Full-health castle guard: controller facing, approach and sword taps.",
-        "Prize pickup is collect_nearby; no RAM writes or lookahead restores.",
+        "Required big-key carrier ($0CBA == 2); complete 32-frame ROM forecasts.",
+        "No-damage combat plans; no RAM writes. Replay without search restores.",
     ]
     frames = 0
     start_key = int(read_inventory(np.asarray(env.get_ram(), dtype=np.uint8)).big_key)
@@ -879,18 +880,25 @@ def earn_castle_big_key(
         blocker = "castle guard missing at entry"
     else:
         phase = "ball_and_chain"
-        fought = fight_nearby(
-            env, sprite_types=(SPRITE_BALL_AND_CHAIN,), room=ZELDA_CELL_ROOM,
-            max_distance=400, attack_distance=20, max_cycles=max_decisions,
-        )
-        frames += fought.frames
-        notes.append(f"guard combat: {fought.reason} frames={fought.frames}")
-        if not fought.ok:
-            blocker = fought.reason or "castle guard not defeated"
-        elif any(s.hp > 0 for s in sprites_of_type(env, (SPRITE_BALL_AND_CHAIN,))):
-            blocker = "castle guard still alive"
+        from alttp.rollout import safe_combat_plan
+
+        for _ in range(max_decisions):
+            carriers = [s for s in sprites_of_type(env, (SPRITE_BALL_AND_CHAIN,))
+                        if int(env.get_ram()[0x0CBA + s.slot]) == 2]
+            if not carriers or all(s.hp <= 0 for s in carriers):
+                phase = "prize"
+                break
+            target = min(carriers, key=lambda s: s.distance_to(snapshot_env(env)))
+            plan = safe_combat_plan(env, target.slot)
+            if plan is None:
+                blocker = "no safe ball-and-chain combat plan"
+                break
+            for action in plan:
+                step_frames(env, np.asarray(action, dtype=np.int8), 1)
+                frames += 1
         else:
-            phase = "prize"
+            blocker = "ball-and-chain decision limit"
+        notes.append(f"guard combat frames={frames}")
 
     snap = snapshot_env(env)
     if blocker == "" and phase == "prize":

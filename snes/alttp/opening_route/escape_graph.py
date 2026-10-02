@@ -12,9 +12,8 @@ so edge ids and leg ids cannot drift.
 z3-json-data escape region names may appear in node/edge ``meta`` as optional
 logic labels only — not execution authority or screen coordinates.
 
-Verified transitions (see ``docs/STATUS.md``): continuous through NW chamber
-``0x50``; ``0x50`` east → ``0x01`` is natural_entry; Zelda/escort/Sanctuary
-remain planned.
+Verified transitions (see ``docs/STATUS.md``): Clean power-on through Zelda
+rescue and completed Sanctuary, proved by zero-load, zero-write forward replay.
 """
 
 from __future__ import annotations
@@ -349,11 +348,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_ROOM_01,
         direction="east",
         requires=frozenset({CAP_FIGHTER_SWORD}),
-        verification=VERIFICATION_NATURAL_ENTRY,
-        provenance="room_engine.room_50.east_to_0x01+natural_room_50_east",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="reach_room_01_connector",
         paths=_BOTH_PATHS,
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "to_room_base_id": HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
             "door_label": "east_to_0x01",
             "map_id": "room_50",
@@ -367,21 +367,19 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         hop_id="room_01_to_zelda_cell",
         source_id=N_ROOM_01,
         target_id=N_ROOM_80,
-        direction="east",
+        direction="stairs",
         requires=frozenset({CAP_FIGHTER_SWORD}),
-        verification=VERIFICATION_PLANNED,
-        provenance="planned.b1_to_zelda_cell",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="reach_zelda_cell_0x80",
         paths=_BOTH_PATHS,
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "to_room_base_id": ZELDA_CELL_ROOM,
             "note": (
-                "Measured exploration chain: 0x01→0x52→0x62 (clear required in "
-                "0x52). B1 well room_01_down_to_0x72 is natural_entry (trigger "
-                "UP); reverse room_72_north_to_0x01 stays isolated. Measured rescue "
-                "suffix walks 0x81 -> 0x71 (guard small key) -> 0x70 -> 0x80 "
-                "(trooper big key, cell lock, Zelda dialogue). Survival replay "
-                "does not promote this Clean graph edge."
+                "Clean power-on: 0x01 -> 0x72 -> 0x82 -> 0x81 -> 0x71 "
+                "(small key) -> 0x70 -> 0x80 (big-key carrier and cell rescue). "
+                "Forward replay has zero loads, writes, refills and desync."
             ),
         },
     ),
@@ -413,11 +411,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_ROOM_72,
         direction="north",
         requires=frozenset({CAP_FIGHTER_SWORD}),
-        verification=VERIFICATION_NATURAL_ENTRY,
-        provenance="room_engine.room_01.down_to_0x72+CastleRoom50.east",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="reach_room_72_via_f1_stairs",
         paths=frozenset(),
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "to_room_base_id": HYRULE_CASTLE_B1_PIT_ROOM,
             "door_label": "down_to_0x72",
             "map_id": "room_01",
@@ -434,11 +433,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_ROOM_82,
         direction="south",
         requires=frozenset({CAP_FIGHTER_SWORD}),
-        verification=VERIFICATION_ISOLATED,
-        provenance="room_engine.room_72.south_to_0x82+CastleB1PitGuardCleared",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="reach_room_82_from_pit",
         paths=frozenset(),
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "to_room_base_id": HYRULE_CASTLE_B1_EAST_ROOM,
             "door_label": "south_to_0x82",
             "map_id": "room_72",
@@ -454,11 +454,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_ROOM_81,
         direction="west",
         requires=frozenset({CAP_FIGHTER_SWORD}),
-        verification=VERIFICATION_ISOLATED,
-        provenance="room_engine.room_82.west_to_0x81+CastleZeldaB1East",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="reach_room_81_from_bridge",
         paths=frozenset(),
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "to_room_base_id": HYRULE_CASTLE_B1_WEST_ROOM,
             "door_label": "west_to_0x81",
             "map_id": "room_82",
@@ -479,11 +480,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         # mantle/sewer edges gate on zelda_follower.
         requires=frozenset({CAP_FIGHTER_SWORD}),
         acquires=frozenset({CAP_ZELDA_FOLLOWER}),
-        verification=VERIFICATION_PLANNED,
-        provenance="planned.zelda_escort_mantle",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="follower_indicator_zelda",
         paths=_BOTH_PATHS,
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "note": "rescue Zelda then escort to rear mantle / throne",
             "z3_label": "Throne Room",
         },
@@ -494,11 +496,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_SEWERS_DARK,
         direction="north",
         requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
-        verification=VERIFICATION_PLANNED,
-        provenance="planned.mantle_sewer_push",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="enter_dark_sewers",
         paths=_BOTH_PATHS,
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "note": "mantle checks lamp + Zelda; opens dark sewers",
             "z3_label": "Throne Room → Sewers (Dark)",
         },
@@ -509,11 +512,12 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
         target_id=N_SANCTUARY,
         direction="north",
         requires=frozenset({CAP_ZELDA_FOLLOWER, CAP_LAMP}),
-        verification=VERIFICATION_PLANNED,
-        provenance="planned.sewers_sanctuary_push",
+        verification=VERIFICATION_CONTINUOUS,
+        provenance="clean_escape_20261002.power_on_forward_replay",
         goal="reach_sanctuary_0x12",
         paths=_BOTH_PATHS,
         meta={
+            "evidence": "recordings/clean_escape_20261002/replay.json",
             "to_room_base_id": SANCTUARY_ROOM,
             "z3_label": "Sanctuary Push Door",
         },
@@ -669,7 +673,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_ROOM_01,
             name="Hyrule Castle north connector (0x01)",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "natural_entry"}),
+            tags=frozenset({"indoors", "escape", "continuous"}),
             meta=_room_meta(
                 HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
                 z3_label="Hyrule Castle",
@@ -686,7 +690,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_ROOM_72,
             name="Hyrule Castle B1 pit / key (0x72)",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "isolated"}),
+            tags=frozenset({"indoors", "escape", "continuous"}),
             meta=_room_meta(
                 HYRULE_CASTLE_B1_PIT_ROOM,
                 z3_label="Hyrule Castle",
@@ -700,7 +704,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_ROOM_82,
             name="Hyrule Castle B1 east / bridge (0x82)",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "isolated"}),
+            tags=frozenset({"indoors", "escape", "continuous"}),
             meta=_room_meta(
                 HYRULE_CASTLE_B1_EAST_ROOM,
                 z3_label="Hyrule Castle",
@@ -711,7 +715,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_ROOM_81,
             name="Hyrule Castle B1 west (0x81)",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "isolated"}),
+            tags=frozenset({"indoors", "escape", "continuous"}),
             meta=_room_meta(
                 HYRULE_CASTLE_B1_WEST_ROOM,
                 z3_label="Hyrule Castle",
@@ -722,7 +726,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_ROOM_80,
             name="Zelda's cell",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "zelda", "planned"}),
+            tags=frozenset({"indoors", "escape", "zelda", "continuous"}),
             meta=_room_meta(
                 ZELDA_CELL_ROOM,
                 z3_label="Hyrule Castle - Zelda's Chest",
@@ -733,7 +737,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_CASTLE_MANTLE,
             name="Castle mantle / throne escort",
             area="hyrule_castle",
-            tags=frozenset({"indoors", "escape", "escort", "planned"}),
+            tags=frozenset({"indoors", "escape", "escort", "continuous"}),
             meta=_room_meta(
                 None,
                 z3_label="Throne Room",
@@ -744,7 +748,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_SEWERS_DARK,
             name="Sewers (dark)",
             area="sewers",
-            tags=frozenset({"indoors", "escape", "dark", "planned"}),
+            tags=frozenset({"indoors", "escape", "dark", "continuous"}),
             meta=_room_meta(
                 None,
                 z3_label="Sewers (Dark)",
@@ -755,7 +759,7 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
             node_id=N_SANCTUARY,
             name="Sanctuary",
             area="sanctuary",
-            tags=frozenset({"indoors", "escape", "sanctuary", "planned"}),
+            tags=frozenset({"indoors", "escape", "sanctuary", "continuous"}),
             meta=_room_meta(
                 SANCTUARY_ROOM,
                 z3_label="Sanctuary",
@@ -799,10 +803,10 @@ def _planned_legs_for_path(path: str) -> tuple[RouteLeg, ...]:
 
 
 def continuous_spine_legs() -> tuple[RouteLeg, ...]:
-    """Verified continuous tip: grounds → secret clear → NW chamber (0x50).
+    """Verified continuous tip: grounds → Zelda rescue → completed Sanctuary.
 
     Derived from primary-path hops whose verification is continuous.
-    Further legs toward Zelda/Sanctuary remain planned (see
+    The internal key/shutter alternate remains planned (see
     :func:`escape_route_legs`).
     """
     return tuple(
@@ -816,7 +820,7 @@ def escape_route_legs() -> tuple[RouteLeg, ...]:
     """Contiguous legs: castle grounds → Sanctuary with capability acquires.
 
     Primary plan uses the outdoor continuous path through the courtyard
-    pocket, then planned B1 / Zelda / escort legs. The internal key/shutter
+    pocket, then verified B1 / Zelda / escort legs. The internal key/shutter
     path remains on the graph as an alternate (``path: internal_key``;
     demoted in the work queue) but is not the default Sanctuary plan.
 

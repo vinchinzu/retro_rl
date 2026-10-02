@@ -301,7 +301,7 @@ def build_work_queue(
             "byTier": dict(sorted(Counter(i.tier for i in items).items())),
             "byGoal": dict(sorted(Counter(i.goal for i in items).items())),
             "workFocusCount": len(focus),
-            "sanctuaryClaimed": False,
+            "sanctuaryClaimed": "clean_power_on_sanctuary_C1" in (src.get("verifiedMilestones") or []),
             "verifiedMilestones": list(src.get("verifiedMilestones") or []),
         },
         "workFocus": [i.to_dict() for i in focus],

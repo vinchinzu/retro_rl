@@ -111,6 +111,7 @@ __all__ = [
     "press",
     "restores",
     "strike_if_safe",
+    "safe_combat_plan",
     "strike_soldier",
     "strike_verdict",
 ]
@@ -683,6 +684,52 @@ def _sprite_at(ram: np.ndarray, slot: int) -> tuple[int, int, int] | None:
 def _play(env: Any, frame: Frame) -> None:
     env.em.set_button_mask(_mask(frame), 0)
     env.em.step()
+
+
+def safe_combat_plan(env: Any, slot: int) -> Plan | None:
+    """Choose a complete approach, swing and recovery on the live ROM.
+
+    Forecast 32 frames, including body and weapon contact, then commit eight
+    and replan. This avoids ending a long recovery in an inescapable flail arc.
+    Rank damage to the target before closing distance. Reject any HP drop or
+    room/floor/layer change; do not substitute an unsafe plan when none pass.
+    This combat search is slower than the 25-frame real-time guard budget.
+    """
+    before = read_snapshot(np.asarray(env.get_ram(), dtype=np.uint8))
+    plans = [hold(None, 32), (press("B"),) + hold(None, 31)]
+    for direction in POLICY_GUARD_DIRECTIONS:
+        for approach in (1, 4, 8):
+            plans.append(hold(direction, approach) + (press("B"),)
+                         + hold(None, 31 - approach))
+        plans.append(hold(direction, 32))
+    state = bytes(env.em.get_state())
+    best: tuple[tuple[int, int, int], Plan] | None = None
+    try:
+        for plan in plans:
+            _restore(env.em, state)
+            safe = True
+            hp_previous = before.hp
+            for frame in plan:
+                _play(env, frame)
+                snap = read_snapshot(np.asarray(env.get_ram(), dtype=np.uint8))
+                if (snap.hp < hp_previous or not snap.has_control
+                        or (snap.room_id, snap.floor, snap.layer)
+                        != (before.room_id, before.floor, before.layer)):
+                    safe = False
+                    break
+                hp_previous = snap.hp
+            if not safe:
+                continue
+            target = _sprite_at(np.asarray(env.get_ram(), dtype=np.uint8), slot)
+            hp = target[2] if target else 0
+            distance = _chebyshev(snap.link_x, snap.link_y, *target[:2]) if target else 0
+            moved = abs(snap.link_x - before.link_x) + abs(snap.link_y - before.link_y)
+            rank = (-hp, -distance, moved)
+            if best is None or rank > best[0]:
+                best = (rank, plan)
+    finally:
+        _restore(env.em, state)
+    return best[1][:8] if best else None
 
 
 def strike_verdict(env: Any, slot: int) -> str:

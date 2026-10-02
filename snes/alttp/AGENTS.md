@@ -27,10 +27,10 @@ SDL_VIDEODRIVER=dummy uv run python alttp/scripts/castle_dungeon_prefix.py
 
 export QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
 uv run python alttp/scripts/audit_power_on.py controller \
-  --through sanctuary --out alttp/recordings/sanctuary_20261001/controller.json
+  --through sanctuary --no-survival --out alttp/recordings/clean_escape_20261002/controller.json
 uv run python alttp/scripts/audit_power_on.py replay \
-  --tape alttp/recordings/sanctuary_20261001/controller.tape.npz \
-  --out alttp/recordings/sanctuary_20261001/replay.json
+  --tape alttp/recordings/clean_escape_20261002/controller.tape.npz \
+  --out alttp/recordings/clean_escape_20261002/replay.json
 
 uv run python alttp/scripts/room_engine.py list
 uv run python alttp/scripts/room_engine.py show room_61
@@ -53,15 +53,14 @@ uv run pytest alttp/tests -q
 ## Traps
 
 - Ladder: planned, then isolated, then natural_entry, then continuous. A save-state pin is not continuous.
-- Continuous tip is room `0x50`. `zelda` and `sanctuary` are development
-  Survival controller routes; their results do not promote the Clean tip.
-  Replay the committed tape and check `route_goal_ok` before quoting an
-  assisted result. Do not overwrite `recordings/verified_tip_run.json` on a
-  red.
+- C1 proof is the Clean Sanctuary power-on tape replay. Controller forecasts
+  are development evidence; quote the replay's `route_goal_ok`, `clean_chain`,
+  loads, writes and desync. The four-stage `full_tip` helper remains the
+  historical room-`0x50` checkpoint. Keep its report intact on a red.
 - Sanctuary acceptance is room `0x12`, control ready, follower `$F3CC == 0`,
-  progress `$F3C5 == 2`, and `$F3C6 & 0x04`. The controller may record only
-  disclosed Survival HP refills; progression and capacity writes must remain
-  zero.
+  progress `$F3C5 == 2`, and `$F3C6 & 0x04`. Audit defaults to no assists.
+  Development lookahead restores the same frame; committed replay has zero
+  loads, writes and refill assists. Explicit Survival runs stay development.
 - Leave proof is a RAM glance (`alttp.screen_glance`), not an MP4.
 - Loader prefers `refs/z3-json-data/` when that checkout exists, else the committed dump. Import never downloads.
 - Stair destination settle is `DEST_SETTLE_MAX_FRAMES` (480). Do not change the global `settle_control` default (240).

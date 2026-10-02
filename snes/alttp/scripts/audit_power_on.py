@@ -1,9 +1,10 @@
 """Measure the opening spine, then replay its committed path without restores.
 
-Development evidence only. Default start is an actual core reset (NONE),
+The controller is development evidence. Default start is a core reset (NONE),
 with blank SRAM prepared before the measured attempt. The controller still
 searches by restoring states; its report must not be quoted as Clean.
-The separate replay verifies every frame against full-RAM CRCs.
+The separate replay verifies every frame against full-RAM CRCs. A completed
+no-assist replay with no loads, writes or deaths is Clean proof.
 
 Run with a frozen source tree on PYTHONPATH when other agents are editing.
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -173,11 +175,14 @@ class Stage:
 
 
 def controller(args: Any) -> dict[str, Any]:
+    from alttp.rollout import restores
+
     raw = build_boot_env(state_name=args.start)
     survival = Survival(args.survival)
     rec = Recorder(raw, survival)
     live = LiveRun(rec.attach(), provider="alttp.power_on_audit")
     rec.live = live.env
+    start_restores = restores()
     stages: list[dict[str, Any]] = []
     hops = hops_through(args.through)
     if not hops:
@@ -190,6 +195,7 @@ def controller(args: Any) -> dict[str, Any]:
             success=hops[-1].success,
             get_segment_fn=lambda sid: Stage(get_segment(sid), stages, rec),
         )
+        live.note_rollout_restores(restores() - start_restores)
         audit = asdict(live.report())
         report = result.to_report()
         if result.ok and args.edge:
@@ -208,6 +214,7 @@ def controller(args: Any) -> dict[str, Any]:
             report["ok"] = extension.ok
             report["blocker"] = extension.blocker
             report["final"] = snapshot_to_diag(extension.snapshot)
+            live.note_rollout_restores(restores() - start_restores)
             audit = asdict(live.report())
         # The production report labels a restore-search controller Clean.
         # Override that label here; only the separate replay can prove a path.
@@ -250,6 +257,13 @@ def replay(args: Any) -> dict[str, Any]:
         (INTEGRATION_DIR / "rom.sfc").read_bytes()
     ).hexdigest():
         raise ValueError("replay ROM differs from recording")
+    captures: dict[int, list[str]] = {}
+    for spec in getattr(args, "capture", ()):
+        frame, sep, name = spec.partition(":")
+        if (not sep or not frame.isdigit() or not 1 <= int(frame) <= len(buttons)
+                or not re.fullmatch(r"Dev[A-Za-z0-9_]+", name)):
+            raise ValueError("capture requires FRAME:DevName inside the tape")
+        captures.setdefault(int(frame), []).append(name)
     raw = build_boot_env(state_name=meta["start"])
     survival = Survival(meta["survival"])
     try:
@@ -261,6 +275,7 @@ def replay(args: Any) -> dict[str, Any]:
         rooms: list[dict[str, Any]] = []
         previous = None
         hits: list[dict[str, Any]] = []
+        health_gains: list[dict[str, Any]] = []
         death_frames: list[int] = []
         prev_hp = None
         for index, action in enumerate(buttons):
@@ -270,6 +285,9 @@ def replay(args: Any) -> dict[str, Any]:
                 if prev_hp is not None and snap.hp < prev_hp:
                     hits.append({"frame": index + 1, "room": snap.room_id,
                                  "damage": prev_hp - snap.hp})
+                if prev_hp is not None and snap.hp > prev_hp:
+                    health_gains.append({"frame": index + 1, "room": snap.room_id,
+                                         "hp_gained": snap.hp - prev_hp})
                 if snap.hp == 0:
                     death_frames.append(index + 1)
                 prev_hp = snap.hp
@@ -289,6 +307,12 @@ def replay(args: Any) -> dict[str, Any]:
                 desynced += 1
                 if first is None:
                     first = index + 1
+            for name in captures.get(index + 1, ()):
+                if desynced:
+                    raise RuntimeError("refusing to capture a desynchronized predecessor")
+                path = INTEGRATION_DIR / f"{name}.state"
+                write_state_bytes(path, raw.em.get_state())
+                write_pin_provenance(path, source_run=str(args.out), frame=index + 1, kind="scan")
         final = snapshot_to_diag(read_snapshot(raw.get_ram()))
         story = story_glance(raw)
         audit = asdict(live.report())
@@ -300,6 +324,9 @@ def replay(args: Any) -> dict[str, Any]:
         synchronization_ok = (desynced == 0 and final == meta["source_final"]
                               and all(story.get(k) == v for k, v in meta.get("source_story", {}).items()))
         route_goal_ok = replay_goal_accepted(meta, final, story)
+        clean = (synchronization_ok and route_goal_ok and not death_frames
+                 and not meta["survival"] and not audit["set_state"]
+                 and not audit["writes"])
         return {
             "ok": synchronization_ok and route_goal_ok,
             "synchronization_ok": synchronization_ok,
@@ -308,10 +335,11 @@ def replay(args: Any) -> dict[str, Any]:
             "desynced": desynced, "first_desync_frame": first, "final": final,
             "audit": audit, "survival": survival.report(), "rooms": rooms, "story": story,
             "hits": hits, "death_frames": death_frames,
-            "clean_chain": (desynced == 0 and not meta["survival"]
-                            and not audit["set_state"] and not audit["writes"]),
+            "in_game_health_gains": health_gains,
+            "captured_predecessors": captures,
+            "clean_chain": clean, "source": "power_on_forward_replay",
             "intervention": "Survival" if meta["survival"] else "Clean",
-            "development_only": True,
+            "development_only": not clean,
         }
     finally:
         raw.close()
@@ -330,13 +358,17 @@ def main() -> int:
     parser.add_argument("mode", choices=("controller", "replay"))
     parser.add_argument("--start", choices=("NONE", "YazeSlot000"), default="NONE")
     parser.add_argument("--through", default="room_81")
-    parser.add_argument("--survival", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--survival", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--tape", type=Path)
     parser.add_argument("--edge", help="After the spine, try one mapped map_id:door edge")
+    parser.add_argument("--capture", action="append", default=[], metavar="FRAME:DevName",
+                        help="Replay only: save a CRC-checked development predecessor")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     if args.mode == "replay" and args.tape is None:
         parser.error("replay requires --tape")
+    if args.capture and args.mode != "replay":
+        parser.error("--capture requires replay mode")
     if args.edge and (":" not in args.edge or not all(args.edge.split(":", 1))):
         parser.error("--edge requires map_id:door")
     _refuse_verified_tip_run(args.out)

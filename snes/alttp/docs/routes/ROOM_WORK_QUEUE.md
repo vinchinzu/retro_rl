@@ -1,14 +1,20 @@
 # ALTTP room work queue
 
 Practice queue only. The 2026-08-08 ranks below are not the continuous tip.
-Continuous tip is still room `0x50`. `discover_b1_stairs` on `CastleRoom50` is a stale focus: the F1 well is already a graph hop and is not continuous. Open spine leftover is `docs/tasks/residual.md`. Do not treat a rank as a clear. Regenerate with `export_work_queue.py`; this banner is hand-written and the tables under it are the last export.
+The Clean continuous tip is completed Sanctuary (C1), verified 2026-10-02 by
+`recordings/clean_escape_20261002/replay.json`: 36078f, zero loads, writes,
+refill assists, deaths or desync. Next gate is C2 Eastern Palace. The old
+`discover_b1_stairs` ranks are historical practice, not current blockers.
+Current handoff is `docs/tasks/residual.md`. Regenerate with
+`export_work_queue.py`; this banner is hand-written and the tables below are
+the historical export.
 
 Internal 0x55 key/shutter path is alternate practice, not primary.
 
 Generated: `2026-08-08T03:17:09.323835+00:00`
 Catalog: `alttp_sanctuary_work_queue` schema 1
 States: **61**
-Sanctuary claimed: **False**
+Sanctuary claimed (current C1 proof): **True**
 
 ## Regenerate
 

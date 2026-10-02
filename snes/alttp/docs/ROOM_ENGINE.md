@@ -17,6 +17,11 @@ full segment source for every B1 door.
 **Do not** redeclare coords in Python (segments, anchors, graph meta). Edit the
 JSON map; re-run. Approach/trigger anchors derive door xy from the map.
 
+Points with `role: axis` use the existing one-frame cardinal/diagonal waypoint
+primitive instead of tile BFS. The measured main-hall corridor needs this:
+the tile planner cuts its north lip and catches the wall. The preceding
+`natural_clear_north` point still uses BFS to pass the statues.
+
 **Isolated edge success:** `run_room_edge` → `ok=True` when door dest is
 reached. `castle_dungeon.DungeonRoomEdge` composes measured first-dungeon
 doors (`0x61→0x60→0x50`); higher-level aggregates such as
@@ -50,13 +55,13 @@ Skip: entire `main_hall_to_zelda.py` history, probe PNG dumps, unrelated docs.
 | `screen_1b_courtyard` | outdoor 0x1B | Courtyard pocket → main door geometry (bush-cut still in segment) |
 | `room_61` | 0x61 | Main hall; west continuous prefix |
 | `room_60` | 0x60 | Main west; north→0x50 continuous prefix |
-| `room_50` | 0x50 | Continuous tip. East to `0x01` is natural_entry, not a new tip. |
-| `room_01` | 0x01 | North connector. Well `down_to_0x72` is natural_entry in the graph, not continuous. |
+| `room_50` | 0x50 | Historical checkpoint; east to `0x01` is continuous in the C1 replay. |
+| `room_01` | 0x01 | North connector; well to `0x72` is continuous in the C1 replay. |
 | `room_51` | 0x51 | Throne / mantle approach |
 | `room_52` | 0x52 | NE chamber |
 | `room_62` | 0x62 | Main east |
 | `room_70` | 0x70 | B1 west landing (`CastleB2Landing`) |
-| `room_71`–`room_72`, `room_80`–`room_82` | B1 / Zelda | Measured doors stay on the graph ladder. Not the continuous tip. |
+| `room_71`–`room_72`, `room_80`–`room_82` | B1 / Zelda | C1 rescue and escort are proved from power-on; pins remain development only. |
 
 `z3Label` on maps is optional randomizer logic text (US/JP vanilla same room
 ids for these chambers). Geometry authority is still the measured JSON.

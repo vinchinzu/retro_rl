@@ -48,8 +48,8 @@
         720,
         3320
       ],
-      "role": "waypoint",
-      "notes": "Side-corridor y; unlocks west/east doors"
+      "role": "axis",
+      "notes": "Side-corridor y; unlocks west/east doors Cardinal approach keeps Link on the measured corridor line; tile BFS cuts its north lip."
     },
     {
       "label": "west_mid",
@@ -57,8 +57,8 @@
         600,
         3320
       ],
-      "role": "waypoint",
-      "notes": ""
+      "role": "axis",
+      "notes": " Cardinal approach keeps Link on the measured corridor line; tile BFS cuts its north lip."
     },
     {
       "label": "west_door_approach",
@@ -66,8 +66,8 @@
         520,
         3320
       ],
-      "role": "approach",
-      "notes": "Hold LEFT \u2192 room 0x60"
+      "role": "axis",
+      "notes": "Hold LEFT \u2192 room 0x60 Cardinal approach keeps Link on the measured corridor line; tile BFS cuts its north lip."
     },
     {
       "label": "east_door_approach",
@@ -140,7 +140,7 @@
       ],
       "role": "zelda_path",
       "path": [
-        "south_mid",
+        "natural_clear_north",
         "hall_corridor",
         "west_mid",
         "west_door_approach"
@@ -150,11 +150,10 @@
         "natural_clear_north"
       ],
       "pathTolerances": {
-        "south_mid": 16,
-        "default": 12
+        "default": 1
       },
       "pushFrames": 300,
-      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain. Natural post-clear fallback: LEFT to x\u2248688, UP to y\u22483314, then west door."
+      "notes": "Primary Zelda path; isolated 2026-07-31 from CastleMain. Natural post-clear fallback: LEFT to x\u2248688, UP to y\u22483314, then west door. 2026-10-02: no-refill power-on arrival uses north tile path then cardinal corridor waypoints."
     },
     {
       "label": "east_to_0x62",

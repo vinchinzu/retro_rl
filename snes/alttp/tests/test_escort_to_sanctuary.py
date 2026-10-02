@@ -204,3 +204,71 @@ def test_policy_guard_stops_forecast_at_completed_stage() -> None:
     guard = PolicyGuard(CompletedStage())
     guard.bind_env(Env())
     assert guard._contact(()) == (None, False)
+
+
+@pytest.mark.rom
+@pytest.mark.parametrize("offset", (0, 7))
+def test_no_assist_escort_and_committed_replay(offset: int) -> None:
+    """The no-assist rescue predecessor must deliver Zelda, then replay exactly."""
+    import gc
+    from alttp.opening_route.escort_to_sanctuary import run_from_escort
+    from alttp.paths import INTEGRATION_DIR, RECORDINGS_DIR
+    from alttp.ram import snapshot_to_diag
+    from alttp.rollout import restores
+    from alttp.scripts.audit_power_on import story_glance
+    from alttp.scripts.replay_tape import _CommittedRecorder
+    from alttp.spine.tape import LiveRun, ram_crc
+    from alttp.startup import build_boot_env, no_action, snapshot_env
+    from retro_harness.env import read_state_bytes
+
+    for name in ("rom.sfc", "DevClean_Zelda.state"):
+        if not (INTEGRATION_DIR / name).is_file():
+            pytest.skip(f"ALTTP {name} missing")
+    pin = read_state_bytes(INTEGRATION_DIR / "DevClean_Zelda.state")
+    env = build_boot_env("DevClean_Zelda")
+    try:
+        env.reset()
+        env.em.set_state(pin)
+        assert snapshot_env(env).hp == 16
+        recorder = _CommittedRecorder(env)
+        live = LiveRun(recorder.attach(), provider="no_assist_escort_controller")
+        start_restores = restores()
+        for _ in range(offset):
+            live.env.step(no_action())
+        result = run_from_escort(live.env)
+        assert result.ok, result.blocker
+        final = snapshot_env(env)
+        assert final.hp > 0 and story_glance(env)["sanctuary_completed"]
+        live.note_rollout_restores(restores() - start_restores)
+        assert not live.report().mid_run_state_load
+        assert live.report().writes == 0
+        controller_audit = asdict(live.report())
+        buttons, crcs = recorder.buttons, recorder.crcs
+    finally:
+        env.close()
+    del live, recorder, env
+    gc.collect()
+
+    env = build_boot_env("DevClean_Zelda")
+    try:
+        env.reset()
+        env.em.set_state(pin)
+        replay = LiveRun(env, provider="no_assist_escort_replay")
+        for frame, (action, crc) in enumerate(zip(buttons, crcs), 1):
+            replay.env.step(action)
+            assert ram_crc(env.get_ram()) == crc, f"desync frame {frame}"
+        assert snapshot_env(env) == final
+        assert story_glance(env)["sanctuary_completed"]
+        assert replay.report().set_state == replay.report().writes == 0
+        report = {
+            "offset": offset, "frames": len(buttons), "desynced": 0,
+            "final": snapshot_to_diag(final), "controller_audit": controller_audit,
+            "replay_audit": asdict(replay.report()), "source_pin": "DevClean_Zelda",
+            "development_suffix_only": True,
+        }
+        output = RECORDINGS_DIR / "clean_escape_20261002" / f"escort_offset_{offset}.json"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2) + "\n")
+        print("ESCORT " + json.dumps({k: v for k, v in report.items() if k != "controller_audit"}))
+    finally:
+        env.close()

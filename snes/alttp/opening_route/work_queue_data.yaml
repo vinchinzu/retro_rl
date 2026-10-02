@@ -1,37 +1,30 @@
 schemaVersion: 1
 catalogId: alttp_sanctuary_work_queue
 unitNote: |-
-  Units are Zelda3-Snes save states on the boot → fighter sword → secret-entrance clear → courtyard pocket → main hall → NW chamber room 0x50 → 0x01 → Zelda → Sanctuary path. Continuous tip is **room 0x50**; tip exit east→0x01 is natural_entry. Next work is B1 stairs after the 0x01 chain → Zelda cell → follower → escort. Internal 0x55 key/shutter is alternate practice only. Sanctuary not claimed.
+  Zelda3-Snes development save-state practice queue. Clean power-on to completed Sanctuary (C1) is proved by recordings/clean_escape_20261002/replay.json. The room 0x50 helper remains the historical checkpoint. Pins are development inputs, never continuous proof. Internal 0x55 key/shutter is alternate practice.
 verifiedMilestones:
 - title_to_castle_grounds
 - castle_to_fighter_sword
 - secret_entrance_clear
 - pocket_to_main_hall_0x61
 - castle_dungeon_prefix_0x50
-- room_50_east_to_0x01_natural_entry
+- room_50_east_to_0x01_continuous
+- clean_power_on_sanctuary_C1
 workFocusGroups:
 - frontier
 - zelda
 - b1
 mdIntro:
 - Sanctuary-path practice queue for `Zelda3-Snes` save states.
-- Continuous tip is **NW chamber room 0x50** (after `castle_dungeon_prefix`).
-- 'Tip exit **0x50 east → 0x01** is natural_entry. Ranked for next work: **B1 stairs after
-  0x01 chain → Zelda cell → follower → escort**.'
-- Internal 0x55 key/shutter path is **alternate practice**, not primary.
+- Clean continuous tip is completed Sanctuary (C1), proved by the no-assist power-on forward replay.
+- Historical room 0x50 checkpoint and development pins remain available for A/B work.
+- Internal 0x55 key/shutter is alternate practice.
 mdNotes:
-- Continuous tip is **NW chamber room 0x50** after `castle_dungeon_prefix` (courtyard pocket
-  → main door → 0x60 → 0x50).
-- 'Tip exit **0x50 east → 0x01** is graph natural_entry (2026-08-02 exhaustive probe: only
-  physical forward exit from tip).'
-- Secret-entrance clear (stairs → outdoor pocket) is already continuous; do **not** treat
-  `Castle_55` internal exit as the top blocker.
-- 'Primary next work: B1 stairs after 0x01 chain → Zelda cell → follower → escort → Sanctuary.'
-- Internal 0x55 key/shutter path is **alternate practice** only.
-- '`FighterSword` is a **dev checkpoint** after uncle sword; natural sword claim needs `--natural`
-  on `castle_to_sword`.'
-- 'Acceptance for rescue: `has_zelda_follower` (`$F3CC == 1`).'
-- 'Sanctuary: room `0x12` / OW screen `0x13` — not claimed.'
+- 'Proof: `recordings/clean_escape_20261002/replay.json`; 36078f, zero loads/writes/refill assists/desync/deaths.'
+- 'Acceptance: room `0x12`, control ready, follower 0, progress 2, flags `0x15`.'
+- 'Next ladder gate: C2 Eastern Palace from the real Sanctuary predecessor.'
+- '`FighterSword` and other save-state pins remain development checkpoints.'
+- 'Rescue acceptance: `has_zelda_follower` (`$F3CC == 1`).'
 phases:
   frontier: 0
   zelda: 1

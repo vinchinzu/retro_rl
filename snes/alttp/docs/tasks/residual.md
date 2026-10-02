@@ -1,93 +1,97 @@
-# ALttP route residual — 2026-10-01
+# ALttP route residual — 2026-10-02
 
-The Clean continuous tip remains room `0x50`. No STATUS promotion.
+C1 is complete: Clean power-on to completed Sanctuary, with no health refill
+assistance, progression/capacity writes, mid-run loads, or deaths.
 
-## rr-rkpv — required sewer key combat
+## Proof and segment breakdown
 
-The old escort chased the nearest rat. On the real rescued-Zelda sewer
-predecessor, nearby alcove rat slot 4 is not the key carrier; slot 0 carries
-`sprite_die_action == 1` at `$0CBA`. The ROM marks the required drop, so the
-controller reads that marker instead of inferring inventory intent from
-distance. It stops on the drop, then independently collects it and requires
-`$F36F >= 1`. No marker or inventory writes.
+`recordings/clean_escape_20261002/controller.tape.npz` replays from `NONE`
+(core reset, blank SRAM before frame1). `replay.json`: **36078f**, zero
+full-RAM CRC desync, zero loads/writes, assist disabled. Final room0x12,
+module/submodule0x07/0, (1272,568), HP10/24, sword/lamp1, follower0,
+progress2, flags0x15, Sanctuary story acceptance true.
 
-The controller forecasts its complete approach, strike, hitstun, and death
-wait. This avoids the old mismatch where a guard forecast walking straight
-into a rat although the live controller would stop and swing. Guard detours
-also preserve room, floor, and layer; forecasts stop at a completed stage.
-No broad escort navigation rewrite was landed.
+| Segment | Frames | End HP |
+|---------|-------:|-------:|
+| Boot and fresh profile | 4838 | 24 |
+| Castle to uncle sword | 1947 | 24 |
+| Secret-passage exit | 603 | 24 |
+| Courtyard to main hall | 5693 | 20 |
+| Main hall to room0x50 | 736 | 20 |
+| Room0x50 east to0x01 | 424 | 16 |
+| Stairs to0x72 | 431 | 16 |
+| Small key and south to0x82 | 792 | 24 |
+| Bridge west to0x81 | 686 | 20 |
+| Required keys and Zelda rescue | 5655 | 16 |
+| Escort, mantle, sewers and Sanctuary story | 14273 | 10 |
 
-On `DevEscort_RatKey`, the old nearest-rat fight fails after 1438f and one
-2HP rat hit. New combat passes **12/12 offsets (0–11), zero damage**,
-197–282f (mean 205.1f). Fight plus key pickup passes committed forward
-replay at offsets 0 and 7: 220f/228f, zero desync/loads/writes or damage.
-Controller restores are disclosed: 178/167; no non-rollout loads or writes.
-Evidence: `recordings/escort_guard_20261001/rat_offsets.log`,
-`rat_baseline.json`, `rat_replay.json`, and `rat_replay_tests.log`.
+HP is never written. Two normal enemy heart drops restore16HP through play;
+no refill assist runs. The replay takes30HP in11 hits and finishes alive.
+This is a Clean completion, not a no-damage or no-heart-pickup claim.
 
-The pin is a development scan captured 10639 committed frames into a
-guarded prefix from `DevAudit_zelda_replay`. That source pin inherits
-**11 Survival refills, 22 hearts**, from its 26078f power-on prefix. Its
-provenance is not interchangeable with the older seven-refill Sanctuary
-run. The rejected guarded prefix is not production route evidence.
+## rr-vlor — complete
 
-Rat-key leave RAM (offset 0): room `0x21`, module/submodule `0x07/0x00`,
-`(781,1207)`, floor `0xFF`, layer 0, control ready, HP `16`, sword/lamp 1,
-follower 1, keys 1. The same-pin replay agrees on every frame.
+Read the big-key carrier marker `$0CBA == 2`, then forecast complete32-frame
+approach, swing and recovery candidates on the live ROM, including flail
+contact beyond the body. Commit eight frames and replan. Committing all32
+could finish in an inescapable flail arc on the actual arrival. Unsafe
+candidates and room/floor/layer changes are rejected; no candidate means red.
+No copied approach coordinates or inventory writes.
 
-## Whole-route handoff and replay
+Real no-assist predecessor: frame20698 of `controller.tape.npz`,
+`DevClean_Ball`, HP16. Offsets0,7,11 each earn the key without damage and
+pass same-pin forward replay, zero CRC desync/loads/writes. Evidence:
+`rom_regressions.log` (14 ROM cases pass). The continuous composition rescues
+Zelda at frame21805, not by loading a cell pin.
 
-The real power-on rat fight passes in269f with HP22→22; pickup and later
-transit still take damage. The changed timing exposed a middle-block stall:
-a rat hit moved Link off the push column, but the old loop held UP for400f
-at `(874,632)`. The targeted fix detects sideways displacement and returns
-to the mapped approach. Actual recovery: first push14f to `(883,645)`,
-re-align29f to `(888,648)`, second push62f to `(888,600)`. No extra refill.
+## rr-e8x7 — complete no-refill composition
 
-**Power-on Survival controller and replay pass, 36755f**. The replay has
-zero desync, loads, and deaths; seven disclosed HP writes restore14 hearts.
-Capacity/progression writes remain0. The controller discloses3523 search
-restores (`actual_search_restores`); these do not occur in the replay.
-Evidence: `recordings/escort_guard_20261001/final_controller.json`,
-`final_controller.tape.npz`, and `escort_poweron_replay.json`.
-The preceding `controller.json`/`failed_replay.json` are the reproduced
-block-stall red: synchronization passes but the route goal fails.
+The initial no-assist run caught the main-hall corridor lip and died before
+room0x50. Mapped `natural_clear_north` plus one-frame corridor points with
+role `axis` pass that leg with HP20 unchanged.
 
-Sanctuary leave RAM: room `0x12`, module/submodule `0x07/0x00`,
-`(1272,568)`, control ready, HP10/24, sword/lamp1, follower0, keys0,
-progress2, flags`0x15`. `alttp.screen_glance` passes the leave band, and
-the replay independently accepts completed Zelda delivery. This is
-assisted development proof, not a Clean promotion.
+Escort forecasts preserve the exact existing mapped waypoint handoff.
+Measured guards cover0x81,0x82,0x72,0x50,0x41,0x42,0x32. The48-frame
+forecast includes facing, sword swing and recovery when a hostile blocks
+the approach; pure evasion stalled the snake-room stair. The exact mantle
+walker, stair settling and required carrier rat fight are preserved.
 
-## Remaining Clean work
+The real no-assist rescue pin `DevClean_Zelda` is captured at frame21805.
+Whole suffix plus CRC forward replay passes offsets0 and7:
 
-`rr-vlor`: earn the castle big key without ball-and-chain refills. Read
-its big-key marker (`$0CBA == 2`), measure the flail beyond the soldier's
-body origin, and evaluate the complete combat policy at real predecessor
-offsets. The earlier scratch Clean attempt dies in room `0x80`; treating
-that weapon as only a nearby body is insufficient.
+| Offset | Committed frames | End HP | Search restores | Replay loads/writes/desync |
+|-------:|-----------------:|-------:|----------------:|---------------------------|
+| 0 | 14273 | 10 | 3438 | 0/0/0 |
+| 7 | 14148 | 12 | 5887 | 0/0/0 |
 
-`rr-e8x7`: remove escort transit damage one measured room at a time.
-Baseline no-refill suffix from `DevAudit_zelda_replay` dies in room `0x32`
-at7789f, losing24HP: green soldier2, blue soldier1, rat1, rope3 hits.
-The broad guarded walker was rejected: offsets0 and7 reach room `0x51`
-with16/20HP but stall `mantle_dialogue` at `(754,2626)`. Do not weaken the
-exact mantle handoff or guard to turn that stall green. Restore a real
-first-hit predecessor, inspect collision and the hit trail, and change only
-that transit/combat leg. Then require its actual successor, multiple
-offsets, and committed replay before composing a whole no-refill escort.
+Evidence: `escort_offset_0.json`, `escort_offset_7.json`,
+`escort_replay_tests.log`. Full controller discloses4148 search restores
+(4141 rollout +7 bush candidate restores); the independent power-on replay
+has none. These pins are development inputs, not independent continuous claims.
 
-The Zelda I lessons applied here are required-item combat, measured hit
-causes, whole-policy ROM forecasts, offset sweeps, and separate CRC tape
-replay. A successful inherited-Survival suffix still does not satisfy the
-no-assist power-on gate. Preserve the existing Eastern approach proof and
-its `rr-eog9.6` entrance follow-up; that work is separate from Clean escape.
+## Next
 
-Verification: 131 targeted offline tests pass; nine existing room-engine
-and rollout ROM regressions pass; two new rat fight/pickup replay cases
-pass. Complete Sanctuary power-on Survival controller and replay pass.
-Docs gate: eight tests pass. `rr-rkpv` is complete; the Clean tasks stay open.
+C2 Eastern Palace from the Clean Sanctuary predecessor (`rr-eog9.6` lobby,
+`.7` CLI/replay, `.8` tests); roadside resources remain `rr-yx26`.
+Optional measured follow-up (`rr-dkwg`): cut14HP of accepted escort sewer damage in
+0x22,0x21,0x11. Forecast the complete key pickup/door/block handoff, not just
+walking. C1 is already green; no stronger no-damage claim is made.
 
-Did not STATUS-promote, treat a save-state pin as power-on, write follower,
-sword, keys, capacity, or progression, copy approach geometry into Python,
-or overwrite `recordings/verified_tip_run.json`.
+The historical room0x50 report is intact. No follower, keys, sword, capacity
+or progression was poked. Alternate dungeon-entry/Survival evidence remains
+separate. Broader offline tests retain the known fake sword-exit fixture
+failure `rr-mott`; it predates this change and does not affect the ROM proof.
+
+Reconstruct both ROM-test predecessor pins from the published tape (cwd `snes/`):
+
+```bash
+QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+uv run python alttp/scripts/audit_power_on.py replay \
+  --tape alttp/recordings/clean_escape_20261002/controller.tape.npz \
+  --capture 20698:DevClean_Ball --capture 21805:DevClean_Zelda \
+  --out alttp/recordings/clean_escape_20261002/replay.json
+```
+
+Final verification: 14 existing/big-key ROM cases plus two whole-escort offset
+replay cases pass; 332 offline cases pass with only the known `rr-mott` fixture
+excluded; eight repository docs checks pass.

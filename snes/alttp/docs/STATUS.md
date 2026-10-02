@@ -1,39 +1,55 @@
 # ALTTP status
 
-Planner owns this file. A save-state pin is not a continuous clear.
+A save-state pin is development input; continuous proof is a power-on replay.
 
 ## Program gate
 
 | Field | Value |
 |-------|-------|
 | Current maturity | M1 |
-| Best verified result | Clean power-on through room `0x50`; Survival-assisted controller plus zero-load replay through Zelda rescue and Sanctuary |
-| Last verification | 2026-10-01 |
+| Best verified result | C1: Clean power-on to completed Sanctuary |
+| Last verification | 2026-10-02 |
 | Runtime class | Bronze |
 | Intervention class | Clean |
-| Continuous tip | Room `0x50` (NW chamber). Not extended on this date. |
-| Machine report | `recordings/verified_tip_run.json`; assisted evidence in `recordings/sanctuary_20261001/` |
+| Continuous tip | Sanctuary, room `0x12`, Zelda delivered |
+| Machine report | `recordings/clean_escape_20261002/replay.json` |
+| Next maturity gate | C2: Eastern Palace prize from the real Sanctuary predecessor |
 
 ## Verified facts
 
-Graph ladder is planned, then isolated, then natural_entry, then continuous. State-load greens are not continuous.
+The committed button tape replays from an actual core reset (`NONE`) with
+blank SRAM prepared before frame 1. **36078 frames; zero desync, state loads,
+RAM writes, refill assists, or deaths.** Final room `0x12`, module/submodule
+`0x07/0x00`, `(1272,568)`, HP `10/24`, sword/lamp 1, follower 0, progress 2,
+flags `0x15`. The Sanctuary story predicate passes, not just room arrival.
+Normal enemy heart drops are collected through play; HP is never written.
 
-Continuous from one clean power-on environment: `castle_to_sword`, `sword_to_secret_entrance_clear`, `pocket_to_main_hall`, and `castle_dungeon_prefix` (`0x61` to `0x60` to `0x50`). `full_tip.run_to_verified_tip` is that chain. The 2026-08-01 composition is still the tip. Do not overwrite the report on a red.
+Development controller forecasts are disclosed: 4141 rollout restores plus
+seven secret-hole candidate restores. They are absent from the published
+forward replay. The controller is development evidence; the replay is Clean.
+Inputs and every-frame full-RAM CRCs are in
+`recordings/clean_escape_20261002/controller.tape.npz`.
 
-`room_50_east_to_0x01` is natural_entry (2026-08-02), not continuous. The only forward exit from `0x50` is east to `0x01`. South returns to `0x60`. No B1 stairs in `0x50`.
+Composition: boot, uncle sword and lamp, secret-passage exit, courtyard and
+main hall, `0x50 → 0x01 → 0x72 → 0x82 → 0x81`, required small key and big
+key, Zelda rescue, castle return, mantle, sewers, right lever, Sanctuary
+story. Required items and progression are earned by controller inputs.
+The first main-hall leg uses a mapped north approach then cardinal corridor
+waypoints; the old tile path caught the corridor lip.
 
-On 2026-10-01, the disclosed Survival controller reached room `0x81`, opened
-the cell through `0x71` → `0x70` → `0x80`, rescued Zelda, and walked her to
-Sanctuary. The committed tape replay reached room `0x12` at `(1272,568)` with
-control ready, `$F3C5 == 2`, `$F3C6 == 0x15`, and `$F3CC == 0`. It had seven
-HP refills and no progression or capacity writes. This is route evidence under
-the assisted contract; it does not extend the Clean continuous tip.
+The big-key carrier is selected by `$0CBA == 2`. Complete approach, swing
+and recovery forecasts include the flail; eight frames are committed before
+replanning. The no-assist arrival at frame 20698 passes offsets 0, 7, 11
+without damage, and every committed frame replays with no loads/writes.
+The rescued-Zelda arrival at frame 21805 passes complete escort plus forward
+replay at offsets 0 and 7. Pins remain development-only.
 
-Fighter sword is `$F359 >= 1`. The Clean tip still has no Zelda follower.
-The Survival route verified the follower at the cell (`$F3CC == 1`) and its
-release on Sanctuary (`$F3CC == 0`), with progress `$F3C5 == 2` and flags
-`$F3C6 & 0x04` set.
+The historical four-stage `full_tip` helper and
+`recordings/verified_tip_run.json` still describe the earlier room-`0x50`
+checkpoint. The Sanctuary audit uses the full `spine.hops` composition.
+Older Survival runs in `recordings/sanctuary_20261001/` remain assisted
+history, separate from C1 proof. Eastern development evidence has not earned C2.
 
-ROM sha1 `6d4f10a8b10e10dbe624cb23cf03b88bb8252973`. Boot state `YazeSlot000`. Control ready is module `0x07` or `0x09` with submodule `0`.
-
-z3-json-data: committed JSON dump `z3-json-data/`; gitignored pin checkout `refs/z3-json-data/` at `1eb7a785…`. Loader prefers the refs checkout when it exists, then the dump. Do not commit the refs checkout. Do not delete the dump.
+ROM sha1 `6d4f10a8b10e10dbe624cb23cf03b88bb8252973`.
+The loader prefers the local `refs/z3-json-data/` checkout, then the committed
+JSON dump. Imports never download reference data.

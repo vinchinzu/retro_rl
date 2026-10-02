@@ -44,12 +44,12 @@ after the decision.
 Lookahead saves the core, plays a few frames ahead, and restores the same
 live frame. When a development run uses it, disclose those restores as
 `rollout_restores`. Count `mid_run_state_load` only for other loads. This
-is the Zelda I disclosure shape. It is **not yet ruled** for ALTTP.
+is the Zelda I disclosure shape.
 
-The owner allowed lookahead for Zelda I on 2026-09-28. That permission is
-not a ruling for ALTTP.
-
-Owner ruling:
+Owner ruling, 2026-10-02: use lookahead like Zelda I to develop the Clean
+start-to-Sanctuary route, with no health refills or assists. Forecasts may
+restore the same live frame. The published proof is the committed button
+tape replayed from power-on without any loads, lookahead, or RAM writes.
 
 ## Required disclosure
 

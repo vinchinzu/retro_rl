@@ -2,8 +2,8 @@
 
 Status table only. It does not dispatch hops. Stop strings are the phase-map
 labels in ``docs/PORT_PLAN.md``. ``acceptance`` is the predicate name a later
-task will implement; this module does not call it. Every row starts open, so
-``next_open`` is C1 until a rung task marks an earlier row green.
+task will implement; this module does not call it. C1 is verified by the
+no-assist power-on replay in ``recordings/clean_escape_20261002/replay.json``.
 """
 
 from __future__ import annotations
@@ -56,14 +56,16 @@ _ROWS: tuple[tuple[str, str, str], ...] = (
 )
 
 CLEAN_LADDER: tuple[CleanRung, ...] = tuple(
-    CleanRung(rung_id, stop, acceptance) for rung_id, stop, acceptance in _ROWS
+    CleanRung(rung_id, stop, acceptance,
+              LadderStatus.GREEN if rung_id == "C1" else LadderStatus.OPEN)
+    for rung_id, stop, acceptance in _ROWS
 )
 
 
 def next_open(ladder: tuple[CleanRung, ...] = CLEAN_LADDER) -> str | None:
     """Id of the first open rung, or None when every row is green.
 
-    The shipped table is all open, so this returns ``C1``.
+    The shipped table has C1 green, so this returns ``C2``.
     """
     for row in ladder:
         if row.status is LadderStatus.OPEN:

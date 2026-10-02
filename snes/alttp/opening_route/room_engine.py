@@ -278,11 +278,16 @@ def move_path_combat_aware(
 
         # 0x84 in room 0x55 is not a legend floor, so find_path is empty and
         # the commit walker bonks. Axis move_to is the exit that still works.
-        use_walker = walker and bool(_path_segments(env, snapshot_env(env), wp))
+        point = load_room_map(f"room_{room:02x}").point(wp.label)
+        use_walker = (walker and (point is None or point.role != "axis")
+                      and bool(_path_segments(env, snapshot_env(env), wp)))
         if use_walker:
             move, commit = _walk_waypoint(env, wp, room=room, commit=commit)
         else:
-            move = primitives.move_to(env, wp, max_frames=500)
+            if point is not None and point.role == "axis":
+                move = primitives.move_to(env, wp, step_size=1, max_frames=500)
+            else:
+                move = primitives.move_to(env, wp, max_frames=500)
             if walker:
                 commit = WalkCommit()
         frames += move.frames

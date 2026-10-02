@@ -831,11 +831,15 @@ the B1 cell from the power-on predecessor. The measured route continues via
   Learned: `SANCTUARY_ROOM = 0x12` is confirmed and the acceptance predicate
   is encoded in `story_glance()`.
 
-- [ ] **AP-082 · Rung C1: continuous power-on to Sanctuary**
-  Survival controller and replay evidence is complete in
-  `recordings/sanctuary_20261001/`, but seven HP refills and seven search
-  restores keep this rung open. Close only after a Clean, no-load, no-write
-  composition reaches the same Sanctuary predicate.
+- [x] 2026-10-02 · evidence: `recordings/clean_escape_20261002/replay.json` **AP-082 · Rung C1: continuous power-on to Sanctuary**
+  Clean power-on forward replay passes 36078f: zero loads, RAM writes,
+  refill assists, desync or deaths. Final room 0x12, control ready, HP10/24,
+  follower0, progress2, flags0x15. Controller search restores are disclosed
+  and absent from the replay. Big-key fight and complete escort pass offset
+  sweeps with CRC forward replay. Normal enemy heart drops are in-play loot.
+  Older Survival controller/replay evidence remains in
+  `recordings/sanctuary_20261001/`. The Clean replay above closes C1 and
+  advances the next gate to C2 Eastern Palace.
 
 ## Phase G: overworld and side items (AP-083..098)
 

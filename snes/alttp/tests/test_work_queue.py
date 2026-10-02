@@ -166,7 +166,8 @@ def test_build_work_queue_payload() -> None:
     assert payload["catalogId"] == "alttp_sanctuary_work_queue"
     assert payload["schemaVersion"] == 1
     assert payload["summary"]["stateCount"] == len(payload["items"])
-    assert payload["summary"]["sanctuaryClaimed"] is False
+    assert payload["summary"]["sanctuaryClaimed"] is True
+    assert "clean_power_on_sanctuary_C1" in payload["summary"]["verifiedMilestones"]
     assert "workFocus" in payload
     # Focus groups are continuous-tip primary work, not post_sword/key_shutter.
     for row in payload["workFocus"]:

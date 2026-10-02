@@ -25,6 +25,64 @@ from retro_harness.input_script import FrameAction
 _SPRITE_DIE_ACTION = 0x0CBA
 
 
+class _EscortWaypoint:
+    """Forecast the existing mapped walker, stopping at its exact handoff."""
+
+    def __init__(self, waypoint: primitives.Waypoint) -> None:
+        self.waypoint = waypoint
+        self.success = False
+        self.failed = False
+        self.env = None
+        self.queue: list[FrameAction] = []
+
+    def bind_env(self, env: object) -> None:
+        self.env = env
+
+    def step(self, snap: AlttpSnapshot) -> FrameAction:
+        self.success = self.waypoint.reached(snap.link_x, snap.link_y)
+        self.failed = snap.game_mode == 0x12 or snap.room_base_id != self.waypoint.room
+        if not (self.success or self.failed) and snap.has_control:
+            if self.queue:
+                return self.queue.pop(0)
+            from alttp.opening_route.room_engine import _clear_targets
+            from alttp.walk_physics import SWORD_SWING_FRAMES
+
+            targets = _clear_targets(self.env, snap, 32)
+            if targets:
+                target = min(targets, key=lambda s: s.distance_to(snap))
+                if not target.hit_timer & 0x80:
+                    dx, dy = target.x - snap.link_x, target.y - snap.link_y
+                    facing = ("RIGHT" if dx > 0 else "LEFT") if abs(dx) >= abs(dy) else ("DOWN" if dy > 0 else "UP")
+                    self.queue = [FrameAction(list(action_for("B")), "escort strike")]
+                    self.queue += [FrameAction(list(action_for()), "escort swing recovery")
+                                   for _ in range(SWORD_SWING_FRAMES - 1)]
+                    return FrameAction(list(action_for(facing)), "escort face blocker")
+        buttons = []
+        if not (self.success or self.failed) and snap.has_control:
+            dx, dy = self.waypoint.x - snap.link_x, self.waypoint.y - snap.link_y
+            if abs(dx) > self.waypoint.tolerance:
+                buttons.append("RIGHT" if dx > 0 else "LEFT")
+            if abs(dy) > self.waypoint.tolerance:
+                buttons.append("DOWN" if dy > 0 else "UP")
+        return FrameAction(list(action_for(*buttons)), "escort waypoint")
+
+
+def _guarded_waypoint(env: object, waypoint: primitives.Waypoint) -> primitives.PrimitiveResult:
+    from alttp.rollout import PolicyGuard
+
+    policy = PolicyGuard(_EscortWaypoint(waypoint), horizon=48, reach=80)
+    policy.bind_env(env)
+    for frame in range(1000):
+        snap = snapshot_env(env)
+        if waypoint.reached(snap.link_x, snap.link_y):
+            return primitives.PrimitiveResult(True, waypoint.label, frame, snap)
+        if not snap.has_control or snap.room_base_id != waypoint.room:
+            return primitives.PrimitiveResult(False, "escort control or room changed", frame, snap)
+        action = policy.step(snap)
+        env.step(action.action)  # type: ignore[attr-defined]
+    return primitives.PrimitiveResult(False, "guarded escort waypoint timeout", 1000, snapshot_env(env))
+
+
 class _RatKeyFight:
     """The guard rolls the actual approach-and-strike policy, including swings."""
 
@@ -139,7 +197,10 @@ def run_from_escort(env: object, *, source: str = "state_load_dev") -> SegmentRe
         )
         frames = 0
         for _ in range(4):
-            moved = primitives.move_to(env, waypoint, step_size=1, max_frames=1000)
+            if room in (0x81, 0x82, 0x72, 0x50, 0x41, 0x42, 0x32):
+                moved = _guarded_waypoint(env, waypoint)
+            else:
+                moved = primitives.move_to(env, waypoint, step_size=1, max_frames=1000)
             frames += moved.frames
             if moved.ok or moved.snapshot.has_control:
                 break

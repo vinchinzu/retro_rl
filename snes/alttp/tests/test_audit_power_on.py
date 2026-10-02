@@ -154,3 +154,5 @@ def test_synchronized_sanctuary_replay_requires_completed_story(
     assert report["audit"]["set_state"] == report["audit"]["writes"] == 0
     assert report["route_goal_ok"] is accepted
     assert report["ok"] is accepted
+    assert report["clean_chain"] is accepted
+    assert report["development_only"] is not accepted

@@ -1,4 +1,4 @@
-"""Clean power-on runner for ALTTP's currently verified continuous tip.
+"""Power-on controller for ALTTP's historical room-0x50 checkpoint.
 
 This is intentionally a *tip* runner, not a misleading Sanctuary full run.
 It keeps one environment alive from title through room ``0x50`` and executes
@@ -7,8 +7,9 @@ only segments whose graph contract is currently ``verification=continuous``:
 ``boot → castle_to_sword → secret_entrance_clear → pocket_to_main_hall
 → castle_dungeon_prefix``.
 
-Zelda/Sanctuary legs remain outside this runner until they have real
-natural-entry evidence.  The result preserves per-segment controller phases,
+The Sanctuary audit supplies the later segment ids from ``spine.hops`` and
+replays their committed tape without loads or writes. The default here keeps
+the older four-stage checkpoint. The result preserves per-segment phases,
 fails fast, and identifies the final tip from the same multi-truth anchor
 resolver used by :class:`alttp.session.AlttpSession`.
 """
