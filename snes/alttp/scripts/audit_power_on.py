@@ -55,8 +55,19 @@ def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dic
     through = meta.get("through")
     if through == "sanctuary":
         return bool(story["sanctuary_completed"])
-    if through in ("sanctuary_exit", "eastern_grounds", "sahasrahla_hut"):
+    if through in ("sanctuary_exit", "eastern_grounds", "sahasrahla_hut", "eastern_approach"):
         screen = 0x13 if through == "sanctuary_exit" else 0x1E
+        target_standing = screen
+        if through == "eastern_approach":
+            from alttp.room_map import load_room_map
+
+            point = load_room_map("screen_1e_eastern").point("eastern_door")
+            if point is None or story.get("map_indicator") != 3:
+                return False
+            if max(abs(int(final[key]) - value) for key, value in
+                   zip(("link_x", "link_y"), (point.x, point.y))) > 4:
+                return False
+            target_standing = point.y // 512 * 8 + point.x // 512
         if through == "sahasrahla_hut":
             from alttp.room_map import load_room_map
 
@@ -69,7 +80,7 @@ def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dic
         standing = int(final["link_y"]) // 512 * 8 + int(final["link_x"]) // 512
         return bool(
             final["has_control"] and not final["indoors"] and not final["dark_world"]
-            and int(final["screen_id"]) == screen and standing == screen
+            and int(final["screen_id"]) == screen and standing == target_standing
             and final["has_fighter_sword"] and final["has_lamp"] and final["hp"] > 0
             and story["follower"] == 0 and story["progress"] == 2
             and story["progress_flags"] & 4 and story["max_hp"] == 32

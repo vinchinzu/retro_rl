@@ -71,6 +71,35 @@ def test_hut_replay_requires_elder_marker_and_mapped_exit(
     ) is accepted
 
 
+@pytest.mark.parametrize("offset, screen, marker, source_ok, accepted", [
+    (0, 0x1E, 3, True, True),
+    (4, 0x1E, 3, True, True),
+    (5, 0x1E, 3, True, False),
+    (0, 0x1F, 3, True, False),  # Standing quadrant is not the loaded screen.
+    (0, 0x1E, 1, True, False),
+    (0, 0x1E, 3, False, False),
+])
+def test_eastern_approach_replay_requires_mapped_point_and_loaded_screen(
+    offset: int, screen: int, marker: int, source_ok: bool, accepted: bool,
+) -> None:
+    from alttp.room_map import load_room_map
+
+    point = load_room_map("screen_1e_eastern").point("eastern_door")
+    assert point is not None
+    final = {
+        "has_control": True, "indoors": False, "dark_world": False,
+        "screen_id": screen, "link_x": point.x + offset, "link_y": point.y,
+        "has_fighter_sword": True, "has_lamp": True, "hp": 28,
+    }
+    story = {
+        "follower": 0, "progress": 2, "progress_flags": 0x15,
+        "max_hp": 32, "map_indicator": marker,
+    }
+    assert audit.replay_goal_accepted(
+        {"through": "eastern_approach", "source_ok": source_ok}, final, story
+    ) is accepted
+
+
 @pytest.mark.parametrize(
     "source_ok, progress, flags, follower, submodule, accepted",
     [

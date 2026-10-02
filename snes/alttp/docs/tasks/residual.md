@@ -2,52 +2,69 @@
 
 The Clean continuous tip remains room `0x50`. No STATUS promotion.
 
-## rr-eog9.4 — hut visit proved; next rr-eog9.5
+## rr-eog9.5 — hedge/stair approach proved; next rr-eog9.6
 
-The actual Eastern grounds predecessor now enters Sahasrahla's hut (full
-room `0x0105`), talks to the Elder, inspects both accessible pots, and exits
-through the mapped south door. Geometry lives in `screen_1e_sahasrahla.json`
-and `room_05.json`. The existing outdoor walker supports point targets;
-the existing mapped room engine handles outdoor origins and guarded paths.
-The composed tactic is `opening_route.segment:visit_sahasrahla_hut`, exposed
-as segment `sahasrahla_hut`; no separate hut runner or second dispatcher.
+The actual hut-exit predecessor `Play_eog9_4` now reaches `eastern_door`
+in `maps/screen_1e_eastern.json`. The mapped target is `(3920,1579)`;
+accepted leave is `(3920,1582)` within the 4px band. Loaded screen `$8A`
+stays `0x1E`; the entrance plaza is standing quadrant `0x1F`. The old
+unmeasured `(1984,1144)` coordinate is unused.
 
-Messages `0x32/0x33` mark the pendant locations: `$F3C7` changes `1→3`.
-Local game source `Sprite_Sahasrahla`/`Sasha_Idle` confirms this no-pendant
-branch. Progress `$F3C5=2`, flags `$F3C6=0x15`, follower `$F3CC=0`, boots and
-pendants stay unchanged. No boots reward before the Eastern pendant.
+The tactic is `opening_route.segment:approach_eastern_palace`, registered
+as `eastern_approach`. It requires the completed hut's mapped outdoor exit
+and story marker, uses the existing guarded outdoor collision walker,
+and preserves inventory and story. Geometry remains in the JSON map;
+no new runner, dispatcher, or production spine row. `rr-eog9.7` still owns
+production composition in `spine/hops.py`.
 
-The left pot restores a heart when HP is low; a damage-bearing probe
-confirmed HP `24→32`. The accepted guarded segment stays at full HP,
-so neither pot changes inventory. Rupees/bombs remain zero. All three rear
-chests (50 rupees,3 bombs,50 rupees) remain closed behind live north door
-type `0x28` (bombable); no bombs or boots are available. `rr-yx26` still owns
-natural resource gathering and a later cache return.
+Hedge segment: **2702f**, 1681 disclosed rollout restores, zero non-rollout
+loads/writes, one half-heart hit (`4HP`) at segment frame2416, no death.
+The live path passes around hedge/boulder obstacles and through stone
+stairs. Same-checkpoint forward replay: zero desync/loads/writes; **889
+committed frames** touch stair attribute `0x22`. The damage event occurs
+at `(3920,1797)`, leaving HP `32→28`; no HP refill in this tail.
 
-Hut segment: 2166f, 491 disclosed rollout restores, zero non-rollout loads
-or writes, no damage/refills. Same-checkpoint forward replay: zero
-desync/loads/writes. Composed **power-on Survival replay**: 43471f, zero
-desync/loads/deaths. Seven disclosed opening refills restored 14 hearts;
-none occur in the hut tail. Progression/capacity writes remain zero.
-Evidence: `recordings/eog9_hut_20261001/{controller,replay,power_on_replay}.json`
-and `{hut,power_on}.tape.npz`. This is assisted development evidence.
+Composed **power-on Survival replay: 46173f**, synchronization and route
+goal accepted, zero desync/loads/deaths. Seven disclosed opening refills
+restore 14 hearts; progression/capacity writes remain zero. No new refill
+after the hut. This is assisted development evidence, not Clean or
+continuous evidence. Evidence:
+`recordings/eog9_hedge_20261001/{controller,replay,hedge_power_on_replay}.json`
+and `{hedge,power_on}.tape.npz`. The replay goal independently checks the
+mapped approach, loaded screen, standing quadrant, inventory prerequisites,
+and completed story; matching a failed controller tape cannot pass.
 
-Leave RAM: outdoors screen `0x1E`, module/submodule `0x09/0x00`,
-`(3312,1851)`, control ready, HP `32/32`, sword/lamp `1`, keys `0xFF`,
-follower `0`, progress `2`, flags `0x15`, map indicator `3`, rupees/bombs `0`.
-`Play_eog9_4` is saved from the 43471f forward replay with provenance.
+Leave RAM: outdoors loaded screen `0x1E`, standing `0x1F`, module/submodule
+`0x09/0x00`, `(3920,1582)`, control ready, HP `28/32`, sword/lamp `1`, keys
+`0xFF`, follower `0`, progress `2`, flags `0x15`, map indicator `3`,
+rupees/bombs `0`. `alttp.screen_glance` passes the mapped leave band with
+the outdoor screen as the location. `Play_eog9_5` is saved from the 46173f
+forward replay with provenance. The stale indoor room register is not an
+outdoor location proof.
 
-ROM gates: full hut predecessor regression, outdoor entry, existing
-indoor room/stair edges, and Sanctuary-to-Eastern crossing. Offline route,
-map and replay acceptance tests pass; docs gate passes. `rr-eog9.4` is
-complete. Epic `rr-eog9`: 4/8 children closed. Next: `rr-eog9.5`, hedge/Armos
-approach from `Play_eog9_4`, then lobby `.6`, production spine composition
-`.7`, whole entrance coverage `.8`. Do not load `EasternPalaceEntry`.
+ROM gates: all three outdoor predecessor regressions (crossing, full hut
+visit, new approach) pass; all seven existing room-engine entry/stair
+regressions pass. Targeted offline route/map/replay tests: 65 passed.
+Docs gate: 8 passed. Broader ALttP offline suite: 329 passed, one baseline
+failure in `test_secret_entrance_clear.py::test_run_from_sword_exit_ok`,
+reproduced from a temporary archive of HEAD `02478f1d` (1 failed/6 passed
+in that file). Filed separately as `rr-mott`; no weakened acceptance.
 
-Preserve the proved crossing detour `0x13 → 0x14 → 0x15 → 0x1D → 0x25 →
-0x2D → 0x2E → 0x26 → 0x1E`; the direct `0x1D` north-lip east exit remains
-unreachable. Crossing predecessor evidence is in
-`recordings/eog9_crossing_20261001/` (41305f forward Survival replay).
+`rr-eog9.5` is complete. Epic `rr-eog9`: **5/8 children closed**.
+Next: `rr-eog9.6`, mapped UP entrance `eastern_door_to_0xc9` and natural
+lobby-to-`north_to_0xb9` seam from `Play_eog9_5`; never load
+`EasternPalaceEntry`. Capacity is four hearts; current HP is 3.5 hearts.
+The outdoor room engine currently passes the loaded screen to its point
+walker; that caller must derive the entrance's standing quadrant to avoid
+rejecting a point in `0x1F` inside loaded `0x1E`. Door transition evidence
+in this map remains isolated; this sitting did not enter the lobby.
+Then `.7` production spine composition and `.8` whole entrance coverage.
+
+The hut rear cache remains closed behind type `0x28` bombable wall, and
+natural bombs/rupees gathering stays `rr-yx26`. Preserve the proved crossing
+detour `0x13 → 0x14 → 0x15 → 0x1D → 0x25 → 0x2D → 0x2E → 0x26 → 0x1E`;
+the direct `0x1D` north-lip east exit remains unreachable. Crossing/hut
+predecessor evidence stays in `recordings/eog9_{crossing,hut}_20261001/`.
 
 Did not STATUS-promote, treat a save-state pin as power-on, write follower,
 sword, keys, capacity, or progression, copy approach geometry into Python,

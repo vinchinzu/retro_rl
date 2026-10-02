@@ -205,6 +205,52 @@ def test_sahasrahla_hut_from_eastern_grounds_predecessor() -> None:
             assert phase.ok, f"{pot}_{action}: {phase.detail}"
 
 
+@pytest.mark.rom
+def test_eastern_approach_from_completed_hut_predecessor() -> None:
+    """Play the actual hut leave through the hedge and stone stair collisions."""
+    from dataclasses import asdict
+
+    from alttp.opening_route.segment import get_segment
+    from alttp.paths import INTEGRATION_DIR
+    from alttp.ram import read_inventory, wram_index
+    from alttp.rollout import restores
+    from alttp.room_map import load_room_map
+    from alttp.scripts.pin_probe import open_pin
+    from alttp.spine.tape import LiveRun
+    from alttp.startup import snapshot_env
+
+    if not (INTEGRATION_DIR / "Play_eog9_4.state").is_file():
+        pytest.skip("requires the replay-derived completed hut checkpoint")
+    raw = open_pin("Play_eog9_4")
+    try:
+        before = asdict(read_inventory(raw.get_ram()))
+        story = tuple(int(raw.get_ram()[wram_index(a)]) for a in (0xF3C5, 0xF3C6, 0xF3C7))
+        live = LiveRun(raw, provider="alttp.eog9_5_eastern_approach")
+        first_restore = restores()
+        result = get_segment("eastern_approach").play_checked(live.env, source="state_load_dev")
+        live.note_rollout_restores(restores() - first_restore)
+        audit = live.fail_mid_run_state_load()
+        snap = snapshot_env(live.env)
+        after = asdict(read_inventory(raw.get_ram()))
+        after_story = tuple(int(raw.get_ram()[wram_index(a)]) for a in (0xF3C5, 0xF3C6, 0xF3C7))
+    finally:
+        raw.close()
+
+    assert result.ok, result.blocker
+    assert result.acceptance["eastern_approach"]
+    assert not snap.indoors and snap.screen_id == 0x1E and snap.has_control
+    assert snap.follower == 0 and 0 < snap.hp <= before["hp"]
+    point = load_room_map("screen_1e_eastern").point("eastern_door")
+    assert point is not None
+    assert abs(snap.link_x - point.x) <= 4 and abs(snap.link_y - point.y) <= 4
+    assert after_story == story == (2, 0x15, 3)
+    assert {k: v for k, v in after.items() if k != "hp"} == {
+        k: v for k, v in before.items() if k != "hp"
+    }
+    assert audit.writes == 0 and audit.set_state == audit.rollout_restores
+    assert 0 < result.frames <= 6000
+
+
 def test_porch_escape_then_north() -> None:
     # Still too far left of the porch corridor → move right after clearing south.
     assert (

@@ -155,6 +155,16 @@ Promote to `retro_harness.adventure` only after a second game adopts them.
 
 ### Extension recipe (next continuous hop)
 
+Outdoor development segments stay in `opening_route.segment`: `sahasrahla_hut`
+visits the Elder and returns outside; `eastern_approach` follows the existing
+guarded outdoor tile walker from that mapped hut exit to `eastern_door` in
+`maps/screen_1e_eastern.json`. The entrance is in standing quadrant `0x1F`
+inside loaded screen `0x1E`. The segment requires the completed hut's story
+marker and preserves inventory and progression, while reporting hostile
+damage. `audit_power_on.replay_goal_accepted` checks the mapped approach
+point as well as tape synchronization. These segments are development
+evidence; the production spine extension belongs to `rr-eog9.7`.
+
 Prefer the room engine for B1 doors (low agent context). See `docs/ROOM_ENGINE.md`.
 
 1. Measure → write `maps/room_XX.json` (points + doors + path). Do not invent.

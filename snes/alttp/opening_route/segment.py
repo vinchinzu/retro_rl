@@ -352,6 +352,70 @@ def visit_sahasrahla_hut(env: BootEnv, *, source: str = "state_load_dev") -> Seg
     )
 
 
+def approach_eastern_palace(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
+    """Follow live outdoor collision paths from the completed hut to the plaza."""
+    from dataclasses import asdict
+
+    from alttp.overworld import read_overworld_tiles, standing_screen, walk_to_screen
+    from alttp.ram import read_inventory, wram_index
+    from alttp.room_map import load_room_map
+    from alttp.startup import snapshot_env
+
+    start = snapshot_env(env)
+    before = read_inventory(env.get_ram())
+    story = tuple(int(env.get_ram()[wram_index(a)]) for a in (0xF3C5, 0xF3C6, 0xF3C7))
+    exit_door = load_room_map("room_05").door("south_to_0x1e")
+    outdoor = load_room_map("screen_1e_eastern")
+    point = outdoor.point("eastern_door")
+    if exit_door is None or exit_door.landing_xy is None or point is None:
+        raise ValueError("missing mapped hut exit or Eastern approach")
+    entry_ok = (
+        not start.indoors and not start.dark_world and start.has_control
+        and start.screen_id == outdoor.screen_id and start.follower == 0
+        and start.has_fighter_sword and start.has_lamp and start.hp > 0
+        and story == (2, 0x15, 3) and before.max_hp == 32
+        and max(abs(v - target) for v, target in
+                zip((start.link_x, start.link_y), exit_door.landing_xy)) <= 4
+    )
+    if not entry_ok:
+        return SegmentResult(
+            ok=False, phase="entry_rejected", frames=0, snapshot=start, source=source,
+            blocker="Eastern approach requires the completed hut's mapped outdoor exit",
+        )
+    tiles = read_overworld_tiles(env.get_ram())
+    target = standing_screen(tiles, point.x, point.y)
+    walked = walk_to_screen(
+        env, target, target_xy=(point.x, point.y), tolerance=4,
+        max_frames=6000, guard=True,
+    )
+    snap = snapshot_env(env)
+    after = read_inventory(env.get_ram())
+    after_story = tuple(int(env.get_ram()[wram_index(a)]) for a in (0xF3C5, 0xF3C6, 0xF3C7))
+    after_fields = asdict(after)
+    acceptance = {
+        "mapped_approach": bool(walked["ok"] and snap.has_control and not snap.indoors
+                                and not snap.dark_world and snap.screen_id == outdoor.screen_id
+                                and snap.hp > 0 and snap.follower == 0
+                                and max(abs(snap.link_x - point.x), abs(snap.link_y - point.y)) <= 4),
+        "inventory_preserved": all(value == after_fields[name]
+                                   for name, value in asdict(before).items() if name != "hp"),
+        "story_preserved": after_story == story,
+    }
+    acceptance["eastern_approach"] = all(acceptance.values())
+    ok = acceptance["eastern_approach"]
+    return SegmentResult(
+        ok=ok, phase="eastern_approach", frames=int(walked["frames"]), snapshot=snap,
+        source=source, acceptance=acceptance,
+        blocker="" if ok else f"Eastern approach failed: {walked['reason']}; {acceptance}",
+        phases=[RoutePhaseResult(
+            phase="hedge_to_eastern_door", ok=ok, frames=int(walked["frames"]), snapshot=snap,
+            detail=str(walked["line"]), diag={**snapshot_to_diag(snap), "walk": walked},
+        )],
+        notes=[f"HP {before.hp}->{after.hp}; damage events={walked['hits']}. Loaded screen and standing quadrant are distinct.",
+               "Mapped target with live hedge, boulder and stair collisions; guarded button path. Development evidence; no Clean tip promotion."],
+    )
+
+
 def _build_registry() -> dict[str, ScriptSegment]:
     """Lazy registry so heavy route modules import only when needed.
 
@@ -379,6 +443,20 @@ def _build_registry() -> dict[str, ScriptSegment]:
     )
 
     return {
+        "eastern_approach": ScriptSegment(
+            segment_id="eastern_approach", play_fn=approach_eastern_palace,
+            entry=EntryRequirement(
+                description="Completed Sahasrahla hut at its mapped outdoor exit",
+                screen_id=0x1E, require_indoors=False, require_fighter_sword=True,
+                require_lamp=True, graph_node_id="sahasrahla_hut",
+            ),
+            exit=ExitPredicate(
+                description="Controllable at the mapped Eastern entrance approach",
+                acceptance_keys=("eastern_approach",), graph_node_id="eastern_approach",
+                verification="planned",
+            ),
+            label="Sahasrahla hut exit → Eastern Palace entrance plaza",
+        ),
         "sahasrahla_hut": ScriptSegment(
             segment_id="sahasrahla_hut", play_fn=visit_sahasrahla_hut,
             entry=EntryRequirement(
