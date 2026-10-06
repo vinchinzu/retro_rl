@@ -62,6 +62,20 @@ HYRULE_CASTLE_SCREEN = 0x1B
 LINKS_HOUSE_SCREEN = 0x2C
 LINKS_HOUSE_ROOM = 0x0004
 SANCTUARY_SCREEN = 0x13
+SANCTUARY_WEST_SCREEN = 0x12
+NORTH_FIELD_SCREEN = 0x11
+KAKARIKO_NW_SCREEN = 0x18
+KAKARIKO_NE_SCREEN = 0x19
+KAKARIKO_SW_SCREEN = 0x20
+KAKARIKO_SE_SCREEN = 0x21
+KAKARIKO_SCREEN = KAKARIKO_NW_SCREEN
+
+# Kakariko Village interior rooms
+KAKARIKO_WELL_ROOM = 0x2F
+BLINDS_HIDEOUT_ROOM = 0x11D
+TAVERN_ROOM = 0x103
+CHICKEN_HOUSE_ROOM = 0x108
+KAKARIKO_SHOP_ROOM = 0x11F
 
 # Opening-route dungeon/cave rooms (stable-retro ``$A0`` base ids).
 # Prefer the descriptive names in logs/docs; hex is RAM only.
@@ -169,6 +183,7 @@ class AlttpSnapshot:
     floor: int = 0
     layer: int = 0
     hp: int = 0
+    max_hp: int = 0
     iframes: int = 0
     knockback: int = 0
 
@@ -553,6 +568,7 @@ def read_snapshot(ram: np.ndarray) -> AlttpSnapshot:
         floor=read_u8(ram, DUNGEON_FLOOR),
         layer=read_u8(ram, LINK_LAYER),
         hp=read_u8_safe(ram, wram_index(LINK_HP)),
+        max_hp=read_u8_safe(ram, wram_index(LINK_MAX_HP)),
         iframes=read_u8(ram, LINK_IFRAMES),
         knockback=read_u8(ram, LINK_KNOCKBACK),
     )
@@ -578,6 +594,7 @@ def snapshot_to_diag(snapshot: AlttpSnapshot) -> dict[str, object]:
         "floor": snapshot.floor,
         "layer": snapshot.layer,
         "hp": snapshot.hp,
+        "max_hp": snapshot.max_hp,
         "iframes": snapshot.iframes,
         "knockback": snapshot.knockback,
         "dark_world": snapshot.dark_world,

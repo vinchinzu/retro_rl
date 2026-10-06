@@ -17,6 +17,9 @@ from alttp.opening_route.escape_graph import (
     N_ROOM_82,
     N_ROOM_80,
     N_SANCTUARY,
+    N_SANCTUARY_HEART,
+    N_SANCTUARY_EXIT,
+    N_KAKARIKO,
 )
 from alttp.opening_route.full_tip import VERIFIED_TIP_SEGMENT_IDS
 
@@ -77,6 +80,18 @@ SPINE_HOPS: tuple[SpineHop, ...] = (
     SpineHop(
         through="sanctuary", stop="sanctuary",
         stages=("escort_to_sanctuary",), success=N_SANCTUARY,
+    ),
+    SpineHop(
+        through="sanctuary_heart", stop="sanctuary_heart",
+        stages=("sanctuary_heart",), success=N_SANCTUARY_HEART,
+    ),
+    SpineHop(
+        through="sanctuary_exit", stop="sanctuary_exit",
+        stages=("sanctuary_exit",), success=N_SANCTUARY_EXIT,
+    ),
+    SpineHop(
+        through="kakariko", stop="kakariko",
+        stages=("sanctuary_to_kakariko",), success=N_KAKARIKO,
     ),
 )
 

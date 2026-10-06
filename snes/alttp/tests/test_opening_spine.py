@@ -462,9 +462,102 @@ def test_last_stage_before_room_50_is_castle_dungeon_prefix() -> None:
     assert last_stage("room_81") == "room_82_west_to_0x81"
     assert last_stage("zelda") == "room_81_to_zelda"
     assert last_stage("sanctuary") == "escort_to_sanctuary"
+    assert last_stage("sanctuary_heart") == "sanctuary_heart"
+    assert last_stage("sanctuary_exit") == "sanctuary_exit"
+    assert last_stage("kakariko") == "sanctuary_to_kakariko"
     assert save_point_name("Full", "castle_dungeon_prefix") == (
         "Full_castle_dungeon_prefix"
     )
+
+
+def test_spine_hops_sanctuary_to_kakariko() -> None:
+    from alttp.spine.hops import SPINE_THROUGH, hop_for
+    from alttp.opening_route.escape_graph import (
+        N_SANCTUARY_HEART,
+        N_SANCTUARY_EXIT,
+        N_KAKARIKO,
+    )
+
+    assert "sanctuary_heart" in SPINE_THROUGH
+    assert "sanctuary_exit" in SPINE_THROUGH
+    assert "kakariko" in SPINE_THROUGH
+
+    hop_heart = hop_for("sanctuary_heart")
+    assert hop_heart is not None
+    assert hop_heart.stages == ("sanctuary_heart",)
+    assert hop_heart.success == N_SANCTUARY_HEART
+
+    hop_exit = hop_for("sanctuary_exit")
+    assert hop_exit is not None
+    assert hop_exit.stages == ("sanctuary_exit",)
+    assert hop_exit.success == N_SANCTUARY_EXIT
+
+    hop_kak = hop_for("kakariko")
+    assert hop_kak is not None
+    assert hop_kak.stages == ("sanctuary_to_kakariko",)
+    assert hop_kak.success == N_KAKARIKO
+
+
+@pytest.mark.rom
+@pytest.mark.rom
+@pytest.mark.parametrize("offset", (0, 7))
+def test_clean_sanctuary_to_kakariko_and_committed_replay(offset: int) -> None:
+    """The real C1 leave must compose all three legs and replay every frame."""
+    import gc
+    from alttp.paths import INTEGRATION_DIR
+    from alttp.rollout import restores
+    from alttp.scripts.audit_power_on import replay_goal_accepted, story_glance
+    from alttp.scripts.replay_tape import _CommittedRecorder
+    from alttp.scripts.run_spine import load_save_point, play_from_stages
+    from alttp.spine.hops import hops_through
+    from alttp.spine.tape import LiveRun, ram_crc
+    from alttp.ram import snapshot_to_diag
+    from alttp.startup import build_boot_env, no_action, snapshot_env
+
+    if not (INTEGRATION_DIR / "DevClean_Sanctuary.state").is_file():
+        pytest.skip("capture frame 36078 of the published C1 tape as DevClean_Sanctuary")
+    rows = hops_through("kakariko")
+    stages = tuple(s for hop in rows for s in hop.stages)
+    stages = stages[stages.index("sanctuary_heart"):]
+    raw = build_boot_env(state_name="NONE")
+    load_save_point(raw, "DevClean", "Sanctuary")
+    try:
+        recorder = _CommittedRecorder(raw)
+        live = LiveRun(recorder.attach(), provider="clean_kakariko_regression")
+        initial_restores = restores()
+        for _ in range(offset):
+            live.env.step(no_action())
+        result = play_from_stages(
+            live.env, stages, resume_stage=stages[0], success=rows[-1].success,
+        )
+        live.note_rollout_restores(restores() - initial_restores)
+        audit = live.fail_mid_run_state_load()
+        assert result.ok, result.blocker
+        assert audit.writes == 0
+        assert result.frames == len(recorder.buttons) - offset
+        final = snapshot_env(raw)
+        story = story_glance(raw)
+        assert final.hp == final.max_hp == 32
+        assert replay_goal_accepted(
+            {"through": "kakariko", "source_ok": True}, snapshot_to_diag(final), story,
+        )
+        buttons, crcs = recorder.buttons, recorder.crcs
+    finally:
+        raw.close()
+    del live, recorder, raw
+    gc.collect()
+
+    raw = build_boot_env(state_name="NONE")
+    load_save_point(raw, "DevClean", "Sanctuary")
+    try:
+        replay = LiveRun(raw, provider="clean_kakariko_forward_replay")
+        for frame, (action, crc) in enumerate(zip(buttons, crcs), 1):
+            replay.env.step(action)
+            assert ram_crc(raw.get_ram()) == crc, f"desync frame {frame}"
+        assert snapshot_env(raw) == final and story_glance(raw) == story
+        assert replay.report().set_state == replay.report().writes == 0
+    finally:
+        raw.close()
 
 
 def test_save_points_offers_a_stage_lookup() -> None:

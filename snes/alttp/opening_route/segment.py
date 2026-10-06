@@ -416,6 +416,187 @@ def approach_eastern_palace(env: BootEnv, *, source: str = "state_load_dev") -> 
     )
 
 
+def collect_sanctuary_heart(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
+    """Collect the Sanctuary Heart Container chest in room 0x12."""
+    import numpy as np
+    from alttp import primitives
+    from alttp.ram import read_inventory
+    from alttp.room_map import load_room_map
+    from alttp.route_report import phase_from_primitive
+    from alttp.startup import snapshot_env
+
+    phases: list[RoutePhaseResult] = []
+    indoor = load_room_map("room_12")
+
+    def record(label: str, result: Any) -> None:
+        phases.append(phase_from_primitive(label, result))
+        if not result.ok:
+            raise RuntimeError(result.reason)
+
+    blocker = ""
+    try:
+        snap = snapshot_env(env)
+        if not snap.indoors or snap.room_base_id != 18:
+            raise RuntimeError(f"expected indoor room 0x12, got {snap.room_base_id}")
+        inv_before = read_inventory(np.asarray(env.get_ram(), dtype=np.uint8))
+        if inv_before.max_hp >= 32:
+            raise RuntimeError("heart container already collected")
+
+        for pt_name in ("heart_aisle_south", "heart_west_south", "heart_south_lip", "heart_open_front"):
+            pt = indoor.point(pt_name)
+            if pt is None:
+                raise RuntimeError(f"missing point {pt_name}")
+            record(pt_name, primitives.move_to(
+                env, primitives.Waypoint(pt.x, pt.y, tolerance=0, room=18, label=pt_name),
+                step_size=1,
+            ))
+
+        record("face_north", primitives.run_script(env, ((('UP',), 1),)))
+        record("open_chest", primitives.run_script(env, ((('A',), 2),)))
+
+        record("heart_receipt", primitives.run_script(
+            env, tuple(action for i in range(27)
+                       for action in (((), 3), (("B" if i % 2 == 0 else "A",), 2))),
+        ))
+
+        settle = primitives.settle_control(env, max_frames=240)
+        record("heart_dialogue_settle", settle)
+    except RuntimeError as exc:
+        blocker = str(exc)
+
+    snap = snapshot_env(env)
+    inv = read_inventory(np.asarray(env.get_ram(), dtype=np.uint8))
+    acceptance = {
+        "heart_collected": not blocker and snap.indoors and snap.room_base_id == 18
+        and snap.has_control and inv.max_hp == 32 and snap.hp == 32,
+    }
+    return SegmentResult(
+        ok=acceptance["heart_collected"],
+        phase="heart_collected" if not blocker else "heart_blocked",
+        frames=sum(p.frames for p in phases),
+        snapshot=snap,
+        phases=phases,
+        source=source,
+        acceptance=acceptance,
+        blocker=blocker,
+        notes=[
+            "Sanctuary Heart Container chest (room 0x12) collected using validated map waypoints.",
+            f"Max HP: {inv_before.max_hp if 'inv_before' in locals() else 'unknown'} -> {inv.max_hp}; HP refilled to {snap.hp}.",
+        ],
+    )
+
+
+def exit_sanctuary_to_outdoors(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
+    """Exit Sanctuary through the mapped south door to screen 0x13."""
+    from alttp import primitives
+    from alttp.ram import SANCTUARY_SCREEN
+    from alttp.room_map import load_room_map
+    from alttp.route_report import phase_from_primitive
+    from alttp.startup import snapshot_env
+
+    phases: list[RoutePhaseResult] = []
+    indoor = load_room_map("room_12")
+    door = indoor.door("sanctuary_door_to_0x13")
+    if door is None:
+        raise RuntimeError("missing door sanctuary_door_to_0x13")
+
+    def record(label: str, result: Any) -> None:
+        phases.append(phase_from_primitive(label, result))
+        if not result.ok:
+            raise RuntimeError(result.reason)
+
+    blocker = ""
+    try:
+        snap = snapshot_env(env)
+        if not snap.indoors or snap.room_base_id != 18:
+            raise RuntimeError(f"expected indoor room 0x12, got {snap.room_base_id}")
+
+        for pt_name in door.path:
+            pt = indoor.point(pt_name)
+            if pt is None:
+                raise RuntimeError(f"missing door path point {pt_name}")
+            tol = door.tolerance_for(pt_name)
+            record(pt_name, primitives.move_to(
+                env, primitives.Waypoint(pt.x, pt.y, tolerance=tol, room=18, label=pt_name),
+                step_size=1,
+            ))
+
+        record("sanctuary_door_push", primitives.run_script(
+            env, (((door.direction,), door.push_frames),),
+        ))
+        settle = primitives.settle_control(env, max_frames=480)
+        record("sanctuary_exit_settle", settle)
+    except RuntimeError as exc:
+        blocker = str(exc)
+
+    snap = snapshot_env(env)
+    acceptance = {
+        "sanctuary_exited": not blocker and not snap.indoors and snap.screen_id == SANCTUARY_SCREEN
+        and snap.has_control and snap.hp > 0,
+    }
+    return SegmentResult(
+        ok=acceptance["sanctuary_exited"],
+        phase="sanctuary_exited" if not blocker else "sanctuary_exit_blocked",
+        frames=sum(p.frames for p in phases),
+        snapshot=snap,
+        phases=phases,
+        source=source,
+        acceptance=acceptance,
+        blocker=blocker,
+        notes=[
+            f"Sanctuary south door exit lands outdoors screen 0x{SANCTUARY_SCREEN:02X} at ({snap.link_x},{snap.link_y}).",
+        ],
+    )
+
+
+def walk_to_kakariko(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
+    """Compose westward tile walks from the collected-heart Sanctuary leave."""
+    from alttp.overworld import walk_to_screen
+    from alttp.ram import (
+        KAKARIKO_SCREEN, NORTH_FIELD_SCREEN, SANCTUARY_SCREEN, SANCTUARY_WEST_SCREEN,
+        SRAM_PROGRESS, SRAM_PROGRESS_FLAGS, wram_index,
+    )
+    from alttp.startup import snapshot_env
+
+    phases: list[RoutePhaseResult] = []
+    trace: list[int] = []
+    snap = snapshot_env(env)
+    ram = env.get_ram()
+    ready = (
+        not snap.indoors and not snap.dark_world and snap.screen_id == SANCTUARY_SCREEN
+        and snap.has_control and snap.max_hp == 32 and snap.hp > 0
+        and snap.follower == 0 and int(ram[wram_index(SRAM_PROGRESS)]) == 2
+        and int(ram[wram_index(SRAM_PROGRESS_FLAGS)]) & 4
+    )
+    blocker = "" if ready else "requires the completed four-heart Sanctuary exit"
+    if ready:
+        for target in (SANCTUARY_WEST_SCREEN, NORTH_FIELD_SCREEN, KAKARIKO_SCREEN):
+            walked = walk_to_screen(env, target, max_frames=5000, guard=True)
+            snap = snapshot_env(env)
+            for screen in walked["trace"]:
+                if not trace or trace[-1] != screen:
+                    trace.append(screen)
+            phases.append(RoutePhaseResult(
+                phase=f"walk_to_screen_{target:02x}", ok=bool(walked["ok"]),
+                frames=int(walked["frames"]), snapshot=snap,
+                detail=str(walked["reason"]),
+                diag={"trace": walked["trace"], "hits": walked["hits"]},
+            ))
+            if not walked["ok"]:
+                blocker = f"leg to 0x{target:02X} failed: {walked['reason']}"
+                break
+    # Kakariko is a big loaded area: the northern entry may stand in 0x19
+    # while $8A remains 0x18. The tile walker proves the target quadrant.
+    ok = bool(not blocker and not snap.indoors and snap.screen_id == KAKARIKO_SCREEN
+              and snap.has_control and snap.hp > 0)
+    return SegmentResult(
+        ok=ok, phase="in_kakariko" if ok else "kakariko_walk_failed",
+        frames=sum(p.frames for p in phases), snapshot=snap, phases=phases,
+        source=source, acceptance={"in_kakariko": ok}, blocker=blocker,
+        notes=["Overworld trace: " + " -> ".join(f"0x{s:02X}" for s in trace)],
+    )
+
+
 def _build_registry() -> dict[str, ScriptSegment]:
     """Lazy registry so heavy route modules import only when needed.
 
@@ -439,6 +620,8 @@ def _build_registry() -> dict[str, ScriptSegment]:
         HYRULE_CASTLE_NORTH_CONNECTOR_ROOM,
         HYRULE_CASTLE_NW_ROOM,
         HYRULE_CASTLE_SCREEN,
+        SANCTUARY_ROOM,
+        SANCTUARY_SCREEN,
         SECRET_PASSAGE_ROOM,
     )
 
@@ -670,6 +853,69 @@ def _build_registry() -> dict[str, ScriptSegment]:
             label="Zelda escort → Sanctuary (planned)",
             # Planned multi-edge leg (mantle → sewers → sanctuary); no single edge yet.
             graph_edge_id="",
+        ),
+        "sanctuary_heart": ScriptSegment(
+            segment_id="sanctuary_heart",
+            play_fn=collect_sanctuary_heart,
+            entry=EntryRequirement(
+                description="Sanctuary 0x12 post-escort delivery point",
+                room_base_id=SANCTUARY_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_lamp=True,
+                require_control=True,
+                graph_node_id="sanctuary",
+            ),
+            exit=ExitPredicate(
+                description="Sanctuary Heart Container collected (4 hearts / 32 max HP)",
+                acceptance_keys=("heart_collected",),
+                graph_node_id="sanctuary_heart",
+                verification="natural_entry",
+            ),
+            label="Sanctuary → collect Heart Container chest",
+            graph_edge_id="sanctuary_to_heart",
+        ),
+        "sanctuary_exit": ScriptSegment(
+            segment_id="sanctuary_exit",
+            play_fn=exit_sanctuary_to_outdoors,
+            entry=EntryRequirement(
+                description="Sanctuary 0x12 with Heart Container collected",
+                room_base_id=SANCTUARY_ROOM,
+                require_indoors=True,
+                require_fighter_sword=True,
+                require_lamp=True,
+                require_control=True,
+                graph_node_id="sanctuary_heart",
+            ),
+            exit=ExitPredicate(
+                description="Outdoors on screen 0x13 at Sanctuary door",
+                acceptance_keys=("sanctuary_exited",),
+                graph_node_id="sanctuary_exit",
+                verification="natural_entry",
+            ),
+            label="Sanctuary south door → outdoors screen 0x13",
+            graph_edge_id="sanctuary_heart_to_exit",
+        ),
+        "sanctuary_to_kakariko": ScriptSegment(
+            segment_id="sanctuary_to_kakariko",
+            play_fn=walk_to_kakariko,
+            entry=EntryRequirement(
+                description="Sanctuary exterior screen 0x13 with 4 hearts",
+                screen_id=SANCTUARY_SCREEN,
+                require_indoors=False,
+                require_fighter_sword=True,
+                require_lamp=True,
+                require_control=True,
+                graph_node_id="sanctuary_exit",
+            ),
+            exit=ExitPredicate(
+                description="Kakariko Village screen 0x18/0x19 outdoors",
+                acceptance_keys=("in_kakariko",),
+                graph_node_id="kakariko",
+                verification="natural_entry",
+            ),
+            label="Sanctuary exterior → walk to Kakariko Village (screens 0x12, 0x11, 0x18)",
+            graph_edge_id="sanctuary_exit_to_kakariko",
         ),
     }
 

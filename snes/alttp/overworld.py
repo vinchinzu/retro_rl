@@ -15,7 +15,6 @@ from alttp.ram import (
     HYRULE_CASTLE_SCREEN,
     LINKS_HOUSE_ROOM,
     LINKS_HOUSE_SCREEN,
-    SANCTUARY_SCREEN,
     SECRET_HOLE_WORLD_X,
     SECRET_HOLE_WORLD_Y,
     WRAM_IDX,
@@ -25,9 +24,15 @@ from alttp.ram import (
 from alttp.walk_physics import LINK_BODY
 
 SCREEN_LABELS = {
+    0x11: "north_field",
+    0x12: "sanctuary_west",
     0x13: "sanctuary",
+    0x18: "kakariko_nw",
+    0x19: "kakariko_ne",
     0x1B: "hyrule_castle",
     0x1C: "castle_approach",
+    0x20: "kakariko_sw",
+    0x21: "kakariko_se",
     0x24: "north_field",
     0x2C: "links_house",
 }
@@ -873,35 +878,6 @@ def walk_to_screen(
         if replans > 8:
             return finish(False, "stuck", pose)
     return finish(False, "timeout", snapshot_env(env))
-
-
-def walk_sanctuary_exit_to_links_house(
-    env: object,
-    *,
-    max_frames: int = 20000,
-) -> dict[str, object]:
-    """From an outdoor Sanctuary pin, walk to Link's house screen.
-
-    Refuses to start unless the pin is already outdoors on screen ``0x13``.
-    The walk is not continuous.
-    """
-    from alttp.startup import snapshot_env
-
-    snap = snapshot_env(env)
-    if snap.indoors or snap.dark_world or snap.screen_id != SANCTUARY_SCREEN:
-        line = (
-            f"AP-084 fail landing screen=0x{snap.screen_id:02X} "
-            f"indoors={int(snap.indoors)} xy=({snap.link_x},{snap.link_y}) continuous=0"
-        )
-        return {
-            "ok": False,
-            "reason": "landing",
-            "frames": 0,
-            "screen": snap.screen_id,
-            "standing": snap.screen_id,
-            "line": line,
-        }
-    return walk_to_screen(env, LINKS_HOUSE_SCREEN, max_frames=max_frames)
 
 
 def _at_bush_hole(snap: AlttpSnapshot, goal: tuple[int, int]) -> bool:

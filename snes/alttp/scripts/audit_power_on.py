@@ -57,6 +57,17 @@ def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dic
     through = meta.get("through")
     if through == "sanctuary":
         return bool(story["sanctuary_completed"])
+    if through == "sanctuary_heart":
+        return bool(story.get("sanctuary_completed") and story.get("max_hp") == 32 and final.get("room_base_id") == 18)
+    if through == "kakariko":
+        standing = int(final["link_y"]) // 512 * 8 + int(final["link_x"]) // 512
+        return bool(
+            final["has_control"] and not final["indoors"] and not final["dark_world"]
+            and int(final["screen_id"]) == 0x18 and standing in (0x18, 0x19, 0x20, 0x21)
+            and final["has_fighter_sword"] and final["has_lamp"] and final["hp"] > 0
+            and story["follower"] == 0 and story["progress"] == 2
+            and story["progress_flags"] & 4 and story["max_hp"] == 32
+        )
     if through in ("sanctuary_exit", "eastern_grounds", "sahasrahla_hut", "eastern_approach"):
         screen = 0x13 if through == "sanctuary_exit" else 0x1E
         target_standing = screen
@@ -174,6 +185,43 @@ class Stage:
         return result
 
 
+def play_verified_prefix(env: Any, tape: Path, through: str) -> tuple[str, ...]:
+    """Replay a Clean power-on input prefix, then return the remaining rows.
+
+    The tape supplies inputs, never a state. Validate the route relationship,
+    every full-RAM CRC and the recorded leave before dispatching any new leg.
+    """
+    with np.load(tape, allow_pickle=False) as data:
+        buttons, crcs = data["buttons"], data["frame_crc"]
+        meta = json.loads(str(data["meta"]))
+    prefix = tuple(s for h in hops_through(meta.get("through")) for s in h.stages)
+    requested = tuple(s for h in hops_through(through) for s in h.stages)
+    if (meta.get("start") != "NONE" or meta.get("survival") is not False
+            or not meta.get("source_ok") or not prefix or len(prefix) >= len(requested)
+            or requested[:len(prefix)] != prefix):
+        raise ValueError("prefix must be a successful no-assist power-on tape for earlier spine rows")
+    rom_hash = hashlib.sha256((INTEGRATION_DIR / "rom.sfc").read_bytes()).hexdigest()
+    if meta.get("rom_sha256") != rom_hash:
+        raise ValueError("prefix ROM differs from recording or has no recorded hash")
+    if buttons.ndim != 2 or buttons.shape[1] != 12 or len(buttons) != len(crcs) or not len(buttons):
+        raise ValueError("prefix requires one full-RAM CRC per 12-button frame")
+    env.reset()
+    for frame, (action, crc) in enumerate(zip(buttons, crcs), 1):
+        env.step(action.astype(np.int8))
+        snap = read_snapshot(env.get_ram())
+        if ram_crc(env.get_ram()) != int(crc):
+            raise RuntimeError(f"prefix desync frame {frame}; suffix not played")
+        if snap.game_mode == 0x12 or (snap.game_mode in (7, 9) and snap.hp == 0):
+            raise RuntimeError(f"prefix death frame {frame}; suffix not played")
+    final, story = snapshot_to_diag(snap), story_glance(env)
+    if (not all(final.get(k) == v for k, v in meta["source_final"].items())
+            or not all(story.get(k) == v for k, v in meta.get("source_story", {}).items())
+            or not replay_goal_accepted(meta, final, story)):
+        raise RuntimeError("prefix leave rejected; suffix not played")
+    print(f"prefix={meta['through']} verified_frames={len(buttons)}", flush=True)
+    return requested[len(prefix):]
+
+
 def controller(args: Any) -> dict[str, Any]:
     from alttp.rollout import restores
 
@@ -189,12 +237,25 @@ def controller(args: Any) -> dict[str, Any]:
         raw.close()
         raise ValueError("audit requires a runnable hop")
     try:
-        result = run_to_verified_tip(
-            live.env, close=False,
-            segment_ids=tuple(s for h in hops for s in h.stages),
-            success=hops[-1].success,
-            get_segment_fn=lambda sid: Stage(get_segment(sid), stages, rec),
-        )
+        lookup = lambda sid: Stage(get_segment(sid), stages, rec)
+        prefix_tape = getattr(args, "prefix_tape", None)
+        if prefix_tape is not None:
+            from alttp.scripts.run_spine import play_from_stages
+
+            if args.survival or args.start != "NONE":
+                raise ValueError("a verified prefix requires NONE and no Survival assists")
+            remaining = play_verified_prefix(live.env, prefix_tape, args.through)
+            prefix_frames = len(rec.buttons)
+            result = play_from_stages(
+                live.env, remaining, resume_stage=remaining[0], success=hops[-1].success,
+                get_segment_fn=lookup, source="power_on_tape_prefix",
+            )
+        else:
+            result = run_to_verified_tip(
+                live.env, close=False,
+                segment_ids=tuple(s for h in hops for s in h.stages),
+                success=hops[-1].success, get_segment_fn=lookup,
+            )
         live.note_rollout_restores(restores() - start_restores)
         audit = asdict(live.report())
         report = result.to_report()
@@ -230,12 +291,16 @@ def controller(args: Any) -> dict[str, Any]:
         })
         report["runner_reported_frames"] = report["frames"]
         report["frames"] = len(rec.buttons)
+        if prefix_tape is not None:
+            report["prefix_tape"] = str(prefix_tape)
+            report["prefix_frames"] = prefix_frames
         for row in report["segments"]:
             row.update(source="controller_search", cleanChain=False, developmentOnly=True)
         report["story"] = story_glance(raw)
         meta = {"start": args.start, "through": args.through, "survival": args.survival,
                 "source_ok": report["ok"], "source_final": report["final"], "stages": stages,
                 "source_story": report["story"],
+                "prefix_tape": str(prefix_tape) if prefix_tape is not None else None,
                 "rom_sha256": hashlib.sha256((INTEGRATION_DIR / "rom.sfc").read_bytes()).hexdigest()}
         np.savez_compressed(
             args.out.with_suffix(".tape.npz"), buttons=np.stack(rec.buttons),
@@ -321,7 +386,8 @@ def replay(args: Any) -> dict[str, Any]:
         save_end(raw, args.out, len(buttons))
         # New glance fields must not invalidate older tapes. Every recorded
         # field still has to agree, and each route checks its own goal fields.
-        synchronization_ok = (desynced == 0 and final == meta["source_final"]
+        synchronization_ok = (desynced == 0
+                              and all(final.get(k) == v for k, v in meta["source_final"].items())
                               and all(story.get(k) == v for k, v in meta.get("source_story", {}).items()))
         route_goal_ok = replay_goal_accepted(meta, final, story)
         clean = (synchronization_ok and route_goal_ok and not death_frames
@@ -360,6 +426,8 @@ def main() -> int:
     parser.add_argument("--through", default="room_81")
     parser.add_argument("--survival", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--tape", type=Path)
+    parser.add_argument("--prefix-tape", type=Path,
+                        help="Controller only: replay a verified Clean power-on prefix before new rows")
     parser.add_argument("--edge", help="After the spine, try one mapped map_id:door edge")
     parser.add_argument("--capture", action="append", default=[], metavar="FRAME:DevName",
                         help="Replay only: save a CRC-checked development predecessor")
@@ -369,6 +437,8 @@ def main() -> int:
         parser.error("replay requires --tape")
     if args.capture and args.mode != "replay":
         parser.error("--capture requires replay mode")
+    if args.prefix_tape and args.mode != "controller":
+        parser.error("--prefix-tape requires controller mode")
     if args.edge and (":" not in args.edge or not all(args.edge.split(":", 1))):
         parser.error("--edge requires map_id:door")
     _refuse_verified_tip_run(args.out)

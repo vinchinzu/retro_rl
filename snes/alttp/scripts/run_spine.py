@@ -300,8 +300,14 @@ def play_from_stages(
     *,
     resume_stage: str,
     success: str,
+    get_segment_fn: Callable[[str], object] | None = None,
+    source: str = "resumed",
 ) -> FullTipResult:
-    """Play ``stages`` from a pin already loaded. No boot and no idle frame."""
+    """Play ``stages`` from the current predecessor. No boot or idle frame.
+
+    Resume callers load their pin first; the power-on audit may instead
+    supply an already CRC-verified tape predecessor in the same environment.
+    """
     from alttp import primitives
     from alttp.opening_route.anchors import resolve_continuous_tip_node
     from alttp.opening_route.segment import get_segment
@@ -309,18 +315,19 @@ def play_from_stages(
     from alttp.startup import snapshot_env
 
     pre = snapshot_env(env)  # type: ignore[arg-type]
-    first = get_segment(resume_stage)
+    lookup = get_segment if get_segment_fn is None else get_segment_fn
+    first = lookup(resume_stage)
     boot = RoutePhaseResult(
-        phase="resumed",
+        phase=source,
         ok=first.entry.matches(pre),
         frames=0,
         snapshot=pre,
-        detail=f"loaded {resume_stage} with no idle frame",
+        detail=f"{source} predecessor for {resume_stage}, no idle frame",
     )
     notes = [
         f"Resumed from {resume_stage}; one disclosed state load, no idle frame.",
         "Not a continuous power-on.",
-    ]
+    ] if source == "resumed" else [f"{source} predecessor; no load or idle frame."]
     if not boot.ok:
         return FullTipResult(
             ok=False,
@@ -334,13 +341,13 @@ def play_from_stages(
                 f"{first.entry.description}"
             ),
             notes=notes + ["play_fn not called (entry gate)"],
-            source="resumed",
+            source=source,
         )
     total = 0
     rows = []
     for segment_id in stages:
-        segment = get_segment(segment_id)
-        evidence = segment.play_checked(env, source="resumed")  # type: ignore[arg-type]
+        segment = lookup(segment_id)
+        evidence = segment.play_checked(env, source=source)  # type: ignore[arg-type]
         rows.append(evidence)
         total += evidence.frames
         if not _exit_acceptance_ok(segment, evidence):
@@ -362,7 +369,7 @@ def play_from_stages(
                 segments=rows,
                 blocker=detail,
                 notes=notes,
-                source="resumed",
+                source=source,
             )
     settle = primitives.settle_control(env)
     total += settle.frames
@@ -390,7 +397,7 @@ def play_from_stages(
             segments=rows,
             blocker=f"tip transition did not settle: {settle.reason}",
             notes=notes,
-            source="resumed",
+            source=source,
         )
     if tip_node != success:
         return FullTipResult(
@@ -403,7 +410,7 @@ def play_from_stages(
             segments=rows,
             blocker=f"expected stop {success!r}, resolved {tip_node!r}",
             notes=notes,
-            source="resumed",
+            source=source,
         )
     return FullTipResult(
         ok=True,
@@ -414,7 +421,7 @@ def play_from_stages(
         boot=boot,
         segments=rows,
         notes=notes,
-        source="resumed",
+        source=source,
     )
 
 

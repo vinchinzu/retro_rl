@@ -17,6 +17,12 @@ from alttp.scripts import audit_power_on as audit
     "through, screen, x, y, source_ok, capacity, accepted",
     [
         ("sanctuary_exit", 0x13, 1880, 1083, True, 32, True),
+        ("kakariko", 0x18, 511, 1584, True, 32, True),
+        ("kakariko", 0x18, 600, 1600, True, 32, True),
+        ("kakariko", 0x19, 600, 1600, True, 32, False),
+        ("kakariko", 0x18, 1600, 1600, True, 32, False),
+        ("kakariko", 0x13, 1880, 1083, True, 32, False),
+        ("kakariko", 0x18, 511, 1584, False, 32, False),
         ("eastern_grounds", 0x1E, 3328, 2047, True, 32, True),
         ("eastern_grounds", 0x1E, 3936, 2460, True, 32, False),
         ("eastern_grounds", 0x1E, 3328, 2047, False, 32, False),
@@ -111,10 +117,11 @@ def test_eastern_approach_replay_requires_mapped_point_and_loaded_screen(
         (True, 2, 4, 0, 0, True),
     ],
 )
+@pytest.mark.parametrize("final_version", ("current", "older", "changed"))
 def test_synchronized_sanctuary_replay_requires_completed_story(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     source_ok: bool, progress: int, flags: int, follower: int,
-    submodule: int, accepted: bool,
+    submodule: int, accepted: bool, final_version: str,
 ) -> None:
     data = np.zeros(0x24000, dtype=np.uint8)
     for offset, value in {
@@ -134,6 +141,10 @@ def test_synchronized_sanctuary_replay_requires_completed_story(
     env.close = lambda: setattr(env, "closed", True)
     final = ram.snapshot_to_diag(ram.read_snapshot(data))
     story = audit.story_glance(env)
+    if final_version == "older":
+        final.pop("max_hp")  # Added after the published C1 tape was recorded.
+    elif final_version == "changed":
+        final["link_x"] += 1  # Recorded fields still have to match.
     tape = tmp_path / "sanctuary.tape.npz"
     np.savez_compressed(
         tape, buttons=np.zeros((1, 12), dtype=np.uint8),
@@ -148,11 +159,73 @@ def test_synchronized_sanctuary_replay_requires_completed_story(
     monkeypatch.setattr(audit, "save_end", lambda *_args: None)
     report = audit.replay(SimpleNamespace(tape=tape, out=tmp_path / "replay.json"))
 
+    clean = accepted and final_version != "changed"
     assert env.closed
-    assert report["synchronization_ok"] is True
+    assert report["synchronization_ok"] is (final_version != "changed")
     assert report["desynced"] == 0
     assert report["audit"]["set_state"] == report["audit"]["writes"] == 0
     assert report["route_goal_ok"] is accepted
-    assert report["ok"] is accepted
-    assert report["clean_chain"] is accepted
-    assert report["development_only"] is not accepted
+    assert report["ok"] is clean
+    assert report["clean_chain"] is clean
+    assert report["development_only"] is not clean
+
+
+@pytest.mark.parametrize("case", (
+    "valid", "older_glance", "assisted", "same_stop", "unknown_stop", "wrong_rom", "desync", "wrong_leave",
+))
+def test_verified_prefix_rejects_bad_inputs_before_suffix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: str,
+) -> None:
+    import hashlib
+
+    data = np.zeros(0x24000, dtype=np.uint8)
+    for offset, value in {
+        ram.MODULE: 7, ram.INDOORS: 1, ram.ROOM_ID: ram.SANCTUARY_ROOM,
+        ram.EQUIP_SWORD: 1, ram.LINK_ITEM_LAMP: 1, ram.LINK_HP: 10,
+        ram.LINK_MAX_HP: 24, ram.SRAM_PROGRESS: 2, ram.SRAM_PROGRESS_FLAGS: 0x15,
+    }.items():
+        data[ram.wram_index(offset)] = value
+    calls = []
+    env = SimpleNamespace(
+        get_ram=lambda: data, reset=lambda: calls.append("reset"),
+        step=lambda _action: calls.append("step"),
+    )
+    rom = tmp_path / "rom.sfc"
+    rom.write_bytes(b"test ROM identity")
+    monkeypatch.setattr(audit, "INTEGRATION_DIR", tmp_path)
+    meta = {
+        "start": "NONE", "through": "sanctuary", "survival": False,
+        "source_ok": True, "source_final": ram.snapshot_to_diag(ram.read_snapshot(data)),
+        "source_story": audit.story_glance(env),
+        "rom_sha256": hashlib.sha256(rom.read_bytes()).hexdigest(),
+    }
+    through = "kakariko"
+    crc = audit.ram_crc(data)
+    if case == "older_glance":
+        meta["source_final"].pop("max_hp")
+    elif case == "assisted":
+        meta["survival"] = True
+    elif case == "same_stop":
+        through = "sanctuary"
+    elif case == "unknown_stop":
+        meta["through"] = "unknown"
+    elif case == "wrong_rom":
+        meta["rom_sha256"] = "other ROM"
+    elif case == "desync":
+        crc ^= 1
+    elif case == "wrong_leave":
+        meta["source_final"]["link_x"] += 1
+    tape = tmp_path / "prefix.npz"
+    np.savez_compressed(
+        tape, buttons=np.zeros((1, 12), dtype=np.uint8),
+        frame_crc=np.asarray([crc], dtype=np.uint32), meta=json.dumps(meta),
+    )
+    if case in ("valid", "older_glance"):
+        assert audit.play_verified_prefix(env, tape, through) == (
+            "sanctuary_heart", "sanctuary_exit", "sanctuary_to_kakariko",
+        )
+    else:
+        with pytest.raises((ValueError, RuntimeError)):
+            audit.play_verified_prefix(env, tape, through)
+        if case not in ("desync", "wrong_leave"):
+            assert calls == []  # No emulator work for an incompatible tape.

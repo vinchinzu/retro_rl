@@ -1,97 +1,86 @@
-# ALttP route residual — 2026-10-02
+# ALttP route residual — 2026-10-06
 
-C1 is complete: Clean power-on to completed Sanctuary, with no health refill
-assistance, progression/capacity writes, mid-run loads, or deaths.
+`rr-f2mk` acceptance is complete: the Clean Sanctuary-to-Kakariko extension
+collects the Heart Container, exits south, and walks west via
+`0x13 -> 0x12 -> 0x11 -> 0x18`. Gear gathering remains `rr-7cdd`.
 
-## Proof and segment breakdown
+## Leave proof
 
-`recordings/clean_escape_20261002/controller.tape.npz` replays from `NONE`
-(core reset, blank SRAM before frame1). `replay.json`: **36078f**, zero
-full-RAM CRC desync, zero loads/writes, assist disabled. Final room0x12,
-module/submodule0x07/0, (1272,568), HP10/24, sword/lamp1, follower0,
-progress2, flags0x15, Sanctuary story acceptance true.
+`recordings/clean_kakariko_20261006/prefix_replay.json` verifies **38277f**
+from an actual `NONE` reset and blank SRAM prepared before frame 1. Zero
+full-RAM CRC desync, state loads, RAM writes, refill assists or deaths.
+`route_goal_ok`, `synchronization_ok` and `clean_chain` are true.
 
-| Segment | Frames | End HP |
-|---------|-------:|-------:|
-| Boot and fresh profile | 4838 | 24 |
-| Castle to uncle sword | 1947 | 24 |
-| Secret-passage exit | 603 | 24 |
-| Courtyard to main hall | 5693 | 20 |
-| Main hall to room0x50 | 736 | 20 |
-| Room0x50 east to0x01 | 424 | 16 |
-| Stairs to0x72 | 431 | 16 |
-| Small key and south to0x82 | 792 | 24 |
-| Bridge west to0x81 | 686 | 20 |
-| Required keys and Zelda rescue | 5655 | 16 |
-| Escort, mantle, sewers and Sanctuary story | 14273 | 10 |
+Final outdoors: loaded screen `0x18`, standing quadrant `0x18`,
+module/submodule `0x09/0x00`, `(511,1584)`, HP `32/32`, sword/lamp `1`,
+follower `$F3CC == 0`, keys `0xFF`, progress/flags `2/0x15`.
+The Heart Container increases capacity `24 -> 32` and heals through play.
+Bombs, rupees, bottles and net have not been gathered.
 
-HP is never written. Two normal enemy heart drops restore16HP through play;
-no refill assist runs. The replay takes30HP in11 hits and finishes alive.
-This is a Clean completion, not a no-damage or no-heart-pickup claim.
+| Suffix leg | Frames | End HP |
+|------------|-------:|-------:|
+| Sanctuary Heart Container | 236 | 32/32 |
+| Sanctuary south exit | 534 | 32/32 |
+| Westward Kakariko traversal | 1429 | 32/32 |
 
-## rr-vlor — complete
+The first 36078 inputs are the published C1 tape, replayed and CRC-checked
+in the same emulator before the new rows. No development pin is loaded.
+The suffix controller discloses 454 rollout restores and zero writes;
+only the separate forward replay proves Clean. The older prefix's search
+history remains disclosed in `docs/STATUS.md`; its committed inputs contain
+no restores. C2 (Eastern prize) remains unearned; STATUS is unchanged.
 
-Read the big-key carrier marker `$0CBA == 2`, then forecast complete32-frame
-approach, swing and recovery candidates on the live ROM, including flail
-contact beyond the body. Commit eight frames and replan. Committing all32
-could finish in an inescapable flail arc on the actual arrival. Unsafe
-candidates and room/floor/layer changes are rejected; no candidate means red.
-No copied approach coordinates or inventory writes.
+## Reproduce
 
-Real no-assist predecessor: frame20698 of `controller.tape.npz`,
-`DevClean_Ball`, HP16. Offsets0,7,11 each earn the key without damage and
-pass same-pin forward replay, zero CRC desync/loads/writes. Evidence:
-`rom_regressions.log` (14 ROM cases pass). The continuous composition rescues
-Zelda at frame21805, not by loading a cell pin.
-
-## rr-e8x7 — complete no-refill composition
-
-The initial no-assist run caught the main-hall corridor lip and died before
-room0x50. Mapped `natural_clear_north` plus one-frame corridor points with
-role `axis` pass that leg with HP20 unchanged.
-
-Escort forecasts preserve the exact existing mapped waypoint handoff.
-Measured guards cover0x81,0x82,0x72,0x50,0x41,0x42,0x32. The48-frame
-forecast includes facing, sword swing and recovery when a hostile blocks
-the approach; pure evasion stalled the snake-room stair. The exact mantle
-walker, stair settling and required carrier rat fight are preserved.
-
-The real no-assist rescue pin `DevClean_Zelda` is captured at frame21805.
-Whole suffix plus CRC forward replay passes offsets0 and7:
-
-| Offset | Committed frames | End HP | Search restores | Replay loads/writes/desync |
-|-------:|-----------------:|-------:|----------------:|---------------------------|
-| 0 | 14273 | 10 | 3438 | 0/0/0 |
-| 7 | 14148 | 12 | 5887 | 0/0/0 |
-
-Evidence: `escort_offset_0.json`, `escort_offset_7.json`,
-`escort_replay_tests.log`. Full controller discloses4148 search restores
-(4141 rollout +7 bush candidate restores); the independent power-on replay
-has none. These pins are development inputs, not independent continuous claims.
-
-## Next
-
-C2 Eastern Palace from the Clean Sanctuary predecessor (`rr-eog9.6` lobby,
-`.7` CLI/replay, `.8` tests); roadside resources remain `rr-yx26`.
-Optional measured follow-up (`rr-dkwg`): cut14HP of accepted escort sewer damage in
-0x22,0x21,0x11. Forecast the complete key pickup/door/block handoff, not just
-walking. C1 is already green; no stronger no-damage claim is made.
-
-The historical room0x50 report is intact. No follower, keys, sword, capacity
-or progression was poked. Alternate dungeon-entry/Survival evidence remains
-separate. Broader offline tests retain the known fake sword-exit fixture
-failure `rr-mott`; it predates this change and does not affect the ROM proof.
-
-Reconstruct both ROM-test predecessor pins from the published tape (cwd `snes/`):
+From `snes/`, export `QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy
+SDL_AUDIODRIVER=dummy`, then use the existing audit CLI:
 
 ```bash
-QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+uv run python alttp/scripts/audit_power_on.py controller \
+  --prefix-tape alttp/recordings/clean_escape_20261002/controller.tape.npz \
+  --through kakariko --no-survival \
+  --out alttp/recordings/clean_kakariko_20261006/prefix_controller.json
 uv run python alttp/scripts/audit_power_on.py replay \
-  --tape alttp/recordings/clean_escape_20261002/controller.tape.npz \
-  --capture 20698:DevClean_Ball --capture 21805:DevClean_Zelda \
-  --out alttp/recordings/clean_escape_20261002/replay.json
+  --tape alttp/recordings/clean_kakariko_20261006/prefix_controller.tape.npz \
+  --capture 38277:DevClean_Kakariko \
+  --out alttp/recordings/clean_kakariko_20261006/prefix_replay.json
 ```
 
-Final verification: 14 existing/big-key ROM cases plus two whole-escort offset
-replay cases pass; 332 offline cases pass with only the known `rr-mott` fixture
-excluded; eight repository docs checks pass.
+To reconstruct the ROM-test predecessor, replay the published C1 tape with
+`--capture 36078:DevClean_Sanctuary` and a new output path. This development
+capture is not a substitute for the power-on replay above.
+
+Verification: two live-ROM whole-suffix offset tests (0,7), each followed
+by every-frame CRC forward replay; 369 offline cases; eight repository docs
+checks; compileall and diff whitespace check. The known fake sword-exit
+fixture `rr-mott` is excluded from the offline run; the unfiltered run still
+fails that case. Logs: `rom_tests.log`, `offline_tests.log` in the evidence
+folder. The legacy assisted Kakariko pin test is replaced by the Clean
+composition tests, all marked `rom`.
+
+## Cleanup and next work
+
+Westward route composition lives in the existing segment registry; the
+unused Sanctuary-to-Link's-house wrapper is deleted. `overworld.py` is
+985 lines and `opening_route/segment.py` is 943. Heart receipt and door-push
+frames are counted, including failures. Kakariko acceptance distinguishes
+loaded screen from standing quadrant. Older tapes tolerate newly added
+snapshot fields while every recorded field and full-RAM CRC must match.
+The prefix CLI rejects assisted, incompatible, wrong-ROM or desynchronized
+inputs before dispatching a suffix. No one-off runner remains.
+
+`rr-ihr8`: the current fresh controller fails before Zelda rescue in room
+`0x71` at `(889,3976)`, HP `20/24`, key 1, follower 0, at frame 14069.
+Its faster courtyard predecessor differs from C1; inspect that exact arrival
+before changing rescue navigation. `controller.json` preserves this red.
+The published C1 replay remains exact.
+
+Next action (`rr-7cdd`): map and enter the Well from the Clean Kakariko
+arrival, earn actual chest resources, then compose Hideout/bottle/net legs
+and require a new power-on replay. Keep gear research separate from earned
+inventory evidence.
+
+Non-claims: did not STATUS-promote; did not treat a pin as power-on; did
+not write follower, sword, keys, capacity or progression; did not copy
+approach coordinates into Python; did not overwrite the historical
+`recordings/verified_tip_run.json` on a red.

@@ -39,6 +39,7 @@ from alttp.ram import (
     HYRULE_CASTLE_NW_ROOM,
     HYRULE_CASTLE_SCREEN,
     SANCTUARY_ROOM,
+    SANCTUARY_SCREEN,
     SECRET_PASSAGE_ROOM,
     ZELDA_CELL_ROOM,
     AlttpSnapshot,
@@ -52,6 +53,7 @@ CAP_FIGHTER_SWORD = "fighter_sword"
 CAP_SMALL_KEY = "small_key"
 CAP_LAMP = "lamp"
 CAP_ZELDA_FOLLOWER = "zelda_follower"
+CAP_HEART_CONTAINER = "heart_container"
 
 # Natural boot collects the Link's House lamp before leaving for the castle.
 NATURAL_HOUSE_EXIT_CAPABILITIES: frozenset[str] = frozenset({CAP_LAMP})
@@ -81,6 +83,9 @@ N_ROOM_80 = "room_80"
 N_CASTLE_MANTLE = "castle_mantle"
 N_SEWERS_DARK = "sewers_dark"
 N_SANCTUARY = "sanctuary"  # indoor room 0x12; abstract escort goal name
+N_SANCTUARY_HEART = "sanctuary_heart"
+N_SANCTUARY_EXIT = "sanctuary_exit"
+N_KAKARIKO = "kakariko"
 # Eastern Palace lobby and the hall north of it. Isolated, not on the Sanctuary plan.
 N_ROOM_C9 = "room_c9"
 N_ROOM_B9 = "room_b9"
@@ -522,6 +527,56 @@ _ESCAPE_HOPS: tuple[EscapeHop, ...] = (
             "z3_label": "Sanctuary Push Door",
         },
     ),
+    EscapeHop(
+        hop_id="sanctuary_to_heart",
+        source_id=N_SANCTUARY,
+        target_id=N_SANCTUARY_HEART,
+        direction="chest",
+        requires=frozenset({CAP_FIGHTER_SWORD, CAP_LAMP}),
+        acquires=frozenset({CAP_HEART_CONTAINER}),
+        verification=VERIFICATION_PLANNED,
+        provenance="sanctuary_20261001.heart_replay",
+        goal="collect_sanctuary_heart",
+        paths=frozenset(),
+        meta={
+            "to_room_base_id": SANCTUARY_ROOM,
+            "door_label": "sanctuary_heart_chest",
+            "map_id": "room_12",
+            "note": "Sanctuary Heart Container chest (+1 container, 4 hearts / 32 max HP)",
+        },
+    ),
+    EscapeHop(
+        hop_id="sanctuary_heart_to_exit",
+        source_id=N_SANCTUARY_HEART,
+        target_id=N_SANCTUARY_EXIT,
+        direction="door",
+        requires=frozenset({CAP_FIGHTER_SWORD, CAP_LAMP}),
+        verification=VERIFICATION_PLANNED,
+        provenance="sanctuary_20261001.exit_replay",
+        goal="exit_sanctuary_to_screen_13",
+        paths=frozenset(),
+        meta={
+            "screen_id": SANCTUARY_SCREEN,
+            "door_label": "sanctuary_door_to_0x13",
+            "map_id": "room_12",
+            "note": "Sanctuary south door exit to screen 0x13 outdoors (1880, 1083)",
+        },
+    ),
+    EscapeHop(
+        hop_id="sanctuary_exit_to_kakariko",
+        source_id=N_SANCTUARY_EXIT,
+        target_id=N_KAKARIKO,
+        direction="overworld",
+        requires=frozenset({CAP_FIGHTER_SWORD, CAP_LAMP}),
+        verification=VERIFICATION_PLANNED,
+        provenance="opening_route.segment.walk_to_kakariko",
+        goal="reach_kakariko_village",
+        paths=frozenset(),
+        meta={
+            "screen_id": 0x18,
+            "note": "Overworld traversal: 0x13 -> 0x12 -> 0x11 -> 0x18 to Kakariko Village",
+        },
+    ),
     # Eastern lobby → north hall. Off the Sanctuary plan (empty paths).
     EscapeHop(
         hop_id="room_c9_north_to_0xb9",
@@ -764,6 +819,45 @@ def _escape_nodes() -> tuple[GraphNode, ...]:
                 SANCTUARY_ROOM,
                 z3_label="Sanctuary",
                 extra={"node_alias": "room_12"},
+            ),
+        ),
+        GraphNode(
+            node_id=N_SANCTUARY_HEART,
+            name="Sanctuary Heart Container",
+            area="sanctuary",
+            tags=frozenset({"indoors", "escape", "sanctuary", "heart", "continuous"}),
+            meta=_room_meta(
+                SANCTUARY_ROOM,
+                z3_label="Sanctuary",
+                extra={"map_id": "room_12", "chest": "sanctuary_heart_chest"},
+            ),
+        ),
+        GraphNode(
+            node_id=N_SANCTUARY_EXIT,
+            name="Sanctuary Exit",
+            area="light_world",
+            tags=frozenset({"overworld", "sanctuary", "continuous"}),
+            meta=_room_meta(
+                None,
+                extra={
+                    "screen_id": SANCTUARY_SCREEN,
+                    "screen_hex": f"0x{SANCTUARY_SCREEN:02X}",
+                    "z3_label": "Sanctuary",
+                },
+            ),
+        ),
+        GraphNode(
+            node_id=N_KAKARIKO,
+            name="Kakariko Village",
+            area="kakariko",
+            tags=frozenset({"overworld", "kakariko", "village", "continuous"}),
+            meta=_room_meta(
+                None,
+                extra={
+                    "screen_id": 0x18,
+                    "screen_hex": "0x18",
+                    "z3_label": "Kakariko Village",
+                },
             ),
         ),
         GraphNode(

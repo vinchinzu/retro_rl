@@ -27,6 +27,7 @@ from alttp.ram import (
     HYRULE_CASTLE_NW_ROOM,
     HYRULE_CASTLE_SCREEN,
     SANCTUARY_ROOM,
+    SANCTUARY_SCREEN,
     SECRET_HOLE_APPROACH_TOLERANCE,
     SECRET_PASSAGE_ROOM,
     ZELDA_CELL_ROOM,
@@ -598,6 +599,39 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
                 "RAM room base 0x12.",
             ),
         ),
+        MultiTruthAnchor(
+            anchor_id="HyruleCastle_SanctuaryHeart",
+            name="Sanctuary Heart Container (room 0x12)",
+            tier="approach",
+            room_base_id=SANCTUARY_ROOM,
+            require_indoors=True,
+            position=PositionWindow(1241, 600, tolerance=2, label="heart_open_front"),
+            graph_node_id="sanctuary_heart",
+            _extra_match=lambda s: int(s.max_hp) >= 32,
+            notes=("Sanctuary Heart Container collected (4 hearts / 32 max HP).",),
+        ),
+        MultiTruthAnchor(
+            anchor_id="Overworld_SanctuaryExit",
+            name="Sanctuary Exit (screen 0x13)",
+            tier="route",
+            screen_id=SANCTUARY_SCREEN,
+            require_indoors=False,
+            position=PositionWindow(1880, 1083, tolerance=32, label="sanctuary_door"),
+            graph_node_id="sanctuary_exit",
+            notes=("Outdoors screen 0x13 at Sanctuary door.",),
+        ),
+        MultiTruthAnchor(
+            anchor_id="Overworld_KakarikoArrival",
+            name="Kakariko Village (loaded screen 0x18)",
+            tier="route",
+            screen_id=0x18,
+            require_indoors=False,
+            _extra_match=lambda s: not s.dark_world and (
+                s.link_y // 512 * 8 + s.link_x // 512 in (0x18, 0x19, 0x20, 0x21)
+            ),
+            graph_node_id="kakariko",
+            notes=("Outdoors in Kakariko Village for gear gathering.",),
+        ),
     )
 
 
@@ -613,7 +647,10 @@ TIP_ANCHOR_ORDER: tuple[str, ...] = (
     "HyruleCastle_MainWest_0x60",
     "HyruleCastle_MainHall",  # earlier continuous spine checkpoint
     "HyruleCastle_ZeldaCell",  # planned
+    "HyruleCastle_SanctuaryHeart",
     "HyruleCastle_Sanctuary",  # planned
+    "Overworld_KakarikoArrival",
+    "Overworld_SanctuaryExit",
     "HyruleCastle_Courtyard_SecretStairsPocket",
     "HyruleCastle_SecretEntrance_StairsAlign",
     "HyruleCastle_SecretEntrance_SouthChamber",

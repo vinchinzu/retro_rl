@@ -165,6 +165,9 @@ def test_segment_registry_has_continuous_segments() -> None:
     assert "room_82_west_to_0x81" in reg
     assert "main_hall_to_zelda" not in reg  # planned only; not a live segment
     assert "escort_to_sanctuary" in reg
+    assert "sanctuary_heart" in reg
+    assert "sanctuary_exit" in reg
+    assert "sanctuary_to_kakariko" in reg
     assert set(list_segments()) == set(reg)
     seg = get_segment("castle_to_sword")
     assert seg.exit.verification == "continuous"
@@ -176,6 +179,18 @@ def test_segment_registry_has_continuous_segments() -> None:
     escort = get_segment("escort_to_sanctuary")
     assert escort.exit.verification == "planned"
     assert escort.exit.graph_node_id == "sanctuary"
+    heart = get_segment("sanctuary_heart")
+    assert heart.exit.verification == "natural_entry"
+    assert heart.exit.graph_node_id == "sanctuary_heart"
+    assert heart.entry.graph_node_id == "sanctuary"
+    exit_seg = get_segment("sanctuary_exit")
+    assert exit_seg.exit.verification == "natural_entry"
+    assert exit_seg.exit.graph_node_id == "sanctuary_exit"
+    assert exit_seg.entry.graph_node_id == "sanctuary_heart"
+    kak = get_segment("sanctuary_to_kakariko")
+    assert kak.exit.verification == "natural_entry"
+    assert kak.exit.graph_node_id == "kakariko"
+    assert kak.entry.graph_node_id == "sanctuary_exit"
     east = get_segment("room_50_east_to_0x01")
     assert east.exit.verification == "natural_entry"
     assert east.exit.graph_node_id == "room_01"
@@ -200,6 +215,9 @@ def test_tip_resolution_most_specific() -> None:
     assert TIP_ANCHOR_ORDER[3] == "HyruleCastle_NorthConnector_0x01"
     assert TIP_ANCHOR_ORDER[4] == "HyruleCastle_NW_0x50"
     assert "HyruleCastle_MainHall" in TIP_ANCHOR_ORDER
+    assert "HyruleCastle_SanctuaryHeart" in TIP_ANCHOR_ORDER
+    assert "Overworld_SanctuaryExit" in TIP_ANCHOR_ORDER
+    assert "Overworld_KakarikoArrival" in TIP_ANCHOR_ORDER
 
     grounds = _snap(screen_id=0x1B, indoors=False, game_mode=0x09)
     assert resolve_continuous_tip_node(grounds) == "castle_grounds"
