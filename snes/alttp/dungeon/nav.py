@@ -32,7 +32,9 @@ __all__ = [
     "WalkCommit",
     "door_line",
     "find_path",
+    "free_chest_stand",
     "heading_for",
+    "open_free_chests",
     "room_origin",
     "room_step",
 ]
@@ -278,3 +280,186 @@ def _walkable(value: int, allow: frozenset[str]) -> bool:
         if value == byte or tile_kind(value) == name:
             return name in allow
     return tile_kind(value) in _WALKABLE_KINDS
+
+
+# Room 0x71 chest 0 is a 16x16 graphic. Facing up from the left column,
+# one body south of that graphic, is the press that takes the boomerang.
+# Other faces were not the open. A chest with no path to this stand stays shut.
+_CHEST_FACE = "UP"
+
+
+def free_chest_stand(
+    tiles: object,
+    link: tuple[int, int],
+    col: int,
+    row: int,
+) -> tuple[int, int] | None:
+    """Room-local stand south of a 16x16 chest, or None when no path exists.
+
+    ``link`` is Link's room-local pixel. The stand is the left column of
+    the chest, with the body on the floor row under the graphic. The
+    caller faces up. No path is a reason to leave the chest closed.
+    """
+    goal = (int(col) * _TILE, (int(row) + 1) * _TILE)
+    start = (int(link[0]) & ~7, int(link[1]) & ~7)
+    if find_path(tiles, start, goal, LINK_BODY) is None:
+        return None
+    return goal
+
+
+def _aim(x: int, y: int, tx: int, ty: int) -> str | None:
+    dx, dy = tx - x, ty - y
+    if dx == 0 and dy == 0:
+        return None
+    if abs(dx) >= abs(dy):
+        return "RIGHT" if dx > 0 else "LEFT"
+    return "DOWN" if dy > 0 else "UP"
+
+
+def _walk_stand(env: object, x: int, y: int, room: int, limit: int) -> tuple[bool, int]:
+    """One-frame steps along a fresh path. Stops on the stand pixel."""
+    from alttp.dungeon.tilemap import read_room_tiles
+    from alttp.startup import action_for, no_action, snapshot_env
+
+    frames = 0
+    still = 0
+    previous: tuple[int, int] | None = None
+    while frames < limit:
+        snap = snapshot_env(env)
+        if snap.room_base_id != room or snap.game_mode == 0x12:
+            return False, frames
+        if abs(snap.link_x - x) <= 1 and abs(snap.link_y - y) <= 1:
+            return True, frames
+        if abs(snap.link_x - x) <= 8 and abs(snap.link_y - y) <= 8:
+            button = _aim(snap.link_x, snap.link_y, x, y)
+        else:
+            origin = room_origin(snap.link_x, snap.link_y)
+            local = (snap.link_x - origin[0], snap.link_y - origin[1])
+            goal = ((x - origin[0]) & ~7, (y - origin[1]) & ~7)
+            path = find_path(
+                read_room_tiles(env.get_ram(), snap.layer),  # type: ignore[attr-defined]
+                (local[0] & ~7, local[1] & ~7),
+                goal,
+                LINK_BODY,
+            )
+            if not path or len(path) < 2:
+                return False, frames
+            button = _aim(
+                snap.link_x,
+                snap.link_y,
+                origin[0] + path[1][0],
+                origin[1] + path[1][1],
+            )
+        action = no_action() if button is None else action_for(button)
+        env.step(action)  # type: ignore[attr-defined]
+        frames += 1
+        xy = (snap.link_x, snap.link_y)
+        if xy == previous:
+            still += 1
+        else:
+            still = 0
+            previous = xy
+        if still >= 24:
+            return False, frames
+    return False, frames
+
+
+def open_free_chests(env: object, *, max_frames: int = 900):
+    """Open each closed chest whose south stand has a floor path.
+
+    Skip a chest when it is already open, on the other layer, the stand
+    has no path, the walk cannot reach the stand, or one A press does
+    not set the opened bit. The last of those is a missing ability bit,
+    a missing big key, or a face this stand does not cover. This does
+    not write RAM and does not spend a key.
+    """
+    from alttp.dungeon.rom_scan import closed_chests
+    from alttp.dungeon.tilemap import read_room_tiles
+    from alttp.primitives import PrimitiveResult, settle_control
+    from alttp.startup import action_for, no_action, snapshot_env, step_frames
+
+    snap = snapshot_env(env)
+    if not snap.indoors:
+        return PrimitiveResult(True, "outdoors", 0, snap)
+    room = snap.room_base_id
+    frames = 0
+    opened: list[int] = []
+    skipped: list[str] = []
+    for index, col, row, layer in closed_chests(env):
+        snap = snapshot_env(env)
+        if snap.room_base_id != room:
+            return PrimitiveResult(False, "left the room", frames, snap)
+        if snap.game_mode == 0x12:
+            return PrimitiveResult(False, "Link died", frames, snap)
+        if snap.layer != layer:
+            skipped.append(f"chest {index} other layer")
+            continue
+        if frames >= max_frames:
+            skipped.append(f"chest {index} frame cap")
+            break
+        origin = room_origin(snap.link_x, snap.link_y)
+        stand = free_chest_stand(
+            read_room_tiles(env.get_ram(), snap.layer),  # type: ignore[attr-defined]
+            (snap.link_x - origin[0], snap.link_y - origin[1]),
+            col,
+            row,
+        )
+        if stand is None:
+            skipped.append(f"chest {index} no path")
+            continue
+        reached, used = _walk_stand(
+            env,
+            origin[0] + stand[0],
+            origin[1] + stand[1],
+            room,
+            max_frames - frames,
+        )
+        frames += used
+        if not reached:
+            skipped.append(f"chest {index} stand not reached")
+            continue
+        step_frames(env, action_for(_CHEST_FACE), 4)
+        step_frames(env, action_for("A"), 1)
+        frames += 5
+        # The opened bit and inventory can update before the item receipt
+        # freezes Link. In room 0x71, ordinary module/action bytes persist
+        # for roughly 60 frames before the boomerang message appears.
+        # Await that handoff before settle_control can claim movement ready.
+        for waited in range(480):
+            snap = snapshot_env(env)
+            if snap.is_hold_up_item or snap.is_text_mode or snap.game_mode == 0x12:
+                break
+            if waited >= 40 and not _opened_bit(env, index):
+                break
+            step_frames(env, no_action(), 1)
+            frames += 1
+        else:
+            return PrimitiveResult(
+                False, f"chest {index} receipt timeout", frames, snapshot_env(env),
+            )
+        settled = settle_control(env, max_frames=480)
+        frames += settled.frames
+        snap = settled.snapshot
+        if snap.game_mode == 0x12:
+            return PrimitiveResult(False, "Link died", frames, snap)
+        if not settled.ok and (snap.is_hold_up_item or snap.is_text_mode or not snap.has_control):
+            return PrimitiveResult(False, settled.reason, frames, snap)
+        if _opened_bit(env, index):
+            opened.append(index)
+        else:
+            skipped.append(f"chest {index} press did not open")
+    snap = snapshot_env(env)
+    parts: list[str] = []
+    if opened:
+        parts.append("opened " + ",".join(str(i) for i in opened))
+    if skipped:
+        parts.append("skip " + "; ".join(skipped))
+    if not parts:
+        parts.append("no closed chest")
+    return PrimitiveResult(True, "; ".join(parts), frames, snap)
+
+
+def _opened_bit(env: object, index: int) -> bool:
+    from alttp.dungeon.rom_scan import closed_chests
+
+    return all(slot[0] != index for slot in closed_chests(env))

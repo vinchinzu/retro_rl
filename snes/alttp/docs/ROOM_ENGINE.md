@@ -22,6 +22,12 @@ primitive instead of tile BFS. The measured main-hall corridor needs this:
 the tile planner cuts its north lip and catches the wall. The preceding
 `natural_clear_north` point still uses BFS to pass the statues.
 
+Reachable chest actions use `dungeon.nav.open_free_chests`. The opened bit
+and inventory can update before the item message freezes Link; they do not
+prove movement is ready. The action waits for item/text mode, then settles
+the receipt before returning to mapped route waypoints. Room `0x71` chest
+composition is tested from its real `Full_room_81` predecessor through rescue.
+
 **Isolated edge success:** `run_room_edge` → `ok=True` when door dest is
 reached. `castle_dungeon.DungeonRoomEdge` composes measured first-dungeon
 doors (`0x61→0x60→0x50`); higher-level aggregates such as

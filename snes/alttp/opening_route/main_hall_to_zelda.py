@@ -7,23 +7,73 @@ Legacy main-hall diagnostics remain separate from that prefix.
 
 from __future__ import annotations
 
+import numpy as np
+
 from alttp.opening_route.castle_dungeon import evaluate_prefix_acceptance
 from alttp.opening_route.room_engine import in_room
 from alttp.ram import (
     HYRULE_CASTLE_MAIN_HALL_ROOM,
     HYRULE_CASTLE_MAIN_WEST_ROOM,
     AlttpSnapshot,
+    read_inventory,
     snapshot_to_diag,
     zelda_rescued_accepted,
 )
 from alttp.room_map import load_room_map
 from alttp.route_report import RoutePhaseResult, SegmentResult
-from alttp.startup import snapshot_env
+from alttp.startup import no_action, snapshot_env, step_frames
 
 MAP_ID = "room_61"
 WEST_DOOR_LABEL = "west_to_0x60"
 ROOM = HYRULE_CASTLE_MAIN_HALL_ROOM
 WEST_ROOM = HYRULE_CASTLE_MAIN_WEST_ROOM
+
+
+def _cell_entry_combat(env: object):
+    """Forecast stand-and-fight candidates on the core, then play one live."""
+    from alttp.primitives import PrimitiveResult, fight_nearby
+    from alttp.rollout import _restore
+
+    kwargs = dict(max_distance=160, attack_distance=50, max_cycles=450)
+    emulator = getattr(env, "em", None)
+    if emulator is None or not hasattr(emulator, "get_state"):
+        return None, fight_nearby(env, **kwargs)
+
+    class CombatRollout:
+        def __init__(self):
+            self.actions = []
+
+        def get_ram(self):
+            return env.get_ram()
+
+        def step(self, action):
+            frame = np.asarray(action, dtype=np.uint8).copy()
+            self.actions.append(frame)
+            emulator.set_button_mask(frame, 0)
+            emulator.step()
+
+    state = bytes(emulator.get_state())
+    try:
+        for extra in range(0, 281, 20):
+            _restore(emulator, state)
+            candidate = CombatRollout()
+            step_frames(candidate, no_action(), extra)
+            held = snapshot_env(candidate)
+            result = fight_nearby(candidate, **kwargs)
+            if result.ok and result.snapshot.hp > 0:
+                break
+    finally:
+        _restore(emulator, state)
+
+    # Replaying the selected inputs is the only path through live observers.
+    # If every candidate fails, commit the final failure so its frames and
+    # damage still describe the live attempt. Exceptions commit nothing.
+    for action in candidate.actions:
+        env.step(action)
+    stand = (
+        PrimitiveResult(True, f"stood {extra}f", extra, held) if extra else None
+    )
+    return stand, result
 
 
 def in_main_hall(snap: AlttpSnapshot) -> bool:
@@ -157,6 +207,7 @@ def run_from_b1_west(env: object, *, source: str = "state_load_dev") -> SegmentR
     the existing tactics; any restore lookahead must be disclosed by the
     caller's audit and verified separately with a forward input replay.
     """
+    from alttp.dungeon.nav import open_free_chests
     from alttp.primitives import (
         PrimitiveResult, Waypoint, collect_nearby, fight_nearby, interact_until, move_to,
         move_until, settle_control,
@@ -197,9 +248,18 @@ def run_from_b1_west(env: object, *, source: str = "state_load_dev") -> SegmentR
             record(label + "_settle", settle_control(env, max_frames=480))
 
     def fight(label, distance=180):
-        record(label, fight_nearby(
-            env, max_distance=distance, attack_distance=50, max_cycles=450,
-        ))
+        kwargs = dict(max_distance=distance, attack_distance=50, max_cycles=450)
+        record(label, fight_nearby(env, **kwargs))
+        record(label + "_settle", settle_control(env, max_frames=480))
+
+    def cell_door():
+        # The cell door's two blue soldiers kill a charge on most frames.
+        # A one-second stand clears them at full HP. Search commits one stand.
+        label = "cell_entry_guard"
+        stand, result = _cell_entry_combat(env)
+        if stand is not None:
+            record("cell_entry_stand", stand)
+        record(label, result)
         record(label + "_settle", settle_control(env, max_frames=480))
 
     blocker = ""
@@ -226,6 +286,12 @@ def run_from_b1_west(env: object, *, source: str = "state_load_dev") -> SegmentR
         ))
         if snapshot_env(env).num_keys < 1:
             raise RuntimeError("east guard key was not earned")
+        # The alcove guard is down. Open a chest that has a floor path.
+        # The boomerang needs nothing, so a skip here is a failed rescue.
+        opened = record("open_chests", open_free_chests(env))
+        held = read_inventory(np.asarray(env.get_ram(), dtype=np.uint8))  # type: ignore[attr-defined]
+        if held.boomerang < 1:
+            raise RuntimeError(f"boomerang chest stayed closed ({opened.reason})")
         walk(0x71, "rescue_alcove_nw")
         # NW diagonal enters the west mouth, then the room scroll settles.
         record("alcove_wrap", move_until(
@@ -244,7 +310,7 @@ def run_from_b1_west(env: object, *, source: str = "state_load_dev") -> SegmentR
         walk(0x70, "rescue_down_stair")
         push("down_to_80", "UP", lambda s: in_room(s, 0x80))
         walk(0x80, "rescue_first_guard")
-        fight("cell_entry_guard", 160)
+        cell_door()
         walk(0x80, "rescue_south_mid")
         walk(0x80, "rescue_ball_approach")
         key = earn_castle_big_key(env, source=source, max_decisions=6000)

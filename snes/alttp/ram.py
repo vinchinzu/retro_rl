@@ -159,6 +159,20 @@ def wram_index(offset: int) -> int:
     return WRAM_IDX + off
 
 
+def assign_u8(env: object, offset: int, value: int) -> None:
+    """Write one WRAM byte. Refuses follower ``$F3CC``. Does not refresh RAM.
+
+    Bus address is ``0x7E0000 + offset`` when ``offset >= 0x2000``, else the
+    offset. Uses ``env.unwrapped`` when that attribute is present.
+    """
+    off = int(offset)
+    if off == int(FOLLOWER):
+        raise SystemExit("refusing to write $F3CC")
+    bus = 0x7E0000 + off if off >= 0x2000 else off
+    unwrapped = getattr(env, "unwrapped", env)
+    unwrapped.data.memory.assign(bus, "|u1", int(value) & 0xFF)
+
+
 @dataclass(frozen=True)
 class AlttpSnapshot:
     """Frame snapshot of the fields needed for title→castle / opening routing."""
