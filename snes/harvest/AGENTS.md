@@ -83,6 +83,10 @@ Animal facts the plan rests on:
   flat 500G, adults only (`CHICKEN_SALE_PRICE`); the bench headline counts a hen
   at 1,000G and prints an `at resale` line. Hatched chicks count in the shop's
   16-tiles-per-animal gate, so buy the cow before a hatch fills the pipeline.
+  A neglected cow dies: with the pasture sown to 68 tiles (`pasture_ctl` vs
+  `pasture_fix` in Y1_BENCH) six hens and the cow outran the Winter hay, hay hit 0
+  on Winter D19 and the cow was gone by D30. `pasture_feeds_more` does not look past
+  the current season; do not raise the planter's target without fixing that.
 - Cow: 5,000G, no milk for 21 child nights. Talk +1 and brush +3 happiness a
   day; milk ships 150G below happiness `0x60`, 250G below `0xC0`, else 350G. Brush 800G and
   milker 1,800G are in the General Store, not the seed shop.

@@ -21,6 +21,8 @@ Reports older than the `economy` fields print `n/a` for brush, milker, bin gold 
 | `cow_fix6` | 9,710 | 1,780 / 410 / 1,060 / 2,710 | 2 hens, **1 cow (Fall D27)** | 97 | 17 | + corn-reserve cutoff, planting before cutting: first clean power-on cow |
 | `s1_ring_cutoff` | 21,900 | 3,310 / 2,550 / 5,850 / 14,900 | 2 hens, 1 cow (Summer D27) | 205 | 12 | Spring sowing stops D24, rings replanted to corn on D3. A good draw: no Summer storm, no stuck field |
 | `s1_ring_fix` | **25,730** | 2,970 / 2,930 / 10,180 / 18,730 | 2 hens, 1 cow (Summer D21), brush D22, milker D27 | 222 | 11 | + parked water tiles retried after 3 days, bin-stand exit. Best so far; see "Summer 1 tuning" |
+| `pasture_ctl` | **25,730** | 2,970 / 2,930 / 10,180 / 18,730 | 2 hens, 1 cow (Summer D21) | 222 | 11 | the 2026-10-29 tree without the pasture target: reproduces `s1_ring_fix` exactly |
+| `pasture_fix` | 22,980 | 2,970 / 1,530 / 9,230 / 16,980 | 6 hens, **0 cows** (bought Summer D20, gone by Winter D30) | 227 | 26 | + `target_tiles`: pasture 68 tiles, but the flock outran the Winter hay and the coop failed on 11 mornings. **Regression** |
 
 v2 is worse than v1 on every line after Summer D13, so v1 is the number to beat. `cow_fix6` is the first power-on run to buy a cow (Fall D27, 5,310G to 310G), but its net worth is still below `v1_animals`: the rings put every Summer crop 40+ tiles from the bin, and the cow arrives too late to pay for the tools before Winter shuts the town trips. Brush, milker and milk are measured in pin runs below, not yet in a power-on year. `s1_ring_fix` (Summer 1 tuning, below) beats `v1_animals` by 5,460 and `cow_fix6` by 16,020, with a cow from Summer D21, the brush and milker owned, and 36 milk shipments.
 
@@ -161,8 +163,8 @@ one and parked tile (12,28) in one run.
 ### Chicken economy audit (2026-10-29)
 
 Question: is "hatch every egg, sell each chicken as soon as possible" the best Year-1 chicken
-policy? Checked against the ROM and the `s1_ring_fix` journal. **The pasture fix below is not
-yet benched** (non-ROM test only); the model numbers are a day-level model, not a ROM run.
+policy? Checked against the ROM and the `s1_ring_fix` journal, then a day-level model, then a power-on
+A/B. **The A/B contradicted the model: the pasture fix lowered net worth by 2,750** (see "Measured" below).
 
 ROM: a sale pays a flat 500G for an adult only; eggs and chicks never eat (only adults take the
 night's feed); an egg placed on day t is an adult on morning t+10 and the incubator frees on the
@@ -199,8 +201,42 @@ the May 2026 logs under `logs/chicken_sale_debug*` are all failures.
 Changed: `pasture_day_phases` passes `target_tiles=pasture_target_tiles(ram)`
 (`test_pasture_planter_keeps_sowing_past_the_cow_gate` fails without it); the scorecard prints an
 `at resale` net worth beside the 1,000-per-hen headline, which is unchanged so earlier rows still
-compare. To check: a power-on year against `s1_ring_fix`, reading planted grass, hens hatched,
-`cow waited on`, and hay at Year 2 Day 1.
+compare.
+
+**Measured (power-on A/B, same tree, only the target differs; the control reproduces
+`s1_ring_fix` to the gold):**
+
+| | `pasture_ctl` | `pasture_fix` | B-A |
+| --- | --- | --- | --- |
+| net worth (1,000 per hen) | 25,730 | 22,980 | -2,750 |
+| at resale (500 per hen) | 24,730 | 19,980 | -4,750 |
+| planted grass / peak hay | 34 / 67 | 68 / 126 | |
+| hens, cows at the end | 2, 1 | 6, 0 | +4, -1 |
+| bad days | 11 | 26 | +15 |
+| fully fed animal-days | 79.5% | 64.9% | -14.6 |
+| milk + egg gold (est.) | 12,650 | 13,350 | +700 |
+
+The planter fix did what it should (68 tiles, hay 126 on Fall D28, six hens hatched), and the model
+was wrong about what that buys:
+
+- **The hatch gate is not Winter-safe.** `pasture_feeds_more` counts 9 tiles per animal for the
+  current season only. Six hens and the cow ate 7 hay a day against 106 on Winter D1; hay was 0 from
+  Winter D19, the animals went unfed for 11 mornings, and the cow was in the barn through Winter D28
+  and gone by D30 (5,000 off the headline). The ROM kills a sick adult cow when its counter runs out
+  (`docs/perfect_rancher/research/F3_herd.md`, "Death"); that is the likely cause, not observed
+  directly. The model treated an unfed night as lost milk only, which hid this.
+- **Coop chores do not scale with the flock.** 11 mornings failed `COOP_CHORES ... not in coop
+  tilemap=0x00` (Fall D13, D15, D16, D27, Winter D1-D14) and three more failed on `NAV_TO_COOP` /
+  `EXIT_COOP`; 12 of 37 Fall/Winter chore days collected and shipped no egg although 6 hens were fed.
+  Egg-ship days fell from 59 to 38 while hens tripled, so milk + egg gold rose only 700.
+- Bad days rose from 11 to 26, and Summer wallet fell 1,400 (bin gold -2,020 with more crops
+  shipped), which this audit has not explained.
+
+Reading for the next change: pasture size was not what capped Year 1. Do not re-enable a larger
+pasture target on its own. It needs a hatch gate that covers hay to Year 2 Day 1 (stock plus the
+rest of Fall's production against every animal's remaining days), and the coop entry and multi-hen
+egg pickup need to hold at 4-6 hens first. One draw each, so treat the sign and size as indicative.
+`pasture_ctl.json` and `pasture_fix.json` are under `recordings/y1_bench/` (gitignored).
 
 ### Next session, in order
 
