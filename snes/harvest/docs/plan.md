@@ -1,80 +1,88 @@
 # Plan: Harvest Moon (SNES)
 
-Future work. Verified product results: [STATUS.md](STATUS.md). Structure:
-[PLANNING_STACK.md](PLANNING_STACK.md). Campaign detail:
-[perfect_rancher/MASTER_PLAN.md](perfect_rancher/MASTER_PLAN.md), with real
-bead IDs in [BEAD_PLAN.md](perfect_rancher/BEAD_PLAN.md).
-Queue: `bd ready -l harvest -l rancher999`.
+Future work. Verified results: [STATUS.md](STATUS.md). Campaign detail:
+[MASTER_PLAN.md](perfect_rancher/MASTER_PLAN.md), tracker IDs in
+[BEAD_PLAN.md](perfect_rancher/BEAD_PLAN.md). Queue:
+`bd ready -l harvest -l rancher999`.
 
-## Next: repair feasibility and execution before a campaign soak
+## Repair pass, 2026-09-30
 
-The 2026-09-30 audit found newer work than the manager handoff: the original
-100 beads had 36 closed, F5 and F10 files existed, and Wave 1 had produced
-lane code. Eleven closures were reopened for incompatible plans, missing
-runtime evidence, or conflicting contract text. The calendar report now has
-all five girls on each of three sample days (15 sightings, 9,648 frames).
-That closes the locator-data probe; native location and interaction remain
-PR-067–069.
+Merged fixes now feed actual cow slots, retain unfinished milestone intents,
+select native tasks before the advisor, and require immutable RAM receipts.
+Use `run_to_day2 --perfect-rancher` to enable campaign dispatch; ordinary
+farm runs retain their rule order. Unsupported acquisitions defer explicitly.
+A cow receipt requires a newly initialized slot as well as the count change.
 
-The [F10 verdict](perfect_rancher/research/F10_verdict.md) is conditional.
-Seven designed berries contribute 35 stamina points, so **984 is the score
-table ceiling if every other term can be maxed**. Neither 984 nor 999 has a
-verified campaign route. Exactly ten berries would restore the missing 15
-points, but would not resolve the herd, clock, happiness, or execution gaps.
+Merged native evidence:
 
-| Priority | Blocker and bead | Required next evidence |
-|----------|------------------|------------------------|
-| P0 | Slot 0 and breeding: PR-048 `rr-ux6x.11.6`; naming PR-079 `rr-ux6x.15.4` | F3 says a bought slot-0 cow has no matching feed stall and peaks at 88. Prove a native replacement by a calf inheriting 100, its care and final-night survival, and a dated herd/birth plan. `rr-bu62.18`/`.26` block naming. |
-| P0 | Incompatible economy and happiness: F5 `rr-ux6x.7.6`, F7 `rr-ux6x.7.8` | F5 buys 12 cows and pays for no births; F7 needs nine namings. The late wedding puts child 2's age-60 bonus after the ending. Build one dated plan including births, milk, feed, potions, lumber, losses and happiness repair. 620,000G is the old model result. |
-| P0 | Exactly-ten berries: `rr-ux6x.16.7` | Live native 7→10 acquisition, stamina 200, suppression flags and a stop guard; preserve ten through the final sleep. F6 decoded edges but executed none. PR-082/083 collect the seven designed berries. |
-| P0 | Clock trigger: PR-084 `rr-ux6x.16.3` | Reach the quote-request writer through inputs, arm by Y1 Summer D30, and receive the first-upgrade gift before house level 2. F6's store is decoded; the request route is missing. Upgrade 2 now waits on this proof. |
-| P0 | Campaign dispatch: PR-022/023 `rr-ux6x.8.2`/`.8.3` | Replace the invalid herd/berry milestones, then turn due intents into tasks with RAM receipts or explicit deferrals. Current code reads intents after choosing daily phases and logs them. |
-| P0 | Contract reconciliation: PR-005 `rr-ux6x.4` | ADR 0007 records duplication and savestate loads as allowed, target 999 with 984 accepted as a fallback. The handoff calls those decisions parked; CONTEXT and final-run beads still say zero loads. Resolve the conflict without inventing a new owner ruling. |
-| P0 | Structure and behavior: PR-098 `rr-ux6x.18.1` | Proof finished at 3,476,992 frames, +1,301,642 (+59.84%) over 2,175,350, with 139 bad days. Compare matching policies in a short trace; the old report lacks a day journal. `campaign_composer.py` is 1,292 lines and `multi_day_planner.py` 1,029. Keep the frame-equality acceptance. |
+- Twelve-cow feed/night fixture: 7,507 frames, feed flags 0x0FFF,
+  hay 500→488, all twelve happiness values remain 200 after the Spring D16→17 sleep.
+  The alleged missing slot-0 stall was a stale filled tile in an edited
+  research pin. Native barn re-entry restores the trough. No replacement
+  calf is required for slot 0; acquisition and fifty care days remain open.
+- Dispatch fixture: legacy and milestone chicken purchases each take
+  4,028 frames, count 0→1, wallet 4,090→3,090G, verified native receipt.
+- Structure comparison: baseline, seeded changes and folded reporter each
+  take 17,538 frames on the same D3 farm day, with identical end states.
+  Runner/report/composer/multi-day sources meet the 1,000-line bar.
 
-Immediate ready work is a bounded clock-request probe (`rr-ux6x.16.3`),
-the exactly-ten research probe, or a short PR-098 comparison. Claim one.
-For the herd branch, fix the name-entry prerequisites, then PR-048; feed
-that result and F7 into F5, and F5 into the milestone solver. Do not repeat
-an ending soak to diagnose these local gaps.
+These are fixture proofs with zero live writes, mid-run loads or assists.
+They do not establish natural campaign arrival or a 999 result.
 
-## Runtime proofs and integration
+## Next blockers
 
-PR-024 (arbiter), PR-045 (12-slot targeting), PR-047 (cow window), PR-050
-(medicine/weather), PR-072 (four-girl windows), and PR-073 (happiness
-projection) are reopened. The arbiter explicitly simulates a day on paper;
-animal tests synthesize RAM or modify model objects; the social reports say
-`emulator_frames: 0`. Keep those checks as model coverage and obtain the
-runtime evidence their acceptance requires. A closed research or unit-test
-bead is not a natural-entry route proof.
+| Priority | Beads | Required evidence |
+|----------|-------|-------------------|
+| P0 | Exact-ten berries `rr-ux6x.16.7` | Execute native 7→10, guard 11 and preserve count/stamina after final sleep. The cabin quote/arm/clock gift now have a native first-house receipt below. |
+| P0 | F7 `rr-ux6x.7.8`, F5 `rr-ux6x.7.6`, solver `rr-ux6x.8.2` | Validate one shared dated budget. Conditional YAML proposes marriage at index 128 plus 105 food repairs costing 31,500G; buy-three/breed-nine is an alternative. Repeated food, herd naming/feed and the complete Perfect cash schedule remain unproved. Basic first-house lumber and payment are received below. |
+| P0 | Contract `rr-ux6x.4` | Resolve the handoff's parked questions versus ADR 0007's recorded duplication/load/fallback rulings. Preserve the recorded ADR; no new owner ruling is inferred. |
+| P0 | Structure behavior `rr-ux6x.18.1` | Full ending requirement remains 2,175,350 frames. The 3,476,992 run changed policies/features, including daily clearing; the matched one-day proof passes. Do not close the full-run gate from that short comparison. |
+| P1 | Dispatch `rr-ux6x.8.3`, arbiter `.8.4`, herd `.11.3/.11.5/.11.8`, social `.14.6/.14.7` | Current dispatch proof covers one purchase. Prove all due native domains and a real 12-cow/12-chicken day, measured care/medicine, and social windows. Model checks remain coverage only. |
 
-Lane branches and main were all at `8d6c3602` at audit entry. Some closures
-refer to uncommitted FARM, ANIMALS and SOCIAL worktree files absent from
-main. Integrate one lane at a time with its evidence and tracker, then run
-a bounded ROM window on the merged code. Only then advance PR-089–095
-through natural checkpoints and the final run under the reconciled load rule.
+Wife is Eve. Marriage can land in Fall or Winter. A cow comes first:
+pasture stays on the calendar, and the first cow buys at 5,300G instead of
+waiting behind the 6,000G house-and-feather fund. The carpenter payment,
+including the 10,000G second house, waits until that cow exists. A Fall or
+Winter first-house order does not arm the clock.
 
-## Constraints the revised calendar must preserve
+The first-house/marriage route now has native receipts
+([EVE_BAR.md](EVE_BAR.md)): power-on festival decline preserves the wallet;
+axe work banks 252 wood; corn funds the 5,000G/250-wood order on Summer D28;
+four nights complete the house on Fall D2; the natural Sunday seller sells
+the feather on Fall D3. The isolated wedding continuation finishes on Fall
+D10 with Eve's wife bit set and retains it through two more nights. These
+are Clean continuations from real power-on predecessors, with zero RAM writes
+or mid-run loads. That route spent the summer wallet before any cow. The
+Fall D18 resume (`LN_house2_wood_natural`) still has 0 cows, 680G, and
+`wife_pregnancy` 9. The full campaign and Perfect result remain open.
 
-- Wife hearts: F1 measured married Maria 660→510 in 25 poison-mushroom
-  offers (item `0x02`, text `0x03B0`), with her position forced into range.
-  PR-080 must approach the real wife script. F0's hour-18 entry subtracts 2:
-  target 498–511 before it; 510→508 is safe, 496→494 is not.
-- Two children already present on Y3 Summer D29: wife bit by Y2 Fall D9,
-  with house and pregnancy heart floors satisfied. That is a children
-  deadline, not a guarantee of either child's age-60 happiness bonus.
-- Farm geometry: 2,968 walkable cover candidates, 2,950 needed, 18 tiles
-  of slack. PR-057/059 must preserve coverage after the final night;
-  a hurricane can destroy grass after the last work morning.
-- Cows: a feedable purchased cow reaches 200 after 50 care days in the
-  model; latest buy Y3 Spring D10 for the D30 morning read. Only one
-  feedable night was measured. Slot 0 needs a separate birth timeline.
-- Girls and crops: four non-wife girls and all four shipped counts must
-  remain in 496–511 (crop counts modulo 512). Happiness must read ≥992;
-  money must be in 99,840G–655,350G after the overnight credit.
-- Turtle/indoor-berry arm: Y1 and Y2 Fall D20 before 15:00. Missed wins
-  require an explicit recovery policy. Above ten berries fails the
-  best-ending equality check even if the mastery sum caps at 999.
+The cabin's introduction needs a native exit/re-entry before the request
+sign. The Summer order arms the clock, and the completion scene gives it;
+`$7F1F6E & 0x4000` is set on the natural wedding checkpoint. First-house
+materials, request, payment, construction, feather and wedding each have a
+ROM check in `tests/test_house_upgrade.py`. House upgrade 2 is quoted
+(500 wood, 10,000G) and one mountain chop from the married pin is in
+[EVE_BAR.md](EVE_BAR.md); the order and the 450/650 pregnancy floors are
+still open ([F4](perfect_rancher/research/F4_family.md)). Exact-ten berries and the
+complete dated Perfect budget still need their own campaign receipts.
+
+The [F10 verdict](perfect_rancher/research/F10_verdict.md) remains conditional:
+seven designed berries give a table ceiling of 984 if every other term is
+maxed. Neither 984 nor 999 has a verified campaign route. The calendar's
+15 sightings cover five girls on three sampled days; native interactions
+remain to be composed.
+
+## Constraints
+
+Wife hearts must be 498–511 before hour-18 entry subtracts 2; Maria's
+25 poison-mushroom offers measure 660→510, but the real wife approach is
+still needed. Wife bit by Y2 Fall D9 suffices for children present at D29;
+index 128 is the conditional earlier target for child 2's age-60 bonus.
+Development needs 2,950 of 2,968 cover candidates after the final night.
+Girls and crop counts need 496–511, happiness ≥992, money
+99,840–655,350G after overnight credit, twelve cows ≥200 and twelve chickens.
+Missed Fall D20 prizes need recovery; berry count above ten fails the best
+ending check. Advance year checkpoints only from their real predecessors.
 
 ## Existing farm spine
 

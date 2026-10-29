@@ -1,5 +1,19 @@
 # F3 herd and flock
 
+## Repair evidence, 2026-09-30
+
+The missing slot-0 stall conclusion below is superseded. The edited pin
+cleared feed flags while retaining a filled trough tile. Native barn
+exit/re-entry regenerates slot 0 as tile E2. The task now feeds actual
+slot masks, including the pregnant 0x1000 mask, rather than a prefix.
+Merged-main [F3_all12_feed_night_probe.json](F3_all12_feed_night_probe.json)
+ran 7,507 frames: flags 0x0FFF, hay 500→488, and all twelve cows stayed
+at 200 through a fed Spring D16→17 night. It starts from an edited research fixture
+and audits zero live writes, mid-run loads and assists. It proves feed and
+night survival, not acquisition or fifty days of care. A replacement calf
+is no longer required for slot 0.
+
+
 Date: 2026-09-29, stall-1 night 2026-09-30. Bead PR-012. Dep PR-007 is done (`research/whatif_pins.md`, oracle `fails=0`). USA decomp under `HM-Decomp`, plus two buy walks, two care days, and one fed-barn night on research pins `LN_mgr-f3_whatif_*`. Those pins are RAM what-ifs. They are not route evidence.
 
 The bought day-0 byte is 0. Talk is +1 and brush is +3. A fed adult barn night adds 0. Slot 0 never reaches 200. A feedable slot reaches 200 on care day 50. The dates are under "Latest date".

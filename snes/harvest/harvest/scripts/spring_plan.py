@@ -44,21 +44,13 @@ def _calendar(args: argparse.Namespace) -> Calendar:
     )
 
 
-def _print_chicken(plan, cost: CostModel) -> None:
-    from harvest.planner.livestock_econ import CHICKEN, plan_purchase
+def _print_chicken(plan) -> None:
+    from harvest.planner.livestock_econ import CHICKEN_PRICE, WALLET_RESERVE_G
 
-    verdict = plan_purchase(plan, CHICKEN, cost=cost)
-    print("\n=== chicken (stub) ===")
-    print(f"  {verdict.reason}")
-    if verdict.blocked_on:
-        print("  measure these, then this answers itself:")
-        for field in verdict.blocked_on:
-            print(f"    - {field}")
-        # The half of the question the ledger *can* already answer.
-        for price in (1000, 1500, 2000):
-            day = plan.earliest_day_affording(price)
-            when = f"D{day}" if day else "never in this plan"
-            print(f"  if a chicken costs {price} G, the plan first affords it {when}")
+    day = plan.earliest_day_affording(CHICKEN_PRICE, keep_reserve_g=WALLET_RESERVE_G)
+    when = f"D{day}" if day else "never in this plan"
+    print(f"\n=== chicken ===\n  {CHICKEN_PRICE} G with the {WALLET_RESERVE_G} G reserve: first affordable {when}")
+    print("  The animal shop sells from Summer D1; the live gate is livestock_econ.livestock_block.")
 
 
 def _rings(n: int) -> list[Ring]:
@@ -164,7 +156,7 @@ def main() -> None:
     p.add_argument("--reserve", type=int, default=0, metavar="G",
                    help="cash floor the plan may never spend below (e.g. saving for livestock)")
     p.add_argument("--chicken", action="store_true",
-                   help="run the livestock_econ purchase pre-calc (stub: reports what is unmeasured)")
+                   help="print the first day the plan affords the hen")
     p.add_argument("--out", type=Path)
     args = p.parse_args()
 
@@ -197,7 +189,7 @@ def main() -> None:
         print()
         print(plan.ledger())
     if args.chicken:
-        _print_chicken(plan, cost)
+        _print_chicken(plan)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(plan.to_dict(), indent=2))

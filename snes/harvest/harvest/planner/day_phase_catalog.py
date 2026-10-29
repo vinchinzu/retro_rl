@@ -66,6 +66,7 @@ from harvest.planner.day_phase_calendar import (  # noqa: F401
     REPAIR_CROPS_PHASE,
     SUNDAY_CHURCH_PHASE,
     SUNDAY_MOUNTAIN_PHASE,
+    attend_festival_phase,
 )
 
 EXIT_HOUSE_PHASE = PhaseSpec(
@@ -150,61 +151,46 @@ LIVE_SHOP_SEED_TYPES = frozenset({"corn", "tomato"})
 
 
 def pasture_day_phases(ram) -> List[PhaseSpec]:
-    """Establish at least 32 pasture tiles; cut feed before purchases."""
-    from harvest.core.ram_catalog import read_ram_value
-    from harvest.core.tile_catalog import MATURE_GRASS_TILES
-    from harvest.tasks.grass_planter import PASTURE_BOUNDS
-    from harvest.tasks.nav import get_tile_at
-    from harvest.planner.day_plan_status import SHOP_CLOSED_WEEKDAYS
+    """This morning's grass errand (:func:`livestock_econ.pasture_errand`) as phases."""
+    from harvest.planner.livestock_econ import pasture_errand, pasture_target_tiles
 
-    season = int(read_ram_value(ram, "season"))
-    day = int(read_ram_value(ram, "day"))
-    if season not in (1, 2):
-        return []
-    planted = int(read_ram_value(ram, "planted_grass"))
-    if season == 1 and 2 <= day <= 20 and planted < 32:
-        stock = int(read_ram_value(ram, "grass_seeds"))
-        bags = (32 - planted + 8) // 9
-        phases = []
-        if stock < bags:
-            if (int(read_ram_value(ram, "weekday")) in SHOP_CLOSED_WEEKDAYS
-                    or int(read_ram_value(ram, "money")) < (bags - stock) * 500 + 300):
-                # Existing stock can still make progress on closed-shop days.
-                return [PhaseSpec("PLANT_PASTURE", "grass", failure_policy="optional")] if stock else []
-            phases.append(PhaseSpec("BUY_GRASS_SEEDS", "shop_buy",
-                          {"stock_field": "grass_seeds", "target_stock": bags},
-                          failure_policy="optional"))
-        phases.append(PhaseSpec("PLANT_PASTURE", "grass", failure_policy="optional"))
-        return phases
-    x0, y0, x1, y1 = PASTURE_BOUNDS
-    if int(read_ram_value(ram, "stored_grass")) < 48 and any(
-        get_tile_at(ram, x, y) in MATURE_GRASS_TILES
-        for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)
-    ):
+    errand = pasture_errand(ram)
+    if errand.cut:
         return [PhaseSpec("CUT_FODDER", "grass", {"cut_only": True}, failure_policy="optional")]
-    return []
-
-
-def summer_animal_species(ram, *, cows: bool = True, chickens: bool = True) -> str | None:
-    """One cow, then one chicken, with pasture, hay and spending reserve."""
-    from harvest.core.ram_catalog import read_ram_value
-    from harvest.planner.day_plan_status import SHOP_CLOSED_WEEKDAYS
-    from harvest.planner.tasks.sale_menu import purchase_block_reason, species_spec
-
-    value = lambda key: int(read_ram_value(ram, key))
-    if (value("season") != 1 or value("day") < 14
-            or value("weekday") in SHOP_CLOSED_WEEKDAYS
-            or value("planted_grass") < 32 or value("stored_grass") < 16):
-        return None
-    species = "cow" if cows and value("num_cows") == 0 else (
-        "chicken" if chickens and value("num_cows") > 0 and value("num_chickens") == 0 else None
-    )
-    if species is None or purchase_block_reason(ram, species) is not None:
-        return None
-    return species if value("money") >= int(species_spec(species)["price"]) + 300 else None
+    phases: List[PhaseSpec] = []
+    if errand.buy_to_stock:
+        phases.append(PhaseSpec(
+            "BUY_GRASS_SEEDS", "shop_buy",
+            {"stock_field": "grass_seeds", "target_stock": errand.buy_to_stock},
+            failure_policy="optional",
+        ))
+    if errand.plant:
+        # The planter stops at its own target. Without this one it stops at 32,
+        # so every bag past the cow gate sat in stock while the phase "succeeded".
+        phases.append(PhaseSpec(
+            "PLANT_PASTURE", "grass", {"target_tiles": pasture_target_tiles(ram)},
+            failure_policy="optional",
+        ))
+    return phases
 
 
 def animal_purchase_phases(species: str) -> List[PhaseSpec]:
+    """Counter trip. A hen is then carried into the coop (``HEN_DELIVERY``), fed, and the coop left."""
+    if species in ("chicken", "hen_pickup"):
+        trip = [PhaseSpec("NAV_TO_ANIMAL_SHOP", "multi_nav",
+                          {"route": "farm_to_animal_shop_counter_sale", "timeout": 7000},
+                          failure_policy="optional")]
+        if species == "chicken":
+            trip.append(PhaseSpec("BUY_COW_VENDOR", "cow_purchase", {"species": species},
+                                  failure_policy="optional"))
+        # Delivery ends inside the coop. Feed her tonight: an unfed night costs three laying days.
+        return trip + [
+            PhaseSpec("HEN_DELIVERY", "hen_delivery", failure_policy="optional"),
+            PhaseSpec("COOP_CHORES", "coop_chores", {"egg_mode": "ship"}, failure_policy="optional",
+                      required_maps=(0x28,)),
+            PhaseSpec("EXIT_COOP", "directional_transition", dict(EXIT_COOP_PHASE.params),
+                      failure_policy="optional"),
+        ]
     return [
         PhaseSpec("NAV_TO_ANIMAL_SHOP", "multi_nav",
                   {"route": "farm_to_animal_shop_counter_sale", "timeout": 7000},
@@ -343,6 +329,13 @@ ENSURE_ANIMAL_TOOLS_PHASE = PhaseSpec(
     },
 )
 
+ENSURE_BRUSH_PHASE = PhaseSpec(
+    "ENSURE_BRUSH",
+    "ensure_tool",
+    {"tool_id": int(Tool.BRUSH)},
+    failure_policy="optional",
+)
+
 ENSURE_MILKER_PHASE = PhaseSpec(
     "ENSURE_MILKER",
     "ensure_tool",
@@ -454,7 +447,7 @@ LEAVE_HOUSE_MACRO_PHASE = PhaseSpec(
 EVE_TALK_LOOP_PHASE = PhaseSpec(
     "EVE_TALK_LOOP",
     "eve_talk_loop",
-    {"task_name": "talk_eve_loop", "target_hearts": 10},
+    {"target_hearts": 10},
 )
 
 # Composed cow sequences (need EXIT_TO_FARM / ENSURE_ANIMAL_TOOLS from this module).
@@ -468,20 +461,41 @@ COW_PHASES: List[PhaseSpec] = [
 ]
 
 
+def tool_purchase_phases(items=None) -> List[PhaseSpec]:
+    """One general-store trip (farm -> 0x22 -> farm) buying each unowned affordable tool.
+
+    ``items`` are Tool ids or names (``"brush"``, ``"milker"``); default is both
+    cow tools, brush first. The task skips owned tools and ones the wallet
+    cannot cover at its turn, so the caller only gates on ``cow_tool_trip_affordable``,
+    the money it wants to keep, and ``tool_shop_open`` (both in ``livestock_econ``).
+    """
+    names = {"brush": int(Tool.BRUSH), "milker": int(Tool.MILKER)}
+    ids = [names[i.lower()] if isinstance(i, str) else int(i)
+           for i in (items if items is not None else ("brush", "milker"))]
+    return [PhaseSpec(
+        "BUY_COW_TOOLS", "shop_buy",
+        {"tool_ids": ids, "timeout": 16000, "nav_timeout": 6000},
+        failure_policy="optional",
+    )]
+
+
 def cow_day_phases(ram) -> List[PhaseSpec]:
     """Feed and talk even before the brush and milker have been bought."""
-    from harvest.core.ram_catalog import read_ram_u8
-    from harvest.core.carry import carry_pair_items
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.livestock_econ import missing_cow_tools
 
-    carried = carry_pair_items(ram)
-    shelf = read_ram_u8(ram, 0x11F01)
-    brush = int(Tool.BRUSH) in carried or bool(shelf & 0x40)
-    milker = int(Tool.MILKER) in carried or bool(shelf & 0x20)
-    if brush and milker:
+    missing = missing_cow_tools(ram)
+    if not missing:
         return list(COW_PHASES)
-    return [EXIT_TO_FARM_PHASE, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE,
+    # The brush alone is worth +3 happiness a day on a calf, so fetch it
+    # without the milker. An empty loft cannot set a trough bit: feed only
+    # when hay exists.
+    brush = int(Tool.BRUSH) not in missing
+    feed = int(read_ram_value(ram, "stored_grass")) > 0
+    return [*([ENSURE_BRUSH_PHASE] if brush else []),
+            EXIT_TO_FARM_PHASE, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE,
             PhaseSpec("COW_CHORES", "cow_chores",
-                      {"talk": True, "brush": False, "milk": False, "feed": True},
+                      {"talk": True, "brush": brush, "milk": False, "feed": feed},
                       required_maps=(0x27,)), EXIT_BARN_PHASE]
 
 BUY_COW_PHASES: List[PhaseSpec] = [
@@ -597,6 +611,17 @@ EVE_TALK_LOOP_PHASES: List[PhaseSpec] = [
     EVE_TALK_LOOP_PHASE,
 ]
 
+FLOWER_FESTIVAL_PHASES: List[PhaseSpec] = [attend_festival_phase("spring", 23)]
+
+PROPOSE_EVE_PHASES: List[PhaseSpec] = [
+    PhaseSpec(
+        "PROPOSE_EVE",
+        "propose_eve",
+        {"ends_day": True},  # the wedding rolls the day
+        failure_policy="optional",
+    )
+]
+
 PHASE_SEQUENCES: Dict[str, List[PhaseSpec]] = {
     "day1": DAY1_PHASES,
     "boot_to_day2": BOOT_TO_DAY2_PHASES,
@@ -643,6 +668,8 @@ PHASE_SEQUENCES: Dict[str, List[PhaseSpec]] = {
     "sell_three_chickens_test": SELL_THREE_CHICKENS_TEST_PHASES,
     "sell_three_chickens_batch_test": SELL_THREE_CHICKENS_BATCH_TEST_PHASES,
     "eve_loop": EVE_TALK_LOOP_PHASES,
+    "flower_festival": FLOWER_FESTIVAL_PHASES,
+    "propose_eve": PROPOSE_EVE_PHASES,
     "mountain_berry": MOUNTAIN_BERRY_PHASES,
 }
 
@@ -665,6 +692,7 @@ OPTIONAL_SHOP_PHASES = frozenset({
     "BUY_SEEDS_WINDOW",
     "NAV_FARM_EXIT",
     "BUY_SEEDS",
+    "BUY_COW_TOOLS",
     "TOWN_EXPLORE",
     "GET_HAMMER",
     "GET_AXE",
@@ -685,6 +713,7 @@ OPTIONAL_COW_PURCHASE_PHASES = frozenset({
     # would leave these as required phases for a cow that was never bought,
     # and the day would die one phase later instead.
     "ENSURE_ANIMAL_TOOLS",
+    "ENSURE_BRUSH",
     "NAV_TO_BARN",
     "ENTER_BARN",
     "COW_CHORES",
@@ -791,6 +820,7 @@ __all__ = [
     "EXIT_FARM_WEST_PHASE",
     "BUY_SEEDS_PHASE",
     "buy_seeds_phase",
+    "tool_purchase_phases",
     "MOUNTAIN_BERRY_PHASE",
     "MOUNTAIN_BERRY_PHASES",
     "mountain_berry_count_for_day",
@@ -801,6 +831,7 @@ __all__ = [
     "ENSURE_WATERING_CAN_PHASE",
     "ENSURE_CROP_SEEDS_PHASE",
     "ENSURE_ANIMAL_TOOLS_PHASE",
+    "ENSURE_BRUSH_PHASE",
     "ENSURE_MILKER_PHASE",
     "CROP_ESTABLISH_PHASE",
     "CROP_WATER_PHASE",
@@ -809,6 +840,8 @@ __all__ = [
     "GO_TO_SLEEP_PHASE",
     "EVE_TALK_LOOP_PHASE",
     "EVE_TALK_LOOP_PHASES",
+    "FLOWER_FESTIVAL_PHASES",
+    "PROPOSE_EVE_PHASES",
     "NAV_TO_COOP_PHASE",
     "NAV_BARN_TO_COOP_PHASE",
     "ENTER_COOP_PHASE",

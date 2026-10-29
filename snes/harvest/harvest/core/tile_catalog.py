@@ -202,13 +202,15 @@ CHURCH_WALKABLE = frozenset({
 # path-edge stand tile on the south corridor. Spa bath corridor only needs
 # 0xA0/0xA3/0xA8 (ROM-validated clear of debris).
 # Do NOT add 0xFF (viewport unload garbage) or water (0xF7 etc).
-# Mountain keeps tilemap 0x10 all seasons (palette/season overlay only).
+# Seasonal ids 0x11, 0x12, and 0x13 are the same mountain as 0x10.
+# All of them use MOUNTAIN_WALKABLE.
 MOUNTAIN_WALKABLE = frozenset({
     0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA7, 0xA8,
     0xC0, 0xC2, 0xC3, 0xC6,
     0x35,  # transitional load tile during mountain entry scroll
     0xD6,
 })
+MOUNTAIN_TILEMAP_IDS = frozenset({0x10, 0x11, 0x12, 0x13})
 
 # Farm-style debris that can appear on mountain (off spa corridor in spring
 # ROM dump: stumps west of climb, large rocks near mid-ridge). BFS must not
@@ -227,7 +229,7 @@ WALKABLE_BY_TILEMAP = {
     0x0C: PATH_WALKABLE,
     0x04: TOWN_WALKABLE,
     0x05: TOWN_WALKABLE,
-    0x10: MOUNTAIN_WALKABLE,
+    **{tilemap_id: MOUNTAIN_WALKABLE for tilemap_id in sorted(MOUNTAIN_TILEMAP_IDS)},
     0x15: SHOP_WALKABLE | COOP_WALKABLE,
     0x16: SHOP_WALKABLE | COOP_WALKABLE,
     0x17: SHOP_WALKABLE | COOP_WALKABLE,

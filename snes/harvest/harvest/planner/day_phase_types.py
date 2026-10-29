@@ -33,6 +33,7 @@ class PhaseKind(StrEnum):
     COOP_CHORES = "coop_chores"
     COW_CHORES = "cow_chores"
     COW_PURCHASE = "cow_purchase"
+    HEN_DELIVERY = "hen_delivery"
     CROP = "crop"
     GRASS = "grass"
     HOT_SPRING = "hot_spring"
@@ -40,11 +41,18 @@ class PhaseKind(StrEnum):
     SLEEP = "sleep"
     READY_TO_GO_HOME = "ready_to_go_home"
     EVE_TALK_LOOP = "eve_talk_loop"
+    FLOWER_FESTIVAL = "flower_festival"
+    PROPOSE_EVE = "propose_eve"
     PICKUP_CHICKEN = "pickup_chicken"
     DROP_CHICKEN = "drop_chicken"
     CHICKEN_SALE_FOLLOWUP = "chicken_sale_followup"
     CHICKEN_SALE_REQUEST = "chicken_sale_request"
     CHICKEN_SALE_EVENT = "chicken_sale_event"
+    PROPOSE = "propose"
+    COURT = "court"
+    FEATHER_BUY = "feather_buy"
+    HOUSE_WOOD = "house_wood"
+    HOME_UPGRADE = "home_upgrade"
     DYNAMIC_OUTDOOR_PLAN = "dynamic_outdoor_plan"
 
 
@@ -74,8 +82,14 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.GRASS,
         PhaseKind.FENCE_CLEAR,
         PhaseKind.COW_PURCHASE,
+        PhaseKind.HEN_DELIVERY,
         PhaseKind.EVE_TALK_LOOP,
+        PhaseKind.FLOWER_FESTIVAL,
+        PhaseKind.PROPOSE_EVE,
         PhaseKind.HOT_SPRING,
+        PhaseKind.PROPOSE,
+        PhaseKind.COURT,
+        PhaseKind.FEATHER_BUY,
     }
 )
 
@@ -336,6 +350,8 @@ class DayPlannerPolicy:
     late_water_hour: int = 17
     include_chickens: bool = True
     include_cows: bool = True
+    # Chores continue when purchases stop (see COW_ROUTE_MAX_FAILURES).
+    include_animal_purchases: bool = True
     include_harvest: bool = True
     include_field_clear: bool = True
     include_watering: bool = True
@@ -349,7 +365,10 @@ class DayPlannerPolicy:
     include_end_day: bool = True
     include_spa: bool = True
     include_chicken_sales: bool = True
-    max_adult_chickens: int = 2
+    # The coop holds 12. Eggs the incubator cannot use are shipped, not culled.
+    # Ship eggs instead of incubating them while the pasture cannot feed one more.
+    hold_flock_growth: bool = False
+    max_adult_chickens: int = 12
     chicken_sale_cutoff_hour: int = 10
     # Festival and Sunday event planning
     include_festivals: bool = True
@@ -413,6 +432,7 @@ def day_planner_policy_for_season(
         late_water_hour=policy.late_water_hour,
         include_chickens=policy.include_chickens,
         include_cows=policy.include_cows,
+        include_animal_purchases=policy.include_animal_purchases,
         include_harvest=policy.include_harvest,
         # Summer pockets clear their own planting area. A whole-field pass
         # spends stamina that the pasture and repeat-harvest corn need.
@@ -434,6 +454,7 @@ def day_planner_policy_for_season(
         include_end_day=policy.include_end_day,
         include_spa=policy.include_spa and not winter,
         include_chicken_sales=policy.include_chicken_sales and not winter,
+        hold_flock_growth=policy.hold_flock_growth,
         max_adult_chickens=policy.max_adult_chickens,
         chicken_sale_cutoff_hour=policy.chicken_sale_cutoff_hour,
         include_festivals=policy.include_festivals,

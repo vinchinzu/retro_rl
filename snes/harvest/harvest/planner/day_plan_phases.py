@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import List, Optional
 
 import numpy as np
@@ -19,7 +20,13 @@ from harvest.planner.day_plan_status import (
     SHOP_CLOSED_WEEKDAYS,
     SUNDAY_WEEKDAY,
 )
-from harvest.core.ram_catalog import read_ram_u8
+from harvest.core.ram_catalog import read_ram_u8, read_ram_value
+from harvest.planner.livestock_econ import (
+    animal_shop_errand,
+    cow_tool_trip_affordable,
+    pasture_feeds_more,
+    tool_shop_open,
+)
 from harvest.core.stamina import Stamina
 from harvest.planner.day_phase_stamina import evening_clear_phases
 from harvest.planner.day_phase_berry import _berry_run_phases
@@ -55,9 +62,9 @@ from harvest.planner.day_phase_catalog import (
     BUY_SEEDS_PHASE,
     buy_seeds_phase,
     pasture_day_phases,
-    summer_animal_species,
     animal_purchase_phases,
     cow_day_phases,
+    tool_purchase_phases,
     MOUNTAIN_BERRY_PHASE,
     NAV_CROP_PHASE,
     HARVEST_ROUTE_PHASE,
@@ -353,6 +360,7 @@ def build_day_phases(
 
     buy_cow_first = (
         policy.include_cows
+        and policy.include_animal_purchases
         and policy.include_shop_run
         and should_buy_cow
         and not late_day
@@ -572,8 +580,9 @@ def build_outdoor_day_phases(
 
     # 4. Festival attendance: on festival days, farm work happens early, then attend festival
     if is_fest and not late_day and policy.attend_festivals:
-        phases.append(attend_festival_phase(season, day, year))
-        if policy.include_end_day:
+        festival = attend_festival_phase(season, day, year)
+        phases.append(festival)
+        if policy.include_end_day and not festival.params.get("ends_day"):
             phases.append(RETURN_HOME_PHASE)
             phases.append(GO_TO_SLEEP_PHASE)
         return phases
@@ -637,15 +646,17 @@ def build_outdoor_day_phases_from_ram(
         policy=policy,
     )
     if hour < 12 and not probe.is_storm():
-        # Farm tiles are available here, after the dynamic house-exit handoff.
-        extra = pasture_day_phases(ram) if policy.include_pasture else []
+        # Pasture first. Grass buying already leaves the seed bags' gold alone
+        # (``pasture_reserve_g``), so it never starves the crop buy.
+        phases[0:0] = pasture_day_phases(ram) if policy.include_pasture else []
         if season == 2 and policy.include_mushroom_gather:
-            extra.append(PhaseSpec("MUSHROOM_GATHER", "mountain_berry",
-                                   {"ship": True, "forage": "mushroom"},
-                                   failure_policy="optional"))
-        end = next((i for i, phase in enumerate(phases)
-                    if phase.phase == "RETURN_HOME"), len(phases))
-        phases[end:end] = extra
+            end = next((i for i, phase in enumerate(phases)
+                        if phase.phase == "RETURN_HOME"), len(phases))
+            phases[end:end] = [PhaseSpec(
+                "MUSHROOM_GATHER", "mountain_berry",
+                {"ship": True, "forage": "mushroom"},
+                failure_policy="optional",
+            )]
     return phases
 
 
@@ -660,6 +671,7 @@ def build_day_phases_from_ram(
     probe = WorldProbe.from_inputs(ram=ram, state_name=state_name)
     season, _calendar_day = probe.calendar_date()
     policy = day_planner_policy_for_season(season, policy, year=probe.year())
+    policy = replace(policy, hold_flock_growth=not pasture_feeds_more(ram, reserve_first_cow=policy.include_cows))
     if probe.is_storm():
         return [GO_TO_SLEEP_PHASE] if policy.include_end_day else []
     _day, hour, _minute = probe.day_time()
@@ -669,7 +681,9 @@ def build_day_phases_from_ram(
     in_coop = tilemap == COOP_TILEMAP
     late_day = hour >= policy.late_water_hour
     if is_house_tilemap(tilemap) and late_day and policy.include_end_day:
-        return [GO_TO_SLEEP_PHASE]
+        from harvest.tasks.proposal import apply_eve_phases
+
+        return apply_eve_phases([GO_TO_SLEEP_PHASE], ram)
     if season == SEASON_WINTER and not (
         (policy.include_cows and probe.needs_cow_chores())
         or (policy.include_chickens and probe.needs_chicken_chores())
@@ -688,42 +702,67 @@ def build_day_phases_from_ram(
         policy.include_chickens and not late_day and probe.needs_chicken_chores()
     )
     animal_tools_ready = _animal_tools_ready(ram)
-    species = summer_animal_species(ram, cows=policy.include_cows, chickens=policy.include_chickens)
-    buy_cow_first = bool(species and policy.include_shop_run and not late_day and not shops_closed)
+    species = animal_shop_errand(ram, cows=policy.include_cows, chickens=policy.include_chickens)
+    buy_animal = bool(
+        species
+        and policy.include_animal_purchases
+        and policy.include_shop_run
+        and not late_day
+        and not shops_closed
+    )
+    # The brush and milker come from the general store once a cow exists. Calves
+    # take 21 nights to give milk, so the trip waits for a morning with the gold.
+    buy_tools = bool(
+        not buy_animal
+        and policy.include_animal_purchases
+        and policy.include_shop_run
+        and hour < policy.buy_seed_hour
+        and not is_fest
+        and int(read_ram_value(ram, "num_cows")) >= 1
+        and cow_tool_trip_affordable(ram)
+        and tool_shop_open(ram)
+    )
+    # Raise a cow already in the barn before the shop; any other animal buy goes first.
+    care_first = cows_need_chores and species != "cow"
+    buy_first = buy_animal and not care_first
     phases: List[PhaseSpec] = []
-    started_in_barn_cows = False
-    started_in_coop_chickens = False
-    handled_buy_cow = False
-    if in_barn and cows_need_chores and animal_tools_ready and not buy_cow_first:
+    barn_done = False
+    coop_done = False
+    animal_trip = False
+    if in_barn and cows_need_chores and animal_tools_ready and not buy_first:
         phases.extend(BARN_CURRENT_COW_PHASES)
-        started_in_barn_cows = True
+        barn_done = True
         exited_barn = True
     elif in_coop and chickens_need_chores:
         phases.extend(_coop_current_phases(oversupplied=oversupplied_chickens, policy=policy))
-        started_in_coop_chickens = True
+        coop_done = True
         exited_barn = False
     elif in_coop:
         phases.append(EXIT_COOP_PHASE)
         exited_barn = False
-    elif buy_cow_first:
+    elif buy_first:
         phases.append(EXIT_TO_FARM_PHASE)
         phases.extend(animal_purchase_phases(species))
-        handled_buy_cow = True
+        animal_trip = True
         exited_barn = False
     elif not on_farm:
         phases.append(EXIT_TO_FARM_PHASE)
         exited_barn = in_barn
     else:
         exited_barn = False
-    if in_coop and buy_cow_first:
+    if in_coop and buy_first:
         phases.extend(animal_purchase_phases(species))
-        handled_buy_cow = True
+        animal_trip = True
         exited_barn = False
-    if started_in_barn_cows:
-        pass
-    elif cows_need_chores:
+    if buy_tools and not (barn_done or coop_done or animal_trip):
+        phases.extend(tool_purchase_phases())
+    if cows_need_chores and not barn_done:
         phases.extend(cow_day_phases(ram))
         exited_barn = True
+        barn_done = True
+    if care_first and buy_animal and not animal_trip:
+        phases.extend(animal_purchase_phases(species))
+        animal_trip = True
     phases.extend(
         _chicken_sale_phases(
             adult_chickens=adult_chickens,
@@ -733,7 +772,7 @@ def build_day_phases_from_ram(
             is_festival=is_fest,
         )
     )
-    if chickens_need_chores and not started_in_coop_chickens:
+    if chickens_need_chores and not coop_done:
         phases.extend(
             _chicken_phases(
                 exited_barn=exited_barn,
@@ -749,7 +788,9 @@ def build_day_phases_from_ram(
         )
     else:
         phases.append(DYNAMIC_OUTDOOR_PLAN_PHASE)
-    return phases
+    from harvest.tasks.proposal import apply_eve_phases
+
+    return apply_eve_phases(phases, ram)
 
 
 def _animal_tools_ready(ram: np.ndarray) -> bool:

@@ -31,6 +31,7 @@ from harvest.core.animal_status import (
     ITEM_FODDER,
     count_cow_slots,
     cow_needs_milking,
+    existing_cow_slots,
     read_cow_daily_flags,
     read_cow_happiness,
     read_fed_cows_flags,
@@ -208,6 +209,7 @@ class CowChoresTask(Task):
     milked_count: int = field(default=0, init=False)
     milk_shipped_count: int = field(default=0, init=False)
     fed_count: int = field(default=0, init=False)
+    happiness_deltas: list = field(default_factory=list, init=False)
 
     def __post_init__(self) -> None:
         self._pathfinder = Pathfinder(self._scanner)
@@ -258,6 +260,7 @@ class CowChoresTask(Task):
         self.milked_count = 0
         self.milk_shipped_count = 0
         self.fed_count = 0
+        self.happiness_deltas = []
 
         self._cow_count = max(read_num_cows(world.ram), count_cow_slots(world.ram))
         self._milk_slots = self._milkable_cow_slots(world.ram)
@@ -309,6 +312,19 @@ class CowChoresTask(Task):
         self._fodder_route_index = 0
         self._feed_route_index = 0
         self._care_trough_exit_logged = False
+
+    def _note_care_delta(self, ram: np.ndarray, kind: str, before: int) -> None:
+        slot = self._target_cow_slot
+        after = read_cow_happiness(ram, slot) if slot is not None else int(before)
+        self.happiness_deltas.append(
+            {
+                "slot": slot,
+                "kind": kind,
+                "before": int(before),
+                "after": int(after),
+                "delta": int(after) - int(before),
+            }
+        )
 
     def progress_text(self) -> str:
         return (
@@ -371,11 +387,22 @@ class CowChoresTask(Task):
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
         if self._phase == CowPhase.DONE:
+            flags = read_fed_cows_flags(world.ram)
+            if self.feed and self._fed_trough_count(world.ram) < self._current_feed_goal(world.ram):
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"missing required cow feed flags=0x{flags:04X}",
+                )
+            happy = ",".join(
+                f"{slot}:{read_cow_happiness(world.ram, slot)}"
+                for slot in existing_cow_slots(world.ram)
+            )
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=(
                     f"talk={self.talked} brush={self.brushed} "
-                    f"milk={self.milked_count} ship={self.milk_shipped_count} fed={self.fed_count}"
+                    f"milk={self.milked_count} ship={self.milk_shipped_count} "
+                    f"fed={self.fed_count} flags=0x{flags:04X} happy={happy}"
                 ),
             )
 
@@ -587,6 +614,8 @@ class CowChoresTask(Task):
             self._talk_flags_before,
             self._talk_happiness_before,
         ):
+            if not self.talked:
+                self._note_care_delta(world.ram, "talk", self._talk_happiness_before)
             self.talked = True
             self._remember_current_pin()
         if input_lock != 1:

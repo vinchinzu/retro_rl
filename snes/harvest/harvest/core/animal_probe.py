@@ -65,6 +65,19 @@ def chicken_slot_snapshots(ram: np.ndarray, *, require_coop: bool = False) -> li
     return rows
 
 
+def stray_hen_px(ram: np.ndarray) -> tuple[int, int] | None:
+    """Pixel of the first adult hen whose map byte is not the coop.
+
+    A hen just bought spawns in the animal-shop yard (town map byte), and a
+    hen in the player's hands keeps that byte until she is set down.
+    """
+    for row in chicken_slot_snapshots(ram, require_coop=False):
+        if row["stage"] == "adult" and int(row["map_raw"]) != COOP_TILEMAP:
+            x, y = row["pixel"]
+            return int(x), int(y)
+    return None
+
+
 def adult_chicken_tiles_from_slots(ram: np.ndarray, *, require_coop: bool = False) -> set[tuple[int, int]]:
     """Return only adult chicken tiles that should block navigation.
 

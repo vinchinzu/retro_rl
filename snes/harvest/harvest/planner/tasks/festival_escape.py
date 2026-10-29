@@ -26,6 +26,20 @@ from harvest.tasks.nav import get_pos_from_ram, make_action
 # Festival tilemaps (Maps_Graphics.asm): 08 flower, 09 harvest, 0A star night
 # square, 0B egg, 3A New Year mountain top.
 FESTIVAL_MAPS = frozenset({0x08, 0x09, 0x0A, 0x0B, 0x3A})
+
+
+def day_plan_owns_festival(task: object) -> bool:
+    """The live day plan is already walking the Flower Festival on map 0x08.
+
+    That script talks and dances, then the ROM puts the farmer to bed.
+    Replacing it with this roam is what left Spring D23 stuck in festival
+    text. Star Night and New Year still use the roam; nobody scripts those.
+    """
+    child = getattr(task, "_current_task", None)
+    if type(child).__name__ == "FlowerFestivalTask":
+        return True
+    phase = getattr(task, "current_phase", None)
+    return getattr(phase, "kind", "") == "flower_festival"
 _DIRS = ("up", "down", "left", "right")
 _TALK_DX, _TALK_DY = 26, 32
 _STUCK_FRAMES = 12

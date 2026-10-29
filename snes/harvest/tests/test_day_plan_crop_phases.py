@@ -39,6 +39,7 @@ from harvest.planner.day_plan import (
 from harvest.planner.day_phase_calendar import is_festival_day
 from harvest.tasks.crop_planter import is_rainy_weather as crop_task_is_rainy_weather
 from harvest.core.tile_catalog import ADDR_MAP
+from tests.crop_planter_test_helpers import set_stamina
 
 
 class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
@@ -483,7 +484,10 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
 
         self.assertNotIn("ENSURE_CROP_SEEDS", names)
         self.assertNotIn("CROP_WATER", names)
-        self.assertEqual(names, ["RETURN_HOME", "GO_TO_SLEEP"])
+        # Hour 18 is past the outdoor cap, so this list has to name the bar.
+        # A plan built at 06:00 does not include it.
+        self.assertEqual(names, ["EVE_TALK_LOOP", "RETURN_HOME", "GO_TO_SLEEP"])
+        self.assertEqual(phases[0].params.get("target_points"), 108)
 
     def test_waterable_detection_skips_known_harvestable_tiles(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=18)
@@ -591,7 +595,11 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
 
     def test_spring_weekday_restock_always_two_grapes_then_shop(self) -> None:
         """Robustness: D3-D30 shop-open mornings with no harvest keep 2 grapes
-        then potato, with a bail hour that still starts loop 2 after 10:00."""
+        then potato, with a bail hour that still starts loop 2 after 10:00.
+        Past ``SPRING_LAST_SOW_DAY`` the grapes stay but no potato bag is bought:
+        the rings are left empty for Summer corn."""
+        from harvest.planner.crop_planner import SPRING_LAST_SOW_DAY
+
         for day in range(3, 31):
             weekday = (1 + day - 1) % 7
             if weekday in (0, 6) or is_festival_day(0, day):
@@ -614,6 +622,9 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
             self.assertGreater(
                 berry.params.get("shop_bail_hour", 10), 10, f"D{day}"
             )
+            if day > SPRING_LAST_SOW_DAY:
+                self.assertNotIn("BUY_SEEDS", names, f"D{day}")
+                continue
             self.assertIn("BUY_SEEDS", names, f"D{day}")
             self.assertLess(
                 names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"), f"D{day}"
@@ -715,6 +726,7 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         from harvest.planner.day_phase_registry import TaskBuildContext, _build_crop
 
         world = make_date_world(0x00, season=0, day=3)
+        set_stamina(world.ram)
         ctx = TaskBuildContext(seed_type="potato")
 
         # West pocket empty -> establish aims at (13,28).
@@ -761,9 +773,12 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         from harvest.planner.day_phase_registry import TaskBuildContext, _build_crop
 
         world = make_date_world(0x00, season=0, day=3)
+        set_stamina(world.ram)
         ctx = TaskBuildContext(seed_type="potato")
-        # Fill both pocket rings with grown crops -> nothing to establish.
-        for cx, cy in ((13, 28), (19, 28)):
+        # Fill every pocket ring with grown crops -> nothing to establish.
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
+
+        for cx, cy in POCKET_PLANT_CENTERS:
             for dy in (-1, 0, 1):
                 for dx in (-1, 0, 1):
                     if (dx, dy) == (0, 0):

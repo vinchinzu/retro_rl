@@ -62,6 +62,13 @@ _MOORE_OFFSETS: tuple[Tile, ...] = tuple(
 )
 
 
+# Potato and turnip are one-shot: a Spring sowing holds its ring until it ripens.
+# A Summer ring planted by D3 still gets six corn harvests (12 nights to ripen,
+# then every 3), so Spring sowing stops where the last bag ripens on Summer D1
+# and the five days after it leave the rings empty for corn.
+SPRING_LAST_SOW_DAY = 24
+
+
 @dataclass(frozen=True)
 class CropSpec:
     """Static crop economics and growth data."""
@@ -77,19 +84,25 @@ class CropSpec:
     def is_regrowable(self) -> bool:
         return self.regrow_days is not None
 
+    @property
+    def spring_only(self) -> bool:
+        return SEASON_SPRING in self.seasons and SEASON_SUMMER not in self.seasons
+
     def harvest_horizon_days(self) -> int:
         """Days from this crop's season D1 until a planting can still mature.
 
         Spring crops INC through Summer (`NightlyFarmTilesCheck`); Fall D1
         starts DEC of immature watered tiles. A Spring D28 potato therefore
-        still harvests (Summer D4). Summer corn/tomato must mature before
-        Fall, so their horizon is one season.
+        still harvests (Summer D4), but see ``SPRING_LAST_SOW_DAY``. Summer
+        corn/tomato must mature before Fall, so their horizon is one season.
         """
-        if SEASON_SPRING in self.seasons and SEASON_SUMMER not in self.seasons:
+        if self.spring_only:
             return 2 * SEASON_LENGTH
         return SEASON_LENGTH
 
     def harvests_from_planting_day(self, day: int, season_length: int | None = None) -> int:
+        if self.spring_only and season_length is None and day > SPRING_LAST_SOW_DAY:
+            return 0
         horizon = self.harvest_horizon_days() if season_length is None else season_length
         first_harvest_day = day + self.days_to_first_harvest
         if first_harvest_day > horizon:
@@ -111,6 +124,13 @@ class CropSpec:
         return harvests * planted_tiles * self.sell_price_g - self.seed_cost_g
 
 
+# The ROM's nights from planting to the first ripe tile differ from the
+# second-hand figures below for the two Summer crops (a watered night gains 2
+# tile ids: corn 0x3A -> 0x52 is 12 nights, tomato 0x26 -> 0x38 is 9, potato
+# 0x54 -> 0x60 is 6). A harvest reverts the tile and it ripens again 3 nights
+# later. The figures stay because the rancher ledger (livestock_econ) is pinned
+# on them; at a D1-D3 planting corn (6 x 120G) and tomato (7 x 100G) pay alike
+# per tile, and corn carries 20% more gold per crop walked to the bin.
 CROP_SPECS: dict[str, CropSpec] = {
     "turnip": CropSpec("turnip", (SEASON_SPRING,), seed_cost_g=200, sell_price_g=60, days_to_first_harvest=4),
     "potato": CropSpec("potato", (SEASON_SPRING,), seed_cost_g=200, sell_price_g=80, days_to_first_harvest=6),

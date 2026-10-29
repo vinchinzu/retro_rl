@@ -1,4 +1,7 @@
-"""Animal-shop sale menu classification and counter-menu input tapes."""
+"""Animal-shop counter dialogue: text ids, menu tapes, and the one-animal buy session.
+
+Prices and every buy gate live in :mod:`harvest.planner.livestock_econ`.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +12,7 @@ from typing import Deque, Dict, List, Optional, Tuple
 import numpy as np
 
 from harvest.core.ram_catalog import field_spec, read_ram_u16, read_ram_value
+from harvest.planner.livestock_econ import ANIMAL_PRICE
 from harvest.tasks.nav import get_pos_from_ram, make_action
 from harvest.tasks.primitives import press_a_sequence, press_button_sequence
 
@@ -26,12 +30,6 @@ ANIMAL_CAP_TEXT_ID = 0x03B7
 GRASS_SHORT_TEXT_ID = 0x0306
 MONEY_SHORT_TEXT_ID = 0x0304
 PURCHASE_DECLINED_TEXT_ID = 0x0303
-WEATHER_BLOCK_MASK = 0x000A
-BOUGHT_TODAY_MASK = 0x0020
-ANIMAL_CAP = 12
-GRASS_PER_ANIMAL = 16
-COW_PRICE = 5000
-CHICKEN_PRICE = 1000
 
 _REJECT_TEXT = {
     WEATHER_BLOCK_TEXT_ID: "weather blocks delivery",
@@ -44,13 +42,13 @@ _REJECT_TEXT = {
 
 _SPECIES: Dict[str, Dict[str, int | str]] = {
     "cow": {
-        "price": COW_PRICE,
+        "price": ANIMAL_PRICE["cow"],
         "choice": 0,
         "confirm": COW_CONFIRM_TEXT_ID,
         "count_key": "num_cows",
     },
     "chicken": {
-        "price": CHICKEN_PRICE,
+        "price": ANIMAL_PRICE["chicken"],
         "choice": 1,
         "confirm": CHICKEN_CONFIRM_TEXT_ID,
         "count_key": "num_chickens",
@@ -122,49 +120,6 @@ def species_spec(species: str) -> Dict[str, int | str]:
         return _SPECIES[species]
     except KeyError as exc:
         raise ValueError(f"unknown animal species {species!r}") from exc
-
-
-def weather_blocks_animal_delivery(ram: np.ndarray) -> bool:
-    """Shopkeeper refuses delivery when $0196 has rain or snow (mask 0x000A)."""
-    return (read_ram_u16(ram, 0x0196) & WEATHER_BLOCK_MASK) != 0
-
-
-def animal_bought_today(ram: np.ndarray) -> bool:
-    """SRAM 0x11F5A bit 0x20 is set after either animal is bought that day."""
-    return (read_ram_u16(ram, 0x11F5A) & BOUGHT_TODAY_MASK) != 0
-
-
-def purchase_grass_required(cows: int, chickens: int, species: str) -> int:
-    """Planted grass tiles the shop script compares before AddMoney."""
-    species_spec(species)
-    if species == "cow":
-        return chickens * GRASS_PER_ANIMAL + (cows + 1) * GRASS_PER_ANIMAL
-    return (chickens + 1) * GRASS_PER_ANIMAL + cows * GRASS_PER_ANIMAL
-
-
-def purchase_block_reason(ram: np.ndarray, species: str) -> Optional[str]:
-    """Why this species cannot be bought, or None when the gates are open.
-
-    The live task still talks to the shopkeeper. These predicates are the
-    planner and the no-ROM contract: weather, one-animal-per-day, cap, wallet,
-    and grass.
-    """
-    spec = species_spec(species)
-    if weather_blocks_animal_delivery(ram):
-        return "weather"
-    if animal_bought_today(ram):
-        return "bought_today"
-    count = int(read_ram_value(ram, str(spec["count_key"])))
-    if count >= ANIMAL_CAP:
-        return "full"
-    if int(read_ram_value(ram, "money")) < int(spec["price"]):
-        return "money"
-    cows = int(read_ram_value(ram, "num_cows"))
-    chickens = int(read_ram_value(ram, "num_chickens"))
-    grass = int(read_ram_value(ram, "planted_grass"))
-    if grass < purchase_grass_required(cows, chickens, species):
-        return "grass"
-    return None
 
 
 @dataclass
@@ -375,22 +330,16 @@ def chicken_count_reason(
 
 
 __all__ = [
-    "ANIMAL_CAP",
-    "CHICKEN_PRICE",
-    "COW_PRICE",
     "SELL_CHICKEN_TEXT_ID",
     "SHOP_MENU_TEXT_ID",
     "AnimalPurchaseSession",
     "PurchaseDecision",
-    "animal_bought_today",
     "chicken_count_reason",
     "dialog_text_id",
     "near_px",
     "open_counter_menu_actions",
     "payout_press_actions",
-    "purchase_block_reason",
-    "purchase_grass_required",
     "sale_request_ready",
     "sell_chicken_choice_actions",
-    "weather_blocks_animal_delivery",
+    "species_spec",
 ]

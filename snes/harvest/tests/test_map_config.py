@@ -33,7 +33,14 @@ from harvest.maps.map_config import (
     get_no_go_tiles,
     get_walkable_tiles,
 )
-from harvest.core.tile_catalog import CHURCH_WALKABLE, FARM_WALKABLE as CATALOG_FARM_WALKABLE
+from harvest.core.tile_catalog import (
+    CHURCH_WALKABLE,
+    FARM_WALKABLE as CATALOG_FARM_WALKABLE,
+    MOUNTAIN_TILEMAP_IDS,
+    MOUNTAIN_WALKABLE,
+    PATH_WALKABLE,
+    walkable_tiles_for_tilemap,
+)
 
 
 class FarmWalkableTests(unittest.TestCase):
@@ -73,6 +80,16 @@ class FarmWalkableTests(unittest.TestCase):
         for tile in ((26, 28), (26, 29), (26, 30)):
             self.assertNotIn(tile, no_go)
 
+    def test_bin_lane_stays_no_go_for_shared_paths_and_is_named_for_the_routes_that_use_it(self) -> None:
+        """x=11, y=26-28 is open ground, but opening it for every path broke the west pocket."""
+        from harvest.maps.farm_pond import FARM_NO_GO_TILES, SHIP_BIN_LANE_TILES
+
+        self.assertEqual(SHIP_BIN_LANE_TILES, {(11, 26), (11, 27), (11, 28)})
+        for tilemap in (0x00, 0x01, 0x02, 0x03):
+            with self.subTest(tilemap=tilemap):
+                self.assertTrue(SHIP_BIN_LANE_TILES <= get_no_go_tiles(tilemap))
+        self.assertTrue(SHIP_BIN_LANE_TILES <= FARM_NO_GO_TILES)
+
     def test_seasonal_farm_tilemaps_share_farm_metadata(self) -> None:
         for tilemap in (0x00, 0x01, 0x02, 0x03):
             with self.subTest(tilemap=tilemap):
@@ -81,6 +98,20 @@ class FarmWalkableTests(unittest.TestCase):
                 self.assertIn("shipping_bin", {landmark.name for landmark in get_landmarks(tilemap)})
 
         self.assertEqual(get_map_name(0x01), "farm_summer")
+
+    def test_seasonal_mountain_tilemaps_share_mountain_walkable(self) -> None:
+        fall = walkable_tiles_for_tilemap(0x12)
+        self.assertIs(fall, MOUNTAIN_WALKABLE)
+        self.assertIs(get_walkable_tiles(0x12), MOUNTAIN_WALKABLE)
+        self.assertIsNot(fall, FARM_WALKABLE)
+        self.assertNotEqual(fall, FARM_WALKABLE)
+        self.assertIs(walkable_tiles_for_tilemap(0x0C), PATH_WALKABLE)
+        self.assertIsNot(walkable_tiles_for_tilemap(0x0C), MOUNTAIN_WALKABLE)
+        for tilemap in MOUNTAIN_TILEMAP_IDS:
+            with self.subTest(tilemap=tilemap):
+                self.assertIs(walkable_tiles_for_tilemap(tilemap), MOUNTAIN_WALKABLE)
+                self.assertIs(get_walkable_tiles(tilemap), MOUNTAIN_WALKABLE)
+                self.assertIn((20, 44), get_no_go_tiles(tilemap))
 
     def test_town_explore_route_spans_farm_path_town(self) -> None:
         route = ROUTES["town_explore"]
@@ -196,7 +227,7 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertIn("farm_to_house_level1", ROUTES)
         self.assertIn("farm_to_house_level2", ROUTES)
         self.assertEqual(ROUTES["farm_to_house"][-1].target_px, (136, 424))
-        self.assertEqual(ROUTES["farm_to_house_level1"][-1].target_px, (136, 344))
+        self.assertEqual(ROUTES["farm_to_house_level1"][-1].target_px, (136, 376))
         self.assertEqual(ROUTES["farm_to_animal_shop_staging"][-1].tilemap, 0x24)
         self.assertEqual(ROUTES["farm_to_animal_shop_staging"][-1].target_px, (128, 200))
         self.assertEqual(ROUTES["farm_to_animal_shop_counter"][-1].tilemap, 0x24)

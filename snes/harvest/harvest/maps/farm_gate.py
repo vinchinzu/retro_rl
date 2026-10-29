@@ -52,13 +52,15 @@ def farm_to_west_gate_waypoints(
     if tilemap not in FARM_TILEMAP_IDS:
         return list(routes._FARM_TO_PATH)
     if 13 <= px // 16 <= 18 and 33 <= py // 16 <= 38:
-        # Pasture work ends inside the four cleared 3x3 chunks. The old
-        # south-field join first descends to y=39, where untouched debris
-        # blocks the exit. Retrace the pasture approach along its east edge.
+        # Pasture work ends inside the four cleared 3x3 chunks. (17,32) is
+        # a weed: east on y=33, then north at x=18. Not west on y=32.
+        # (19,33) stays boxed. South y=39 is still debris.
         return routes.densify_waypoints(
             [
                 farm_wp(px, py, 16),
-                farm_wp(312, 568, 8),
+                farm_wp(264, 536, 8),
+                farm_wp(296, 536, 8),
+                farm_wp(312, 520, 8),
                 farm_wp(312, 488, 8),
                 farm_wp(296, 392, 8),
                 farm_wp(232, 392, 8),

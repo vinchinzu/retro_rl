@@ -91,3 +91,18 @@ The request bit `$0020` has two script writers, both SetFlag index 5 on `$7F1F66
 ## What 999 would need
 
 Stamina maxes at 10 eaten berries, +10 each, from a base of 100. The seven one-shots above are the whole designed set. Chicken deaths, off-map respawns, and the transition edge are the only ways the eaten count reaches 10, and each of them can also pass 10. The clock and the turtle are separate +22 and +21 terms. Their plans are above. The clock plan still has no reached writer for the quote-request bit.
+
+## Unfinished repair findings, 2026-09-30
+
+The cabin request decode needs correction: `$83DDC2 BNE $83DE0A` jumps
+into normal dispatch. With intro bit `$7F1F68.0008`, map 0x2B selects group
+1/script 9 (rain: group 4/script 7). The native request/arm/gift receipt was supplied on 2026-10-15 by the
+first-house continuation in [EVE_BAR.md](../../EVE_BAR.md). The door is
+mountain tile (32,33), index 28, destination 0x2B.
+
+Interior navigation also has a stride bug: `$82B13C` uses width 16 for
+`$0181=1`, 32 for 2, and 64 otherwise; the existing generic tile reader/BFS
+assumes 64. Cabin 0x2B and cave 0x29 require their native widths. Native cave
+entry was measured at 436 frames, but acquisition to exactly ten and final
+sleep were not completed. The unfinished interior approach remains in the
+repair-home worktree; it is not a merged or route-ready capability.

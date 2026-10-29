@@ -25,6 +25,12 @@ from harvest.planner.day_plan_decision import (
     DayPlanDecision,
     auto_day_plan_decision,
 )
+from harvest.planner.campaign_composer import (
+    apply_block_order,
+    arbitration_journal,
+    day_intents_for_morning,
+    morning_index,
+)
 from harvest.planner.day_plan_phases import DayPlannerPolicy
 from harvest.planner.day_plan_status import (
     TASKS_DIR,
@@ -32,6 +38,7 @@ from harvest.planner.day_plan_status import (
     is_house_tilemap,
     read_world_date,
     read_world_day_time,
+    read_world_year,
     read_world_ymd,
 )
 from harvest.planner.day_plan_tasks import (
@@ -40,9 +47,10 @@ from harvest.planner.day_plan_tasks import (
     HOUSE_SLEEP_TRANSITION_TILEMAP,
     ReturnHomeTask,
 )
+from harvest.planner.tasks.festival_escape import FESTIVAL_MAPS, FestivalEscapeTask, day_plan_owns_festival
 from harvest.tasks.nav import make_action
 from harvest.tasks.primitives import dismiss_dialogue_result
-
+from harvest.tools.pr999_report import day_end_economy, journal_census
 
 @dataclass
 class MultiDayPlannerTask(Task):
@@ -54,14 +62,18 @@ class MultiDayPlannerTask(Task):
     tasks_dir: str = TASKS_DIR
     until_season: int = 0
     until_day: int = 30
-    # 0-based year of the exclusive (until_season, until_day) bound; 0 keeps
-    # the Year-1 meaning, later years are past every Year-1 target.
+    # Year is 0-based; the target date is exclusive.
     until_year: int = 0
     target_days: Optional[int] = None
     max_days: int = 40
     morning_settle_frames: int = 10
     policy: DayPlannerPolicy = field(default_factory=DayPlannerPolicy)
     plan_advisor: Optional[DayPlanAdvisor] = None
+    perfect_rancher: bool = False
+    _pending_intents: dict[str, dict] = field(default_factory=dict, init=False)
+    _completed_intents: set[str] = field(default_factory=set, init=False)
+    _day_intents: list[dict] = field(default_factory=list, init=False)
+    _captured_intents: set[tuple] = field(default_factory=set, init=False)
 
     _phase: str = field(default="plan_day", init=False)
     _current_task: Optional[Task] = field(default=None, init=False)
@@ -76,25 +88,14 @@ class MultiDayPlannerTask(Task):
     _day_journal: list[dict[str, object]] = field(default_factory=list, init=False)
     _return_home_retries: int = field(default=0, init=False)
     _was_storm_yesterday: bool = field(default=False, init=False)
-    # The cow-purchase route is unproven on the ROM. Once the planner is rich
-    # it re-plans it every morning; each failed try costs frames and buys
-    # nothing. Count runtime failures per season and stop after a few.
     _festival_escape: Optional[Task] = field(default=None, init=False)
     # Phase and task the festival map interrupted. Restored when it lets go.
     _festival_resume: Optional[Tuple[str, Optional[Task]]] = field(default=None, init=False)
     _cow_route_failures: int = field(default=0, init=False)
     _cow_failure_season: int = field(default=-1, init=False)
-    # A stranded return_home is the dominant terminal killer of long runs. Give
-    # it a few fresh attempts (nav state is rebuilt each time) before failing.
+    # Rebuild navigation before abandoning a stranded return-home.
     max_return_home_retries: int = 3
-    # Day floor (rr-bu62.4): no single day may end the run. The ROM never ends
-    # a day by clock (bank_82 UpdateTime caps hour at 18), so a day that stalls
-    # is ended here: budget/deadline -> return_home -> rescue walk -> sleep.
-    # ROM (bank_82 NightReset): shipping-bin money is paid by AddMoney at the
-    # overnight reset whatever the hour, and stamina refills only there, so
-    # nothing is gained by staying up. Sleep as soon as the day's work ends;
-    # False (HARVEST_SLEEP_WHEN_DONE=0) restores the wait for the 5pm scene
-    # and the 18:00 bed gate.
+    # The ROM caps at 18:00; the floor rescues stalls and finished days sleep.
     sleep_when_done: bool = field(
         default_factory=lambda: os.environ.get("HARVEST_SLEEP_WHEN_DONE", "1") != "0"
     )
@@ -105,6 +106,7 @@ class MultiDayPlannerTask(Task):
     _floor_abandoned: bool = field(default=False, init=False)
     _dog_released_today: bool = field(default=False, init=False)
     _floor_reason: str = field(default="", init=False)
+    _eod_economy: dict | None = field(default=None, init=False)
     _max_days_warned: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
@@ -114,9 +116,14 @@ class MultiDayPlannerTask(Task):
         self._step_count = 0
         self._settle_count = 0
         self._active_day = read_world_date(world.ram)
+        self._plan_year = read_world_year(world.ram)
         self._last_day_decision = None
         self._last_day_phase_results.clear()
         self._last_day_deferred.clear()
+        self._pending_intents.clear()
+        self._completed_intents.clear()
+        self._day_intents.clear()
+        self._captured_intents.clear()
         self._day_failures.clear()
         self._day_journal.clear()
         self._was_storm_yesterday = False
@@ -199,54 +206,40 @@ class MultiDayPlannerTask(Task):
             replace(self.policy, include_end_day=False),
             year=year,
         )
-        if (
-            self._cow_failure_season == int(season)
-            and self._cow_route_failures >= COW_ROUTE_MAX_FAILURES
-            and day_policy.include_cows
-        ):
-            day_policy = replace(day_policy, include_cows=False)
+        cow_key = int(year) * 4 + int(season)
+        if self._cow_failure_season not in (-1, cow_key):
+            self._cow_failure_season, self._cow_route_failures = cow_key, 0
+        if self._cow_route_failures >= COW_ROUTE_MAX_FAILURES:
+            day_policy = replace(day_policy, include_animal_purchases=False)
         if not COW_PURCHASE_ENABLED and day_policy.include_cows:
             from harvest.planner.day_plan_status import ram_has_cows
 
             # Owned cows still get chores; the unproven purchase route stays off.
             if not ram_has_cows(world.ram):
                 day_policy = replace(day_policy, include_cows=False)
-        # Determine target seed for the season
-        target_seed = None
-        if self.crop_rotation and season in self.crop_rotation:
-            target_seed = self.crop_rotation[season]
-        elif season == 0 and self.seed_type:
-            target_seed = self.seed_type
-        else:
-            from harvest.planner.day_phase_calendar import default_crop_for_season
-
-            target_seed = default_crop_for_season(season) or self.seed_type
-
-        # The campaign's configured crop wins while it is still plantable this
-        # date — ram resolution otherwise drifts to turnip after a few potato
-        # ships (its ranch-master "remaining" ranks higher), diluting the
-        # potato-max goal and thrashing the pocket rings between crops.
+        from harvest.planner.day_phase_calendar import default_crop_for_season
+        target_seed = (self.crop_rotation or {}).get(season) or (
+            self.seed_type if season == 0 else default_crop_for_season(season) or self.seed_type)
         resolved_seed = resolve_seed_type_from_ram(world.ram) or target_seed
         if target_seed and resolved_seed != target_seed:
-            try:
-                from harvest.planner.crop_planner import resolve_seed_type_for_date
-
-                if (
-                    resolve_seed_type_for_date(
-                        season, day, inventory={target_seed: 1}
-                    )
-                    == target_seed
-                ):
-                    resolved_seed = target_seed
-            except Exception:
-                pass
-
-        from harvest.planner.world_probe import WorldProbe
+            from harvest.planner.crop_planner import resolve_seed_type_for_date
+            if resolve_seed_type_for_date(season, day, inventory={target_seed: 1}) == target_seed:
+                resolved_seed = target_seed
 
         probe = WorldProbe.from_inputs(ram=world.ram)
         is_storm = probe.is_storm()
         is_festival = probe.is_festival()
         festival_name = probe.festival_name()
+
+        picked = day_intents_for_morning(int(year), int(season), int(day))
+        if self.perfect_rancher:
+            for intent in picked:
+                if intent["id"] not in self._completed_intents:
+                    self._pending_intents[str(intent["id"])] = dict(intent)
+            picked = [{**row, "attempt_index": morning_index(year, season, day)}
+                      for row in self._pending_intents.values()]
+        self._day_intents = picked
+        self._captured_intents.clear()
 
         decision = auto_day_plan_decision(
             ram=world.ram,
@@ -256,49 +249,43 @@ class MultiDayPlannerTask(Task):
             is_post_storm=self._was_storm_yesterday,
             is_festival=is_festival,
             festival_name=festival_name,
+            milestone_intents=picked if self.perfect_rancher else (),
+            intent_completed=tuple(self._completed_intents),
         )
+        ordered = apply_block_order(decision.phases, storm=bool(is_storm)) if self.perfect_rancher else decision.phases
+        if list(ordered) != list(decision.phases):
+            decision = replace(decision, phases=tuple(ordered))
         self._last_day_decision = decision
         phase_names = ", ".join(phase.phase for phase in decision.phases) or "none"
-        if decision.deferred:
-            deferred = "; ".join(
-                f"{item.phase}:{item.reason}" for item in decision.deferred
-            )
-            print(
-                f"[MULTI_DAY] Plan {season}:{day} seed={resolved_seed} "
-                f"phases={phase_names} deferred={deferred}"
-            )
-        else:
-            print(
-                f"[MULTI_DAY] Plan {season}:{day} seed={resolved_seed} "
-                f"phases={phase_names}"
-            )
+        intent_ids = ",".join(str(item["id"]) for item in picked) or "none"
+        block_ids = ",".join(
+            row["block"] for row in arbitration_journal(decision.phases).get("blocks", ()) if row["phases"]
+        ) or "none"
+        deferred = "; ".join(f"{item.phase}:{item.reason}" for item in decision.deferred) or "none"
+        print(f"[MULTI_DAY] Plan {season}:{day} seed={resolved_seed} "
+              f"phases={phase_names} blocks={block_ids} intents={intent_ids} deferred={deferred}")
         return DayPlanTask(
             seed_type=resolved_seed,
             tasks_dir=self.tasks_dir,
             phase_sequence=list(decision.phases),
             policy=day_policy,
+            arbitrate=self.perfect_rancher,
         )
 
     def _build_return_home_task(self) -> ReturnHomeTask:
         return ReturnHomeTask(tasks_dir=self.tasks_dir)
 
     def _build_sleep_task(self) -> GoToSleepTask:
-        # Hurricane day: the door is nailed and the clock is frozen indoors, so
-        # waiting for the 18:00 bed gate never ends. The bed accepts sleep at
-        # any hour (measured Summer D12: day 12 -> 13 at 06:00).
         storm = bool(self._last_day_decision and self._last_day_decision.facts.is_storm)
-        # A day the floor cut short, a finished day (sleep_when_done) or an
-        # off-season idle day sleeps at once: the bed takes any hour and idling
-        # to 18:00 outdoors is pure exposure.
         if storm or self._floor_abandoned or self.sleep_when_done or self._day_was_idle():
             return GoToSleepTask(tasks_dir=self.tasks_dir, earliest_sleep_hour=0)
         return GoToSleepTask(tasks_dir=self.tasks_dir)
 
     def _sync_festival_phase(self, world: WorldState) -> None:
-        """Phase ``festival`` on a festival map; leaving the map resumes the day."""
-        from harvest.planner.tasks.festival_escape import FESTIVAL_MAPS, FestivalEscapeTask
-
+        """Phase ``festival`` on a map the day plan did not script."""
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        if day_plan_owns_festival(self._current_task):
+            return
         if tilemap not in FESTIVAL_MAPS:
             if self._phase == "festival":
                 self._resume_festival_day()
@@ -411,10 +398,12 @@ class MultiDayPlannerTask(Task):
         self._active_day = read_world_date(world.ram)
         print(f"[MULTI_DAY] Start {phase} date={self._active_day[0]}:{self._active_day[1]}")
         if phase == "plan_day":
+            self._plan_year = read_world_year(world.ram)
             self.floor.begin_day(self._step_count)
             self._floor_abandoned = False
             self._dog_released_today = False
             self._floor_reason = ""
+        self._eod_economy = day_end_economy(phase, self._eod_economy, world.ram)
         task.reset(world)
 
     def _record_day_failure(self, world: WorldState, status: TaskStatus | str, reason: str) -> None:
@@ -506,6 +495,19 @@ class MultiDayPlannerTask(Task):
         if not isinstance(child, DayPlanTask):
             return
         self._last_day_phase_results = list(child.phase_results)
+        for row in self._last_day_phase_results:
+            key = (row.get("intent_id"), row.get("step"))
+            if not key[0] or key in self._captured_intents:
+                continue
+            self._captured_intents.add(key)
+            if row.get("intent_id") and row.get("status") == "success" and row.get("receipt", {}).get("verified"):
+                ident = str(row["intent_id"])
+                self._completed_intents.add(ident)
+                self._pending_intents.pop(ident, None)
+            elif row.get("status") in {"failure", "skipped", "blocked"}:
+                pending = self._pending_intents.get(str(key[0]))
+                if pending is not None:
+                    pending["runtime_failures"] = int(pending.get("runtime_failures", 0)) + 1
         self._last_day_deferred = [
             {
                 "phase": item.phase,
@@ -533,10 +535,6 @@ class MultiDayPlannerTask(Task):
         # Prefer snapshot taken when plan_day finished; fall back to live task.
         self._capture_day_plan_outcomes()
         phase_results = list(self._last_day_phase_results)
-        # Decision-time omissions (for example rainy-day watering or a closed
-        # shop) used to be printed but disappeared from continuous-run
-        # journals.  Keep them alongside runtime failures so the next planning
-        # review sees the complete reason a task was deferred.
         planned_deferred = (
             [item.to_jsonable() for item in self._last_day_decision.deferred]
             if self._last_day_decision is not None
@@ -548,9 +546,9 @@ class MultiDayPlannerTask(Task):
             and not str(row.get("reason", "")).startswith("shop_closed")
             for row in self._last_day_deferred
         ):
-            if self._cow_failure_season != int(season):
-                self._cow_failure_season = int(season)
-                self._cow_route_failures = 0
+            cow_key = int(getattr(self, "_plan_year", 0)) * 4 + int(season)
+            if self._cow_failure_season != cow_key:
+                self._cow_failure_season, self._cow_route_failures = cow_key, 0
             self._cow_route_failures += 1
             print(
                 f"[MULTI_DAY] Cow route failed ({self._cow_route_failures}/"
@@ -604,8 +602,28 @@ class MultiDayPlannerTask(Task):
             "consecutive_bad_days": int(self.floor.bad_days),
             "phase_results": phase_results,
             "deferred": deferred,
+            "intent_source": "milestones.yaml",
+            "intents": list(self._day_intents) or day_intents_for_morning(int(getattr(self, "_plan_year", 0)), int(season), int(day)),
+            "perfect_rancher": self.perfect_rancher,
+            "intent_outcomes": [item for item in phase_results if item.get("intent_id")],
+            "pending_intents": list(self._pending_intents),
+            "completed_intents": sorted(self._completed_intents),
             "step": int(self._step_count),
+            "arbitration": arbitration_journal(
+                () if self._last_day_decision is None else self._last_day_decision.phases,
+                phase_results,
+            ),
         }
+        from harvest.core.ranch_master import morning_score_ledger
+
+        row["score_ledger"] = morning_score_ledger(world.ram)
+        census = journal_census(world.ram, eod=self._eod_economy)
+        row.update(census)
+        tiles = census["development_census"]
+        print(
+            f"[MULTI_DAY] Census counted={tiles['counted_tiles']} "
+            f"gap_to_2950={tiles['gap_to_2950']} uncovered={tiles['uncovered_count']}"
+        )
         self._day_journal.append(row)
         self.floor.end_day(clean=not self._day_bad)
         self._day_bad = False
@@ -631,8 +649,7 @@ class MultiDayPlannerTask(Task):
         scene = classify_scene_from_ram(world.ram)
         if scene_indicates_ending(scene) or reason == "ending reached":
             return TaskResult(status=TaskStatus.SUCCESS, reason="ending reached")
-        # Always settle the morning after sleep so the final overnight also
-        # ends on a stable house/farm scene (M3 acceptance), not mid-fade.
+        # Settle the final overnight before the caller reads the terminal RAM.
         self._phase = "settle_morning"
         self._current_task = None
         self._settle_count = 0
@@ -689,6 +706,8 @@ class MultiDayPlannerTask(Task):
     ) -> TaskResult:
         """Catch overnight/ending transitions while a child task is still RUNNING."""
         scene = classify_scene_from_ram(world.ram)
+        if self._phase == "plan_day" and any(p.params.get("ends_day") for p in getattr(self._current_task, "phases", ())):
+            return result  # The event owns its date roll and final house transition.
         if scene_indicates_ending(scene):
             if self._phase == "sleep":
                 return self._finish_sleep(world, "ending reached")
@@ -851,6 +870,8 @@ class MultiDayPlannerTask(Task):
 
         if self._phase == "plan_day":
             self._capture_day_plan_outcomes()
+            if read_world_date(world.ram) != self._active_day:
+                return self._finish_sleep(world, "day ended by completed event")
             if self._needs_farm_shipping_wait(world):
                 self._phase = "wait_shipping"
                 self._current_task = None
@@ -931,7 +952,7 @@ class MultiDayPlannerTask(Task):
             self._resume_festival_day()
         if self._phase == "settle_morning":
             return self._step_settle_morning(world)
-        if self._phase != "sleep":
+        if self._phase != "sleep" and not day_plan_owns_festival(self._current_task):
             choice = unowned_scene_press(
                 world.ram, self.scene_guard, self._step_count, self._child_pressed
             )
@@ -940,7 +961,7 @@ class MultiDayPlannerTask(Task):
                 return dismiss_dialogue_result(
                     self._step_count, buttons=buttons, pulse_every=2, reason=reason
                 )
-        if self.policy.include_end_day and self._phase in {"plan_day", "wait_shipping"}:
+        if self.policy.include_end_day and self._phase in {"plan_day", "wait_shipping"} and not day_plan_owns_festival(self._current_task):
             _day, hour, _minute = read_world_day_time(world.ram)
             floor_reason = self.floor.check(self._step_count, hour)
             if floor_reason is not None:
@@ -951,11 +972,8 @@ class MultiDayPlannerTask(Task):
         return self._handle_result(world, result)
 
 
-# One failed try burns a whole day (multi_nav timeout ~13k frames), so give the
-# unproven cow route a single attempt per season.
-COW_ROUTE_MAX_FAILURES = 1
-# rr-bu62.28: live chicken receipt, 4090->3090G and count 0->1, 2796f.
-# The morning planner still requires summer D14+, pasture, feed and reserve.
+# Failures are per year-season (year*4+season). Four misses, then chores only.
+COW_ROUTE_MAX_FAILURES = 4
 COW_PURCHASE_ENABLED = True
 _COW_ROUTE_PHASES = frozenset({"NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR"})
 # Phases that only move or equip the farmer; a day of just these did no work.
@@ -968,20 +986,13 @@ def _merge_deferred_rows(
     planned: Sequence[dict[str, object]],
     runtime: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
-    """Merge journal deferrals without duplicating the same intention.
-
-    Planner and runtime rows have intentionally different detail levels, so
-    preserve the richer planning row when both report the same phase/reason.
-    """
+    """Keep the richer planning row for a duplicate runtime deferral."""
     merged: list[dict[str, object]] = []
     seen: set[tuple[str, str, str]] = set()
     for row in (*planned, *runtime):
         clean = dict(row)
-        key = (
-            str(clean.get("phase", "")),
-            str(clean.get("reason", "")),
-            str(clean.get("retry", "tomorrow")),
-        )
+        key = (str(clean.get("phase", "")), str(clean.get("reason", "")),
+               str(clean.get("retry", "tomorrow")))
         if key in seen:
             continue
         seen.add(key)

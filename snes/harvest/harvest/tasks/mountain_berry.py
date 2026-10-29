@@ -36,7 +36,7 @@ from harvest.maps.map_config import (
     slice_route_from_position,
 )
 from harvest.tasks.nav import get_pos_from_ram, get_tile_at, make_action
-from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
+from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap, is_mountain_tilemap
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.tasks.primitives import (
@@ -114,19 +114,19 @@ def first_remaining_segment(
     if is_farm_tilemap(tilemap):
         for name in segments:
             hops = SEGMENTS.get(name, [])
-            if name == "farm_to_path" or (hops and hops[0].tilemap not in (PATH_TILEMAP, MOUNTAIN_TILEMAP)):
+            if name == "farm_to_path" or (hops and hops[0].tilemap not in (PATH_TILEMAP, MOUNTAIN_TILEMAP) and not is_mountain_tilemap(hops[0].tilemap)):
                 return name
         return None
     if tilemap == PATH_TILEMAP:
         for name in segments:
             hops = SEGMENTS.get(name, [])
-            if hops and hops[-1].tilemap in (PATH_TILEMAP, MOUNTAIN_TILEMAP) and name != "farm_to_path":
+            if hops and (hops[-1].tilemap in (PATH_TILEMAP, MOUNTAIN_TILEMAP) or is_mountain_tilemap(hops[-1].tilemap)) and name != "farm_to_path":
                 return name
         return None
-    if tilemap == MOUNTAIN_TILEMAP:
+    if is_mountain_tilemap(tilemap):
         for name in segments:
             hops = SEGMENTS.get(name, [])
-            if hops and hops[0].tilemap == MOUNTAIN_TILEMAP:
+            if hops and (hops[0].tilemap == MOUNTAIN_TILEMAP or is_mountain_tilemap(hops[0].tilemap)):
                 return name
         return None
     return segments[0] if segments else None
@@ -346,7 +346,7 @@ class MountainBerryTask(Task):
                 hops = segment_waypoints(name)
         # North-edge spawn (y≈10) is still the map transition. Manhattan
         # would skip the south-land hops and send us through Gotz.
-        if name.startswith("mountain_entry_to_first_") and int(pos.y) < 80:
+        if name.startswith("mountain_entry_to_") and int(pos.y) < 80:
             sliced = hops
         else:
             sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)
@@ -373,7 +373,7 @@ class MountainBerryTask(Task):
             self._child_name = "exit_to_farm"
             self._last_reason = "leaving building"
             return
-        if tilemap == MOUNTAIN_TILEMAP and self._at_stand(world.ram):
+        if is_mountain_tilemap(tilemap) and self._at_stand(world.ram):
             self._child = None
             if self.approach_only or self.pick_attempts <= 0:
                 self._child_name = "at_stand"
@@ -588,7 +588,7 @@ class MountainBerryTask(Task):
 
         if box:
             # Ate the grape (held dropped) or Gotz talk. Both fail closed.
-            if _tilemap(world) == MOUNTAIN_TILEMAP:
+            if is_mountain_tilemap(_tilemap(world)):
                 why = "ate grape" if self._picks > 0 else "talked on mountain"
                 return TaskResult(
                     status=TaskStatus.FAILURE,
@@ -666,7 +666,7 @@ class MountainBerryTask(Task):
                 # we walk into Gotz. Approach-only fails closed.
                 if (
                     not self.approach_only
-                    and _tilemap(world) == MOUNTAIN_TILEMAP
+                    and is_mountain_tilemap(_tilemap(world))
                     and self._child_name in self.segments
                 ):
                     self._done_segments.add(self._child_name)

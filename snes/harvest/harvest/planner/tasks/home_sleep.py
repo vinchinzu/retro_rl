@@ -43,6 +43,7 @@ from harvest.planner.tasks.transitions import (
 )
 
 HOUSE_BED_STAND_PX = Point(70, 86)
+HOUSE_L1_BED_STAND_PX = Point(56, 86)
 HOUSE_L2_BED_STAND_PX = Point(294, 102)
 HOUSE_SLEEP_TRANSITION_TILEMAP = 0x0F
 # Tight column for bed A (go_to_sleep recording stand x=70). Tolerance 4
@@ -124,6 +125,22 @@ HOUSE_L2_BED_ROUTE_FINAL: List[Tuple[Point, str, int, bool]] = [
 ]
 
 
+def _cow_happiness(ram: np.ndarray) -> tuple[tuple[int, int], ...]:
+    from harvest.core.animal_status import existing_cow_slots, read_cow_happiness
+
+    return tuple((slot, int(read_cow_happiness(ram, slot))) for slot in existing_cow_slots(ram))
+
+
+def _morning_sleep_reason(before: tuple[tuple[int, int], ...], ram: np.ndarray) -> str:
+    """House-bed morning. ``before`` is each slot at the start of this sleep."""
+    after = dict(_cow_happiness(ram))
+    bits = [f"{slot}:{old}->{after.get(slot, old)}" for slot, old in before]
+    text = "day advanced; morning house ready"
+    if not bits:
+        return text
+    return f"{text} happy={','.join(bits)}"
+
+
 
 @dataclass
 class GoToSleepTask(Task):
@@ -168,6 +185,10 @@ class GoToSleepTask(Task):
     _tossed_before_sleep: bool = field(default=False, init=False)
     # Midday end-day: house clock freezes; exit and idle outdoors until evening.
     _exit_for_evening: Optional[ExitToFarmTask] = field(default=None, init=False)
+    # Hour 17 is still before bed (earliest is 18) and the bar door is open.
+    _eve: Optional[Task] = field(default=None, init=False)
+    _eve_done: bool = field(default=False, init=False)
+    _happy_before: tuple = field(default_factory=tuple, init=False)
 
     def reset(self, world: WorldState) -> None:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -183,7 +204,10 @@ class GoToSleepTask(Task):
         self._morning_settle_frames = 0
         self._tossed_before_sleep = False
         self._exit_for_evening = None
+        self._eve = None
+        self._eve_done = False
         self._start_season, self._start_day = read_world_date(world.ram)
+        self._happy_before = _cow_happiness(world.ram)
         if self._phase == "ensure_house":
             self._return_home = ReturnHomeTask(tasks_dir=self.tasks_dir)
             self._return_home.reset(world)
@@ -256,12 +280,16 @@ class GoToSleepTask(Task):
 
     @staticmethod
     def _bed_stand_for_tilemap(tilemap: int) -> Point:
+        if tilemap == 0x16:
+            return HOUSE_L1_BED_STAND_PX
         if tilemap == 0x17:
             return HOUSE_L2_BED_STAND_PX
         return HOUSE_BED_STAND_PX
 
     @staticmethod
     def _bed_tolerance_for_tilemap(tilemap: int) -> int:
+        if tilemap == 0x16:
+            return 0
         if tilemap == 0x17:
             return HOUSE_L2_BED_STAND_TOLERANCE
         return HOUSE_BED_STAND_TOLERANCE
@@ -277,6 +305,26 @@ class GoToSleepTask(Task):
 
     @staticmethod
     def _route_for_position(pos: Point, tilemap: int) -> List[Tuple[Point, str, int, bool]]:
+        if tilemap == 0x16:
+            # Bed interaction tile is (3,4). Column 4 faces the diary;
+            # first move below its desk when recovering from diary position.
+            if pos.x <= 90 and pos.y < 80:
+                return [(Point(pos.x, 120), "y", 0, False),
+                        (Point(56, 120), "x", 0, False),
+                        (HOUSE_L1_BED_STAND_PX, "y", 0, False)]
+            # Eve stands at (88,104) after marriage. The base-house x=72
+            # approach runs into her; pass below at y=136, then climb x=56.
+            if pos.y >= 150:
+                route = [(Point(98, 200), "x", 2, True)]
+                lane_x = 98
+            elif pos.x > 104:
+                route = [(Point(104, pos.y), "x", 2, False)]
+                lane_x = 104
+            else:
+                route, lane_x = [], pos.x
+            return route + [(Point(lane_x, 136), "y", 2, False),
+                            (Point(56, 136), "x", 0, False),
+                            (HOUSE_L1_BED_STAND_PX, "y", 0, False)]
         if tilemap == 0x17:
             if abs(pos.x - HOUSE_L2_BED_STAND_PX.x) <= 8 and abs(pos.y - HOUSE_L2_BED_STAND_PX.y) <= 8:
                 return list(HOUSE_L2_BED_ROUTE_FINAL)
@@ -286,6 +334,13 @@ class GoToSleepTask(Task):
                 return list(HOUSE_L2_BED_ROUTE_UPPER_LEFT)
             if pos.y >= 170:
                 return list(HOUSE_L2_BED_ROUTE_LOWER)
+            if 120 <= pos.x <= 142:
+                # Morning (136,120): north meets the stairs, south the table.
+                # The tape's east aisle passes both before its lower route.
+                return [(Point(166, 123), "x", 6, True),
+                        (Point(166, 154), "y", 6, True),
+                        (Point(142, 201), "diag", 6, True),
+                        *HOUSE_L2_BED_ROUTE_COMMON]
             if pos.x < 220:
                 return list(HOUSE_L2_BED_ROUTE_LEFT_MID)
             return list(HOUSE_L2_BED_ROUTE_COMMON)
@@ -399,6 +454,34 @@ class GoToSleepTask(Task):
             )
         return result
 
+    def _court_eve(self, world: WorldState, hour: int) -> Optional[TaskResult]:
+        if self._eve_done:
+            return None
+        if self._eve is None:
+            if hour < 17:
+                return None
+            from harvest.tasks.eve_loop_task import EveTalkLoopTask
+            from harvest.tasks.proposal import eve_talk_spec
+
+            spec = eve_talk_spec(world.ram)
+            if spec is None:
+                self._eve_done = True
+                return None
+            self._eve = EveTalkLoopTask(
+                target_points=spec.params.get("target_points"),
+                timeout=int(spec.params.get("timeout", 360000)),
+            )
+            self._eve.reset(world)
+            self.timeout = max(self.timeout, self._step_count + self._eve.timeout)
+            print(f"[SLEEP] Eve bar before bed, target={spec.params.get('target_points')}")
+        result = self._eve.step(world)
+        if result.status == TaskStatus.RUNNING:
+            return result
+        print(f"[SLEEP] Eve night {result.status.value}: {result.reason}")
+        self._eve = None
+        self._eve_done = True
+        return None
+
     def _step_wait_evening(
         self,
         world: WorldState,
@@ -511,7 +594,7 @@ class GoToSleepTask(Task):
                 if self._morning_settle_frames >= self.morning_ready_frames:
                     return TaskResult(
                         status=TaskStatus.SUCCESS,
-                        reason="day advanced; morning house ready",
+                        reason=_morning_sleep_reason(self._happy_before, world.ram),
                     )
                 return TaskResult(
                     status=TaskStatus.RUNNING,
@@ -530,6 +613,12 @@ class GoToSleepTask(Task):
         hour = int(read_ram_value(world.ram, "hour"))
         # Midday end-day: bed A is a no-op and house time freezes (Gate B soak).
         # Exit outdoors and idle until evening — farm clock advances.
+        # The bar is open from 17:00. The outdoor clock caps at 18:00, so a
+        # walk that started in that hour has to keep running after the cap.
+        if self._eve is not None or (not self._eve_done and hour >= 17):
+            courting = self._court_eve(world, hour)
+            if courting is not None:
+                return courting
         if hour < self.earliest_sleep_hour:
             return self._step_wait_evening(world, tilemap=tilemap, hour=hour, scene=scene)
 

@@ -22,6 +22,7 @@ from harvest.core.tile_catalog import (
     ADDR_Y,
 )
 from harvest.core.ram_catalog import COW_SLOT_BASE, COW_SLOT_SIZE
+from harvest.core.animal_status import ADDR_FED_COWS_FLAGS
 
 
 def write_u16(ram: np.ndarray, addr: int, value: int) -> None:
@@ -81,6 +82,7 @@ def make_barn_ram(
         ram[ADDR_MAP + i] = 0xA1
     ram[ADDR_NUM_COWS] = cows
     ram[ADDR_FED_COWS_N] = fed
+    write_u16(ram, ADDR_FED_COWS_FLAGS, (1 << fed) - 1)
     write_u16(ram, ADDR_STORED_GRASS, hay)
     ram[ADDR_HELD_ITEM] = held_item
     ram[ADDR_TOOL_SELECTED] = tool_selected

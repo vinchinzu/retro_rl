@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
-import os
-import sys
 from typing import Deque, List, Optional, Tuple
 
 import numpy as np
@@ -15,13 +13,13 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, is_crop_tile, is_mature_crop_tile
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK
+from harvest.maps.farm_pond import SHIP_BIN_LANE_TILES
 from harvest.tasks.nav import (
     MAP_WIDTH,
     TILE_SIZE,
     WALKABLE_TILES,
     Navigator,
     Pathfinder,
-    Point,
     get_pos_from_ram,
     get_tile_at,
     make_action,
@@ -45,22 +43,9 @@ SHIP_FALLBACKS: Tuple[Tuple[Tuple[int, int], str], ...] = (
 )
 # CLEAR_FIELD / lift debris IDs (not shippable). Shipping bin rejects these and
 # HARVEST_ROUTE used to thrash ship_verify until timeout (rr-9xyy D15/D16).
-DEBRIS_HELD_ITEMS = frozenset(
-    {
-        0x03,  # weed (tile id often mirrors held)
-        0x04,  # small stone
-        0x05,
-        0x06,
-        0x09,  # stump / large weed carry
-        0x0A,
-        0x0B,
-        0x0C,
-        0x0D,  # large rock (power-on CLEAR residual)
-        0x0E,
-        0x0F,
-        0x10,
-    }
-)
+# 0x03 weed (tile id often mirrors held), 0x04 small stone, 0x09 stump or large
+# weed carry, 0x0D large rock (power-on CLEAR residual).
+DEBRIS_HELD_ITEMS = frozenset({0x03, 0x04, 0x05, 0x06, *range(0x09, 0x11)})
 CLEAR_HANDS_ATTEMPT_LIMIT = 4
 # Consecutive BFS-less/blocked frames before the next stand (rr-20w.3.2).
 # Budgets are generous: landing the crop beats a fast skip.
@@ -68,6 +53,43 @@ TARGET_NAV_STALL_LIMIT = 600
 # Hard per-target ceiling when BFS "progress" never actually arrives.
 TARGET_NAV_TOTAL_LIMIT = 6000
 SHIP_NAV_STALL_LIMIT = 600
+# Ceiling on one crop's walk to the bin across every stand. Past it the crop is
+# tossed and the route fails: a farmer who cannot reach the bin otherwise
+# wanders until the 24k-frame phase watchdog and skips the whole watering day.
+SHIP_NAV_TOTAL_LIMIT = 4000
+
+# Cross-day failure memory. The planner re-plans HARVEST_ROUTE every morning
+# from the live map, so a ripe tile no stand can reach (or that never picks
+# up) was retried at full price every day: one Fall tile ate all 30 days of
+# the season. A tile that failed ``HARVEST_TILE_FAIL_LIMIT`` routes is left
+# out of the target list until it stops being a ripe tile (picked, changed).
+HARVEST_TILE_FAIL_LIMIT = 2
+_TILE_FAILURES: dict[Tuple[int, int], int] = {}
+
+
+def reset_harvest_failure_memory() -> None:
+    _TILE_FAILURES.clear()
+
+
+def note_harvest_tile_failure(tile: Tuple[int, int]) -> int:
+    _TILE_FAILURES[tile] = _TILE_FAILURES.get(tile, 0) + 1
+    return _TILE_FAILURES[tile]
+
+
+def drop_failed_harvest_tiles(
+    target_tiles: List[Tuple[int, int]],
+) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+    """Split live ripe tiles into (kept, parked) by the failure memory.
+
+    Memory for tiles that are no longer ripe is forgotten here, so a tile
+    that is picked or replaced starts clean.
+    """
+    live = set(target_tiles)
+    for tile in [t for t in _TILE_FAILURES if t not in live]:
+        del _TILE_FAILURES[tile]
+    kept = [t for t in target_tiles if _TILE_FAILURES.get(t, 0) < HARVEST_TILE_FAIL_LIMIT]
+    parked = [t for t in target_tiles if t not in kept]
+    return kept, parked
 
 
 def is_carrying(ram: np.ndarray) -> bool:
@@ -85,75 +107,54 @@ def read_shipping_money(ram: np.ndarray) -> int:
     return read_ram_u24(ram, ADDR_SHIPPING_MONEY) * 10
 
 
-def _toss_held_actions(*, face: str = "down", step_away: bool = False) -> List[np.ndarray]:
-    """Local drop sequence (mirrors transitions.toss_held_actions; no planner import)."""
-    actions: List[np.ndarray] = []
-    actions.extend(make_action(**{face: True}) for _ in range(10))
-    actions.extend(make_action() for _ in range(4))
-    if step_away:
-        actions.extend(make_action(**{face: True, "b": True}) for _ in range(6))
-        actions.extend(make_action() for _ in range(4))
-    actions.extend(make_action(**{face: True, "a": True}) for _ in range(20))
-    actions.extend(make_action(a=True) for _ in range(8))
-    actions.extend(make_action() for _ in range(16))
-    return actions
-
-
-def _multi_face_toss_actions(*, prefer_south: bool = True) -> List[np.ndarray]:
-    faces = ("down", "left", "right", "up") if prefer_south else ("down", "up", "left", "right")
-    actions: List[np.ndarray] = []
-    for face in faces:
-        actions.extend(_toss_held_actions(face=face, step_away=False))
-    return actions
-
-
 def is_ripe_crop_tile(tile_id: int) -> bool:
     return is_mature_crop_tile(tile_id)
+
+
+Tile = Tuple[int, int]
+
+
+def _ripe_tiles(bounds: Tuple[int, int, int, int], ripe) -> List[Tile]:
+    left, top, right, bottom = bounds
+    return [(x, y) for y in range(top, bottom + 1) for x in range(left, right + 1) if ripe(x, y)]
 
 
 def _live_harvestable_crop_tiles_from_ram(
     ram: np.ndarray,
     *,
     bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS,
-) -> List[Tuple[int, int]]:
-    left, top, right, bottom = bounds
-    candidates: List[Tuple[int, int]] = []
-    for y in range(top, bottom + 1):
-        for x in range(left, right + 1):
-            tile_id = get_tile_at(ram, x, y)
-            if not is_ripe_crop_tile(tile_id):
-                continue
-            candidates.append((x, y))
-    return candidates
+) -> List[Tile]:
+    return _ripe_tiles(bounds, lambda x, y: is_ripe_crop_tile(get_tile_at(ram, x, y)))
+
+
+def _load_document(state_name: Optional[str]) -> Optional[HarvestStateDocument]:
+    if not state_name:
+        return None
+    try:
+        return HarvestStateDocument.load(state_name)
+    except FileNotFoundError:
+        return None
+
+
+def _ripe_in_save(document: HarvestStateDocument):
+    def ripe(x: int, y: int) -> bool:
+        tile = document.farm_tile(x, y)
+        return is_ripe_crop_tile(tile.persistent_value) and tile.visible_value >= READY_VISIBLE_MIN
+    return ripe
 
 
 def state_harvestable_crop_tiles(
     state_name: Optional[str],
     *,
     bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS,
-) -> List[Tuple[int, int]]:
+) -> List[Tile]:
     """Return ripe crop tiles using explicit pickable crop tile IDs."""
-    if not state_name:
+    document = _load_document(state_name)
+    if document is None:
         return []
-    try:
-        document = HarvestStateDocument.load(state_name)
-    except FileNotFoundError:
-        return []
-
-    left, top, right, bottom = bounds
-    candidates: List[Tuple[int, int]] = []
-    for y in range(top, bottom + 1):
-        for x in range(left, right + 1):
-            tile = document.farm_tile(x, y)
-            if not is_ripe_crop_tile(tile.persistent_value):
-                continue
-            if tile.visible_value < READY_VISIBLE_MIN:
-                continue
-            candidates.append((x, y))
-
+    candidates = _ripe_tiles(bounds, _ripe_in_save(document))
     if candidates:
         return candidates
-
     ram_array = getattr(document, "ram_array", None)
     if callable(ram_array):
         return _live_harvestable_crop_tiles_from_ram(np.asarray(ram_array(), dtype=np.uint8), bounds=bounds)
@@ -165,43 +166,13 @@ def live_harvestable_crop_tiles(
     state_name: Optional[str],
     *,
     bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS,
-) -> List[Tuple[int, int]]:
-    """Return ripe crop tiles by combining persistent crop positions with live map tiles."""
-    if not state_name:
+) -> List[Tile]:
+    """Ripe in the save and still ripe on the live map; the live map alone without a save."""
+    document = _load_document(state_name)
+    in_save = None if document is None else _ripe_in_save(document)
+    if in_save is None or not _ripe_tiles(bounds, in_save):
         return _live_harvestable_crop_tiles_from_ram(ram, bounds=bounds)
-    try:
-        document = HarvestStateDocument.load(state_name)
-    except FileNotFoundError:
-        return _live_harvestable_crop_tiles_from_ram(ram, bounds=bounds)
-
-    left, top, right, bottom = bounds
-    document_candidates: List[Tuple[int, int]] = []
-    for y in range(top, bottom + 1):
-        for x in range(left, right + 1):
-            tile = document.farm_tile(x, y)
-            if not is_ripe_crop_tile(tile.persistent_value):
-                continue
-            if tile.visible_value < READY_VISIBLE_MIN:
-                continue
-            document_candidates.append((x, y))
-
-    if not document_candidates:
-        return _live_harvestable_crop_tiles_from_ram(ram, bounds=bounds)
-
-    candidates: List[Tuple[int, int]] = []
-    for y in range(top, bottom + 1):
-        for x in range(left, right + 1):
-            tile = document.farm_tile(x, y)
-            if not is_ripe_crop_tile(tile.persistent_value):
-                continue
-            if tile.visible_value < READY_VISIBLE_MIN:
-                continue
-            live_tile = get_tile_at(ram, x, y)
-            if not is_ripe_crop_tile(live_tile):
-                continue
-            candidates.append((x, y))
-
-    return candidates
+    return _ripe_tiles(bounds, lambda x, y: in_save(x, y) and is_ripe_crop_tile(get_tile_at(ram, x, y)))
 
 
 @dataclass(frozen=True)
@@ -242,6 +213,24 @@ def _target_groups(target_tiles: List[Tuple[int, int]]) -> dict[Tuple[int, int],
     return groups
 
 
+def _stand_boxed_by_plot(ram: np.ndarray, stand: Tuple[int, int]) -> bool:
+    """True when crops on three sides seal a walkable notch (ring center)."""
+    sx, sy = stand
+    crops = 0
+    for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0)):
+        if is_crop_tile(get_tile_at(ram, sx + dx, sy + dy)):
+            crops += 1
+    return crops >= 3
+
+
+def _open_harvest_stand(ram: np.ndarray, stand: Tuple[int, int], no_go: set) -> bool:
+    if stand in no_go:
+        return False
+    if get_tile_at(ram, *stand) not in WALKABLE_TILES:
+        return False
+    return not _stand_boxed_by_plot(ram, stand)
+
+
 def build_harvest_steps(
     ram: np.ndarray,
     target_tiles: List[Tuple[int, int]],
@@ -249,6 +238,8 @@ def build_harvest_steps(
     ship_stand: Tuple[int, int] = SHIP_STAND_TILE,
 ) -> List[HarvestStep]:
     """Build adjacent stand tiles for each ripe crop tile."""
+    from harvest.maps.farm_pond import FARM_NO_GO_TILES
+
     face_to_delta = {
         "up": (0, 1),
         "down": (0, -1),
@@ -256,17 +247,17 @@ def build_harvest_steps(
         "right": (-1, 0),
     }
     groups = _target_groups(target_tiles)
+    target_set = set(target_tiles)
+    no_go = set(FARM_NO_GO_TILES)
     steps: List[HarvestStep] = []
 
     for target in target_tiles:
         choices: List[Tuple[Tuple[int, int, int, int], Tuple[int, int], str]] = []
+        vertical_crops: List[Tuple[Tuple[int, int, int, int], Tuple[int, int], str]] = []
         for face, (dx, dy) in face_to_delta.items():
             stand = (target[0] + dx, target[1] + dy)
             sx, sy = stand
             if not (0 <= sx < MAP_WIDTH and 0 <= sy < MAP_WIDTH):
-                continue
-            stand_tid = get_tile_at(ram, sx, sy)
-            if stand_tid not in WALKABLE_TILES:
                 continue
             score = (
                 0,
@@ -274,8 +265,18 @@ def build_harvest_steps(
                 abs(target[1] - ship_stand[1]),
                 abs(target[0] - ship_stand[0]),
             )
-            choices.append((score, stand, face))
+            if _open_harvest_stand(ram, stand, no_go):
+                choices.append((score, stand, face))
+            elif (
+                face in ("up", "down")
+                and stand in target_set
+                and is_crop_tile(get_tile_at(ram, sx, sy))
+            ):
+                # Ripe vertical neighbor. It opens once that ring tile is picked.
+                vertical_crops.append((score, stand, face))
 
+        if not choices:
+            choices = vertical_crops
         if choices:
             choices.sort(key=lambda item: item[0])
             _best_score, best_stand, best_face = choices[0]
@@ -401,12 +402,17 @@ class HarvestTask(Task):
     _current_face: str = field(default="down", init=False)
     _nav_stall_steps: int = field(default=0, init=False)
     _target_nav_steps: int = field(default=0, init=False)
+    _ship_nav_steps: int = field(default=0, init=False)
+    _abort_reason: Optional[str] = field(default=None, init=False)
+    _deferred_since_pick: set[Tuple[int, int]] = field(default_factory=set, init=False)
+    _defer_target: Optional[Tuple[int, int]] = field(default=None, init=False)
     harvested_count: int = field(default=0, init=False)
     shipped_count: int = field(default=0, init=False)
     skipped_count: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         self._pathfinder = Pathfinder(self._scanner)
+        self._pathfinder.allow_tiles = set(SHIP_BIN_LANE_TILES)
         self._navigator = Navigator(self._pathfinder)
 
     def reset(self, world: WorldState) -> None:
@@ -418,35 +424,40 @@ class HarvestTask(Task):
         self._target_live_before = -1
         self._ship_options = []
         self._ship_option_index = 0
-        self._initial_target_count = 0
-        self._unreachable_count = 0
-        self._unreachable_targets = []
         self._active_group = None
         self._clear_hands_attempts = 0
         self._stand_choices = []
         self._stand_choice_index = 0
         self._current_stand = (0, 0)
         self._current_face = "down"
-        self._nav_stall_steps = 0
         self._target_nav_steps = 0
+        self._ship_nav_steps = 0
+        self._abort_reason = None
+        self._defer_target = None
+        self._deferred_since_pick.clear()
         self.harvested_count = 0
         self.shipped_count = 0
         self.skipped_count = 0
-        self._navigator.path = []
-        self._navigator.stasis = 0
-        self._pathfinder.temp_blocked.clear()
+        self._clear_navigation_state()
 
         target_tiles = live_harvestable_crop_tiles(world.ram, self.state_name, bounds=self.bounds)
+        target_tiles, parked = drop_failed_harvest_tiles(target_tiles)
+        if parked:
+            print(f"[HARVEST] Parked {len(parked)} tile(s) that failed {HARVEST_TILE_FAIL_LIMIT} routes: {parked}")
         self._steps = build_harvest_steps(world.ram, target_tiles, ship_stand=self.ship_stand)
         reachable_targets = {step.target for step in self._steps}
         self._unreachable_targets = [t for t in target_tiles if t not in reachable_targets]
         self._initial_target_count = len(target_tiles)
         self._unreachable_count = len(self._unreachable_targets)
+        for tile in self._unreachable_targets:
+            note_harvest_tile_failure(tile)
 
         extra_walkable = set()
         for step in self._steps:
-            extra_walkable.add(step.stand)
-            extra_walkable.update(stand for stand, _face in step.alt_stands)
+            for stand, _face in ((step.stand, step.face), *step.alt_stands):
+                tid = get_tile_at(world.ram, *stand)
+                if tid in WALKABLE_TILES and not is_crop_tile(tid):
+                    extra_walkable.add(stand)
         self._pathfinder.extra_walkable = extra_walkable
         # rr-20w.3.2: report the raw detected count against the reachable
         # count so a target dropped for "no valid adjacent stand" is visible
@@ -487,15 +498,27 @@ class HarvestTask(Task):
         self._clear_navigation_state()
         self._action_queue.clear()
         self._clear_hands_attempts += 1
+        # Function-local: transitions imports day_plan_status, which imports this module.
+        from harvest.planner.tasks.transitions import multi_face_toss_actions, toss_held_actions
+
         if self._clear_hands_attempts <= 1:
-            self._action_queue.extend(_toss_held_actions(face="down", step_away=True))
+            self._action_queue.extend(toss_held_actions(face="down", step_away=True))
         else:
-            self._action_queue.extend(_multi_face_toss_actions(prefer_south=True))
+            self._action_queue.extend(multi_face_toss_actions(prefer_south=True))
         self._phase = "clear_hands"
         print(
             f"[HARVEST] Clear hands before harvest "
             f"(held=0x{held:02X} attempt={self._clear_hands_attempts} {reason})"
         )
+
+    def _abandon_carry(self, ram: np.ndarray, *, reason: str) -> TaskResult:
+        """Toss the crop that cannot reach the bin, then fail the route."""
+        self._abort_reason = (
+            f"{reason}: harvested={self.harvested_count} shipped={self.shipped_count} "
+            f"skipped={self.skipped_count} remaining={[s.target for s in self._steps]}"
+        )
+        print(f"[HARVEST] {self._abort_reason}")
+        return self._toss_now(ram, reason=reason)
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -546,13 +569,43 @@ class HarvestTask(Task):
             return self._action_queue.popleft()
         return None
 
+    @staticmethod
+    def _running(action: Optional[np.ndarray] = None) -> TaskResult:
+        return TaskResult(status=TaskStatus.RUNNING, action=None if action is None else ActionResult(action))
+
+    def _toss_now(self, ram: np.ndarray, *, reason: str) -> TaskResult:
+        """Queue the toss tape and play its first frame."""
+        self._begin_clear_hands(ram, reason=reason)
+        return self._running(self._pop_action())
+
+    def _back_to_select(self) -> None:
+        self._current = None
+        self._clear_navigation_state()
+        self._phase = "select"
+
+    def _picked(self, phase: str, how: str) -> TaskResult:
+        self.harvested_count += 1
+        self._deferred_since_pick.clear()
+        self._clear_navigation_state()
+        self._phase = phase
+        print(f"[HARVEST] PICK OK target={self._current.target} {how}")
+        return self._running()
+
     def _clear_navigation_state(self) -> None:
         self._navigator.path = []
         self._navigator.stasis = 0
         self._pathfinder.temp_blocked.clear()
         self._nav_stall_steps = 0
 
-    def _choose_next_step(self) -> Optional[HarvestStep]:
+    def _stand_open(self, ram: np.ndarray, step: HarvestStep) -> bool:
+        """True when a stand is walkable ground, not a ripe neighbor."""
+        for stand, _face in ((step.stand, step.face), *step.alt_stands):
+            tid = int(get_tile_at(ram, *stand))
+            if tid in WALKABLE_TILES and not is_ripe_crop_tile(tid):
+                return True
+        return False
+
+    def _choose_next_step(self, ram: np.ndarray | None = None) -> Optional[HarvestStep]:
         if not self._steps:
             return None
         if self._active_group is not None and not any(step.group == self._active_group for step in self._steps):
@@ -568,10 +621,28 @@ class HarvestTask(Task):
                 ),
             )
         group_indices = [idx for idx, step in enumerate(self._steps) if step.group == self._active_group]
+        pool = group_indices
+        if ram is not None:
+            opened = [idx for idx in group_indices if self._stand_open(ram, self._steps[idx])]
+            # Ring first. A center whose only stands are ripe tiles waits.
+            if opened:
+                pool = opened
+            held = self._defer_target
+            if held is not None:
+                alt = [idx for idx in pool if self._steps[idx].target != held]
+                pool = alt or pool
+                if not alt:
+                    self._defer_target = None
         best_idx = min(
-            group_indices,
+            pool,
             key=lambda idx: abs(self._steps[idx].stand[0] - current[0]) + abs(self._steps[idx].stand[1] - current[1]),
         )
+        step = self._steps[best_idx]
+        for idx in pool:
+            other = self._steps[idx]
+            if other.target == step.stand and other.stand != step.target:
+                best_idx = idx
+                break
         return self._steps.pop(best_idx)
 
     def _reset_ship_options(self, ram: np.ndarray) -> None:
@@ -642,11 +713,7 @@ class HarvestTask(Task):
     def _navigate_to_tile(
         self, ram: np.ndarray, goal: Tuple[int, int]
     ) -> Tuple[Optional[np.ndarray], bool]:
-        """(action, used_fallback). action is None when already on/centered on the tile.
-
-        used_fallback is True when this frame had no BFS path or follow_path
-        blocked and we returned _fallback_action. Do not mutate _nav_stall_steps.
-        """
+        """Action, or None when centered. True means this frame used fallback."""
         if self._navigator.current_tile == goal or self._navigator.at_tile(goal):
             return self._navigator.center_on_tile(goal, tolerance=1), False
 
@@ -684,7 +751,14 @@ class HarvestTask(Task):
             return False
         return self._pathfinder.find_path(ram, cur, stand) is None
 
+    def _note_open_stands(self, ram: np.ndarray) -> None:
+        for stand, _face in self._stand_choices:
+            tid = get_tile_at(ram, *stand)
+            if tid in WALKABLE_TILES and not is_crop_tile(tid):
+                self._pathfinder.extra_walkable.add(stand)
+
     def _step_target_nav(self, world: WorldState) -> TaskResult:
+        self._note_open_stands(world.ram)
         self._target_nav_steps += 1
         sealed = self._target_nav_steps == 1 and self._stand_provably_unreachable(world.ram)
         if sealed:
@@ -692,10 +766,7 @@ class HarvestTask(Task):
         else:
             action, blocked = self._navigate_to_tile(world.ram, self._current_stand)
         self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
-        # BFS plans through crop tiles (they are in FARM_WALKABLE) and the walls
-        # are discovered by bumping; once the last ring tile is temp-blocked the
-        # stand is sealed. Re-check while blocked instead of idling out the
-        # 600f stall budget (x3 stands x N targets = the whole watchdog).
+        # Re-check a sealed stand while blocked instead of idling out the stall.
         if (
             not sealed
             and blocked
@@ -709,23 +780,34 @@ class HarvestTask(Task):
             or self._target_nav_steps > TARGET_NAV_TOTAL_LIMIT
         ):
             if self._advance_stand_choice():
-                return TaskResult(status=TaskStatus.RUNNING)
+                return self._running()
+            step = self._current
+            neighbor_left = step is not None and any(
+                abs(other.target[0] - step.target[0]) + abs(other.target[1] - step.target[1]) == 1
+                for other in self._steps
+            )
+            if neighbor_left and step.target not in self._deferred_since_pick:
+                # Ring is still queued. Retry the center after a neighbor is gone.
+                self._defer_target = step.target
+                self._deferred_since_pick.add(step.target)
+                self._steps.append(step)
+                self._back_to_select()
+                return self._running()
             self.skipped_count += 1
+            note_harvest_tile_failure(self._current.target)
             print(
                 f"[HARVEST] SKIP target={self._current.target} "
                 f"(every stand unreachable: {self._stand_choices})"
             )
-            self._current = None
-            self._clear_navigation_state()
-            self._phase = "select"
-            return TaskResult(status=TaskStatus.RUNNING)
+            self._back_to_select()
+            return self._running()
         if action is not None:
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+            return self._running(action)
         self._target_live_before = get_tile_at(world.ram, *self._current.target)
         self._queue_press_a(self._current_face)
         self._verify_count = 0
         self._phase = "target_verify"
-        return TaskResult(status=TaskStatus.RUNNING)
+        return self._running()
 
     def _advance_stand_choice(self) -> bool:
         """Switch ``_current`` to its next candidate (stand, face).
@@ -751,6 +833,8 @@ class HarvestTask(Task):
         self._navigator.update(world.ram)
         if self._step_count > self.timeout:
             remaining = [step.target for step in self._steps]
+            for tile in remaining + ([self._current.target] if self._current is not None else []):
+                note_harvest_tile_failure(tile)
             reason = (
                 f"harvest timeout harvested={self.harvested_count} "
                 f"shipped={self.shipped_count} skipped={self.skipped_count} "
@@ -763,13 +847,15 @@ class HarvestTask(Task):
 
         action = self._pop_action()
         if action is not None:
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+            return self._running(action)
 
         if self._phase == "clear_hands":
             if not carrying and int(read_held_item(world.ram)) == 0:
                 self._clear_hands_attempts = 0
+                if self._abort_reason is not None:
+                    return TaskResult(status=TaskStatus.FAILURE, reason=self._abort_reason)
                 self._phase = "select"
-                return TaskResult(status=TaskStatus.RUNNING)
+                return self._running()
             if self._clear_hands_attempts >= CLEAR_HANDS_ATTEMPT_LIMIT:
                 return TaskResult(
                     status=TaskStatus.FAILURE,
@@ -778,29 +864,21 @@ class HarvestTask(Task):
                         f"attempts={self._clear_hands_attempts}"
                     ),
                 )
-            self._begin_clear_hands(world.ram, reason="retry")
-            action = self._pop_action()
-            if action is not None:
-                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            return self._toss_now(world.ram, reason="retry")
 
         if self._phase == "select":
             if carrying:
                 if self._should_clear_hands(world.ram):
                     # Debris left by CLEAR_FIELD (held=0x0D) is not bin-shippable.
-                    self._begin_clear_hands(world.ram, reason="non_crop_carry")
-                    action = self._pop_action()
-                    if action is not None:
-                        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-                    return TaskResult(status=TaskStatus.RUNNING)
+                    return self._toss_now(world.ram, reason="non_crop_carry")
                 if self._should_ship_carry(world.ram):
                     self._clear_navigation_state()
                     self._phase = "ship_nav"
                 else:
                     # Carry animation in progress — wait one frame.
-                    return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+                    return self._running(make_action())
             else:
-                self._current = self._choose_next_step()
+                self._current = self._choose_next_step(world.ram)
                 if self._current is None:
                     return self._completion_result()
                 self._clear_navigation_state()
@@ -824,11 +902,7 @@ class HarvestTask(Task):
 
         if self._phase == "target_verify":
             if carrying:
-                self.harvested_count += 1
-                self._clear_navigation_state()
-                self._phase = "ship_nav"
-                print(f"[HARVEST] PICK OK target={self._current.target} carrying=1")
-                return TaskResult(status=TaskStatus.RUNNING)
+                return self._picked("ship_nav", "carrying=1")
             target_tile_id = get_tile_at(world.ram, *self._current.target)
             tile_changed_after_pick = (
                 self._target_live_before >= 0
@@ -839,38 +913,36 @@ class HarvestTask(Task):
                 (self.state_name is not None and tile_changed_after_pick)
                 or (self.state_name is None and not is_crop_tile(target_tile_id))
             ):
-                self.harvested_count += 1
-                self._clear_navigation_state()
-                self._phase = "ship_nav" if is_carrying(world.ram) else "select"
-                print(f"[HARVEST] PICK OK target={self._current.target} tile changed")
-                return TaskResult(status=TaskStatus.RUNNING)
+                return self._picked("ship_nav" if is_carrying(world.ram) else "select", "tile changed")
             self._verify_count += 1
             if self._verify_count > 12:
                 self.skipped_count += 1
+                note_harvest_tile_failure(self._current.target)
                 print(f"[HARVEST] SKIP target={self._current.target} (not ready or no pickup)")
-                self._current = None
-                self._clear_navigation_state()
-                self._phase = "select"
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+                self._back_to_select()
+            return self._running(make_action())
 
         if self._phase == "ship_nav":
             if not carrying:
                 self._current = None
                 self._phase = "select"
-                return TaskResult(status=TaskStatus.RUNNING)
+                return self._running()
             ship_stand, ship_face = self._current_ship_option(world.ram)
             action, blocked = self._navigate_to_tile(world.ram, ship_stand)
             self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
+            self._ship_nav_steps += 1
             if action is not None:
                 if self._nav_stall_steps > SHIP_NAV_STALL_LIMIT and self._try_next_ship_option(world.ram):
-                    return TaskResult(status=TaskStatus.RUNNING)
-                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+                    return self._running()
+                if self._nav_stall_steps > SHIP_NAV_STALL_LIMIT or self._ship_nav_steps > SHIP_NAV_TOTAL_LIMIT:
+                    return self._abandon_carry(world.ram, reason="bin unreachable")
+                return self._running(action)
             self._ship_money_before = read_shipping_money(world.ram)
             self._queue_press_a(ship_face, hold_frames=14, settle_frames=12)
             self._verify_count = 0
             self._phase = "ship_verify"
             print(f"[HARVEST] SHIP from stand={ship_stand} face={ship_face} money={self._ship_money_before}")
-            return TaskResult(status=TaskStatus.RUNNING)
+            return self._running()
 
         if self._phase == "ship_verify":
             carrying = is_carrying(world.ram)
@@ -899,21 +971,16 @@ class HarvestTask(Task):
                         f"[HARVEST] SHIP OK (bin drop; money settles 5pm) "
                         f"money={ship_money} shipped={self.shipped_count}"
                     )
-                self._current = None
-                self._clear_navigation_state()
-                self._phase = "select"
-                return TaskResult(status=TaskStatus.RUNNING)
+                self._ship_nav_steps = 0
+                self._back_to_select()
+                return self._running()
             self._verify_count += 1
             if self._verify_count > 20:
                 if self._try_next_ship_option(world.ram):
-                    return TaskResult(status=TaskStatus.RUNNING)
+                    return self._running()
                 # Defense in depth: debris misrouted into ship_verify → toss, not fail.
                 if not self._crop_ship_pending() or is_debris_held(world.ram):
-                    self._begin_clear_hands(world.ram, reason="ship_verify_debris")
-                    action = self._pop_action()
-                    if action is not None:
-                        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
-                    return TaskResult(status=TaskStatus.RUNNING)
+                    return self._toss_now(world.ram, reason="ship_verify_debris")
                 print(
                     f"[HARVEST] ship verify timeout target="
                     f"{self._current.target if self._current else None} "
@@ -921,6 +988,6 @@ class HarvestTask(Task):
                     f"skipped={self.skipped_count} remaining={[s.target for s in self._steps]}"
                 )
                 return TaskResult(status=TaskStatus.FAILURE, reason="ship verify timeout")
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            return self._running(make_action())
 
         return TaskResult(status=TaskStatus.FAILURE, reason=f"unknown phase {self._phase}")

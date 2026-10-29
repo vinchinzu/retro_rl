@@ -21,6 +21,7 @@ from harvest.maps.map_config import (
     mountain_exit_then_farm,
     slice_route_from_position,
 )
+from harvest.planner.day_plan_status import is_mountain_tilemap
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.tasks.mountain_berry import MountainBerryTask, is_mountain_forage
@@ -28,6 +29,7 @@ from harvest.tasks.nav import get_pos_from_ram, make_action
 from harvest.tasks.primitives import drain_action_queue, press_a_sequence
 
 ROUTE_NAME = "first_mountain_berry_to_shipping_bin"
+MUSHROOM_ROUTE_NAME = "first_mushroom_to_shipping_bin"
 VERIFY_WAIT_FRAMES = 120
 DROP_RETRY_LIMIT = 2
 
@@ -146,7 +148,8 @@ class MountainGrapeShipTask(Task):
         self._phase = "pick"
 
     def can_start(self, world: WorldState) -> bool:
-        return bool(ROUTES.get(ROUTE_NAME))
+        route_name = MUSHROOM_ROUTE_NAME if self.forage == "mushroom" else ROUTE_NAME
+        return bool(ROUTES.get(route_name))
 
     def _start_nav_home(
         self, world: WorldState, *, downhill: bool, phase: str, require_forage: bool
@@ -155,12 +158,20 @@ class MountainGrapeShipTask(Task):
             self._child = None
             self._phase = "missing_forage"
             return
-        route = list(ROUTES.get(ROUTE_NAME, []))
+        route_name = MUSHROOM_ROUTE_NAME if self.forage == "mushroom" else ROUTE_NAME
+        route = list(ROUTES.get(route_name, []))
         pos = get_pos_from_ram(world.ram)
         tilemap = int(read_ram_value(world.ram, "tilemap"))
-        if downhill and tilemap == 0x10:
-            mountain = mountain_downhill_escape(int(pos.x), int(pos.y), tilemap=tilemap)
-            farm = [wp for wp in route if wp.tilemap not in (0x10, 0x0C)]
+        if downhill and is_mountain_tilemap(tilemap):
+            hops = (
+                [wp for wp in route if is_mountain_tilemap(wp.tilemap)]
+                if self.forage == "mushroom"
+                else None
+            )
+            mountain = mountain_downhill_escape(
+                int(pos.x), int(pos.y), tilemap=tilemap, hops=hops
+            )
+            farm = [wp for wp in route if not is_mountain_tilemap(wp.tilemap) and wp.tilemap != 0x0C]
             sliced = mountain_exit_then_farm(mountain) + farm
         else:
             sliced = slice_route_from_position(route, pos.x, pos.y, tilemap=tilemap)
@@ -248,7 +259,7 @@ class MountainGrapeShipTask(Task):
             self._start_pick(world)
         else:
             tilemap = int(read_ram_value(world.ram, "tilemap"))
-            self._start_return(world, downhill=tilemap == 0x10)
+            self._start_return(world, downhill=is_mountain_tilemap(tilemap))
         return TaskResult(
             status=TaskStatus.RUNNING,
             action=ActionResult(make_action()),
@@ -264,7 +275,7 @@ class MountainGrapeShipTask(Task):
             return TaskResult(status=TaskStatus.FAILURE, reason=why)
         self._bail_reason = why
         tilemap = int(read_ram_value(world.ram, "tilemap"))
-        self._start_walk_back(world, downhill=tilemap == 0x10)
+        self._start_walk_back(world, downhill=is_mountain_tilemap(tilemap))
         return TaskResult(
             status=TaskStatus.RUNNING,
             action=ActionResult(make_action()),
@@ -307,7 +318,7 @@ class MountainGrapeShipTask(Task):
             )
         self._walk_back_retries += 1
         self._bail_reason = why
-        self._start_walk_back(world, downhill=tilemap == 0x10)
+        self._start_walk_back(world, downhill=is_mountain_tilemap(tilemap))
         return TaskResult(
             status=TaskStatus.RUNNING,
             action=ActionResult(make_action()),
@@ -427,7 +438,7 @@ class MountainGrapeShipTask(Task):
             tilemap = int(read_ram_value(world.ram, "tilemap"))
             if (
                 self._phase == "return_to_bin"
-                and tilemap == 0x10
+                and is_mountain_tilemap(tilemap)
                 and self._return_retries < self.max_return_retries
             ):
                 self._return_retries += 1
@@ -489,4 +500,4 @@ class MountainGrapeShipTask(Task):
         )
 
 
-__all__ = ["MountainGrapeShipTask", "ROUTE_NAME"]
+__all__ = ["MountainGrapeShipTask", "ROUTE_NAME", "MUSHROOM_ROUTE_NAME"]

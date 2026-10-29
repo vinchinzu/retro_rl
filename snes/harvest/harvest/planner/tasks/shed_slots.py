@@ -29,7 +29,7 @@ from harvest.planner.tasks.transitions import (
     SHED_ENTER_STAND_TILE,
 )
 from harvest.tasks.nav import Point, TILE_SIZE, get_pos_from_ram, make_action
-from harvest.tasks.primitives import drain_action_queue, press_a_sequence
+from harvest.tasks.primitives import drain_action_queue, press_a_sequence, press_button_sequence
 from harvest.tasks.recorded_task import RecordedTask
 
 
@@ -112,6 +112,14 @@ SHED_TOOL_SPECS: Dict[int, ShedShelfSpec] = {
     int(Tool.HOE): _tool_shelf(Tool.HOE, (168, 166)),
     int(Tool.HAMMER): _tool_shelf(Tool.HAMMER, (176, 168)),
     int(Tool.AXE): _tool_shelf(Tool.AXE, (192, 168)),
+    # DATA16_81BE0F tool $18 sprite (176, 192). get_engaged frame 460 stands
+    # at (176, 185) facing down (above the shelf). Row-3 bit $80 at $7F1F02.
+    0x18: ShedShelfSpec(
+        item_id=0x18,
+        inside_stand_px=(176, 185),
+        inside_face="down",
+        inside_settle_frames=70,
+    ),
 }
 
 SHED_SEED_SPECS: Dict[str, ShedShelfSpec] = {
@@ -231,6 +239,16 @@ class SwapCarrySlotsTask(Task):
         )
 
 
+_FEATHER_TOOL = 0x18
+_FEATHER_SHED = 0x11F02
+_FEATHER_BIT = 0x80
+
+
+def feather_shelf_taken(ram: np.ndarray) -> bool:
+    """Selected slot is the blue feather and its shed-shelf bit is clear."""
+    return selected_tool(ram) == _FEATHER_TOOL and (read_ram_u8(ram, _FEATHER_SHED) & _FEATHER_BIT) == 0
+
+
 @dataclass
 class ShedShelfToolTask(Task):
     """Walk to a known tool-shed shelf coordinate and take that tool normally."""
@@ -260,24 +278,46 @@ class ShedShelfToolTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return True
 
+    def _picked(self, ram: np.ndarray) -> bool:
+        if int(self.tool_id) == _FEATHER_TOOL:
+            return feather_shelf_taken(ram)
+        return tool_in_carry_pair(ram, self.tool_id)
+
     def _queue_take_tool(self) -> None:
+        # Feather: Down+A lifts held 0x41; B at get_engaged frame 482 stores tool 0x18.
+        a_settle = 6 if int(self.tool_id) == _FEATHER_TOOL else 24
+        a_hold = 12 if int(self.tool_id) == _FEATHER_TOOL else 18
         self._action_queue.extend(
             press_a_sequence(
                 self.face,
                 face_frames=6,
                 pre_press_settle_frames=0,
-                hold_frames=18,
-                settle_frames=24,
+                hold_frames=a_hold,
+                settle_frames=a_settle,
                 hold_face_with_a=True,
             )
         )
+        if int(self.tool_id) == _FEATHER_TOOL:
+            self._action_queue.extend(
+                press_button_sequence(
+                    "b",
+                    face=self.face,
+                    face_frames=0,
+                    pre_press_settle_frames=0,
+                    hold_frames=16,
+                    settle_frames=12,
+                    hold_face_with_button=True,
+                )
+            )
 
     def _activate_nav(self, world: WorldState) -> TaskResult:
         self._phase = "nav"
         nav = NavTask(
             name=f"nav_shed_shelf_0x{self.tool_id:02X}",
             target_px=Point(self.stand_px[0], self.stand_px[1]),
-            radius=self.radius,
+            # x=174 is within 2px, but still column 10; the feather is in
+            # column 11. Match the tape's exact stand before facing down.
+            radius=0 if int(self.tool_id) == _FEATHER_TOOL else self.radius,
             timeout=self.timeout,
             stasis_repath=90,
         )
@@ -293,13 +333,17 @@ class ShedShelfToolTask(Task):
         else:
             self._task = nav
         self._task.reset(world)
-        return self._task.step(world)
+        result = self._task.step(world)
+        if result.status == TaskStatus.SUCCESS:
+            # Arrival only completes navigation, never the shelf pickup.
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        return result
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         if self._step_count > self.timeout:
             return TaskResult(status=TaskStatus.FAILURE, reason="shed shelf timeout")
-        if tool_in_carry_pair(world.ram, self.tool_id):
+        if self._picked(world.ram):
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
 
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -329,12 +373,12 @@ class ShedShelfToolTask(Task):
             self._task = None
 
         if self._phase == "take":
-            if tool_in_carry_pair(world.ram, self.tool_id):
+            if self._picked(world.ram):
                 return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
             queued = drain_action_queue(self._action_queue)
             if queued is not None:
                 return queued
-            if tool_in_carry_pair(world.ram, self.tool_id):
+            if self._picked(world.ram):
                 return TaskResult(status=TaskStatus.SUCCESS, reason=f"tool 0x{self.tool_id:02X} ready")
             if self._take_tries >= self.take_attempts:
                 return TaskResult(

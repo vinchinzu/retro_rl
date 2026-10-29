@@ -10,9 +10,10 @@ from harvest.core.animal_status import (
     ITEM_FODDER,
     existing_cow_slots,
     read_fed_cows_flags,
-    read_fed_cows_n,
     read_held_item,
     read_stored_grass,
+    read_cow_status,
+    COW_STATUS_PREGNANT_FLAG,
 )
 from harvest.tasks.animal_navigation import align_to_pixel
 from harvest.tasks.cow_care import (
@@ -27,7 +28,7 @@ from harvest.tasks.cow_geometry import (
     FODDER_STAND,
     LEFT_TROUGH_LANE_Y,
     CowFeedSpot,
-    count_fed_trough_flags,
+    PREGNANT_COW_FEED_SPOT,
     feed_route_for_spot,
     fodder_route_from,
     next_unfed_spot,
@@ -38,20 +39,29 @@ from retro_harness import ActionResult, TaskResult, TaskStatus, WorldState
 def _feedable_cow_slots(task, ram: np.ndarray) -> list[int]:
     return existing_cow_slots(ram)
 
+def _required_feed_spots(task, ram: np.ndarray) -> tuple[CowFeedSpot, ...]:
+    """The ROM checks each extant slot's bit, not a prefix of filled troughs."""
+    flags = {
+        0x1000 if read_cow_status(ram, slot) & COW_STATUS_PREGNANT_FLAG else 1 << slot
+        for slot in task._feedable_cow_slots(ram)
+    }
+    return tuple(spot for spot in (*COW_FEED_SPOTS, PREGNANT_COW_FEED_SPOT) if spot.flag in flags)
+
 def _feed_goal(task, ram: np.ndarray) -> int:
-    return min(len(task._feedable_cow_slots(ram)), len(COW_FEED_SPOTS))
+    return len(task._required_feed_spots(ram))
 
 def _current_feed_goal(task, ram: np.ndarray) -> int:
     return task._feed_goal_count or task._feed_goal(ram)
 
 def _fed_trough_count(task, ram: np.ndarray) -> int:
-    return count_fed_trough_flags(read_fed_cows_flags(ram), task._current_feed_goal(ram))
+    return sum(bool(read_fed_cows_flags(ram) & spot.flag) for spot in task._required_feed_spots(ram))
 
 def _fed_count_now(task, ram: np.ndarray) -> int:
-    return max(read_fed_cows_n(ram), task._fed_trough_count(ram))
+    return task._fed_trough_count(ram)
 
 def _next_feed_spot(task, ram: np.ndarray) -> CowFeedSpot:
-    return next_unfed_spot(read_fed_cows_flags(ram), task._current_feed_goal(ram))
+    spots = task._required_feed_spots(ram)
+    return next_unfed_spot(read_fed_cows_flags(ram), len(spots), spots)
 
 def _feed_route(task, spot: CowFeedSpot) -> Tuple[Tuple[int, int], ...]:
     return feed_route_for_spot(spot)
@@ -117,6 +127,19 @@ def _step_fodder_nav(task, world: WorldState) -> TaskResult:
     if read_stored_grass(world.ram) <= 0:
         task._begin_exit_prep()
         return TaskResult(status=TaskStatus.RUNNING)
+    x, y = task._navigator.current_pos.x, task._navigator.current_pos.y
+    if x >= 120 and y >= 335:
+        action = make_action(left=x > 137, right=x < 135, b=True) if abs(x - 136) > 1 else make_action(up=True, b=True)
+        task._clear_navigation()
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+    if x >= 120 and y > LEFT_TROUGH_LANE_Y + 2:
+        # Cross the fodder shelf's row on the open aisle, not at x=204.
+        action = make_action(left=x > 193, right=x < 191, b=True) if abs(x - 192) > 1 else make_action(up=True, b=True)
+        task._clear_navigation()
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+    if x >= 120 and abs(y - LEFT_TROUGH_LANE_Y) <= 2 and x < 215:
+        task._clear_navigation()
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(right=True, b=True)))
     action = task._left_cow_to_fodder_action()
     if action is not None:
         task._clear_navigation()

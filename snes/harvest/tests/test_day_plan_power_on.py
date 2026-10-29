@@ -59,7 +59,6 @@ from harvest.planner.day_plan import (
     COOP_TILEMAP,
     CoopPickupChickenTask,
     COW_PHASES,
-    COW_PURCHASE_COST,
     CrossMapRecordedTask,
     DayPlannerPolicy,
     DayPlanTask,
@@ -458,6 +457,40 @@ class SleepAndPlannerTests(unittest.TestCase):
             "evening" in (result.reason or "")
             or task._exit_for_evening is not None
         )
+
+    def test_go_to_sleep_courts_eve_at_the_open_bar(self) -> None:
+        task = GoToSleepTask()
+        world = make_date_world(0x00, season=0, day=10, hour=17)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+        set_player_pos(world.ram, 136, 424)
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._eve)
+        self.assertEqual(task._eve.target_points, 108)
+        self.assertEqual(task._sleep_attempts, 0)
+
+        world.ram[ADDR_HOUR + 0x4000] = 18
+        capped = task.step(world)
+        self.assertEqual(capped.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._eve)
+        self.assertEqual(task._sleep_attempts, 0)
+
+    def test_go_to_sleep_courts_eve_after_the_clock_caps(self) -> None:
+        task = GoToSleepTask()
+        world = make_date_world(0x00, season=0, day=10, hour=18)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+        set_player_pos(world.ram, 136, 424)
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(task._eve)
+        self.assertEqual(task._eve.target_points, 108)
+        self.assertEqual(task._phase, "ensure_house")
 
     def test_go_to_sleep_later_attempts_stay_face_up_no_post_a_b(self) -> None:
         """rr-m0wq: left-face A and B-after-A cancel Yes; stay face-up + A-only."""

@@ -19,6 +19,7 @@ from harvest.tasks.nav import (
     get_tile_at,
     TILE_SIZE,
 )
+from harvest.core.ram_catalog import ram_index, read_ram_u16
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.tasks.farm_ops import TileScanner
 
@@ -32,7 +33,7 @@ from harvest.tasks.primitives import (
     drain_action_queue,
     press_button_sequence,
 )
-from harvest.planner.day_plan_status import tilemaps_match
+from harvest.planner.day_plan_status import MOUNTAIN_TILEMAP_IDS, tilemaps_match
 from harvest.planner.tasks.nav_corridor import (
     ENTITY_SYNC_PERIOD,
     CloseRangeLatch,
@@ -53,6 +54,30 @@ from harvest.planner.tasks.navigation import (
 # ── MultiMapNavTask ───────────────────────────────────────────────
 
 SETTLE_HOLD_MAX = 400  # frames to wait out a warp's transition scene
+# Farm gate only. The first raw farm tilemap is not CODE_83CE5B; $096E
+# becomes $42 only while the exit direction is still held. $7F1F5A bit
+# $0002 is the bought-cow name bit. Other exits leave this false.
+_COW_NAME_EXIT_HOLD = 90
+
+
+def _cow_name_exit_hold(ram) -> bool:
+    if ram is None or len(ram) <= 0x096E:
+        return False
+    tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else -1
+    if tilemap not in FARM_TILEMAP_IDS:
+        return False
+    script = int(ram[ram_index(ram, 0x096E, live_offset=False)])
+    if script == 0x42:
+        return False
+    return (read_ram_u16(ram, 0x11F5A) & 0x0002) != 0
+
+# Stale entry coords after a tilemap flip. Path-left into town keeps x near
+# 10. Path-up into the mountain keeps y <= 200 (landing is near y 728).
+# Walking either stale point aims back out the gate.
+_SETTLE_COORD_HOLDS = (
+    (frozenset({0x04}), "x", 200, "settle: town coords stale"),
+    (MOUNTAIN_TILEMAP_IDS, "y", 200, "settle: mountain coords stale"),
+)
 
 @dataclass
 class MultiMapNavTask(NavCorridor, Task):
@@ -73,6 +98,8 @@ class MultiMapNavTask(NavCorridor, Task):
     # blocked corridor.  Opportunistic lift/throw would throw the cargo away.
     allow_opportunistic_clear: bool = True
     auto_slice: bool = False
+    # Static no-go tiles this route has measured as walkable (``Pathfinder.allow_tiles``).
+    allow_tiles: frozenset = frozenset()
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _initial_waypoints: Optional[List[Waypoint]] = field(default=None, init=False)
@@ -114,11 +141,22 @@ class MultiMapNavTask(NavCorridor, Task):
     # Frames spent waiting for a live sprite to vacate the next tile.
     _yield_frames: int = field(default=0, init=False)
     _pin_recoveries: int = field(default=0, init=False)
+    # The walk started on the bin lane or stand: the lane is its way out.
+    _lane_exit: bool = field(default=False, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
         self._pathfinder = Pathfinder(self._scanner)
+        self._pathfinder.allow_tiles = set(self.allow_tiles)
         self._navigator = Navigator(self._pathfinder)
+
+    def _effective_allow_tiles(self) -> Set[Tuple[int, int]]:
+        allowed = set(self.allow_tiles)
+        if self._lane_exit:
+            from harvest.maps.farm_pond import SHIP_BIN_LANE_TILES
+
+            allowed |= SHIP_BIN_LANE_TILES
+        return allowed
 
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
@@ -154,6 +192,9 @@ class MultiMapNavTask(NavCorridor, Task):
         self._pathfinder.temp_blocked.clear()
         # Set initial walkable tiles based on current tilemap
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        from harvest.maps.farm_pond import SHIP_BIN_STAND_TILES
+
+        self._lane_exit = tilemap == 0x00 and self._navigator.current_tile in SHIP_BIN_STAND_TILES
         if self.auto_slice and self.waypoints:
             if self._initial_waypoints is None:
                 self._initial_waypoints = list(self.waypoints)
@@ -203,6 +244,7 @@ class MultiMapNavTask(NavCorridor, Task):
         """Rebuild pathfinder with walkable tiles for the given map."""
         walkable = get_walkable_tiles(tilemap_id)
         self._pathfinder = Pathfinder(self._scanner, walkable_tiles=set(walkable))
+        self._pathfinder.allow_tiles = self._effective_allow_tiles()
         self._navigator = Navigator(self._pathfinder)
         self._navigator.stasis = 0
         self._farm_soft_blocks.clear()
@@ -245,10 +287,35 @@ class MultiMapNavTask(NavCorridor, Task):
     def _waypoint_tilemap_matches(self, tilemap: int, wp: Waypoint) -> bool:
         return tilemaps_match(tilemap, wp.tilemap)
 
-    def _at_wp_target(self, wp: Waypoint) -> bool:
+    def _at_wp_target(self, wp: Waypoint, ram=None) -> bool:
         pos = self._navigator.current_pos
-        return (abs(pos.x - wp.target_px[0]) <= wp.radius and
-                abs(pos.y - wp.target_px[1]) <= wp.radius)
+        if (abs(pos.x - wp.target_px[0]) <= wp.radius and
+                abs(pos.y - wp.target_px[1]) <= wp.radius):
+            return True
+        return ram is not None and self._at_standable_substitute(wp, ram)
+
+    def _at_standable_substitute(self, wp: Waypoint, ram) -> bool:
+        """A plain waypoint on an unwalkable tile is reached on its nearest standable one.
+
+        BFS already retargets there. Judging arrival against the unreachable pixel left
+        the farmer nudging into the fence until pixel-stuck failed the route:
+        ``field_to_shed`` aims at (21, 31) and (25, 31), which Summer regrows as fence
+        (pos (336, 489), Summer D15). Exits and action waypoints need the exact spot.
+        """
+        if wp.is_exit or wp.action_on_arrive:
+            return False
+        pos = self._navigator.current_pos
+        if (abs(pos.x - wp.target_px[0]) > 3 * TILE_SIZE or
+                abs(pos.y - wp.target_px[1]) > 3 * TILE_SIZE):
+            return False
+        final = (wp.target_px[0] // TILE_SIZE, wp.target_px[1] // TILE_SIZE)
+        if self._pathfinder.is_walkable(ram, *final):
+            return False
+        sub = self._pathfinder.find_nearest_walkable(ram, final, max_radius=4)
+        if sub is None:
+            return False
+        return (abs(pos.x - (sub[0] * TILE_SIZE + 8)) <= wp.radius and
+                abs(pos.y - (sub[1] * TILE_SIZE + 8)) <= wp.radius)
 
     def _update_pixel_stuck(self) -> None:
         """Count frames with no real movement. Tile-stasis misses L/R wiggle."""
@@ -350,20 +417,18 @@ class MultiMapNavTask(NavCorridor, Task):
                     action=ActionResult(make_action()),
                     reason="settle: transition scene running",
                 )
-            # Path-left entry keeps ~(10, 128) for a few frames after the
-            # tilemap flips to town. Walking that stale point aims back
-            # through the gate.
-            if (
-                self._settle_hold < SETTLE_HOLD_MAX
-                and int(world.ram[ADDR_TILEMAP]) == 0x04
-                and self._navigator.current_pos.x <= 200
-            ):
-                self._settle_hold += 1
-                return TaskResult(
-                    status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action()),
-                    reason="settle: town coords stale",
-                )
+            if self._settle_hold < SETTLE_HOLD_MAX:
+                tilemap = int(world.ram[ADDR_TILEMAP])
+                for ids, axis, limit, reason in _SETTLE_COORD_HOLDS:
+                    if tilemap not in ids:
+                        continue
+                    if getattr(self._navigator.current_pos, axis) <= limit:
+                        self._settle_hold += 1
+                        return TaskResult(
+                            status=TaskStatus.RUNNING,
+                            action=ActionResult(make_action()),
+                            reason=reason,
+                        )
             self._initial_settle += 1
             dismissed = nav_needs_menu_dismiss(world.ram, self._step_count)
             if dismissed is not None:
@@ -458,8 +523,14 @@ class MultiMapNavTask(NavCorridor, Task):
         # ── Phase: exit_settle ──
         if self._phase == "exit_settle":
             self._settle_frames += 1
+            direction = wp.exit_direction or "left"
+            if _cow_name_exit_hold(world.ram) and self._settle_frames <= _COW_NAME_EXIT_HOLD:
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(make_action(**{direction: True})),
+                    reason=f"cow name exit hold {direction}",
+                )
             if self._settle_frames <= int(wp.exit_push_frames):
-                direction = wp.exit_direction or "left"
                 return TaskResult(
                     status=TaskStatus.RUNNING,
                     action=ActionResult(make_action(**{direction: True})),
@@ -484,6 +555,13 @@ class MultiMapNavTask(NavCorridor, Task):
                       f" after {self._exit_walk_frames} frames")
                 self._phase = "exit_settle"
                 self._settle_frames = 0
+                if _cow_name_exit_hold(world.ram):
+                    direction = wp.exit_direction or "left"
+                    return TaskResult(
+                        status=TaskStatus.RUNNING,
+                        action=ActionResult(make_action(**{direction: True})),
+                        reason=f"cow name exit hold {direction}",
+                    )
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
             # Timeout: give up after 500 frames of walking toward exit
             if self._exit_walk_frames > 500:
@@ -515,7 +593,7 @@ class MultiMapNavTask(NavCorridor, Task):
         # ── Phase: nav ──
         # Check arrival. Process action waypoints in the same frame (no idle
         # thrash frame) so berry lift_throw / bin drop stay frame-tight.
-        if self._at_wp_target(wp) and self._phase == "nav":
+        if self._at_wp_target(wp, world.ram) and self._phase == "nav":
             if wp.is_exit:
                 print(f"[MULTI_NAV] Reached exit waypoint, walking {wp.exit_direction}")
                 self._phase = "exit_walk"

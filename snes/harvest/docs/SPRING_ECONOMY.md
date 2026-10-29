@@ -673,42 +673,23 @@ below any meaningful floor. `SpringPlan.earliest_day_affording(amount,
 keep_reserve_g=...)` answers the other half: the first day the ledger holds
 that much realized cash. Both exist for §12.
 
-## 12. Livestock (chicken) - stub, deliberately unpriced
+## 12. Livestock
 
-`harvest.planner.livestock_econ` holds the purchase decision. The mechanism
-is complete and tested (`tests/test_livestock_econ.py`); the inputs are not
-measured, so `plan_purchase` returns "unknown, here is what to measure"
-rather than a number. `spring_plan --chicken` prints it.
+The live purchase rules are the gates in `harvest.planner.livestock_econ`
+(`livestock_block`, `next_livestock`): the hen first, then up to two cows, each
+behind the shop's grass gate, a few days of hay and the 300 G reserve. Shop
+prices are decoded (hen 1,000 G, cow 5,000 G, brush 800 G, milker 1,800 G);
+the egg ship price is 50 G and milk 150/250/350 G (§3.2). The Year-1 bench
+(`docs/Y1_BENCH.md`) measures the outcome, and its scorecard names the gate
+that held the cow each morning. `spring_plan --chicken` prints the first day
+this Spring plan affords the hen.
 
-The decision, once priced, is:
-
-```
-daily_net = products_per_day * product_price - feed_cost - chore_frames * (G/frame elsewhere)
-buy_day   = first day the ledger holds purchase_cost   (earlier is always better if daily_net > 0)
-worth_it  = daily_net * (horizon - buy_day) > purchase_cost
-```
-
-The `chore_frames` term is the one that will decide it. §11.2 shows the
-campaign is frame-blocked, not cash-blocked, so a chicken does **not** cost
-"1500 G"; it costs 1500 G *plus* whatever the coop chores displace from an
-evening that is already full. `CoopChoresTask` has never been frame-measured.
-
-**What to measure, in priority order:**
-
-1. `chore_frames_per_day` - time a `CoopChoresTask` cycle (feed + collect +
-   ship) at 1 chicken and at 3, to get the fixed and marginal cost. Highest
-   value: it is the term that flips the sign.
-2. `purchase_cost_g` - not in `Items_Price_Table` (that is ship prices
-   only, §3.1). The buy path is the Animal Shop; start at
-   `ReplaceTilesAnimalShop` (`bank_81.asm:4844`) / `MapAnimalShop`
-   (`src/maps/Maps_Graphics.asm:830`) and follow the purchase handler.
-3. `products_per_day` - laying cadence for a fed adult, and whether rain or
-   being left outdoors interrupts it.
-4. `feed_cost_g_per_day` - bought feed vs. cut fodder. These are different
-   economies: the second is a frame cost, not a gold cost, and therefore
-   competes with the same budget as (1).
-
-The egg **ship** price is already settled: 50 G, ROM-corroborated (§3.2).
+Still unmeasured, and the term most likely to flip a verdict: coop and barn
+chore frames. §11.2 shows the campaign is frame-blocked, not cash-blocked, so a
+chicken costs its price *plus* whatever its chores displace from a full
+evening. Time a `CoopChoresTask` cycle (feed, collect, ship) at 1 chicken and
+at 3 for the fixed and marginal cost, and measure laying cadence for a fed
+adult (and whether rain or a night outdoors interrupts it).
 
 ## 13. Measuring into summer - the plan, not yet run
 

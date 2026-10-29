@@ -133,6 +133,9 @@ class Pathfinder:
         self.no_go_tiles: Set[Tuple[int, int]] = set()
         self.temp_blocked: Set[Tuple[int, int]] = set()
         self.extra_walkable: Set[Tuple[int, int]] = set()  # tiles treated as walkable (e.g. crop tiles)
+        # Static no-go tiles this caller has measured as walkable (e.g. the
+        # shipping-bin lane); a tile still blocks when it is no_go/temp_blocked.
+        self.allow_tiles: Set[Tuple[int, int]] = set()
 
     def base_walkable_tiles(self, ram: np.ndarray) -> Set[int]:
         if not self._dynamic_walkable_tiles:
@@ -168,7 +171,9 @@ class Pathfinder:
         if current_pos and (tx, ty) == current_pos:
             return True
 
-        if (tx, ty) in self.no_go_tiles or (tx, ty) in self.base_no_go_tiles(ram) or (tx, ty) in self.temp_blocked:
+        if (tx, ty) in self.no_go_tiles or (tx, ty) in self.temp_blocked:
+            return False
+        if (tx, ty) in self.base_no_go_tiles(ram) and (tx, ty) not in self.allow_tiles:
             return False
         tile_id = get_tile_at(ram, tx, ty)
         if is_travel_occupied(ram, tx, ty):
@@ -202,6 +207,8 @@ class Pathfinder:
         size = len(ram)
         no_go = self.no_go_tiles
         base_no_go = self.base_no_go_tiles(ram)
+        if self.allow_tiles:
+            base_no_go = set(base_no_go) - self.allow_tiles
         temp_blocked = self.temp_blocked
         walkable_tiles = self.base_walkable_tiles(ram)
         walkable_coords = self.base_walkable_coords(ram)

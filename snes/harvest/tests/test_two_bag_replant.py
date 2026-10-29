@@ -27,7 +27,7 @@ from harvest.tasks.buy_seeds import (
 from harvest.tasks.crop_geometry import plot_tiles
 
 from tests.crop_planter_test_helpers import set_tile as _set_tile
-from tests.day_plan_test_helpers import make_world
+from tests.day_plan_test_helpers import make_date_world, make_world
 
 _MONEY = field_spec("money")
 _STOCK = field_spec("potato_seeds")
@@ -56,12 +56,12 @@ class PocketPlantTargetsTests(unittest.TestCase):
     def setUp(self) -> None:
         self.ram = np.zeros(0x20000, dtype=np.uint8)
 
-    def test_both_rings_bare_want_two_bags(self) -> None:
+    def test_every_bare_ring_wants_a_bag(self) -> None:
         self.assertEqual(len(pocket_plant_targets(self.ram)), len(POCKET_PLANT_CENTERS))
 
     def test_one_ring_planted_wants_one_bag(self) -> None:
         _plant_ring(self.ram, POCKET_PLANT_CENTERS[0])
-        self.assertEqual(pocket_plant_targets(self.ram), (POCKET_PLANT_CENTERS[1],))
+        self.assertEqual(pocket_plant_targets(self.ram), POCKET_PLANT_CENTERS[1:])
 
     def test_singular_target_still_agrees_with_the_plural_form(self) -> None:
         _plant_ring(self.ram, POCKET_PLANT_CENTERS[0])
@@ -79,18 +79,66 @@ class ShopBagCountTests(unittest.TestCase):
         _write_stock(world.ram, stock)
         return world
 
-    def test_two_empty_rings_buy_two_bags(self) -> None:
+    def test_every_empty_ring_buys_a_bag(self) -> None:
         world = self._world()
-        self.assertEqual(_shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), 2)
+        self.assertEqual(
+            _shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), len(POCKET_PLANT_CENTERS)
+        )
 
-    def test_a_bag_already_in_the_pocket_only_needs_one_more(self) -> None:
+    def test_bags_already_in_the_pocket_are_deducted(self) -> None:
         world = self._world(stock=1)
-        self.assertEqual(_shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), 1)
+        self.assertEqual(
+            _shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), len(POCKET_PLANT_CENTERS) - 1
+        )
 
-    def test_one_waiting_ring_buys_one_bag(self) -> None:
+    def test_planted_ring_does_not_want_a_bag(self) -> None:
         world = self._world()
         _plant_ring(world.ram, POCKET_PLANT_CENTERS[0])
+        self.assertEqual(
+            _shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), len(POCKET_PLANT_CENTERS) - 1
+        )
+
+    def test_max_bags_param_caps_the_trip(self) -> None:
+        from harvest.planner.day_phase_types import PhaseSpec
+
+        world = self._world()
+        spec = PhaseSpec("BUY_SEEDS", "shop_buy", {"max_bags": 3})
+        self.assertEqual(_shop_bag_count(spec, world, "potato_seeds"), 3)
+
+    def test_spring_ripe_ring_wants_its_bag_before_the_harvest(self) -> None:
+        # The shop runs before HARVEST_ROUTE: a ripe one-shot ring is about
+        # to be empty, so the morning trip already buys its replant bag.
+        world = self._world()
+        for center in POCKET_PLANT_CENTERS:
+            _plant_ring(world.ram, center)
+        self.assertEqual(pocket_plant_targets(world.ram), ())
+        for tx, ty in plot_tiles(POCKET_PLANT_CENTERS[0], include_center=False):
+            _set_tile(world.ram, tx, ty, 0x60)  # ripe potato
+        self.assertEqual(
+            pocket_plant_targets(world.ram, replant_ripe=True), (POCKET_PLANT_CENTERS[0],)
+        )
         self.assertEqual(_shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), 1)
+
+    def test_summer_ripe_potato_ring_wants_its_bag_before_the_harvest(self) -> None:
+        # The last Spring sowings ripen on Summer D1: corn planted by D3 still gets
+        # six harvests, so the morning trip must not wait a day for the rings.
+        world = make_date_world(0x00, season=1, day=1)
+        for center in POCKET_PLANT_CENTERS:
+            _plant_ring(world.ram, center)
+        for tx, ty in plot_tiles(POCKET_PLANT_CENTERS[0], include_center=False):
+            _set_tile(world.ram, tx, ty, 0x60)  # ripe potato
+        self.assertEqual(pocket_plant_targets(world.ram), ())
+        self.assertEqual(
+            pocket_plant_targets(world.ram, replant_ripe=True), (POCKET_PLANT_CENTERS[0],)
+        )
+
+    def test_summer_ripe_corn_ring_regrows_and_wants_nothing(self) -> None:
+        world = make_date_world(0x00, season=1, day=20)
+        for center in POCKET_PLANT_CENTERS:
+            _plant_ring(world.ram, center)
+        for tx, ty in plot_tiles(POCKET_PLANT_CENTERS[0], include_center=False):
+            _set_tile(world.ram, tx, ty, 0x52)  # ripe corn
+        self.assertEqual(pocket_plant_targets(world.ram, replant_ripe=True), ())
 
     def test_never_returns_zero(self) -> None:
         world = self._world(stock=5)

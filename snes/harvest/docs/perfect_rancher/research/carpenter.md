@@ -2,6 +2,14 @@
 
 Date: 2026-09-29. Bead PR-061. USA decomp under `HM-Decomp`, plus one paid order on research pin `LN_mgr-home_whatif_upgrade1`. That pin is a RAM what-if, not route evidence. The live order matches the upgrade-1 branch: text `0x134`, then `0x135`, −5000G, −250 wood, `$7F1F66` bit `0x0080` set, `$7F1F64` still 0.
 
+Native arrival verified 2026-10-15: the power-on predecessor earned 252 wood
+and 6,200G, ordered on Summer D28, and completed on Fall D2 after exactly
+four sleeps. `recordings/house_marriage_resources.json` records the
+5,000G/250-wood debit; `recordings/house_build_nights.json` records counters
+0,1,2,3,4 and the house bit appearing only at 4. All segments have zero RAM
+writes and zero mid-run loads. Checkpoint lineage and the subsequent Sunday
+sale/wedding are in [EVE_BAR.md](../../EVE_BAR.md).
+
 House score is term 8. `ranch_master.py` adds 16 for `$7F1F64 & 0x0040` and 16 for `& 0x0080`, max 32. `npc_catalog.py` labels those bits `house_upgraded_once` and `house_level_2`. The order bits live on `$7F1F66`, catalog field `marriage_flags` at file offset `0x11F66`.
 
 ## Addresses

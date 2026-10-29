@@ -19,6 +19,7 @@ from day_plan_test_helpers import (
     make_transition_world,
     make_world,
     set_live_u16,
+    set_money,
     set_player_pos,
 )
 
@@ -38,7 +39,6 @@ from harvest.planner.day_plan import (
     ExitToFarmTask,
     ShedFetchItemTask,
     ShedShelfToolTask,
-    EveTalkLoopTask,
     EVE_TALK_LOOP_PHASES,
     MultiMapNavTask,
     PHASE_SEQUENCES,
@@ -88,7 +88,7 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertIn("RETURN_HOME", [phase.phase for phase in phases])
         self.assertNotIn("GET_BERRIES_AND_SHIP", [phase.phase for phase in phases])
 
-    def test_eve_loop_sequence_replays_recording_from_bar_exterior(self) -> None:
+    def test_eve_loop_sequence_runs_from_bar_exterior(self) -> None:
         phases = PHASE_SEQUENCES["eve_loop"]
 
         self.assertIs(phases, EVE_TALK_LOOP_PHASES)
@@ -166,184 +166,6 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertEqual(task._phase, "exit")
         self.assertIsNotNone(result.action)
         self.assertEqual(int(result.action.action[6]), 1)
-
-    def test_eve_talk_loop_replays_talk_chunk_until_heart_gain_then_exits(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump(
-                    {
-                        "name": "talk_eve_loop",
-                        "frames": [[0] * 12, [1] + [0] * 11],
-                    },
-                    f,
-                )
-
-            world = make_world(0x1E)
-            set_player_pos(world.ram, 69, 450)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=2, max_loops=2)
-            task.reset(world)
-            task._phase = "talk"
-            task._attempt_start_points = 40
-
-            first = task.step(world)
-            self.assertEqual(first.status, TaskStatus.RUNNING)
-            self.assertEqual(first.reason, "talk")
-
-            set_live_u16(world.ram, "eve_hearts", 50)
-            second = task.step(world)
-            self.assertEqual(second.status, TaskStatus.RUNNING)
-            self.assertEqual(second.reason, "heart_gain")
-            self.assertEqual(task._phase, "exit_bar")
-
-    def test_eve_talk_loop_ignores_small_yes_gain_and_resets(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x1E)
-            set_player_pos(world.ram, 69, 450)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=2)
-            task.reset(world)
-            task._phase = "talk"
-            task._attempt_start_points = 40
-
-            set_live_u16(world.ram, "eve_hearts", 44)
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.RUNNING)
-            self.assertEqual(result.reason, "small_heart_gain")
-            self.assertEqual(task._loop_count, 0)
-            self.assertEqual(task._phase, "exit_bar")
-
-    def test_eve_talk_loop_overrides_locked_choice_to_no(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x1E)
-            world.ram[ADDR_INPUT_LOCK] = 2
-            world.ram[field_spec("player_action").address] = 9
-            set_player_pos(world.ram, 69, 450)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=2)
-            task.reset(world)
-            task._phase = "talk"
-            task._attempt_start_points = 40
-
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.RUNNING)
-            self.assertEqual(result.reason, "choose_no")
-            self.assertIsNotNone(result.action)
-            self.assertEqual(int(result.action.action[5]), 1)
-
-    def test_eve_talk_loop_resets_entry_when_talk_stops_working(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x1E)
-            set_player_pos(world.ram, 69, 450)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=2)
-            task.reset(world)
-            task._phase = "talk"
-            task._attempt_start_points = 40
-
-            task.step(world)
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.RUNNING)
-            self.assertEqual(result.reason, "reset_after_missed_talk")
-            self.assertEqual(task._phase, "exit_bar")
-
-    def test_eve_talk_loop_is_noop_when_target_already_met(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x1E)
-            set_live_u16(world.ram, "eve_hearts", 999)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=10)
-            task.reset(world)
-
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.SUCCESS)
-            self.assertIn("eve hearts 999/999", result.reason)
-
-    def test_eve_talk_loop_stops_at_daily_question_cap(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x1E)
-            set_live_u16(world.ram, "eve_hearts", 120)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=10)
-            task.reset(world)
-
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.SUCCESS)
-            self.assertIn("eve daily question cap 120/999", result.reason)
-
-    def test_eve_talk_loop_exits_bar_between_replays(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x1E)
-            set_player_pos(world.ram, 69, 450)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=1)
-            task.reset(world)
-            task._phase = "exit_bar"
-
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.RUNNING)
-            self.assertEqual(result.reason, "exit_bar")
-            self.assertIsNotNone(result.action)
-            self.assertEqual(int(result.action.action[7]), 1)
-            self.assertEqual(int(result.action.action[0]), 1)
-
-    def test_eve_talk_loop_rejects_wrong_map(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x00)
-            set_player_pos(world.ram, 152, 872)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=1, align_timeout=2)
-            task.reset(world)
-
-            task.step(world)
-            task.step(world)
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.FAILURE)
-            self.assertIn("expected Eve loop origin", result.reason)
-
-    def test_eve_talk_loop_aligns_to_recording_origin_on_same_map(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = f"{tmpdir}/talk_eve_loop.json"
-            with open(path, "w") as f:
-                json.dump({"name": "talk_eve_loop", "frames": [[0] * 12]}, f)
-
-            world = make_world(0x04)
-            set_player_pos(world.ram, 152, 953)
-            set_live_u16(world.ram, "eve_hearts", 40)
-            task = EveTalkLoopTask(tasks_dir=tmpdir, target_hearts=1)
-            task.reset(world)
-
-            result = task.step(world)
-            self.assertEqual(result.status, TaskStatus.RUNNING)
-            self.assertIsNotNone(result.action)
-            self.assertEqual(int(result.action.action[4]), 1)
 
     def test_day_plan_advances_to_next_phase_without_idle_frame(self) -> None:
         class ImmediateSuccessTask:
@@ -844,6 +666,105 @@ class BuildDayPhasesCommonTests(DayPlanPhaseHelpers):
                 "DYNAMIC_OUTDOOR_PLAN",
             ],
         )
+
+    def test_spring_d23_schedules_the_flower_festival_for_eve(self) -> None:
+        world = make_date_world(0x15, season=0, day=23, hour=6)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+
+        phases = build_day_phases_from_ram(world.ram)
+        names = [phase.phase for phase in phases]
+
+        self.assertEqual(names[0], "EXIT_TO_FARM")
+        festival = next(phase for phase in phases if phase.phase == "ATTEND_FESTIVAL")
+        self.assertEqual(festival.kind, "flower_festival")
+        self.assertTrue(festival.params.get("ends_day"))
+        self.assertLess(names.index("EXIT_TO_FARM"), names.index("ATTEND_FESTIVAL"))
+
+    def test_eve_proposal_replaces_the_day_once_the_feather_is_carried(self) -> None:
+        world = make_date_world(0x00, season=0, day=27, hour=8)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 6
+        world.ram[0x0921] = 0x18
+        set_live_u16(world.ram, "eve_hearts", 250)
+
+        phases = build_day_phases_from_ram(world.ram)
+
+        self.assertEqual([phase.phase for phase in phases], ["PROPOSE_EVE"])
+        self.assertEqual(phases[0].kind, "propose_eve")
+
+    def test_eve_proposal_exits_the_house_before_the_mountain(self) -> None:
+        world = make_date_world(0x15, season=0, day=27, hour=8)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 6
+        world.ram[0x0921] = 0x18
+        set_live_u16(world.ram, "eve_hearts", 250)
+
+        phases = build_day_phases_from_ram(world.ram)
+
+        self.assertEqual([phase.phase for phase in phases], ["EXIT_TO_FARM", "PROPOSE_EVE"])
+
+    def test_sunday_peddler_is_scheduled_when_eve_can_marry(self) -> None:
+        world = make_date_world(0x15, season=0, day=28, hour=8)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 0
+        set_live_u16(world.ram, "eve_hearts", 250)
+        set_live_u16(world.ram, "upgrade_flags", 0x40)
+        set_money(world.ram, 1000)
+
+        phases = build_day_phases_from_ram(world.ram)
+        names = [phase.phase for phase in phases]
+
+        self.assertEqual(names[0], "EXIT_TO_FARM")
+        self.assertEqual(names[1], "BUY_FEATHER")
+        self.assertEqual(phases[1].kind, "feather_buy")
+
+    def test_sunday_peddler_waits_for_the_first_house_upgrade(self) -> None:
+        world = make_date_world(0x15, season=0, day=28, hour=8)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 0
+        set_live_u16(world.ram, "eve_hearts", 250)
+        set_money(world.ram, 1000)
+
+        names = [phase.phase for phase in build_day_phases_from_ram(world.ram)]
+
+        self.assertEqual(names[0], "EXIT_TO_FARM")
+        self.assertNotIn("BUY_FEATHER", names)
+
+        set_live_u16(world.ram, "upgrade_flags", 0x40)
+        set_live_u16(world.ram, "family_event_flags", 0x40)
+        names = [phase.phase for phase in build_day_phases_from_ram(world.ram)]
+        self.assertNotIn("BUY_FEATHER", names)
+
+    def test_shed_fetch_is_scheduled_after_the_shelf_bit(self) -> None:
+        world = make_date_world(0x15, season=0, day=29, hour=8)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 1
+        world.ram[0x11F02 + 0x4000] = 0x80
+        set_live_u16(world.ram, "eve_hearts", 250)
+
+        phases = build_day_phases_from_ram(world.ram)
+        names = [phase.phase for phase in phases]
+
+        self.assertEqual(names[0], "EXIT_TO_FARM")
+        fetch = next(phase for phase in phases if phase.phase == "FETCH_FEATHER")
+        self.assertEqual(fetch.params.get("tool_id"), 0x18)
+        self.assertNotIn("PROPOSE_EVE", names)
+
+    def test_open_bar_replaces_a_late_house_sleep(self) -> None:
+        world = make_date_world(0x15, season=0, day=10, hour=18)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+
+        phases = build_day_phases_from_ram(world.ram)
+
+        self.assertEqual(
+            [phase.phase for phase in phases],
+            ["EVE_TALK_LOOP", "RETURN_HOME", "GO_TO_SLEEP"],
+        )
+        self.assertEqual(phases[0].params.get("target_points"), 108)
+
+    def test_dead_zone_night_does_not_schedule_the_bar(self) -> None:
+        world = make_date_world(0x15, season=0, day=10, hour=18)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+        set_live_u16(world.ram, "eve_hearts", 130)
+
+        phases = build_day_phases_from_ram(world.ram)
+
+        self.assertEqual([phase.phase for phase in phases], ["GO_TO_SLEEP"])
 
 
 if __name__ == "__main__":

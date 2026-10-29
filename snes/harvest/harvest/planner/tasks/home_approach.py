@@ -297,7 +297,7 @@ def drop_spot_px(front: Point, *, deep: bool = False) -> Point:
 
 def house_enter_task(front: Point) -> DirectionalTransitionTask:
     """Build the outdoor→house doorway push from a door-front stand."""
-    if front.y <= 360:
+    if front.y < 424:
         stand_tile = (front.x // 16, front.y // 16)
         overshoot_y = min(HOUSE_ENTER_OVERSHOOT_Y, front.y - 12)
     else:

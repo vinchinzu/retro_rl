@@ -174,6 +174,8 @@ class FenceJumpTossSkill(Task):
     _last_tile: Optional[Tile] = field(default=None, init=False)
     _stasis: int = field(default=0, init=False)
     _toss_face: Optional[str] = field(default=None, init=False)
+    _toss_dest: Optional[Tile] = field(default=None, init=False)
+    _rejected: set = field(default_factory=set, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._steps = 0
@@ -182,6 +184,8 @@ class FenceJumpTossSkill(Task):
         self._last_tile = None
         self._stasis = 0
         self._toss_face = None
+        self._toss_dest = None
+        self._rejected = set()
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -212,10 +216,24 @@ class FenceJumpTossSkill(Task):
             self._last_tile = tile
             self._last_y = tile[1]
 
-        # Latch one clear face for a full throw pulse.  Re-evaluate after the
-        # pulse because the short facing nudge can cross a tile boundary.
-        if self._toss_pulse % 40 == 0:
-            self._toss_face = open_toss_face(world.ram, tile, blocked=self.blocked)
+        # One pulse per face. A pulse that is still holding did not land, so
+        # that tile is not tried again. North-yard dirt often looks open and
+        # refuses the stone; retrying it burns the fence-jump budget.
+        if (
+            self._toss_face is not None
+            and self._toss_pulse > 0
+            and self._toss_pulse % 40 == 0
+        ):
+            if self._toss_dest is not None:
+                self._rejected.add(self._toss_dest)
+            self._toss_face = None
+            self._toss_dest = None
+        if self._toss_face is None:
+            blocked = frozenset(self.blocked) | self._rejected
+            self._toss_face = open_toss_face(world.ram, tile, blocked=blocked)
+            if self._toss_face is not None:
+                dx, dy = _FACE_DELTAS[self._toss_face]
+                self._toss_dest = (int(tile[0]) + dx, int(tile[1]) + dy)
         if self._toss_face is not None:
             action = toss_pulse_action(self._toss_pulse, face=self._toss_face)
             face = self._toss_face
@@ -264,13 +282,27 @@ def in_place_toss_actions(*, face: str = "down") -> list:
     ]
 
 
+def _fence_jump_timeout(ram) -> int:
+    """Pocket tosses are short. A north-yard stone still has to reach y=31."""
+    if ram is None:
+        return 300
+    pos = get_pos_from_ram(ram)
+    tile_y = int(pos.y) // TILE_SIZE
+    if tile_y > FENCE_WALL_Y:
+        return 300
+    return max(300, 80 + (FENCE_WALL_Y - tile_y) * 20)
+
+
 def start_fence_jump_skill(
     *,
     frame: int = 0,
     ram=None,
     blocked=(),
 ) -> FenceJumpTossSkill:
-    skill = FenceJumpTossSkill(blocked=frozenset(tuple(tile) for tile in blocked))
+    skill = FenceJumpTossSkill(
+        timeout=_fence_jump_timeout(ram),
+        blocked=frozenset(tuple(tile) for tile in blocked),
+    )
     skill.reset(
         WorldState(
             frame=frame,

@@ -114,6 +114,22 @@ class EndingTaskTests(unittest.TestCase):
         self.assertTrue(any(pressed[12:]))
         self.assertFalse(any(pressed[:10]))
 
+    def test_signals_carry_oracle_at_0x20_and_0x25(self) -> None:
+        task = self._task()
+        ram = _ram(ending_scene_index=0x20)
+        task.step(_world(ram, 1))
+        report = task.signals.to_dict()
+        self.assertIn("oracle", report)
+        self.assertEqual(report["ranch_mastery_0x20"], 0)
+        self.assertIsNone(report["ranch_mastery_0x25"])
+        self.assertEqual(report["rating_text_id"], report["oracle"]["rating_text_id"])
+        _set(ram, ending_scene_index=0x25)
+        task.step(_world(ram, 2))
+        report = task.signals.to_dict()
+        self.assertEqual(report["ranch_mastery_0x25"], 0)
+        self.assertIn("rating_text_id_0x20", report)
+        self.assertIn("rating_text_id_0x25", report)
+
 
 if __name__ == "__main__":
     unittest.main()

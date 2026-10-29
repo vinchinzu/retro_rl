@@ -11,6 +11,20 @@ gaps. New exactly-ten research is `rr-ux6x.16.7`; the audit is
 `rr-ux6x.19`. Read the [F10 audit](research/F10_verdict.md) before scheduling
 a campaign: 984 is a conditional ceiling, not a proved reachable score.
 
+## Repair update, 2026-09-30
+
+The [current plan](../plan.md) and [F10](research/F10_verdict.md) supersede
+historical feasibility claims below. Slot 0 is feedable: merged native
+12-cow feeding/night proof preserves all twelve values at 200 in
+7,507 frames. Replacement breeding is optional. Native milestone chicken
+purchase matches the legacy skill at 4,028 frames. Dispatch is opt-in via
+`--perfect-rancher`, uses RAM receipts, and defers unsupported capabilities.
+The conditional YAML uses earlier marriage (index 128) and explicitly
+unproved happiness repair alternatives. No campaign budget or 999 route
+is accepted. Exact-ten, clock, full-scale native care/arbiter and contract
+reconciliation remain open. Short structure A/B is identical at 17,538
+frames; full-ending timing acceptance remains open.
+
 Evidence tags used below:
 
 - **[ROM]**: read from the decomp (`HM-Decomp/src/code_banks/*`).
@@ -49,8 +63,8 @@ Evidence tags used below:
   schedules backward from D30, (4) year-by-year natural checkpoints,
   (5) two final 999 runs under the reconciled PR-005 load contract.
 - Seven designed berries leave stamina at 35; exactly ten requires a
-  native edge. Bought slot 0 cannot reach 200; F5 buys twelve cows while F7
-  needs nine births. Clock acquisition and the dated happiness floor are
+  native edge. Slot 0 feeding is repaired; F5/F7 still need one funded
+  happiness strategy. Clock acquisition and the dated happiness floor are
   also open. These are simultaneous feasibility blockers.
 
 ## 1. Definition of done
@@ -131,9 +145,9 @@ research. Pin results never go into STATUS.
 | F0 | What changes between D29 evening and index `0x20` (night pass, the D29 6:00 text, the D30 ending event)? | Windows are measured one night early | The hour-18 house re-entry subtracts 2 from the wife. It does not add 2. Wife evening window is 498–511. Other girls and the crops are unchanged. [F0] |
 | F1 | Can the wife reach ≥ 650 for child 2 and then drop to 496–511? Which scripts apply the negative deltas, can they repeat, and is the wife excluded from them? | Wife term max is 30 if she cannot go down (999 & 0x1FF = 487) | Maria poison mushroom −6, measured 660→510. Repeatable outdoor sinks exist for all five wives. [F1] |
 | F2 | Can 2,950 of the 2,974 non-structure tiles be covered while the farmer can still walk to the house, bin, barn, coop and shed? What does grass, fence or crop cover cost per tile, can it be walked, and what do storms do to it? | Development tops out at 49 | Clear pin: 2,968 tiles, all walkable grass, term 50, slack 18. A hurricane on the sleep into Summer D30 can still wipe it. [F2] |
-| F3 | 12 cows, every one ≥ 200 happiness by D30: start value, gain per action per day, decay, sickness, buy versus breed, calf growth, barn capacity | Last herd purchase date, and daily chore frames | Talk +1, brush +3, one slot-1 fed night +0. Fifty-day threshold is modeled. Bought slot 0 peaks at 88; mandatory born-slot route is PR-048. Chickens cap at 12. [F3] |
+| F3 | 12 cows, every one ≥ 200 happiness by D30: start value, gain per action per day, decay, sickness, buy versus breed, calf growth, barn capacity | Last herd purchase date, and daily chore frames | Talk +1, brush +3, one slot-1 fed night +0. Fifty-day threshold is modeled. Native feeding/night survival now passes all twelve slots; daily care remains unproved. PR-048 is an optional breeding strategy. Chickens cap at 12. [F3] |
 | F4 | Marriage requirements, the pregnancy counter (`wife_pregnancy ≥ 20`), gestation, child-1-to-child-2 spacing, naming screens → latest marriage date | Two children must exist by D29 | Latest wife bit for both children already set on D29: Y2 Fall D9. Child 2 is +110 nights. Live counter stepped; 448 hearts did not set the flag. [F4] |
-| F5 | Economy: total spend (cows, upgrades, cover, seeds, tools, feed) plus ≥ 99,840G at the end, the 2,000G Y2 visitor, milk and egg income curves | Money term | Paper ledger ends at 620,000G but buys all 12 slots and no births/potions. Incompatible with F7 and slot-0 repair; PR-014 reopened. [F5] |
+| F5 | Economy: total spend (cows, upgrades, cover, seeds, tools, feed) plus ≥ 99,840G at the end, the 2,000G Y2 visitor, milk and egg income curves | Money term | Paper ledger ends at 620,000G but buys all 12 slots and no births/potions. Its happiness repair budget is unproved; PR-014 remains open. [F5] |
 | F6 | All 10 power berries: triggers, dates and RNG. Festival berries give 2–3 chances; field berries are 1/64 per hoe on bare ground and capped at 2 | Stamina term | Designed berries are 7, not 10. Stamina term is 35. The Fall D20 prize is the turtle or the indoor-berry arm, not a third berry. [F6] |
 | F7 | Happiness ≥ 992: sources and sinks | Happiness term | Weak floor incorrectly includes child 2 age-60 +100 after the late-wedding ending. Seven-berry late case is 900, ten-berry case 930 before other sources. PR-016 reopened. [F7] |
 | F8 | Shipped-count semantics: bin drop versus overnight sale, the `$7F1F5E` bit 0 gate, saddlebag and peddler | Crop windows | Each bin drop INCs that crop by 1 when bit 0 is set. Milk and the peddler do not. [F8] |
@@ -151,7 +165,7 @@ then compatible milestones and native dispatch, before natural checkpoints.
 
 There are 299 controllable days through Y3 Summer D29. Dates below are
 constraints to preserve, not an accepted route. Current `milestones.yaml`
-and PR-022 are reopened: the bought-slot-0 plan cannot max happiness and
+and PR-022 remain open: the conditional dated plan still needs evidence and
 its three duplication recipes have no live proof. Rebuild after F5/F7 and
 PR-048. Ten berries permit a 999 projection only if every other term also
 passes the post-night audit; otherwise report the actual term gaps.
@@ -179,7 +193,7 @@ Binding deadlines from those notes, not from a new run:
   do not include an age-60 bonus that occurs after the ending.
 - Development: ≥ 2,950 counted tiles after the sleep into Summer D30.
 - Money: 99,840G–655,350G on D30 morning. Rebuild F5's budget around the
-  accepted births, slot-0 replacement, food repair, feed, tools and cover.
+  the selected breeding or food repair strategy, feed, tools and cover.
 
 ## 5. Economy model to repair (PR-014)
 
@@ -189,10 +203,11 @@ houses 5,000G/10,000G and chicken feed 300G/12. Milk S/M/L is
 150/250/350G; eggs 50G. These are decoded prices with selected prior
 receipts, not a live full-game budget.
 
-Its paper balance 620,000G assumes twelve purchases and zero births. F7's
-nine namings require barn space, maternal care and potion spend. Slot 0
-requires native replacement and a timed calf. Late marriage cannot supply
-child 2's age-60 happiness bonus by D30. Rebuild one dated model covering
+Its paper balance 620,000G assumes twelve purchases and zero births. The
+conditional repair alternatives require either funded food or barn space,
+maternal care and potion spend. Native feeding removes the slot-0
+replacement requirement. Late marriage cannot supply child 2's age-60
+happiness bonus by D30. Rebuild one dated model covering
 these constraints, 750 lumber, losses, milk/egg curves and verified food or
 social repairs; then implement the money-window hold (PR-034). Keep final
 money 99,840G–655,350G after overnight credit.
@@ -298,7 +313,7 @@ the tapes; mint lane-prefixed pin names; run ROM jobs detached with
 
 **Waves** (details in BEAD_PLAN.md):
 
-- **Audit repair**, now: PR-048 born slot, PR-084 clock, exactly-ten
+- **Audit repair**, now: PR-084 clock, exactly-ten
   `rr-ux6x.16.7`, F7/F5 consistency, PR-022/023 and PR-098. Claim one
   bounded task; this plan does not itself start more agents.
 - **W1**, partially implemented: obtain missing ROM skill proofs, then
@@ -316,7 +331,7 @@ the tapes; mint lane-prefixed pin names; run ROM jobs detached with
 |------|------------|
 | Native wife approach differs from F1 probe | Reproduce −6 offers after walking to the real wife; pre-entry target 498–511 accounts for final −2 |
 | Development slack of 18 tiles on the clear pin is lost to a storm | Walkable cover (grass) on paths. Final fill on D25–D29. Storm re-plant skill. Per-day tile census |
-| Bought slot 0 cannot reach 200 | Mandatory native replacement/birth route; coordinate care, timing, barn cap and happiness repairs before accepting F5 |
+| Native herd care timeline unproved | All twelve troughs and one fed night pass; prove acquisition, daily care, ending-night survival and the selected happiness repair strategy before accepting F5 |
 | Frame cost of a full-scale day | E12 speed work, the post-18:00 lane, checkpoint iteration |
 | RNG-bound berries (field digs, festival wins) | Heavy hoeing gives many rolls. Festival skills for every year. The ledger tracks remaining chances |
 | Name-entry screens (calf, horse, baby) | Name-entry skill (rr-bu62.18 generalised) before any breeding or birth |

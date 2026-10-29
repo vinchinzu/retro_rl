@@ -106,6 +106,8 @@ COW_FEED_SPOTS: Tuple[CowFeedSpot, ...] = (
     CowFeedSpot((6, 5), "left", (111, 85), 0x0800),
 )
 
+PREGNANT_COW_FEED_SPOT = CowFeedSpot((11, 22), "right", (177, 357), 0x1000)
+
 CARE_TROUGH_EXIT_X = COW_FEED_SPOTS[0].interact_px[0]
 CARE_TROUGH_EXIT_MIN_Y = COW_FEED_SPOTS[0].interact_px[1] - 8
 CARE_TROUGH_EXIT_ANCHOR_X = COW_TALK_ANCHOR[0] * 16 + 8

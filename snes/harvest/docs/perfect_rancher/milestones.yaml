@@ -1,8 +1,5 @@
-# AUDIT 2026-09-30: PR-022 reopened. This is a historical model, not an
-# accepted execution schedule: bought slot 0 cannot reach 200; births and
-# dated happiness repair are absent; duplication recipes lack live proof.
-# Rebuild after PR-048, F7/F5 and rr-ux6x.16.7. Do not advance a campaign
-# from these commitments merely because an intent is journaled.
+# Conditional constraint model, not a completed or accepted execution schedule.
+# Native tasks must produce RAM receipts; model-only rows defer explicitly.
 target:
   ranch_mastery: 999
   ending: "0x25"
@@ -23,6 +20,7 @@ milestones:
     target: 10
     designed: 7
     duplication: 3
+    evidence_status: "model_conditional"
   - id: "berry_field_1"
     term: "power_berry"
     date: "Y1 Spring D1"
@@ -36,6 +34,7 @@ milestones:
     note: "Hoe 1/64, one spawn a day."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_field_2"
     term: "power_berry"
     date: "Y1 Spring D2"
@@ -49,6 +48,7 @@ milestones:
     note: "The day after field berry 1."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_stump"
     term: "power_berry"
     date: "Y1 Spring D3"
@@ -62,6 +62,7 @@ milestones:
     note: "Axe stump, 1/16."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_statue"
     term: "power_berry"
     date: "Y1 Spring D4"
@@ -75,6 +76,7 @@ milestones:
     note: "Hammer statue, 1/4, retries the same day."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_cave"
     term: "power_berry"
     date: "Y1 Spring D5"
@@ -88,19 +90,21 @@ milestones:
     note: "Tilemap $29 entry. Eat off that map to leave the bit clear."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_indoor"
     term: "power_berry"
-    date: "Y1 Fall D20"
-    committed_index: 79
+    date: "Y2 Fall D21"
+    committed_index: 200
     earliest_index: 79
     earliest: "Y1 Fall D20"
     latest_index: 298
     latest: "Y3 Summer D29"
-    slack_days: 219
+    slack_days: 98
     depends_on: ["festival_indoor_arm"]
     note: "House entry after the Fall D20 arm."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_goddess"
     term: "power_berry"
     date: "Y1 Spring D6"
@@ -114,6 +118,7 @@ milestones:
     note: "Cursor 1. Cursor 0 is happiness -30 and is not the plan."
     eat: true
     edge: "designed"
+    evidence_status: "model_conditional"
   - id: "berry_dup_cave"
     term: "power_berry"
     date: "Y1 Spring D5"
@@ -127,19 +132,21 @@ milestones:
     note: "Off-map cave eat, then re-enter $29 once. Not a fourth designed berry."
     eat: true
     edge: "duplication"
+    evidence_status: "model_conditional"
   - id: "berry_dup_indoor"
     term: "power_berry"
-    date: "Y1 Fall D20"
-    committed_index: 79
-    earliest_index: 79
-    earliest: "Y1 Fall D20"
+    date: "Y2 Fall D21"
+    committed_index: 200
+    earliest_index: 200
+    earliest: "Y2 Fall D21"
     latest_index: 298
     latest: "Y3 Summer D29"
-    slack_days: 219
+    slack_days: 98
     depends_on: ["berry_indoor"]
     note: "Off-map indoor eat, then one more house entry. Stop there."
     eat: true
     edge: "duplication"
+    evidence_status: "model_conditional"
   - id: "berry_dup_transition"
     term: "power_berry"
     date: "Y1 Spring D1"
@@ -153,19 +160,35 @@ milestones:
     note: "Screen-transition edge ($0196 bit $4000) on one held berry. One eat, not a loop."
     eat: true
     edge: "duplication"
+    evidence_status: "model_conditional"
+  - id: "pasture_ready"
+    term: "pasture"
+    date: "Y1 Spring D11"
+    committed_index: 10
+    earliest_index: 10
+    earliest: "Y1 Spring D11"
+    latest_index: 30
+    latest: "Y1 Summer D1"
+    slack_days: 20
+    depends_on: []
+    note: "Initial 32 grass tiles before the first animal; grow cover with stock so the buy gate has 16*(cows+chickens+1) tiles. Full 12/12 needs at least384. This does not wait for final farm cover."
+    minimum_tiles: 32
+    peak_stock_minimum_tiles: 384
+    evidence_status: "model_conditional"
   - id: "cow_slot0"
-    term: "cows"
+    term: "cow_happiness"
     date: "Y1 Summer D13"
     committed_index: 42
     earliest_index: 42
     earliest: "Y1 Summer D13"
-    latest_index: 298
-    latest: "Y3 Summer D29"
-    slack_days: 256
-    depends_on: ["brush", "milker", "cover"]
-    note: "Slot 0 mask $0001 matches no stall, so this cow never reaches 200. It still fills cow_N."
+    latest_index: 236
+    latest: "Y2 Winter D27"
+    slack_days: 194
+    depends_on: ["brush", "milker", "pasture_ready"]
+    note: "Native slot 0 is feedable after barn entry regenerates its trough. The 50-morning care date remains modeled until replayed."
     slot: 0
-    feedable: false
+    feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_01"
     term: "cow_happiness"
     date: "Y1 Summer D15"
@@ -176,9 +199,10 @@ milestones:
     latest: "Y2 Winter D29"
     slack_days: 194
     depends_on: ["cow_slot0"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 2
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_02"
     term: "cow_happiness"
     date: "Y1 Summer D16"
@@ -189,9 +213,10 @@ milestones:
     latest: "Y2 Winter D30"
     slack_days: 194
     depends_on: ["cow_feedable_01"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 3
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_03"
     term: "cow_happiness"
     date: "Y1 Summer D17"
@@ -202,9 +227,10 @@ milestones:
     latest: "Y3 Spring D1"
     slack_days: 194
     depends_on: ["cow_feedable_02"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 4
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_04"
     term: "cow_happiness"
     date: "Y1 Summer D18"
@@ -215,9 +241,10 @@ milestones:
     latest: "Y3 Spring D2"
     slack_days: 194
     depends_on: ["cow_feedable_03"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 5
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_05"
     term: "cow_happiness"
     date: "Y1 Summer D21"
@@ -228,9 +255,10 @@ milestones:
     latest: "Y3 Spring D3"
     slack_days: 192
     depends_on: ["cow_feedable_04"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 6
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_06"
     term: "cow_happiness"
     date: "Y1 Summer D22"
@@ -241,9 +269,10 @@ milestones:
     latest: "Y3 Spring D4"
     slack_days: 192
     depends_on: ["cow_feedable_05"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 7
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_07"
     term: "cow_happiness"
     date: "Y1 Summer D23"
@@ -254,9 +283,10 @@ milestones:
     latest: "Y3 Spring D6"
     slack_days: 193
     depends_on: ["cow_feedable_06"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 8
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_08"
     term: "cow_happiness"
     date: "Y1 Summer D24"
@@ -267,9 +297,10 @@ milestones:
     latest: "Y3 Spring D7"
     slack_days: 193
     depends_on: ["cow_feedable_07"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 9
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_09"
     term: "cow_happiness"
     date: "Y1 Summer D25"
@@ -280,9 +311,10 @@ milestones:
     latest: "Y3 Spring D8"
     slack_days: 193
     depends_on: ["cow_feedable_08"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 10
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_10"
     term: "cow_happiness"
     date: "Y1 Summer D27"
@@ -293,9 +325,10 @@ milestones:
     latest: "Y3 Spring D9"
     slack_days: 192
     depends_on: ["cow_feedable_09"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 11
     feedable: true
+    evidence_status: "model_conditional"
   - id: "cow_feedable_11"
     term: "cow_happiness"
     date: "Y1 Summer D28"
@@ -306,9 +339,10 @@ milestones:
     latest: "Y3 Spring D10"
     slack_days: 192
     depends_on: ["cow_feedable_10"]
-    note: "One shop animal a day. 200 on the D30 06:00 read is 50 mornings after the buy."
+    note: "One shop animal a day; exact extant-slot trough masks. The modeled 50-morning happiness path still needs dated ROM replay."
     buy_order: 12
     feedable: true
+    evidence_status: "model_conditional"
   - id: "hen"
     term: "chickens"
     date: "Y1 Summer D1"
@@ -318,9 +352,10 @@ milestones:
     latest_index: 189
     latest: "Y2 Fall D10"
     slack_days: 159
-    depends_on: ["cover"]
+    depends_on: ["pasture_ready"]
     note: "Incubate one egg at a time to chicks_N 12. A death is not a berry: it decrements the counter."
     target: 12
+    evidence_status: "model_conditional"
   - id: "brush"
     term: "tools"
     date: "Y1 Summer D1"
@@ -332,6 +367,7 @@ milestones:
     slack_days: 268
     depends_on: []
     note: "In hand before the first cow. Shelf $4C, 800G."
+    evidence_status: "model_conditional"
   - id: "milker"
     term: "tools"
     date: "Y1 Summer D2"
@@ -343,6 +379,7 @@ milestones:
     slack_days: 267
     depends_on: ["brush"]
     note: "In hand before the first cow. Shelf $4B, 1800G."
+    evidence_status: "model_conditional"
   - id: "house_upgrade_1"
     term: "house"
     date: "Y1 Summer D1"
@@ -354,6 +391,7 @@ milestones:
     slack_days: 0
     depends_on: []
     note: "Y1 summer order, 5000G. The first completion is four mornings later and can carry the clock."
+    evidence_status: "model_conditional"
   - id: "house_level_2"
     term: "house"
     date: "Y1 Summer D16"
@@ -365,52 +403,75 @@ milestones:
     slack_days: 143
     depends_on: ["house_upgrade_1"]
     note: "Bit $0080 on this morning. Child nights need it. The clock gift must already have fired."
+    evidence_status: "model_conditional"
   - id: "wife_bit"
     term: "married"
-    date: "Y2 Fall D9"
-    committed_index: 188
+    date: "Y2 Spring D9"
+    committed_index: 128
     earliest_index: 45
     earliest: "Y1 Summer D16"
-    latest_index: 188
-    latest: "Y2 Fall D9"
+    latest_index: 128
+    latest: "Y2 Spring D9"
     slack_days: 0
     depends_on: ["house_level_2"]
-    note: "Proposal fall-through is hearts >= 250. This is the latest morning that still yields both children on Y3 Summer D29."
+    note: "Preferred early wife bit by Y2 Spring D9 allows child2 age60 on D29. The later F4 deadline188 only makes both children exist and cannot fund the age60 bonus."
+    evidence_status: "model_conditional"
+    children_present_latest_index: 188
   - id: "child_1"
     term: "children"
-    date: "Y2 Fall D29"
-    committed_index: 208
+    date: "Y2 Spring D29"
+    committed_index: 148
     earliest_index: 65
     earliest: "Y1 Fall D6"
-    latest_index: 208
-    latest: "Y2 Fall D29"
+    latest_index: 148
+    latest: "Y2 Spring D29"
     slack_days: 0
     depends_on: ["wife_bit"]
     note: "Night 20 after the wife bit, hearts >= 450, house bit $0080."
+    evidence_status: "model_conditional"
+    children_present_latest_index: 208
   - id: "child_2"
     term: "children"
-    date: "Y3 Summer D29"
-    committed_index: 298
+    date: "Y2 Winter D29"
+    committed_index: 238
     earliest_index: 155
     earliest: "Y2 Summer D6"
-    latest_index: 298
-    latest: "Y3 Summer D29"
+    latest_index: 238
+    latest: "Y2 Winter D29"
     slack_days: 0
     depends_on: ["child_1"]
     note: "Night 110 after the wife bit. kid1_age >= 90. Y2 Fall D10 puts this flag on the D30 morning, which is late."
+    evidence_status: "model_conditional"
+    children_present_latest_index: 298
+  - id: "child_2_age60"
+    term: "happiness"
+    date: "Y3 Summer D29"
+    committed_index: 298
+    earliest_index: 215
+    earliest: "Y2 Winter D6"
+    latest_index: 298
+    latest: "Y3 Summer D29"
+    slack_days: 0
+    depends_on: ["child_2"]
+    note: "One +100 code bonus when child2 age equals60. Conditional on wife bit128, house and heart checks, and dated pregnancies."
+    bonus: 100
+    evidence_status: "model_conditional"
   - id: "wife_hearts_d29"
     term: "girls"
     date: "Y3 Summer D29"
     committed_index: 298
-    earliest_index: 188
-    earliest: "Y2 Fall D9"
+    earliest_index: 128
+    earliest: "Y2 Spring D9"
     latest_index: 298
     latest: "Y3 Summer D29"
     slack_days: 0
     depends_on: ["wife_bit"]
     note: "Hour-18 house entry at 498-511 so the night -2 lands on 496-509. The other four girls stay at 496-511."
-    window_lo: 496
+    window_lo: 498
     window_hi: 511
+    evidence_status: "model_conditional"
+    post_sleep_window_lo: 496
+    post_sleep_window_hi: 509
   - id: "clock_arm"
     term: "clock"
     date: "Y1 Summer D1"
@@ -423,6 +484,7 @@ milestones:
     depends_on: []
     note: "Year-0 quote window runs through Y1 Summer D30. Under the F5 house dates the gift is earlier, so the arm has to be set by then."
     calendar_latest_index: 59
+    evidence_status: "model_conditional"
   - id: "clock_gift"
     term: "clock"
     date: "Y1 Summer D5"
@@ -434,6 +496,7 @@ milestones:
     slack_days: 10
     depends_on: ["clock_arm", "house_upgrade_1"]
     note: "First-completion souvenir. Bit $0080 already set skips the score store."
+    evidence_status: "model_conditional"
   - id: "turtle_shell"
     term: "turtle"
     date: "Y2 Fall D20"
@@ -446,6 +509,7 @@ milestones:
     depends_on: []
     note: "Fall D20 before 15:00, both years. One /2 result is the shell; the other is the indoor arm. After Y2 the bit stays clear."
     chances: [79, 199]
+    evidence_status: "model_conditional"
   - id: "festival_indoor_arm"
     term: "festival"
     date: "Y1 Fall D20"
@@ -455,9 +519,10 @@ milestones:
     latest_index: 199
     latest: "Y2 Fall D20"
     slack_days: 120
-    depends_on: ["turtle_shell"]
-    note: "Fall D20 /2 arm, not itself an eat. The indoor berry is the eat."
+    depends_on: []
+    note: "One of the two FallD20 prize results arms the indoor berry. Both results must be obtained over the79/199 chances; their order is contingent."
     eat: false
+    evidence_status: "model_conditional"
   - id: "crop_turnip"
     term: "crops"
     date: "Y3 Spring D29"
@@ -485,6 +550,7 @@ milestones:
         season: "Spring"
         day: 30
         shipped: 168
+    evidence_status: "model_conditional"
   - id: "crop_potato"
     term: "crops"
     date: "Y3 Spring D30"
@@ -512,6 +578,7 @@ milestones:
         season: "Spring"
         day: 30
         shipped: 168
+    evidence_status: "model_conditional"
   - id: "crop_tomato"
     term: "crops"
     date: "Y1 Summer D29"
@@ -541,6 +608,7 @@ milestones:
         shipped: 168
     latest_plant_index: 270
     committed_plant_index: 30
+    evidence_status: "model_conditional"
   - id: "crop_corn"
     term: "crops"
     date: "Y1 Summer D29"
@@ -570,6 +638,7 @@ milestones:
         shipped: 168
     latest_plant_index: 270
     committed_plant_index: 30
+    evidence_status: "model_conditional"
   - id: "cover"
     term: "development"
     date: "Y2 Summer D17"
@@ -586,6 +655,7 @@ milestones:
     tile_slack: 11
     clear_pin_tile_slack: 18
     bags_paid: 328
+    evidence_status: "model_conditional"
   - id: "money_hold"
     term: "money"
     date: "Y3 Spring D16"
@@ -596,11 +666,12 @@ milestones:
     latest: "Y3 Summer D30"
     slack_days: 44
     depends_on: []
-    note: "F5 holds 620,000G from this morning by cutting milk and egg ships, not crop ships. The D30 reading has to sit in 99840-655350G."
+    note: "Keep wallet99840-655350G at tally. Historical620000G hold excludes the revised happiness/potions choice and remains conditional on the rebuilt shared budget."
     hold_g: 620000
     end_g: 620000
     window_lo: 99840
     window_hi: 655350
+    evidence_status: "model_conditional"
   - id: "happiness"
     term: "happiness"
     date: "Y3 Summer D29"
@@ -610,7 +681,9 @@ milestones:
     latest_index: 298
     latest: "Y3 Summer D29"
     slack_days: 0
-    depends_on: []
-    note: "Nine calf namings on or before Y3 Summer D29. 992 scores 31. The stored clamp is 999."
-    namings: 9
+    depends_on: ["child_2_age60"]
+    note: "All12 purchased cows do not provide calf namings. Early marriage plus modeled105 drinks (+3/300G) repairs a conservative seven-berry floor to999 only after repeat access and the shared budget are proven. Alternative: buy3 plus9 modeled births; potion/name dates65+23*k and88+23*k, last naming272. No birth or drink completion is implied."
     minimum: 992
+    evidence_status: "model_conditional"
+    repair_drinks: 105
+    repair_budget_g: 31500

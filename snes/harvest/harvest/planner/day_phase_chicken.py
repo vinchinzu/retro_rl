@@ -8,6 +8,8 @@ from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
 # ── Chicken coop phases ──
 
+COOP_EXIT_INPUT_LOCK_FRAMES = 90  # measured 85 frames from tilemap 0x00 to the first step
+
 NAV_TO_COOP_PHASE = PhaseSpec(
     "NAV_TO_COOP",
     "multi_nav",
@@ -69,7 +71,10 @@ EXIT_COOP_PHASE = PhaseSpec(
         "stand_tile": (8, 12),
         "stand_tolerance": 1,
         "door_align_px": 8 * 16 + 8,
-        "settle_frames": 5,
+        # The farm fades in after the door: the farmer ignores every button for
+        # ~85 frames at (456, 360). A route started sooner reads that as a push
+        # block, replans through the coop door and re-enters the coop.
+        "settle_frames": COOP_EXIT_INPUT_LOCK_FRAMES,
     },
 )
 
@@ -366,6 +371,8 @@ def _chicken_oversupplied(adult_chickens: int, policy: DayPlannerPolicy) -> bool
 
 def _coop_chores_phase(*, oversupplied: bool, policy: DayPlannerPolicy) -> PhaseSpec:
     if not oversupplied:
+        if policy.hold_flock_growth:
+            return PhaseSpec("COOP_CHORES", "coop_chores", {"egg_mode": "ship"})
         return COOP_CHORES_PHASE
     return PhaseSpec(
         "COOP_CHORES",

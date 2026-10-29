@@ -24,7 +24,7 @@ from harvest.tasks.farm_ops import TileScanner
 
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.maps.map_config import ROUTES, get_walkable_tiles
-from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_value
+from harvest.core.ram_catalog import field_spec, ram_index, read_ram_u8, read_ram_value
 from harvest.tasks.animal_navigation import (
     chicken_stage_tiles,
     navigate_to_tile_around_blockers,
@@ -737,13 +737,27 @@ class ChickenSaleEventTask(Task):
         return TaskResult(status=TaskStatus.FAILURE, reason=f"unknown chicken sale event phase {self._phase}")
 
 
+# Frames after the wallet/count move for the receipt, tilemap 0x5F, and the
+# walk-out. The purchase timeout often expires on the receipt itself.
+_COW_NAME_TAIL = 2400
+# $019B: bit 2 glyph wait, bit 4 $FFFF end, bit 8 $00A2 page, bit 0x10 $FFFE choice.
+_TEXT_HELD = 0x02 | 0x04 | 0x08 | 0x20
+_TEXT_CHOICE = 0x10
+# Cow-feed Buy/Don't buy. $FFFE leaves the choice up; A on cursor 0 buys it.
+_FEED_TEXT_ID = 0x0341
+# PlayerActionPointerTable index of CODE_81E6EA. $096F=1 opens 0x030C/0x010E.
+_BOUGHT_NAME_SCRIPT = 0x42
+# Idle budget while that script stays at $096F=1. Past this, do not walk.
+_NAME_ARM_FRAMES = 600
+
+
 @dataclass
 class CowPurchaseTask(Task):
     """Buy one cow or one chicken from the animal-shop counter.
 
-    ``species`` is ``cow`` or ``chicken``. The shop sells one animal per day,
-    so a second species needs another day. Success is the wallet dropping by that
-    price and that count rising by one. Tilemap 0x5F is named and is not a buy.
+    A cow's wallet drop is not the slot. While ``$096E`` is ``$2E`` and the
+    name bit is set, this task does not press A. The farm-gate hold opens
+    ``$42`` and the name screen creates the slot. Tilemap 0x5F is that screen.
     """
 
     name: str = "cow_purchase"
@@ -755,14 +769,35 @@ class CowPurchaseTask(Task):
     _name_press_step: int = field(default=-(10**9), init=False)
     _bought_reason: str = field(default="", init=False)
     _dismiss_frames: int = field(default=0, init=False)
+    _saw_shop: bool = field(default=False, init=False)
+    _start_slots: tuple[int, ...] = field(default_factory=tuple, init=False)
+    _feed_hold: int = field(default=0, init=False)
+    _last_advance: int = field(default=-1000, init=False)
+    _name_armed: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
+        from harvest.core.animal_status import existing_cow_slots
+
         self._session = AnimalPurchaseSession(species=self.species, timeout=self.timeout)
         self._session.start(world.ram)
         self._step_count = 0
         self._name_press_step = -(10**9)
         self._bought_reason = ""
         self._dismiss_frames = 0
+        self._saw_shop = int(read_ram_value(world.ram, "tilemap")) == 0x24
+        self._start_slots = tuple(existing_cow_slots(world.ram))
+        self._feed_hold = 0
+        self._last_advance = -1000
+        self._name_armed = self._bought_name_armed(world.ram)
+
+    def _new_cow_slot(self, ram: np.ndarray) -> int | None:
+        from harvest.core.animal_status import existing_cow_slots
+
+        started = set(self._start_slots)
+        for slot in existing_cow_slots(ram):
+            if slot not in started:
+                return slot
+        return None
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -778,6 +813,90 @@ class CowPurchaseTask(Task):
 
     def _running(self, action: np.ndarray, reason: str) -> TaskResult:
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason=reason)
+
+    def _name_limit(self) -> int:
+        if self.species == "cow" and self._bought_reason:
+            return self.timeout + _COW_NAME_TAIL
+        return self.timeout
+
+    def _text_bits(self, ram: np.ndarray) -> tuple[int, int, int, int]:
+        flags = int(ram[0x019B]) if len(ram) > 0x019B else 0
+        text = dialog_text_id(ram)
+        cursor = int(read_ram_value(ram, "dialog_menu_cursor", raw=True))
+        choice = int(read_ram_value(ram, "dialog_choice_result", raw=True))
+        return flags, text, cursor, choice
+
+    def _stuck_text(self, ram: np.ndarray) -> str:
+        _flags, text, cursor, choice = self._text_bits(ram)
+        return f"text={text:#06x} cursor={cursor:#04x} choice={choice:#04x}"
+
+    def _bought_name_armed(self, ram: np.ndarray) -> bool:
+        """CODE_81E6EA still has to create the slot. $096E=$2E is the shop menu."""
+        if self.species != "cow" or self._start_slots:
+            return False
+        if int(read_ram_value(ram, "num_cows")) < 1:
+            return False
+        phase = self._wram_u8(ram, 0x096F)
+        script = self._wram_u8(ram, 0x096E)
+        tilemap = int(read_ram_value(ram, "tilemap"))
+        if script == _BOUGHT_NAME_SCRIPT and phase in (1, 2, 3):
+            return True
+        return phase in (1, 2, 3) and tilemap != 0x24
+
+    @staticmethod
+    def _wram_u8(ram: np.ndarray, address: int) -> int:
+        # Low WRAM ($096E, $019A) is not the +0x4000 mirror. Same as input_lock.
+        idx = ram_index(ram, address, live_offset=False)
+        return int(ram[idx]) if 0 <= idx < len(ram) else 0
+
+    def _arm_quote(self, ram: np.ndarray) -> str:
+        phase = self._wram_u8(ram, 0x096F)
+        text = dialog_text_id(ram)
+        state = self._wram_u8(ram, 0x019A)
+        flags = self._wram_u8(ram, 0x0196) | (self._wram_u8(ram, 0x0197) << 8)
+        return f"096F={phase} text={text:#06x} inputstate={state} 0196={flags:#06x}"
+
+    def _edge(self, button: str, reason: str) -> TaskResult:
+        """One-frame press. Joy1_New closes $FFFF and $00A2; a held A does not."""
+        if self._step_count - self._last_advance < 8:
+            return self._running(make_action(), f"wait {reason}")
+        self._last_advance = self._step_count
+        return self._running(make_action(**{button: True}), reason)
+
+    def _advance_to_name(self, world: WorldState) -> TaskResult:
+        """Push the post-payment box until bank_80 sees $0196 bit 0x2000.
+
+        Closing receipt 0x0308 ($FFFF, $019B bit 4) lets $81E762 set that bit,
+        and the game loop loads tilemap 0x5F. Text 0x0341 is not that receipt:
+        $FFFE keeps Buy/Don't buy up, and A on choice 0 buys the feed.
+        """
+        ram = world.ram
+        flags, text, cursor, choice = self._text_bits(ram)
+        if flags & _TEXT_CHOICE and text == _FEED_TEXT_ID:
+            if choice != 1:
+                self._feed_hold += 1
+                if self._feed_hold <= 11:
+                    return self._running(
+                        make_action(down=True),
+                        f"feed 0x0341 down {self._feed_hold} cursor={cursor:#04x} choice={choice:#04x}",
+                    )
+                if self._feed_hold <= 19:
+                    return self._running(
+                        make_action(),
+                        f"feed 0x0341 settle cursor={cursor:#04x} choice={choice:#04x}",
+                    )
+                self._feed_hold = 0
+                return self._running(
+                    make_action(),
+                    f"feed 0x0341 row cursor={cursor:#04x} choice={choice:#04x}",
+                )
+            self._feed_hold = 0
+            return self._edge("a", f"decline feed 0x0341 cursor={cursor:#04x}")
+        self._feed_hold = 0
+        lock = int(read_ram_value(ram, "input_lock"))
+        if flags & _TEXT_HELD or lock != 1:
+            return self._edge("a", f"advance text {text:#06x} cursor={cursor:#04x}")
+        return self._running(make_action(), "wait for cow name screen")
 
     def _finish_registered(self, world: WorldState) -> TaskResult:
         """Close out a buy the ROM has already registered.
@@ -799,12 +918,48 @@ class CowPurchaseTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
         tilemap = int(read_ram_value(world.ram, "tilemap"))
-        if self._session._registered(world.ram):
-            self._bought_reason = self._session._success_reason(world.ram)
-        if self._bought_reason and tilemap != 0x5F:
+        if tilemap == 0x24:
+            self._saw_shop = True
+        registered = self._session._registered(world.ram)
+        slot = self._new_cow_slot(world.ram) if self.species == "cow" else None
+        if registered:
+            reason = self._session._success_reason(world.ram)
+            if self._saw_shop:
+                reason = f"{reason} shop=0x24"
+                if slot is not None:
+                    reason = f"{reason} slot={slot}"
+            self._bought_reason = reason
+        accepted = registered and self._saw_shop and (self.species != "cow" or slot is not None)
+        if accepted and tilemap != 0x5F:
             return self._finish_registered(world)
+        if self._name_armed and slot is not None and tilemap != 0x5F:
+            if not self._bought_reason:
+                self._bought_reason = f"cow slot={slot} name closed"
+            return self._finish_registered(world)
+        if self._name_armed and slot is None and tilemap != 0x5F:
+            phase = self._wram_u8(world.ram, 0x096F)
+            if phase == 1 and self._step_count >= _NAME_ARM_FRAMES:
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"name machine still armed {self._arm_quote(world.ram)}",
+                )
+            # buy_cow.json after the wallet drop dismisses with A/B. No walk.
+            return self._advance_to_name(world)
+        if registered and self.species == "cow" and slot is None and tilemap != 0x5F:
+            from harvest.core.scene import cow_name_awaits_gate
+            if cow_name_awaits_gate(world.ram) and int(read_ram_value(world.ram, "input_lock")) == 1:
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    reason=self._bought_reason or "paid; name bit waits for farm gate",
+                )
+            if self._step_count > self._name_limit():
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=f"cow registered without a new slot {self._stuck_text(world.ram)}",
+                )
+            return self._advance_to_name(world)
         if tilemap == 0x5F:
-            if self._step_count > self.timeout:
+            if self._step_count > self._name_limit():
                 return TaskResult(status=TaskStatus.FAILURE, reason="animal name-entry timeout")
             from harvest.core.scene import name_entry_press
 
@@ -821,8 +976,11 @@ class CowPurchaseTask(Task):
 
         decision = self._session.step(world.ram)
         if decision.status == "success":
-            self._bought_reason = decision.reason
-            return self._finish_registered(world)
+            if self.species == "cow" and self._step_count > self.timeout:
+                return TaskResult(
+                    status=TaskStatus.FAILURE, reason="cow registered without a new slot"
+                )
+            return self._running(make_action(), decision.reason)
         if decision.status == "failure":
             return TaskResult(status=TaskStatus.FAILURE, reason=decision.reason)
         action = decision.action if decision.action is not None else make_action()

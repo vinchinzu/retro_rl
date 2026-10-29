@@ -1,24 +1,3 @@
-#!/usr/bin/env python3
-"""Run Harvest Moon from a morning state through one or more overnights.
-
-Default path: multi-day planner with ``target_days=1`` (return-home + sleep that
-always finds the house). Optional ``--day-plan boot_to_day2`` runs the explicit
-macro-chained phase sequence inside a single-day plan that ends with sleep.
-
-Success: calendar goal reached, morning scene stable, no mid-run state load.
-
-Examples:
-
-    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2
-    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --state Y1_Inside_House
-    # Bootstrap from a real power-on first (D1 town-gate → farm remains open):
-    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --power-on --until-day 2
-    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --days 2 --until-day 4
-    # Full spring from pinned morning (sleeps through Spring 30 → Summer 1):
-    HEADLESS=1 uv run python -m harvest.scripts.run_to_day2 --end-of-spring \\
-      --out recordings/run_spring_month.json
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -41,6 +20,7 @@ from retro_harness.video import VideoCaptureConfig, VideoRecorder
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
 from harvest.core.task_progress import RunProgressSidecar, format_run_progress_line
+from harvest.planner.campaign_composer import season_pin_session
 from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQUENCES
 from harvest.planner.day_plan_status import format_world_date, read_world_ymd
 from harvest.planner.tasks.ending import EndingTask, is_ending_date, read_ending_signals
@@ -48,30 +28,31 @@ from harvest.runtime.power_on import PowerOnStartTask
 from harvest.runtime.retro_setup import make_harvest_env
 from harvest.tasks.nav import make_action
 from harvest.tasks.town_day1_handoff import TownDay1HandoffTask
+from harvest.tools.pr999_report import (
+    _date_fields,
+    _summarize_journal,
+    _year_report_fields,
+    _gate_b_full_ok,
+    _crop_survival_report,
+    _d2_spine_checkpoint_evidence,
+)
 
 _STOP = {"sig": None}
 
-
 def _request_stop(signum, _frame) -> None:
     _STOP["sig"] = int(signum)
-
 
 def _install_stop_handler() -> None:
     signal.signal(signal.SIGINT, _request_stop)
     signal.signal(signal.SIGTERM, _request_stop)
 
-
 def _configure_headless() -> None:
     os.environ.setdefault("HEADLESS", "1")
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    # This runner is evidence-oriented: never inherit an optional play-session
-    # assist from the caller's shell.
     os.environ.pop("INFINITE_STAMINA", None)
 
-
 def _file_sha256(path: Path) -> str | None:
-    """Return a source-state digest for a replay report, when available."""
     if not path.is_file():
         return None
     digest = hashlib.sha256()
@@ -80,233 +61,77 @@ def _file_sha256(path: Path) -> str | None:
             digest.update(chunk)
     return digest.hexdigest()
 
-
 def _rgb_frame(frame) -> np.ndarray:
     image = np.asarray(frame, dtype=np.uint8)
     if image.ndim != 3 or image.shape[2] < 3:
         raise ValueError(f"expected RGB emulator frame, got shape={image.shape}")
     return np.ascontiguousarray(image[:, :, :3])
 
-
-def _open_video(path: Path, first_frame, *, fps: int, scale: int) -> VideoRecorder:
+def _open_video(path: Path, first_frame, *, fps: int, scale: int, segment_frames: int | None) -> VideoRecorder:
     rgb = _rgb_frame(first_frame)
     recorder = VideoRecorder(
         path,
         width=int(rgb.shape[1]),
         height=int(rgb.shape[0]),
-        config=VideoCaptureConfig(
-            fps=fps,
-            scale=scale,
-            crf=28,
-            preset="ultrafast",
-            audio=False,
-            footer=False,
-            layout="native",
-        ),
+        segment_frames=segment_frames,
+        config=VideoCaptureConfig( fps=fps, scale=scale, crf=28, preset="ultrafast", audio=False, footer=False, layout="native", ),
     )
     recorder.write(rgb)
     return recorder
 
-
 def _video_report(recorder: VideoRecorder, **extra: object) -> dict[str, object]:
     fps = recorder.config.fps
     return {
-        "path": str(recorder.path),
+        "path": str(recorder.parts[0]) if recorder.parts else str(recorder.path),
+        "parts": [str(part) for part in recorder.parts],
         "fps": fps,
         "scale": recorder.config.scale,
         "frames": recorder.frames,
         "duration_seconds": round(recorder.frames / fps, 3),
         "encoded": True,
         "audio": False,
+        "segment_frames": recorder.segment_frames,
         **extra,
     }
 
-
 def _parse_args(argv=None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(description="Run Harvest Moon through one or more overnights.")
     p.add_argument("--state", default="Y1_Inside_House")
-    p.add_argument(
-        "--power-on",
-        action="store_true",
-        help=(
-            "Boot with no save state, create a new diary, and hand off from "
-            "the controllable Spring day-1 opening. Overrides --state."
-        ),
-    )
-    p.add_argument(
-        "--d1-handoff",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help=(
-            "After power-on (or any Spring D1 town start), run TownDay1Handoff "
-            "(talks+truck+shed+sleep→D2) before multi-day. Default: on for "
-            "--power-on, off otherwise. Use --no-d1-handoff to disable."
-        ),
-    )
-    p.add_argument(
-        "--day-plan",
-        default=None,
-        choices=list(PHASE_SEQUENCES.keys()),
-        help="Named phase sequence; default uses multi-day auto plan",
-    )
-    p.add_argument(
-        "--days",
-        type=int,
-        default=None,
-        help="Number of successful overnights to complete (multi-day mode)",
-    )
-    p.add_argument(
-        "--until-day",
-        type=int,
-        default=None,
-        help="Stop once calendar day is >= this (inclusive morning target)",
-    )
-    p.add_argument(
-        "--until-season",
-        type=int,
-        default=None,
-        help="Season index for --until-day (default: start season)",
-    )
-    p.add_argument(
-        "--until-year",
-        type=int,
-        default=None,
-        help=(
-            "1-based game year for --until-day/--until-season (default: start "
-            "year). Alone: stop at Spring D1 of that year."
-        ),
-    )
-    p.add_argument(
-        "--until-ending",
-        action="store_true",
-        help=(
-            "Play until the ROM ending (Y3 Summer D30 wake) has run to its "
-            "terminal screen; success = credits complete, recorded in the out JSON"
-        ),
-    )
-    p.add_argument(
-        "--end-of-spring",
-        action="store_true",
-        help="Run until Summer morning (MultiDay until Spring 30 exclusive end)",
-    )
-    p.add_argument(
-        "--max-frames",
-        type=int,
-        default=None,
-        help="Hard frame budget (default scales with overnight count; 0 disables)",
-    )
-    p.add_argument(
-        "--progress-every",
-        type=int,
-        default=2000,
-        help="Print progress every N frames (0 disables)",
-    )
-    p.add_argument(
-        "--progress-sidecar",
-        type=Path,
-        default=None,
-        help="Atomic live JSON sidecar. Default: <out>.progress.json for --power-on/--stop-after-d2-clear",
-    )
-    p.add_argument(
-        "--progress-sidecar-every",
-        type=int,
-        default=None,
-        help="Write the sidecar every N frames (default: --progress-every; 0 disables)",
-    )
-    p.add_argument(
-        "--checkpoint-dir",
-        type=Path,
-        default=None,
-        help="Directory for optional safe progress pins (gzip save states)",
-    )
-    p.add_argument(
-        "--checkpoint-on-progress",
-        action="store_true",
-        help="Save a resume-safe pin when D2 phase/debris/crops change and input is stable",
-    )
-    p.add_argument(
-        "--out",
-        type=Path,
-        default=PROJECT_DIR / "recordings" / "run_to_day2.json",
-    )
-    p.add_argument(
-        "--save-end-state",
-        type=str,
-        default=None,
-        help="Optional state name to write under custom_integrations when done",
-    )
-    p.add_argument(
-        "--save-after-weeds",
-        type=int,
-        default=None,
-        help="Save one debug checkpoint after CLEAR_BUSHES clears this many weeds",
-    )
-    p.add_argument(
-        "--weed-checkpoint-state",
-        default="Y1_D2_After_400_Weeds",
-        help="State name used by --save-after-weeds",
-    )
-    p.add_argument(
-        "--stop-after-d2-shipping",
-        action="store_true",
-        help=(
-            "Stop on Spring D2 immediately after the farm 5pm ShippingScene, "
-            "requiring a successful mountain grape route and potato seed "
-            "purchase. Use with --power-on (continuous D1 handoff) or a D2 "
-            "morning --state, plus --save-end-state."
-        ),
-    )
-    p.add_argument(
-        "--stop-after-d2-clear",
-        action="store_true",
-        help=(
-            "Stay on Spring D2 until D2FarmStatus.is_complete (plant, water, "
-            "ship, zero debris). Hour 18 is not a work cutoff. Use with "
-            "--power-on or a D2 morning --state."
-        ),
-    )
-    p.add_argument(
-        "--video",
-        type=Path,
-        default=None,
-        help="Optional H.264 MP4 path. Captures every emulated frame at --video-fps.",
-    )
-    p.add_argument(
-        "--video-fps",
-        type=int,
-        default=60,
-        help="Frame rate for --video (default: 60, native emulation rate)",
-    )
-    p.add_argument(
-        "--video-scale",
-        type=int,
-        default=3,
-        help="Integer nearest-neighbor output scale for --video (default: 3)",
-    )
+    p.add_argument("--power-on", action="store_true")
+    p.add_argument("--d1-handoff", action=argparse.BooleanOptionalAction, default=None)
+    p.add_argument("--day-plan", default=None, choices=list(PHASE_SEQUENCES.keys()))
+    p.add_argument("--days", type=int, default=None)
+    p.add_argument("--until-day", type=int, default=None)
+    p.add_argument("--until-season", type=int, default=None)
+    p.add_argument("--until-year", type=int, default=None)
+    p.add_argument("--until-ending", action="store_true")
+    p.add_argument("--perfect-rancher", action="store_true",
+                   help="Dispatch the Perfect Rancher milestone campaign with native receipts.")
+    p.add_argument("--end-of-spring", action="store_true")
+    p.add_argument("--max-frames", type=int, default=None)
+    p.add_argument("--progress-every", type=int, default=2000)
+    p.add_argument("--progress-sidecar", type=Path, default=None)
+    p.add_argument("--progress-sidecar-every", type=int, default=None)
+    p.add_argument("--checkpoint-dir", type=Path, default=None)
+    p.add_argument("--checkpoint-on-progress", action="store_true")
+    p.add_argument("--out", type=Path, default=PROJECT_DIR / "recordings" / "run_to_day2.json")
+    p.add_argument("--save-end-state", type=str, default=None)
+    p.add_argument("--save-after-weeds", type=int, default=None)
+    p.add_argument("--weed-checkpoint-state", default="Y1_D2_After_400_Weeds")
+    p.add_argument("--stop-after-d2-shipping", action="store_true")
+    p.add_argument("--stop-after-d2-clear", action="store_true")
+    p.add_argument("--video", type=Path, default=None,
+                   help="Part stem. Parts are <stem>_partNNN.mp4, closed every --video-segment-frames.")
+    p.add_argument("--video-fps", type=int, default=60)
+    p.add_argument("--video-scale", type=int, default=3)
+    p.add_argument("--video-segment-frames", type=int, default=216_000,
+                   help="Frames per playable part at 60fps (216000 = 1 hour). 0 keeps one file.")
+    p.add_argument("--trials", type=int, default=1)
+    p.add_argument("--save-season-pins", action="store_true")
     return p.parse_args(argv)
-
 
 def _world(env, frame: int = 0) -> WorldState:
     return WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None)
-
-
-def _date_fields(ram) -> dict[str, int]:
-    return {
-        "year": int(read_ram_value(ram, "year")),
-        "season": int(read_ram_value(ram, "season")),
-        "day": int(read_ram_value(ram, "day")),
-        "hour": int(read_ram_value(ram, "hour")),
-        "minute": int(read_ram_value(ram, "minute")),
-        "tilemap": int(read_ram_value(ram, "tilemap")),
-        "money": int(read_ram_value(ram, "money")),
-        "num_cows": int(read_ram_value(ram, "num_cows")),
-        "num_chickens": int(read_ram_value(ram, "num_chickens")),
-        "planted_grass": int(read_ram_value(ram, "planted_grass")),
-        "stored_grass": int(read_ram_value(ram, "stored_grass")),
-        "grass_seeds": int(read_ram_value(ram, "grass_seeds")),
-        "stamina": int(read_ram_value(ram, "stamina")),
-    }
-
 
 def _clean_run_report(
     env: AuditedEnv,
@@ -315,7 +140,6 @@ def _clean_run_report(
     source_state: Path | None,
     source_state_sha256: str | None,
 ) -> dict[str, object]:
-    """Serialize observed intervention counters for this exact runner attempt."""
     audit = env.audit()
     return {
         "intervention_class": "Clean",
@@ -323,18 +147,14 @@ def _clean_run_report(
         "mid_run_state_loads": audit.mid_run_loads,
         "ram_writes": audit.ram_writes,
         "assists": dict(audit.assists or {}),
-        "audit_capabilities": (
-            audit.capabilities.to_record() if audit.capabilities is not None else None
-        ),
+        "audit_capabilities": ( audit.capabilities.to_record() if audit.capabilities is not None else None ),
         "infinite_stamina": False,
         "source_state": str(source_state) if source_state else None,
         "source_state_sha256": source_state_sha256,
     }
 
-
 def _d2_clear_status(task: object, ram):
     from harvest.planner.d2_work import observe_d2_farm
-
     journal: list = list(getattr(task, "_last_day_phase_results", ()) or ())
     current: object | None = task
     seen: set[int] = set()
@@ -345,40 +165,30 @@ def _d2_clear_status(task: object, ram):
         current = getattr(current, "current_task", None)
     return observe_d2_farm(ram, journal)
 
-
 def _d2_counts(ram) -> dict:
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.crop_skills import count_ring_planted, count_ring_wet
     from harvest.tasks.farm_clear_quota import count_debris
-
     row = count_debris(ram).as_dict()
     row["planted"] = count_ring_planted(ram, WEST_POCKET_PLANT_CENTER)
     row["wet"] = count_ring_wet(ram, WEST_POCKET_PLANT_CENTER)
     return row
 
-
 DAYS_PER_SEASON = 30
-
 
 def _ymd_text(key: tuple[int, int, int]) -> str:
     return f"Y{key[0] + 1}S{key[1]}D{key[2]}"
 
-
 SEASONS_PER_YEAR = 4
-
 
 def _day_ordinal(key: tuple[int, int, int]) -> int:
     year, season, day = key
     return (year * SEASONS_PER_YEAR + season) * DAYS_PER_SEASON + day
 
-
 def days_between(start: tuple[int, int, int], end: tuple[int, int, int]) -> int:
-    """Calendar days from ``start`` to ``end`` ((year0, season, day) keys)."""
     return max(0, _day_ordinal(end) - _day_ordinal(start))
 
-
 def _previous_day(key: tuple[int, int, int]) -> tuple[int, int, int]:
-    """The day before ``key``; clamps at Y1 Spring D0 (nothing earlier)."""
     year, season, day = key
     if day > 1:
         return (year, season, day - 1)
@@ -388,16 +198,7 @@ def _previous_day(key: tuple[int, int, int]) -> tuple[int, int, int]:
         return (year - 1, SEASONS_PER_YEAR - 1, DAYS_PER_SEASON)
     return (0, 0, 0)
 
-
-def resolve_until_target(
-    args: argparse.Namespace, start_key: tuple[int, int, int]
-) -> tuple[int, int, int] | None:
-    """Inclusive morning target as (year0, season, day), or None if unset.
-
-    ``--until-day`` alone keeps its Year-1-era meaning relative to the start
-    date (start year and season); ``--until-year`` names the 1-based year and
-    defaults an unspecified season/day to Spring D1.
-    """
+def resolve_until_target( args: argparse.Namespace, start_key: tuple[int, int, int] ) -> tuple[int, int, int] | None:
     if args.until_day is None and args.until_year is None:
         return None
     year = start_key[0] if args.until_year is None else max(0, args.until_year - 1)
@@ -408,71 +209,45 @@ def resolve_until_target(
     day = args.until_day if args.until_day is not None else 1
     return (year, season, day)
 
-
 def _build_task(args: argparse.Namespace, start_key: tuple[int, int, int]) -> object:
     extra: dict = {}
+    if getattr(args, "perfect_rancher", False):
+        extra["perfect_rancher"] = True
     if getattr(args, "stop_after_d2_clear", False):
         from harvest.planner.day_phase_types import DayPlannerPolicy
-
         extra["policy"] = DayPlannerPolicy(include_end_day=False)
     if args.day_plan:
         if (
-            args.days is not None
+            getattr(args, "perfect_rancher", False)
+            or args.days is not None
             or args.until_day is not None
             or args.until_year is not None
             or args.until_ending
             or args.end_of_spring
         ):
-            raise SystemExit(
-                "--day-plan cannot be combined with --days/--until-day/--end-of-spring"
-            )
-        return DayPlanTask(
-            phase_sequence=list(PHASE_SEQUENCES[args.day_plan]),
-            state_name=args.state,
-        )
-
-    # MultiDayPlannerTask: target_days OR exclusive until_(season, day).
-    # harvest_bot --end-of-spring uses until_season=0 until_day=30 so success
-    # when date > Spring 30 (i.e. Summer 1 morning).
+            raise SystemExit("--day-plan cannot be combined with campaign or multi-day targets")
+        return DayPlanTask( phase_sequence=list(PHASE_SEQUENCES[args.day_plan]), state_name=args.state, )
     if args.end_of_spring:
-        return MultiDayPlannerTask(
-            until_season=0,
-            until_day=30,
-            max_days=40,
-            **extra,
-        )
-
+        return MultiDayPlannerTask( until_season=0, until_day=30, max_days=40, **extra, )
     target_days = args.days
     target = resolve_until_target(args, start_key)
-
     if target_days is None and target is None and not args.until_ending:
         target_days = 1
-
     kwargs: dict = {"max_days": 40}
     if target_days is not None:
         kwargs["target_days"] = target_days
         kwargs["max_days"] = max(target_days + 1, 2)
-
     if args.until_ending:
-        # No date target: the ending itself (Y3 Summer D30 wake) ends the run.
         kwargs["until_year"] = 99
         kwargs["max_days"] = 400
     elif target is not None:
-        # Inclusive morning target -> exclusive MultiDay bound (previous day).
-        # Example: --until-day 4 -> stop when date > Spring 3 -> D4 morning.
-        # Cross-season: --until-season 1 --until-day 1 -> exclusive (1, 30).
-        # Cross-year: Y2 Spring D1 -> exclusive Y1 Winter D30.
         bound = _previous_day(target)
         kwargs["until_year"], kwargs["until_season"], kwargs["until_day"] = bound
         if target_days is None:
             kwargs.pop("target_days", None)
-            kwargs["max_days"] = max(
-                days_between(start_key, target) + 5, bound[2] + 5, 4
-            )
-
+            kwargs["max_days"] = max( days_between(start_key, target) + 5, bound[2] + 5, 4 )
     kwargs.update(extra)
     return MultiDayPlannerTask(**kwargs)
-
 
 def _goal_reached(
     *,
@@ -481,9 +256,7 @@ def _goal_reached(
     days_completed: int | None,
     args: argparse.Namespace,
 ) -> bool:
-    """Date goals over (year0, season, day) keys, so a year rollover orders right."""
     if args.end_of_spring:
-        # Summer (or later) morning after finishing Spring 30 overnight.
         return end > (0, 0, 30)
     if end <= start:
         return False
@@ -497,214 +270,10 @@ def _goal_reached(
     return end > start
 
 
-def _summarize_journal(journal: list[dict]) -> dict:
-    phase_success: dict[str, int] = {}
-    phase_skip: dict[str, int] = {}
-    phase_no_work: dict[str, int] = {}
-    phase_failure: dict[str, int] = {}
-    water_deltas: list[dict] = []
-    establish_deltas: list[dict] = []
-    harvest_deltas: list[dict] = []
-    total_shipped = 0
-    total_harvested = 0
-    total_planted = 0
-    for row in journal:
-        try:
-            total_shipped += int(row.get("shipped_count") or 0)
-            total_harvested += int(row.get("harvested_count") or 0)
-            total_planted += int(row.get("establish_planted") or 0)
-        except Exception:
-            pass
-        for result in row.get("phase_results") or []:
-            name = str(result.get("phase", "?"))
-            status = str(result.get("status", ""))
-            reason = str(result.get("reason") or "")
-            if status == "success":
-                phase_success[name] = phase_success.get(name, 0) + 1
-            elif status == "skipped":
-                phase_skip[name] = phase_skip.get(name, 0) + 1
-            elif status == "no_work":
-                phase_no_work[name] = phase_no_work.get(name, 0) + 1
-            elif status in {"failure", "blocked"}:
-                phase_failure[name] = phase_failure.get(name, 0) + 1
-            if name == "CROP_WATER" and "watered=" in reason:
-                water_deltas.append(
-                    {
-                        "plan_day": row.get("plan_day"),
-                        "status": status,
-                        "reason": reason,
-                    }
-                )
-            if name == "CROP_ESTABLISH" and "planted=" in reason:
-                establish_deltas.append(
-                    {
-                        "plan_day": row.get("plan_day"),
-                        "status": status,
-                        "reason": reason,
-                    }
-                )
-            if name == "HARVEST_ROUTE":
-                harvest_deltas.append(
-                    {
-                        "plan_day": row.get("plan_day"),
-                        "status": status,
-                        "reason": reason,
-                        "shipped_count": result.get("shipped_count"),
-                        "harvested_count": result.get("harvested_count"),
-                    }
-                )
-    final_money = journal[-1].get("money") if journal else None
-    harvest_phases_present = bool(
-        phase_success.get("HARVEST_ROUTE") or harvest_deltas
-    )
-    # Count real plant deltas (planted=N with N>0), not merely phase presence.
-    if total_planted <= 0:
-        for row in establish_deltas:
-            reason = str(row.get("reason") or "")
-            if "planted=" not in reason:
-                continue
-            try:
-                n = int(reason.split("planted=")[1].split()[0].rstrip(","))
-            except Exception:
-                n = 0
-            if n > 0:
-                total_planted += n
-    establish_nonzero = total_planted > 0
-    # Gate A (rr-y8n): money growth + harvest phases on continuous soak.
-    try:
-        money_ok = final_money is not None and int(final_money) > 100
-    except Exception:
-        money_ok = False
-    return {
-        "overnights": len(journal),
-        "phase_success_counts": phase_success,
-        "phase_skip_counts": phase_skip,
-        "phase_no_work_counts": phase_no_work,
-        "phase_failure_counts": phase_failure,
-        "crop_water_deltas": water_deltas,
-        "crop_establish_deltas": establish_deltas,
-        "harvest_deltas": harvest_deltas,
-        "total_shipped": total_shipped,
-        "total_harvested": total_harvested,
-        "total_planted": total_planted,
-        "final_money": final_money,
-        "harvest_phases_present": harvest_phases_present,
-        "crop_establish_nonzero": establish_nonzero,
-        "gate_a_economy_ok": bool(money_ok and harvest_phases_present),
-    }
-
-
-def _year_report_fields(planner: object) -> dict[str, object]:
-    """Journal, failures, days, and floor stats from the task that played.
-
-    EndingTask has none of these. ``floor_report`` is null when the task
-    does not define that property (do not invent a second report shape).
-    """
-    journal = list(getattr(planner, "day_journal", ()) or ())
-    return {
-        "days_completed": getattr(planner, "_days_completed", None),
-        "day_failures": list(getattr(planner, "day_failures", ()) or ()),
-        "day_journal": journal,
-        "journal_summary": _summarize_journal(journal),
-        "floor_report": getattr(planner, "floor_report", None),
-    }
-
-
-def _gate_b_full_ok(
-    *,
-    power_on: bool,
-    until_ending: bool,
-    end_key: tuple[int, int, int],
-    total_shipped: int,
-    total_harvested: int,
-    mid_run_state_loads: int | None,
-) -> bool:
-    """Power-on stop at Y1 Summer entry with harvest income and no mid-run loads.
-
-    ``--until-ending`` and the Year-3 Summer D30 ending are not Gate B.
-    Missing load or income evidence is a miss.
-    """
-    if not power_on or until_ending or mid_run_state_loads is None:
-        return False
-    try:
-        loads = int(mid_run_state_loads)
-        shipped = int(total_shipped)
-        harvested = int(total_harvested)
-    except (TypeError, ValueError):
-        return False
-    if loads != 0:
-        return False
-    year, season, day = end_key
-    # Summer entry: year 0, past Spring D30, season summer. Not Y3 credits.
-    if (
-        year != 0
-        or season != 1
-        or end_key <= (0, 0, 30)
-        or is_ending_date(year, season, day)
-    ):
-        return False
-    return shipped > 0 or harvested > 0
-
-
-def _crop_survival_report(ram: np.ndarray) -> dict:
-    """Farm crop tile counts when the farm map is loaded; else map-not-farm note."""
-    from harvest.planner.day_plan_status import is_farm_tilemap
-    from harvest.tasks.crop_planter import count_crop_survival
-    from harvest.core.tile_catalog import ADDR_TILEMAP
-
-    tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else -1
-    if not is_farm_tilemap(tilemap):
-        return {
-            "farm_map_loaded": False,
-            "tilemap": tilemap,
-            "note": "crop tiles only visible on farm metatile map; house end-state is inconclusive",
-        }
-    counts = count_crop_survival(ram)
-    return {
-        "farm_map_loaded": True,
-        "tilemap": tilemap,
-        **counts,
-        "alive": int(counts.get("crop", 0)) > 0,
-    }
-
-
-def _d2_spine_checkpoint_evidence(task: object, world: WorldState) -> dict[str, object]:
-    """Report whether the continuous power-on D2 spine reached its save gate."""
-    fields = _date_fields(world.ram)
-    phase_results = list(getattr(task, "_last_day_phase_results", ()) or ())
-    successful = {
-        str(row.get("phase"))
-        for row in phase_results
-        if str(row.get("status")) == "success"
-    }
-    potato_seeds = int(read_ram_value(world.ram, "potato_seeds"))
-    ready = bool(
-        fields["season"] == 0
-        and fields["day"] == 2
-        and fields["hour"] >= 17
-        and getattr(task, "_phase", None) == "return_home"
-        and "MOUNTAIN_BERRY" in successful
-        and "BUY_SEEDS" in successful
-        and "WAIT_FARM_SHIPPING" in successful
-    )
-    return {
-        "ready": ready,
-        "date": fields,
-        "planner_phase": getattr(task, "_phase", None),
-        "successful_phases": sorted(successful),
-        "potato_seeds": potato_seeds,
-        "mountain_grape_shipped": "MOUNTAIN_BERRY" in successful,
-        # CROP_ESTABLISH may consume the newly purchased bag before the 5pm
-        # shipper gate. BUY_SEEDS is closed by stock-up + wallet-down evidence.
-        "potato_purchase_complete": "BUY_SEEDS" in successful,
-        "shipping_dialogue_cleared": "WAIT_FARM_SHIPPING" in successful,
-    }
 
 
 def _active_farm_clear_task(task: object) -> object | None:
-    """Find the active FarmClearTask through planner/orchestrator wrappers."""
     from harvest.tasks.farm_clear_task import FarmClearTask
-
     current: object | None = task
     seen: set[int] = set()
     while current is not None and id(current) not in seen:
@@ -714,10 +283,8 @@ def _active_farm_clear_task(task: object) -> object | None:
         current = getattr(current, "current_task", None)
     return None
 
-
 def _write_state(env, path: Path) -> Path:
     import gzip
-
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
@@ -726,10 +293,8 @@ def _write_state(env, path: Path) -> Path:
     os.replace(tmp, path)
     return path
 
-
 def _save_emulator_state(env, state_name: str) -> Path:
     return _write_state(env, GAME_DIR / f"{state_name}.state")
-
 
 def _progress_sidecar_path(args: argparse.Namespace) -> Path | None:
     every = args.progress_sidecar_every
@@ -743,7 +308,6 @@ def _progress_sidecar_path(args: argparse.Namespace) -> Path | None:
         return args.out.with_name(args.out.stem + ".progress.json")
     return None
 
-
 def _checkpoint_dir(args: argparse.Namespace) -> Path | None:
     if args.checkpoint_dir is not None:
         return args.checkpoint_dir
@@ -751,11 +315,9 @@ def _checkpoint_dir(args: argparse.Namespace) -> Path | None:
         return PROJECT_DIR / "recordings" / "d2_progress_checkpoints"
     return None
 
-
 def main() -> int:
     args = _parse_args()
     _configure_headless()
-
     if args.stop_after_d2_shipping and args.power_on is False and args.state is None:
         raise SystemExit("--stop-after-d2-shipping needs --power-on or a D2 morning --state")
     if args.stop_after_d2_shipping and args.day_plan:
@@ -764,7 +326,6 @@ def main() -> int:
         raise SystemExit("--stop-after-d2-clear needs --power-on or a D2 morning --state")
     if args.stop_after_d2_clear and args.day_plan:
         raise SystemExit("--stop-after-d2-clear uses the live multi-day planner")
-
     if args.end_of_spring:
         overnights_budget = 32
     elif args.days is not None:
@@ -777,12 +338,8 @@ def main() -> int:
         overnights_budget = max(2, args.until_day + 2)
     else:
         overnights_budget = 1
-
     if args.max_frames is None:
-        # Leftover (CLEAR_BUSHES / pond dumps / chunked smash) needs a
-        # multi-section day budget; 200k was one leftover section.
         args.max_frames = 2_000_000 * max(1, overnights_budget)
-
     source_state = None if args.power_on else GAME_DIR / f"{args.state}.state"
     source_state_sha256 = _file_sha256(source_state) if source_state else None
     env = AuditedEnv(
@@ -795,14 +352,40 @@ def main() -> int:
         capabilities=AuditCapabilities.all("harvest.run_to_day2"),
     )
     video: VideoRecorder | None = None
+    video_sealed = False
+    video_result: dict[str, object] | None = None
+
+    def _seal_video(**extra: object) -> dict[str, object] | None:
+        nonlocal video_sealed, video_result
+        if video is None:
+            return None
+        if not video_sealed:
+            video_sealed = True
+            try:
+                video.close()
+            except Exception as exc:
+                video_result = {
+                    "error": str(exc),
+                    "parts": [str(part) for part in video.parts],
+                    "frames": video.frames,
+                }
+            else:
+                video_result = _video_report(video)
+        if extra and isinstance(video_result, dict) and "error" not in video_result:
+            video_result = {**video_result, **extra}
+        return video_result
+
+    def _publish(report: dict, code: int) -> int:
+        report["video"] = _seal_video()
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(report, indent=2), flush=True)
+        return code
+
     t0 = time.monotonic()
     sidecar_path = _progress_sidecar_path(args)
     checkpoint_dir = _checkpoint_dir(args)
-    sidecar_every = (
-        args.progress_sidecar_every
-        if args.progress_sidecar_every is not None
-        else args.progress_every
-    )
+    sidecar_every = ( args.progress_sidecar_every if args.progress_sidecar_every is not None else args.progress_every )
     sidecar = (
         RunProgressSidecar(
             sidecar_path,
@@ -819,10 +402,8 @@ def main() -> int:
             obs = obs[0]
         if args.video is not None:
             video = _open_video(
-                args.video,
-                obs,
-                fps=args.video_fps,
-                scale=args.video_scale,
+                args.video, obs, fps=args.video_fps, scale=args.video_scale,
+                segment_frames=args.video_segment_frames or None,
             )
         frames = 0
         power_on_task: PowerOnStartTask | None = None
@@ -847,22 +428,10 @@ def main() -> int:
                         "success": False,
                         "reason": bootstrap.reason or bootstrap.status.value,
                         "mid_run_state_load": False,
-                        "clean_run": _clean_run_report(
-                            env,
-                            initial_state_loads=0,
-                            source_state=None,
-                            source_state_sha256=None,
-                        ),
+                        "clean_run": _clean_run_report( env, initial_state_loads=0, source_state=None, source_state_sha256=None, ),
                     }
-                    args.out.parent.mkdir(parents=True, exist_ok=True)
-                    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-                    print(json.dumps(report, indent=2), flush=True)
-                    return 2
-                action = (
-                    bootstrap.action.action
-                    if bootstrap.action is not None
-                    else make_action()
-                )
+                    return _publish(report, 2)
+                action = ( bootstrap.action.action if bootstrap.action is not None else make_action() )
                 step = env.step(action)
                 if video is not None:
                     video.write(_rgb_frame(step[0]))
@@ -878,21 +447,9 @@ def main() -> int:
                     "success": False,
                     "reason": "power-on frame budget exhausted",
                     "mid_run_state_load": False,
-                    "clean_run": _clean_run_report(
-                        env,
-                        initial_state_loads=0,
-                        source_state=None,
-                        source_state_sha256=None,
-                    ),
+                    "clean_run": _clean_run_report( env, initial_state_loads=0, source_state=None, source_state_sha256=None, ),
                 }
-                args.out.parent.mkdir(parents=True, exist_ok=True)
-                args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-                print(json.dumps(report, indent=2), flush=True)
-                return 2
-
-            # Count the successful bootstrap frame in the evidence, but do not
-            # advance the emulator after the task has already reached a stable
-            # controllable scene.
+                return _publish(report, 2)
             boot_frames = frames
             print(
                 f"[RUN] power-on ready after {boot_frames} frames: "
@@ -900,36 +457,21 @@ def main() -> int:
                 f"S{power_on_report['date']['season']}D{power_on_report['date']['day']}",
                 flush=True,
             )
-
         world = _world(env, frames)
         start_fields = _date_fields(world.ram)
         start_season = start_fields["season"]
         start_day = start_fields["day"]
         start_key = (start_fields["year"], start_season, start_day)
-
-        # Gate B full / rr-5in: power-on lands Spring D1 town; multi-day alone
-        # cannot do six talks + truck + shed + sleep. Run TownDay1Handoff first.
         if args.d1_handoff is None:
-            do_d1_handoff = bool(
-                args.power_on and start_season == 0 and start_day == 1
-            )
+            do_d1_handoff = bool( args.power_on and start_season == 0 and start_day == 1 )
         else:
             do_d1_handoff = bool(args.d1_handoff)
-
         d1_handoff_report: dict[str, object] | None = None
         d1_handoff_frames = 0
         if do_d1_handoff and not args.day_plan:
-            handoff = TownDay1HandoffTask(
-                include_sleep=True,
-                pick_starter_tools=True,
-                # auto: house_size==0 → require grass+can (power-on Gate B)
-                require_starter_tools=None,
-            )
+            handoff = TownDay1HandoffTask( include_sleep=True, pick_starter_tools=True, require_starter_tools=None, )
             handoff.reset(world)
-            print(
-                "[RUN] D1 handoff: talks + truck + outdoor intro + shed + sleep → D2",
-                flush=True,
-            )
+            print( "[RUN] D1 handoff: talks + truck + outdoor intro + shed + sleep → D2", flush=True, )
             handoff_start = frames
             handoff_budget = min(int(handoff.timeout), max(30_000, args.max_frames // 3))
             while frames - handoff_start < handoff_budget:
@@ -970,23 +512,14 @@ def main() -> int:
                     }
                     if args.save_end_state:
                         _save_emulator_state(env, f"{args.save_end_state}_FAIL")
-                    args.out.parent.mkdir(parents=True, exist_ok=True)
-                    args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-                    print(json.dumps(report, indent=2), flush=True)
-                    return 2
+                    return _publish(report, 2)
                 action = hr.action.action if hr.action is not None else make_action()
                 step = env.step(action)
                 if video is not None:
                     video.write(_rgb_frame(step[0]))
                 frames += 1
                 if sidecar is not None and sidecar_every and frames % sidecar_every == 0:
-                    sidecar.write(
-                        frame=frames,
-                        planner_frames=0,
-                        wall_seconds=time.monotonic() - t0,
-                        ram=world.ram,
-                        task=handoff,
-                    )
+                    sidecar.write( frame=frames, planner_frames=0, wall_seconds=time.monotonic() - t0, ram=world.ram, task=handoff, )
             else:
                 world = _world(env, frames)
                 d1_handoff_report = handoff.summary(world)
@@ -1009,23 +542,13 @@ def main() -> int:
                         source_state_sha256=source_state_sha256,
                     ),
                 }
-                args.out.parent.mkdir(parents=True, exist_ok=True)
-                args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-                print(json.dumps(report, indent=2), flush=True)
-                return 2
-
-            # Re-sample date after D1→D2 so multi-day plan builds from D2 morning.
+                return _publish(report, 2)
             world = _world(env, frames)
-            # Keep start_key as power-on D1 for continuous claim goal checks;
-            # multi-day internal date is live from RAM on reset.
-
         task = _build_task(args, start_key)
         planner = task  # never overwritten; --until-ending steps ending_task
         task.reset(world)
-
-        plan_label = args.day_plan or (
-            "end_of_spring" if args.end_of_spring else "auto_multi_day"
-        )
+        pins = season_pin_session(args, start_key, source_state_sha256)
+        plan_label = args.day_plan or ( "end_of_spring" if args.end_of_spring else "auto_multi_day" )
         if do_d1_handoff:
             plan_label = f"d1_handoff+{plan_label}"
         print(
@@ -1036,17 +559,14 @@ def main() -> int:
             f"end_of_spring={args.end_of_spring} max_frames={args.max_frames}",
             flush=True,
         )
-
         reason = "budget"
         terminal = False
         d2_checkpoint_evidence: dict[str, object] | None = None
         d2_prev_status = None
         d2_start_counts = _d2_counts(world.ram) if args.stop_after_d2_clear else None
         weed_checkpoint_saved: Path | None = None
-        # Multi-day budget is independent of handoff frames already spent.
         planner_start_frame = frames
         last_logged_day = read_world_ymd(world.ram)
-        # --until-ending: a finished credits screen is the success signal.
         ending_task: EndingTask | None = None
         ending_report: dict[str, object] = {
             "started": False,
@@ -1057,20 +577,14 @@ def main() -> int:
             "final": None,
         }
         stepped = planner
-
         def _start_ending(active_world, why: str) -> EndingTask:
             nonlocal ending_task
             ending_task = EndingTask()
             ending_task.reset(active_world)
             ending_report["handoff_frame"] = frames
             ending_report["handoff_date"] = format_world_date(active_world.ram)
-            print(
-                f"[RUN] ending handoff ({why}) date={format_world_date(active_world.ram)} "
-                f"frame={frames}",
-                flush=True,
-            )
+            print( f"[RUN] ending handoff ({why}) date={format_world_date(active_world.ram)} " f"frame={frames}", flush=True, )
             return ending_task
-
         def _sidecar_write(active_task, active_world, *, d2_status=None):
             if sidecar is None:
                 return None
@@ -1081,43 +595,27 @@ def main() -> int:
                 ram=active_world.ram,
                 task=active_task,
                 d2_status=d2_status,
-                save_state=(
-                    (lambda path: _write_state(env, path))
-                    if sidecar.checkpoint_on_progress
-                    else None
-                ),
+                save_state=( (lambda path: _write_state(env, path)) if sidecar.checkpoint_on_progress else None ),
             )
-
         result = None
         while args.max_frames <= 0 or frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
-            if (
-                args.until_ending
-                and ending_task is None
-                and is_ending_date(*read_world_ymd(world.ram))
-            ):
-                # Slept into Y3 Summer D30: the ROM plays the ending on its own
-                # (no input needed); stop day-planning and wait it out.
+            if ( args.until_ending and ending_task is None and is_ending_date(*read_world_ymd(world.ram)) ):
                 _start_ending(world, "ending date reached")
             if ending_task is not None:
                 stepped = ending_task
                 result = ending_task.step(world)
             else:
+                if pins is not None: pins.before_step(planner, world.ram, frames, lambda path: _write_state(env, path), env)
                 stepped = planner
                 result = planner.step(world)
             frames += 1
-
             year, season, day = read_world_ymd(world.ram)
             current = (year, season, day)
             if ending_task is not None:
                 sig = ending_task.signals
-                ending_report["started"] = bool(sig is not None and sig.started) or bool(
-                    ending_report["started"]
-                )
-                ending_report["peak_index"] = max(
-                    int(ending_report["peak_index"]), ending_task.peak_index
-                )
-
+                ending_report["started"] = bool(sig is not None and sig.started) or bool( ending_report["started"] )
+                ending_report["peak_index"] = max( int(ending_report["peak_index"]), ending_task.peak_index )
             if args.save_after_weeds is not None and weed_checkpoint_saved is None:
                 clear_task = _active_farm_clear_task(task)
                 if clear_task is not None:
@@ -1126,15 +624,8 @@ def main() -> int:
                     weed_only = len(priority) == 1 and getattr(priority[0], "name", "") == "WEED"
                     cleared = int(getattr(clearer, "cleared_count", 0) or 0)
                     if weed_only and cleared >= args.save_after_weeds:
-                        weed_checkpoint_saved = _save_emulator_state(
-                            env, args.weed_checkpoint_state
-                        )
-                        print(
-                            f"[RUN] Saved weed checkpoint cleared={cleared} "
-                            f"-> {weed_checkpoint_saved}",
-                            flush=True,
-                        )
-
+                        weed_checkpoint_saved = _save_emulator_state( env, args.weed_checkpoint_state )
+                        print( f"[RUN] Saved weed checkpoint cleared={cleared} " f"-> {weed_checkpoint_saved}", flush=True, )
             if args.stop_after_d2_shipping:
                 candidate = _d2_spine_checkpoint_evidence(task, world)
                 if bool(candidate["ready"]):
@@ -1142,40 +633,22 @@ def main() -> int:
                     reason = "day-2 grape/seed spine reached post-5pm checkpoint"
                     terminal = True
                     break
-
             if args.stop_after_d2_clear:
                 from harvest.planner.d2_work import confirm_d2_complete
-
                 d2_status = _d2_clear_status(task, world.ram)
                 if confirm_d2_complete(d2_prev_status, d2_status):
                     reason = "d2 farm clear complete"
                     terminal = True
                     break
                 d2_prev_status = d2_status
-
             if current != last_logged_day:
-                print(
-                    f"[RUN] day change {_ymd_text(last_logged_day)} "
-                    f"-> {_ymd_text(current)} at frame={frames}",
-                    flush=True,
-                )
+                print( f"[RUN] day change {_ymd_text(last_logged_day)} " f"-> {_ymd_text(current)} at frame={frames}", flush=True, )
                 last_logged_day = current
-
-            if (
-                result.status == TaskStatus.SUCCESS
-                and args.until_ending
-                and ending_task is None
-                and "ending" in (result.reason or "")
-            ):
-                # The planner saw the ROM start the ending; let it finish.
+            if ( result.status == TaskStatus.SUCCESS and args.until_ending and ending_task is None and "ending" in (result.reason or "") ):
                 _start_ending(world, result.reason or "ending reached")
                 stepped = ending_task
                 result = ending_task.step(world)
-            if (
-                result.status == TaskStatus.SUCCESS
-                and ending_task is not None
-                and stepped is ending_task
-            ):
+            if ( result.status == TaskStatus.SUCCESS and ending_task is not None and stepped is ending_task ):
                 ending_report["finished"] = True
                 reason = result.reason or "ending credits complete"
                 terminal = True
@@ -1184,14 +657,10 @@ def main() -> int:
                 if args.stop_after_d2_clear:
                     d2_status = _d2_clear_status(task, world.ram)
                     from harvest.planner.d2_work import confirm_d2_complete
-
                     if confirm_d2_complete(d2_prev_status, d2_status):
                         reason = "d2 farm clear complete"
                         terminal = True
                         break
-                    # The task may finish on the first settled observation;
-                    # advance one neutral frame so the terminal contract is
-                    # witnessed twice, not merely asserted from one sample.
                     d2_prev_status = d2_status
                 else:
                     reason = result.reason or "success"
@@ -1201,7 +670,6 @@ def main() -> int:
                 reason = result.reason or result.status.value
                 terminal = True
                 break
-
             if args.day_plan and not args.stop_after_d2_clear and _goal_reached(
                 start=start_key,
                 end=current,
@@ -1211,7 +679,6 @@ def main() -> int:
                 reason = "goal reached"
                 terminal = True
                 break
-
             stop_sig = _STOP["sig"]
             sample = bool(
                 (args.progress_every and frames % args.progress_every == 0)
@@ -1219,11 +686,7 @@ def main() -> int:
                 or stop_sig is not None
             )
             if sample:
-                record = _sidecar_write(
-                    stepped,
-                    world,
-                    d2_status=d2_prev_status if args.stop_after_d2_clear else None,
-                )
+                record = _sidecar_write( stepped, world, d2_status=d2_prev_status if args.stop_after_d2_clear else None, )
                 if args.progress_every and frames % args.progress_every == 0:
                     if record is not None:
                         print(format_run_progress_line(record), flush=True)
@@ -1246,40 +709,24 @@ def main() -> int:
                 reason = f"interrupted by signal {stop_sig}"
                 terminal = True
                 break
-
-            action = (
-                result.action.action
-                if result.action is not None
-                else make_action()
-            )
+            action = ( result.action.action if result.action is not None else make_action() )
             step = env.step(action)
+            if pins is not None: pins.note(action, env.get_ram())
             if video is not None:
                 video.write(_rgb_frame(step[0]))
-
         world = _world(env, frames)
-        _sidecar_write(
-            stepped,
-            world,
-            d2_status=d2_prev_status if args.stop_after_d2_clear else None,
-        )
+        _sidecar_write( stepped, world, d2_status=d2_prev_status if args.stop_after_d2_clear else None, )
         scene = classify_scene_from_ram(world.ram)
         end_fields = _date_fields(world.ram)
         end_key = (end_fields["year"], end_fields["season"], end_fields["day"])
         if ending_task is not None and ending_task.signals is not None:
             ending_report["final"] = ending_task.signals.to_dict()
-            ending_report["peak_index"] = max(
-                int(ending_report["peak_index"]), ending_task.peak_index
-            )
+            ending_report["peak_index"] = max( int(ending_report["peak_index"]), ending_task.peak_index )
         year_fields = _year_report_fields(planner)
         days_completed = year_fields["days_completed"]
         journal = list(year_fields["day_journal"] or [])
         advanced = end_key > start_key
-        goal = _goal_reached(
-            start=start_key,
-            end=end_key,
-            days_completed=days_completed,
-            args=args,
-        )
+        goal = _goal_reached( start=start_key, end=end_key, days_completed=days_completed, args=args, )
         morning_ok = morning_scene_ready(scene, end_fields["hour"]) or (
             scene.is_normal_map and int(read_ram_value(world.ram, "input_lock")) == 1
         )
@@ -1287,72 +734,36 @@ def main() -> int:
         d2_final_status = None
         d2_two_settled_observations = False
         if args.stop_after_d2_shipping:
-            d2_checkpoint_evidence = (
-                d2_checkpoint_evidence
-                or _d2_spine_checkpoint_evidence(task, world)
-            )
+            d2_checkpoint_evidence = ( d2_checkpoint_evidence or _d2_spine_checkpoint_evidence(task, world) )
             success = bool(terminal and d2_checkpoint_evidence["ready"])
         elif args.stop_after_d2_clear:
             d2_status = d2_prev_status or _d2_clear_status(task, world.ram)
             d2_end_counts = _d2_counts(world.ram)
             d2_final_status = d2_status.to_record() if d2_status is not None else None
             from harvest.planner.d2_work import confirm_d2_complete
-
-            d2_two_settled_observations = bool(
-                confirm_d2_complete(d2_prev_status, _d2_clear_status(task, world.ram))
-            )
-            success = bool(
-                terminal
-                and d2_status is not None
-                and d2_status.is_complete
-                and d2_two_settled_observations
-            )
+            d2_two_settled_observations = bool( confirm_d2_complete(d2_prev_status, _d2_clear_status(task, world.ram)) )
+            success = bool( terminal and d2_status is not None and d2_status.is_complete and d2_two_settled_observations )
         elif args.until_ending:
             success = bool(ending_report["finished"])
             goal = success
         else:
-            # A named day plan ends when its phases finish. The shop buy is
-            # the same calendar morning, so the overnight goal stays false.
-            plan_finished = bool(
-                args.day_plan
-                and terminal
-                and result is not None
-                and result.status == TaskStatus.SUCCESS
-            )
+            plan_finished = bool( args.day_plan and terminal and result is not None and result.status == TaskStatus.SUCCESS )
             success = bool(plan_finished or (goal and advanced and morning_ok))
-
-        # The ROM can expose its next-day RAM before its fade has produced a
-        # visible frame.  These neutral frames do not alter inputs, RAM, or
-        # the completed plan; they simply let the captured presentation catch
-        # up to the already-verified morning state.
         presentation_settle_frames = 0
         if video is not None and success:
             for _ in range(360):
                 presentation_step = env.step(make_action())
                 video.write(_rgb_frame(presentation_step[0]))
                 presentation_settle_frames += 1
-
-        video_result = None
-        if video is not None:
-            video.close()
-            video_result = _video_report(
-                video,
-                post_success_neutral_frames=presentation_settle_frames,
-            )
-
+        video_result = _seal_video(post_success_neutral_frames=presentation_settle_frames)
         if args.save_end_state:
-            # A failed run saves `<name>_FAIL` so the stall is a pin, not a
-            # 7-minute re-run.
             state_name = args.save_end_state if success else f"{args.save_end_state}_FAIL"
             try:
                 out_state = _save_emulator_state(env, state_name)
                 print(f"[RUN] Saved end state -> {out_state}", flush=True)
             except Exception as exc:
                 print(f"[RUN] Could not save end state: {exc}", flush=True)
-
-        # Crop keep-alive evidence (rr-3v9): only valid on farm metatile maps.
         crop_survival = _crop_survival_report(world.ram)
-
         js = year_fields["journal_summary"]
         if not isinstance(js, dict):
             js = _summarize_journal(journal)
@@ -1385,8 +796,10 @@ def main() -> int:
             total_harvested=total_harvested,
             mid_run_state_loads=mid_run_loads,
         )
+        pin_report = None if pins is None else pins.finish()
         report = {
             "state": None if args.power_on else args.state,
+            "season_pins": pin_report,
             "power_on": power_on_report,
             "d1_handoff": d1_handoff_report,
             "d1_handoff_frames": d1_handoff_frames,
@@ -1394,9 +807,7 @@ def main() -> int:
             "boot_frames": boot_frames,
             "planner_frames": frames - planner_start_frame,
             "day_plan": plan_label,
-            "phase_results": [
-                dict(row) for row in (getattr(planner, "phase_results", ()) or ())
-            ],
+            "phase_results": [ dict(row) for row in (getattr(planner, "phase_results", ()) or ()) ],
             "days": args.days,
             "until_day": args.until_day,
             "until_season": args.until_season,
@@ -1451,10 +862,12 @@ def main() -> int:
         print(json.dumps(report, indent=2), flush=True)
         return 0 if success else 1
     finally:
-        if video is not None:
-            video.close()
+        if video is not None and not video_sealed:
+            try:
+                video.close()
+            except Exception as exc:
+                print(f"[RUN] video close failed: {exc}", flush=True)
         env.close()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

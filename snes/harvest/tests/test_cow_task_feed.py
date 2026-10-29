@@ -99,6 +99,7 @@ class CowChoresFeedTests(unittest.TestCase):
 
         ram[ADDR_HELD_ITEM] = 0
         ram[ADDR_FED_COWS_N] = 1
+        _write_u16(ram, ADDR_FED_COWS_FLAGS, 0x0001)
         result = task.step(_make_world(ram))
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
@@ -179,7 +180,7 @@ class CowChoresFeedTests(unittest.TestCase):
         self.assertEqual(int(result.action.action[0]), 1)
 
     def test_feed_place_nav_top_trough_climbs_after_x_alignment(self) -> None:
-        ram = _make_barn_ram(cows=1, fed=0, hay=19, held_item=ITEM_FODDER)
+        ram = _make_barn_ram(cows=4, fed=0, hay=19, held_item=ITEM_FODDER)
         _set_player_px(ram, (COW_FEED_SPOTS[0].interact_px[0], 185))
         task = CowChoresTask(talk=False, brush=False, milk=False)
         task.reset(_make_world(ram))
@@ -229,3 +230,36 @@ class CowChoresFeedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_exact_slots_are_fed_even_with_gaps_and_unrelated_counter():
+    ram = _make_barn_ram(cows=1, fed=1, hay=5)
+    ram[0xC1C6] = 0
+    _set_cow_slot(ram, 7, (3, 15), status=9)
+    _write_u16(ram, ADDR_FED_COWS_FLAGS, 0x0008)
+    task = CowChoresTask(talk=False, brush=False, milk=False)
+    task.reset(_make_world(ram))
+    assert task._fed_before == 0
+    assert task._next_feed_spot(ram).flag == 0x0080
+    _write_u16(ram, ADDR_FED_COWS_FLAGS, 0x0080)
+    assert task._fed_count_now(ram) == 1
+
+
+def test_pregnant_cow_requires_special_trough():
+    ram = _make_barn_ram(cows=2, fed=2, hay=5)
+    _set_cow_slot(ram, 0, (10, 17), status=0x49)
+    _write_u16(ram, ADDR_FED_COWS_FLAGS, 0x0003)
+    task = CowChoresTask(talk=False, brush=False, milk=False)
+    task.reset(_make_world(ram))
+    assert task._feed_remaining == 1
+    assert task._next_feed_spot(ram).flag == 0x1000
+
+
+def test_unfed_completion_is_a_failure():
+    ram = _make_barn_ram(cows=1, hay=0)
+    task = CowChoresTask(talk=False, brush=False, milk=False)
+    task.reset(_make_world(ram))
+    task._phase = "done"
+    result = task.step(_make_world(ram))
+    assert result.status == TaskStatus.FAILURE
+    assert "feed flags" in result.reason

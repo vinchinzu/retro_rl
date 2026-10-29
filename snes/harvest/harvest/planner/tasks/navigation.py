@@ -26,7 +26,7 @@ from harvest.core.tile_catalog import (
 )
 from harvest.tasks.farm_ops import TileScanner
 
-from harvest.core.scene import classify_scene_from_ram
+from harvest.core.scene import classify_scene_from_ram, cow_name_awaits_gate
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result, drain_action_queue
 from harvest.tasks.recorded_task import RecordedTask
@@ -66,6 +66,16 @@ def nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskRes
             pulse_every=2,
             reason="shipping scene",
         )
+    # Paid cow, shop script still $2E. Do not press A; walk to the farm gate.
+    if cow_name_awaits_gate(ram):
+        input_lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
+        if input_lock == 1:
+            return None
+        return TaskResult(
+            status=TaskStatus.RUNNING,
+            action=ActionResult(make_action()),
+            reason="cow name bit; shop menu 0x2E",
+        )
     input_lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
     if input_lock != 1:
         return dismiss_dialogue_result(step_count, reason="input locked")
@@ -81,6 +91,10 @@ def nav_needs_menu_dismiss(ram: np.ndarray, step_count: int) -> Optional[TaskRes
 
 MAX_HOP = 10  # Max BFS hop distance (SNES viewport loads ~10 tiles around player)
 STALE_TILE_IDS = {0x72, 0x75, 0x76, 0xFF}
+# Far edge of the 16px tile that faces the crop. Stand/notch center is +8;
+# the adjacent tile runs 8..23. Chebyshev 33 is the tile past that (live
+# NAV_CROP soft-arrive) and the can cannot reach the crop from there.
+WATER_STAND_ARRIVE_PX = 23
 
 
 def find_frontier_path(
@@ -177,6 +191,9 @@ class NavTask(Task):
     soft_stasis: int = 90
     timeout: int = 3000
     stasis_repath: int = 180
+    # Watering stands cap soft-arrival at WATER_STAND_ARRIVE_PX. Other hops
+    # keep their own soft_radius (this flag never raises a tighter one).
+    water_stand: bool = False
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
@@ -191,6 +208,8 @@ class NavTask(Task):
     # to ~66 f/s (vs ~344 f/s normal) on exactly this once the crop pocket
     # filled in. Retrying 12f apart costs 0.2s of game time and ~1/12 the CPU.
     _repath_cooldown: int = field(default=0, init=False)
+    # One stuck repath before a too-far watering stand fails the hop.
+    _water_repaths: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -200,6 +219,7 @@ class NavTask(Task):
         self._step_count = 0
         self._door_leave_steps = 0
         self._repath_cooldown = 0
+        self._water_repaths = 0
         self._action_queue.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
@@ -208,6 +228,7 @@ class NavTask(Task):
 
     def resume_after_hotswap(self, world: WorldState) -> None:
         self._action_queue.clear()
+        self._water_repaths = 0
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -228,15 +249,111 @@ class NavTask(Task):
     def _at_target(self) -> bool:
         return self._distance_to_target() <= self.radius
 
-    def _soft_arrived(self) -> bool:
-        """Accept near-miss when stuck or nearly out of time."""
+    def _water_stand(self, ram: np.ndarray) -> bool:
+        """True for an explicit watering stand, or NAV_CROP beside a dry crop."""
+        if self.water_stand or "water" in self.name.lower():
+            return True
+        if "nav_crop" not in self.name.lower():
+            return False
+        from harvest.tasks.crop_geometry import tile_needs_watering
+
+        tx = int(self.target_px.x) // TILE_SIZE
+        ty = int(self.target_px.y) // TILE_SIZE
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if tile_needs_watering(get_tile_at(ram, tx + dx, ty + dy)):
+                    return True
+        return False
+
+    def _arrival_limit(self, ram: np.ndarray) -> int:
+        limit = self._soft_limit()
+        if self._water_stand(ram):
+            # Cap only. A ring hop at 7px must not grow to the water tile edge.
+            return min(limit, WATER_STAND_ARRIVE_PX)
+        return limit
+
+    def _soft_arrived(self, ram: np.ndarray | None = None) -> bool:
+        """Accept near-miss when stuck or nearly out of time.
+
+        A watering stand farther than ``WATER_STAND_ARRIVE_PX`` is not
+        arrived: the can is not on a tile that faces the crop.
+        """
         dist = self._distance_to_target()
-        if dist > self._soft_limit():
+        if ram is not None:
+            limit = self._arrival_limit(ram)
+        else:
+            limit = self._soft_limit()
+        if dist > limit:
             return False
         if self._navigator.stasis >= self.soft_stasis:
             return True
         # Last 20% of the timeout budget: close enough is good enough.
         return self._step_count >= max(1, int(self.timeout * 0.8))
+
+    def _stuck_off_water_stand(self, ram: np.ndarray) -> bool:
+        """Repath once, then fail, when stuck too far to water.
+
+        Soft-success at this distance used to end NAV_CROP and the water
+        task then skipped every dry tile. Failure lets the caller repath.
+        """
+        if not self._water_stand(ram):
+            return False
+        if self._distance_to_target() <= WATER_STAND_ARRIVE_PX:
+            return False
+        if self._navigator.stasis < self.soft_stasis:
+            return False
+        if self._water_repaths < 1 and self._repath_onto_near_water_stand(ram):
+            self._water_repaths += 1
+            self._navigator.path = []
+            self._navigator.stasis = 0
+            self._pathfinder.temp_blocked.clear()
+            return False
+        if self._water_repaths < 1:
+            self._water_repaths += 1
+            if self._navigator.path:
+                self._pathfinder.temp_blocked.add(self._navigator.path[0])
+            self._navigator.path = []
+            self._navigator.stasis = 0
+            return False
+        return True
+
+    def _repath_onto_near_water_stand(self, ram: np.ndarray) -> bool:
+        """Aim at a crop-facing stand already inside the 23px cap.
+
+        A sealed plot center leaves the farmer one tile short (dist 33).
+        Retarget the same day instead of deferring NAV_CROP until tomorrow.
+        A stand still past 23px is not selected.
+        """
+        from harvest.maps.farm_pond import FARM_NO_GO_TILES
+        from harvest.tasks.crop_geometry import tile_needs_watering
+        from harvest.tasks.nav import WALKABLE_TILES
+
+        pos = self._navigator.current_pos
+        cx = int(pos.x) // TILE_SIZE
+        cy = int(pos.y) // TILE_SIZE
+        best: Optional[Tuple[int, int]] = None
+        best_dist = WATER_STAND_ARRIVE_PX + 1
+        for ty in range(cy - 2, cy + 3):
+            for tx in range(cx - 2, cx + 3):
+                if (tx, ty) in FARM_NO_GO_TILES:
+                    continue
+                if get_tile_at(ram, tx, ty) not in WALKABLE_TILES:
+                    continue
+                if not any(
+                    tile_needs_watering(get_tile_at(ram, tx + dx, ty + dy))
+                    for dx, dy in ((0, -1), (0, 1), (-1, 0), (1, 0))
+                ):
+                    continue
+                sx = tx * TILE_SIZE + 8
+                sy = ty * TILE_SIZE + 8
+                dist = max(abs(int(pos.x) - sx), abs(int(pos.y) - sy))
+                if dist <= WATER_STAND_ARRIVE_PX and dist < best_dist:
+                    best = (sx, sy)
+                    best_dist = dist
+        if best is None:
+            return False
+        self.target_px = Point(best[0], best[1])
+        return True
 
     def _hop_target(self) -> tuple:
         """BFS target clamped to MAX_HOP tiles from current position."""
@@ -340,11 +457,20 @@ class NavTask(Task):
         # Arrived?
         if self._at_target():
             return TaskResult(status=TaskStatus.SUCCESS, reason="arrived")
-        if self._soft_arrived():
+        if self._soft_arrived(world.ram):
             return TaskResult(
                 status=TaskStatus.SUCCESS,
                 reason=(
                     f"soft arrived dist={self._distance_to_target()} "
+                    f"stasis={self._navigator.stasis}"
+                ),
+            )
+        if self._stuck_off_water_stand(world.ram):
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=(
+                    f"water stand dist={self._distance_to_target()} "
+                    f"limit={WATER_STAND_ARRIVE_PX} "
                     f"stasis={self._navigator.stasis}"
                 ),
             )

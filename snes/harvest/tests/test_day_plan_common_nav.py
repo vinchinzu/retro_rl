@@ -116,6 +116,41 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         self.assertEqual(result.status, TaskStatus.FAILURE)
         self.assertIn("pixel_stuck", result.reason or "")
 
+    def test_plain_waypoint_on_a_fence_tile_is_reached_from_its_standable_neighbour(self) -> None:
+        """field_to_shed aims at (21, 31); Summer regrows that tile as fence (0x05)."""
+        ram = make_navigation_ram(current_tile=(21, 30), blocked_tile=(21, 31), blocked_id=0x05)
+        world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
+        fence_wp = Waypoint(tilemap=0x00, target_px=(344, 504), radius=12)
+        task = MultiMapNavTask(waypoints=[fence_wp], timeout=800, initial_settle_frames=0)
+        task.reset(world)
+        task._navigator.update(ram)
+
+        self.assertFalse(task._at_wp_target(fence_wp))  # the pixel test alone is 16px short
+        self.assertTrue(task._at_wp_target(fence_wp, ram))
+
+        exact = [
+            Waypoint(tilemap=0x00, target_px=(344, 504), radius=12, is_exit=True, exit_direction="down"),
+            Waypoint(tilemap=0x00, target_px=(344, 504), radius=12, action_on_arrive="press_a"),
+        ]
+        for wp in exact:
+            self.assertFalse(task._at_wp_target(wp, ram))
+
+        set_player_pos(ram, 21 * 16 + 8, 32 * 16 + 8)  # south of the fence: not there yet
+        task._navigator.update(ram)
+        self.assertFalse(task._at_wp_target(fence_wp, ram))
+
+    def test_waypoint_on_walkable_ground_keeps_the_pixel_arrival_test(self) -> None:
+        ram = make_navigation_ram(current_tile=(21, 30), blocked_tile=(63, 63), blocked_id=0xA1)
+        task = MultiMapNavTask(
+            waypoints=[Waypoint(tilemap=0x00, target_px=(344, 504), radius=12)],
+            timeout=800,
+            initial_settle_frames=0,
+        )
+        task.reset(SimpleNamespace(ram=ram, info={}, obs=None, frame=0))
+        task._navigator.update(ram)
+
+        self.assertFalse(task._at_wp_target(task.waypoints[0], ram))
+
     def _path_map_ram(self):
         """Path 0x0C at the mountain-gate descent: 0xFF seals (7,7)/(8,7)."""
         ram = make_navigation_ram(current_tile=(8, 6), blocked_tile=(63, 63))

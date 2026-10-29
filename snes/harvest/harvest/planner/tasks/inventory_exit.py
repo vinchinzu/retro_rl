@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
+from collections import deque
 
 import numpy as np
 
@@ -43,7 +44,8 @@ from harvest.core.scene import (
     name_entry_press,
     scene_indicates_ending,
 )
-from harvest.core.ram_catalog import read_ram_value
+from harvest.core.ram_catalog import read_ram_value, read_ram_u8
+from harvest.core.npc_catalog import game_objects
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.planner.tasks.transitions import (
     DirectionalTransitionTask,
@@ -274,12 +276,90 @@ class CompleteOutdoorMorningIntroTask(Task):
 
 
 # Maps with a known pure exit / return route to farm.
-_EXIT_ROUTE_TILEMAPS = frozenset({0x0C, 0x04, 0x05, 0x10})
+_EXIT_ROUTE_TILEMAPS = frozenset({0x0C, 0x04, 0x05, 0x10, 0x1C, 0x22, 0x23})
 _BUILDING_EXIT_TILEMAPS = frozenset({SHED_TILEMAP, BARN_TILEMAP, COOP_TILEMAP})
 
 
 # Measured (Summer D1 exit pin): first pixel of movement 64f after the flip.
 FARM_FADE_IN_FRAMES = 72
+
+
+def room_walk_action(ram, target):
+    """BFS on the ROM's interior stride ($0181), then walk tile centers."""
+    width_code = read_ram_u8(ram, 0x0181, live_offset=False)
+    width = 16 if width_code == 1 else 32 if width_code == 2 else 64
+    pos = get_pos_from_ram(ram)
+    start, goal = (pos.x // 16, pos.y // 16), (target[0] // 16, target[1] // 16)
+    occupied = set()
+    for obj in game_objects(ram):
+        if obj.is_player or not obj.is_npc_candidate:
+            continue
+        x, y = obj.pixel
+        occupied.update((tx, ty) for tx in range((x - 12) // 16, (x + 12) // 16 + 1)
+                        for ty in range((y - 12) // 16, (y + 12) // 16 + 1))
+    previous, queue = {start: None}, deque([start])
+    while queue and goal not in previous:
+        x, y = queue.popleft()
+        for dx, dy in ((0,-1), (0,1), (-1,0), (1,0)):
+            tile = x + dx, y + dy
+            if not (0 <= tile[0] < width and 0 <= tile[1] < 32) or tile in previous:
+                continue
+            if tile in occupied and tile != goal:
+                continue
+            value = read_ram_u8(ram, 0x09B6 + tile[1] * width + tile[0])
+            if value not in {0, 1, 0xA0, 0xC3}:
+                continue
+            previous[tile] = (x, y)
+            queue.append(tile)
+    if goal not in previous:
+        return make_action()
+    tile = goal
+    while previous[tile] is not None and previous[tile] != start:
+        tile = previous[tile]
+    # Finish entering the current tile before turning around an NPC.
+    if tile[0] != start[0] and pos.y != start[1] * 16 + 8:
+        return make_action(down=pos.y < start[1] * 16 + 8, up=pos.y > start[1] * 16 + 8)
+    if tile[1] != start[1] and pos.x != start[0] * 16 + 8:
+        return make_action(right=pos.x < start[0] * 16 + 8, left=pos.x > start[0] * 16 + 8)
+    x, y = target if tile == start else (tile[0] * 16 + 8, tile[1] * 16 + 8)
+    dx, dy = x - pos.x, y - pos.y
+    if dx and (tile == start or abs(dx) >= abs(dy)):
+        return make_action(right=dx > 0, left=dx < 0)
+    return make_action(down=dy > 0, up=dy < 0)
+
+
+@dataclass
+class _ToolShopExitTask(Task):
+    name: str = "tool_shop_exit"
+    _steps: int = field(default=0, init=False)
+    _route: Optional[Task] = field(default=None, init=False)
+
+    def reset(self, world):
+        self._steps, self._route = 0, None
+
+    def can_start(self, world):
+        return True
+
+    def step(self, world):
+        from harvest.maps.map_routes import segment_waypoints
+        self._steps += 1
+        if self._steps > 8000:
+            return TaskResult(TaskStatus.FAILURE, reason="tool shop exit timeout")
+        ram = world.ram
+        tilemap = read_ram_value(ram, "tilemap")
+        if tilemap in {0x22, 0x23}:
+            if read_ram_value(ram, "input_lock") != 1:
+                return dismiss_dialogue_result(self._steps)
+            pos = get_pos_from_ram(ram)
+            # Back-room tile (6,11) is the non-walkable door trigger 0xFF.
+            # Approach the floor above it, then press Down across the door.
+            target = (104,168) if tilemap == 0x23 else (136,440)
+            action = make_action(down=True) if pos.y >= target[1] and abs(pos.x - target[0]) <= 2 else room_walk_action(ram, target)
+            return TaskResult(TaskStatus.RUNNING, action=ActionResult(action))
+        if self._route is None:
+            self._route = MultiMapNavTask(waypoints=segment_waypoints("town_south_to_path") + segment_waypoints("path_to_farm"), timeout=6000)
+            self._route.reset(world)
+        return self._route.step(world)
 
 
 @dataclass
@@ -341,6 +421,8 @@ class ExitToFarmTask(Task):
                 dialog_frames=120,
                 timeout=self.house_timeout,
             )
+        elif tilemap in {0x22, 0x23}:
+            self._task = _ToolShopExitTask()
         elif tilemap in _BUILDING_EXIT_TILEMAPS:
             self._task = DirectionalTransitionTask(
                 name="directional_transition_exit_to_farm",
@@ -362,10 +444,16 @@ class ExitToFarmTask(Task):
                 0x04: "town_to_farm",
                 0x05: "event_town_to_farm",
                 0x10: "mountain_to_farm",
+                0x1C: "shop_to_farm",
             }[tilemap]
             waypoints = list(ROUTES.get(route_name, []))
             pos = get_pos_from_ram(world.ram)
-            if tilemap == 0x10:
+            if tilemap == 0x1C:
+                from harvest.maps.map_routes import segment_waypoints
+                waypoints = (segment_waypoints("shop_to_town")
+                             + segment_waypoints("town_shop_to_path")
+                             + segment_waypoints("path_to_farm"))
+            elif tilemap == 0x10:
                 if int(pos.y) >= 380:
                     # Gate descent, not plaza path_to_farm: (8,7) is 0xFF.
                     waypoints = mountain_exit_then_farm(
@@ -505,8 +593,15 @@ class ExitToFarmTask(Task):
 
     def _farm_control_result(self, world: WorldState, scene) -> Optional[TaskResult]:
         """Finish a farm visitor before giving navigation any frames."""
-        if farm_free_move_ready(world.ram):
+        flags = read_ram_value(world.ram, "game_state")
+        if (farm_free_move_ready(world.ram) and not flags & 0x0040
+                and read_ram_value(world.ram, "input_lock") == 1):
             self._farm_control_wait = 0
+            pos = get_pos_from_ram(world.ram)
+            if (read_ram_value(world.ram, "upgrade_flags") & 0xC0
+                    and abs(pos.x - 136) <= 12 and 330 <= pos.y < 376):
+                return TaskResult(TaskStatus.RUNNING, action=ActionResult(make_action(down=True)),
+                                  reason="walk off remodeled house steps")
             return None
         self._farm_control_wait += 1
         if self._farm_control_wait > self.farm_control_limit:
@@ -567,10 +662,15 @@ class ExitToFarmTask(Task):
 
         # Drop stale child routes when the live tilemap left their origin
         # (house exit warping onto unregistered 0x08 must not keep house logic).
-        if self._task is not None and not self._has_known_exit_route(tilemap):
+        if (self._task is not None and not self._has_known_exit_route(tilemap)
+                and not isinstance(self._task, _ToolShopExitTask)):
             self._task = None
 
         if scene.is_transient:
+            # The town-to-path exit still needs its direction while map and
+            # coordinates flip; neutral waiting interrupts that transition.
+            if isinstance(self._task, _ToolShopExitTask) and self._task._route is not None:
+                return self._task.step(world)
             if scene.mode == SceneMode.CUTSCENE_EVENT:
                 self._cutscene_mash_count += 1
                 timed = self._sticky_offroute_timeout(scene, kind="cutscene/unknown")

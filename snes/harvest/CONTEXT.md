@@ -4,7 +4,7 @@ Scriptable full-game Harvest Moon (SNES): a reactive skill API that plays the
 whole game from power-on, Clean, then a 10–20 hour YouTube through the end of
 credits with a score on the board. First credits is a basic path. **Gut** the
 tree until a **Skill** can be A/B’d without rewriting the harness; **Speed**
-runs through that loop.
+runs through that loop. **Perfect** is the rung after **Finish**.
 
 ## Language
 
@@ -12,8 +12,17 @@ runs through that loop.
 The published YouTube of a natural power-on playthrough that sits through the
 **end** of credits and shows **Score**. Not the first credits tape. Not ranch
 master.
-_Avoid_: first credits frame as done, ranch-master 999, Gate B, summer entry,
-crop-loop closed, leftover quotas, date-patched credits, speedrun input movies
+_Avoid_: first credits frame as done, treating ranch-master 999 as Finish, Gate B,
+summer entry, crop-loop closed, leftover quotas, date-patched credits,
+speedrun input movies
+
+**Perfect**:
+RAM `ranch_mastery` 999 at ending index `0x25`, from one Clean continuous
+power-on run. The rung after **Finish**. The owner asked for this campaign.
+Every score term is maxed. Girl hearts and shipped crops are windows: each
+girl 496-511, each of the four crops 496-511. Not a Finish fail line.
+_Avoid_: calling Finish done only at 999, RAM writes, mid-run loads,
+date-patched credits, a showcase 999 preset as the rung
 
 **First run**:
 An intermediate natural playthrough through credits with a score, basics only.
@@ -36,8 +45,8 @@ _Avoid_: a new CrossMap tape as the compare tool, a new probe CLI per shop
 
 **Speed**:
 Button-press / policy work through the **A/B loop**. May run in the same week
-as **Gut**. Must not mint a runner or rewrite the loop. Ranch master / 999 is
-**Speed**, not a first-credits fail line.
+as **Gut**. Must not mint a runner or rewrite the loop. **Perfect** is the
+rung after **Finish**, not a first-credits fail line.
 _Avoid_: “then rewrite” as a second tree, baking D2 as an unparameterized script
 to shave minutes before the loop is stable
 
@@ -48,9 +57,10 @@ _Avoid_: highlight montage as the completion artifact, wall-clock of a turbo
 watch as the runtime
 
 **Score**:
-Whatever number the credits evaluation shows on a natural run. First path only
-needs a score to exist. Ranch master / 999 is later **Speed**, not required.
-_Avoid_: ranch master as a fail line, 999, requiring the ranch-master branch
+Whatever number the credits evaluation shows on a natural run. **Finish** only
+needs a score to exist. **Perfect** is ranch mastery 999, the rung after
+**Finish**.
+_Avoid_: ranch master as a Finish fail line, requiring 999 before credits
 
 **Clean**:
 No RAM writes on Harvest tapes and rungs. Resource pokes were a past speed
@@ -81,7 +91,7 @@ _Avoid_: treating those saves as the route, “already have the ending”
 
 **Harvest rungs**:
 The working board, in order: D2 farm clear → first potato harvest → Spring to
-Summer → animals → Y1 done → marriage → Y3 credits → published video.
+Summer → animals → Y1 done → marriage → Y3 credits → published video → Perfect.
 _Avoid_: Gate A, Gate B, Gate C, M3.1, leftover quotas as rungs
 
 **D2 farm clear**:

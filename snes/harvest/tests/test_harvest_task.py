@@ -18,6 +18,8 @@ from harvest.tasks.harvest_task import (
     ACTION_CARRYING_BIT,
     ADDR_PLAYER_STATE,
     ADDR_SHIPPING_MONEY,
+    SHIP_NAV_STALL_LIMIT,
+    SHIP_NAV_TOTAL_LIMIT,
     TARGET_NAV_STALL_LIMIT,
     TARGET_NAV_TOTAL_LIMIT,
     HarvestStep,
@@ -220,21 +222,23 @@ class HarvestTaskTests(unittest.TestCase):
         for ty in range(MAP_WIDTH):
             for tx in range(MAP_WIDTH):
                 _set_tile(ram, tx, ty, 0xFF)
-        target = (18, 27)
-        _set_tile(ram, 17, 27, 0x01)  # right face stand (west of target)
-        _set_tile(ram, 18, 26, 0x01)  # down face stand (north of target)
-        _set_tile(ram, 19, 27, 0x01)  # left face stand (east of target)
+        # (17, 27) is the well (FARM_NO_GO). Use a clear pocket so the
+        # shipping-side rank is about walkable neighbors, not the well.
+        target = (22, 22)
+        _set_tile(ram, 21, 22, 0x01)  # right face stand (west of target)
+        _set_tile(ram, 22, 21, 0x01)  # down face stand (north of target)
+        _set_tile(ram, 23, 22, 0x01)  # left face stand (east of target)
         # South neighbor stays 0xFF (not walkable) — only 3 candidates exist.
 
         steps = build_harvest_steps(ram, [target])
 
         self.assertEqual(len(steps), 1)
         step = steps[0]
-        self.assertEqual(step.stand, (17, 27))
+        self.assertEqual(step.stand, (21, 22))
         self.assertEqual(step.face, "right")
         self.assertEqual(len(step.alt_stands), 2)
         all_stands = {step.stand} | {stand for stand, _face in step.alt_stands}
-        self.assertEqual(all_stands, {(17, 27), (18, 26), (19, 27)})
+        self.assertEqual(all_stands, {(21, 22), (22, 21), (23, 22)})
 
     def test_build_harvest_steps_no_alt_stands_when_only_one_neighbor(self) -> None:
         ram = np.zeros(0x20000, dtype=np.uint8)
@@ -247,6 +251,35 @@ class HarvestTaskTests(unittest.TestCase):
 
         self.assertEqual(len(steps), 1)
         self.assertEqual(steps[0].alt_stands, ())
+
+    def test_sealed_12_28_blocked_laterals_keep_vertical_stand(self) -> None:
+        """(11, 28) is the shipping ditch and (13, 28) is the boxed plot
+        center. A ripe south neighbor must still be a stand for (12, 28)."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        for ty in range(MAP_WIDTH):
+            for tx in range(MAP_WIDTH):
+                _set_tile(ram, tx, ty, 0xFF)
+        _set_tile(ram, 12, 28, 0x60)
+        _set_tile(ram, 11, 28, 0xA0)  # walkable id, FARM_NO_GO ditch
+        _set_tile(ram, 13, 28, 0x01)  # plot center
+        for tile in (
+            (12, 27),
+            (13, 27),
+            (14, 27),
+            (14, 28),
+            (13, 29),
+            (14, 29),
+        ):
+            _set_tile(ram, tile[0], tile[1], 0x52)
+        _set_tile(ram, 12, 29, 0x60)
+        _set_tile(ram, 12, 30, 0x01)
+
+        steps = build_harvest_steps(ram, [(12, 28), (12, 29)])
+        step = next(item for item in steps if item.target == (12, 28))
+        stands = {step.stand} | {stand for stand, _face in step.alt_stands}
+
+        self.assertTrue(stands & {(12, 27), (12, 29)})
+        self.assertNotIn((11, 28), stands)
 
     def test_reset_records_unreachable_targets_by_id(self) -> None:
         """A target with no walkable neighbor at all is reported by tile id,
@@ -330,6 +363,70 @@ class HarvestTaskTests(unittest.TestCase):
         self.assertEqual(task._navigator.path, [])
         self.assertEqual(task._navigator.stasis, 0)
         self.assertEqual(task._pathfinder.temp_blocked, set())
+
+    @staticmethod
+    def _sealed_bin_ram(player: tuple[int, int] = (11, 25)) -> np.ndarray:
+        """Fence everywhere except the x=11 lane down to the bin stand (11, 30)."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        ram[ADDR_MAP : ADDR_MAP + MAP_WIDTH * 64] = 0x05
+        for y in range(25, 31):
+            _set_tile(ram, 11, y, 0x01)
+        x, y = player[0] * 16 + 8, player[1] * 16 + 8
+        ram[ADDR_X], ram[ADDR_X + 1] = x & 0xFF, x >> 8
+        ram[ADDR_Y], ram[ADDR_Y + 1] = y & 0xFF, y >> 8
+        _set_carry(ram, 0x20)
+        return ram
+
+    def test_ship_walk_takes_the_bin_lane_that_the_static_no_go_table_blocks(self) -> None:
+        """A grown ring plus a weed on (12, 30) leave x=11 as the way to the bin."""
+        ram = self._sealed_bin_ram()
+        task = HarvestTask()
+        task._navigator.update(ram)
+
+        action, blocked = task._navigate_to_tile(ram, (11, 30))
+
+        self.assertFalse(blocked)
+        self.assertEqual(int(action[5]), 1)  # DOWN
+
+        task._pathfinder.allow_tiles = set()
+        task._navigator.path = []
+        _action, blocked = task._navigate_to_tile(ram, (11, 30))
+        self.assertTrue(blocked)
+
+    def test_ship_nav_tosses_the_crop_and_fails_when_every_bin_stand_is_sealed(self) -> None:
+        ram = self._sealed_bin_ram(player=(11, 28))
+        _set_tile(ram, 11, 29, 0x05)  # the lane dead-ends one tile short of the stand
+        task = HarvestTask()
+        task._phase = "ship_nav"
+        task.harvested_count = 1
+        task._ship_options = [((11, 30), "left")]
+        task._nav_stall_steps = SHIP_NAV_STALL_LIMIT
+
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "clear_hands")
+        self.assertIn("bin unreachable", task._abort_reason)
+
+        task._action_queue.clear()
+        ram[ADDR_PLAYER_STATE] = 0
+        ram[ADDR_ITEM_ON_HAND] = 0
+        result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("bin unreachable", result.reason)
+
+    def test_ship_walk_total_ceiling_abandons_a_walk_that_never_arrives(self) -> None:
+        ram = self._sealed_bin_ram()
+        task = HarvestTask()
+        task._phase = "ship_nav"
+        task.harvested_count = 1
+        task._ship_nav_steps = SHIP_NAV_TOTAL_LIMIT
+
+        task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual(task._phase, "clear_hands")
+        self.assertIn("bin unreachable", task._abort_reason)
 
     def test_ship_verify_pulses_a_while_shipping_dialog_is_locked(self) -> None:
         ram = np.zeros(0x20000, dtype=np.uint8)
@@ -613,6 +710,80 @@ class HarvestTaskTests(unittest.TestCase):
 
         self.assertEqual(first.group, 1)
         self.assertEqual(second.group, 1)
+
+    def test_adjacent_unreachable_crops_do_not_defer_each_other_forever(self) -> None:
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        task = HarvestTask()
+        task._steps = [
+            HarvestStep(target=(14, 28), stand=(15, 28), face="left"),
+            HarvestStep(target=(14, 29), stand=(14, 30), face="up"),
+        ]
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        with patch.object(task, "_stand_provably_unreachable", return_value=True):
+            for _ in range(12):
+                task.step(world)
+        self.assertGreater(task.skipped_count, 0)
+
+    def test_boxed_center_harvested_once_neighbor_cleared(self) -> None:
+        """Ring first. Retry (12, 28) after a ripe neighbor is gone."""
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        for ty in range(MAP_WIDTH):
+            for tx in range(MAP_WIDTH):
+                _set_tile(ram, tx, ty, 0xFF)
+        _set_tile(ram, 12, 28, 0x52)
+        _set_tile(ram, 12, 29, 0x52)
+        _set_tile(ram, 12, 27, 0x52)
+        _set_tile(ram, 11, 28, 0xA0)
+        _set_tile(ram, 13, 28, 0xFF)
+        _set_tile(ram, 12, 30, 0x01)
+        _set_tile(ram, 12, 26, 0x01)
+        world = SimpleNamespace(ram=ram, info={}, obs=None)
+        task = HarvestTask()
+        task.reset(world)
+        center = next(step for step in task._steps if step.target == (12, 28))
+        stands = {center.stand} | {stand for stand, _face in center.alt_stands}
+        self.assertTrue(stands & {(12, 27), (12, 29)})
+        self.assertTrue(stands <= {(12, 27), (12, 29)})
+
+        def place(tx: int, ty: int) -> None:
+            px = tx * 16 + 8
+            py = ty * 16 + 8
+            ram[ADDR_X] = px & 0xFF
+            ram[ADDR_X + 1] = px >> 8
+            ram[ADDR_Y] = py & 0xFF
+            ram[ADDR_Y + 1] = py >> 8
+
+        place(12, 30)
+        task.step(world)
+        self.assertNotEqual(task._current.target, (12, 28))
+        self.assertIn(task._current.target, {(12, 27), (12, 29)})
+        self.assertEqual(task.skipped_count, 0)
+        neighbor = task._current.target
+        task._action_queue.clear()
+        task._current = None
+        task._phase = "select"
+        _set_tile(ram, *neighbor, 0x07)
+        place(*neighbor)
+
+        harvested_center = False
+        for _ in range(60):
+            ready = (
+                task._phase == "target_verify"
+                and not task._action_queue
+                and task._current is not None
+                and task._current.target == (12, 28)
+            )
+            if ready:
+                _set_tile(ram, 12, 28, 0x07)
+                harvested_center = True
+            task.step(world)
+            if task.harvested_count:
+                break
+
+        self.assertTrue(harvested_center)
+        self.assertEqual(task.harvested_count, 1)
+        self.assertEqual(task.skipped_count, 0)
+        self.assertEqual(task._current.target, (12, 28))
 
     def test_crop_nav_target_uses_nearest_harvest_stand(self) -> None:
         ram = np.zeros(0x20000, dtype=np.uint8)

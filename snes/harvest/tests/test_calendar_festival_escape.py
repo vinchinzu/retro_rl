@@ -8,7 +8,11 @@ import numpy as np
 
 from harvest.core.tile_catalog import ADDR_TILEMAP
 from harvest.planner.multi_day_planner import MultiDayPlannerTask
-from harvest.planner.tasks.festival_escape import FESTIVAL_MAPS, FestivalEscapeTask
+from harvest.planner.tasks.festival_escape import (
+    FESTIVAL_MAPS,
+    FestivalEscapeTask,
+    day_plan_owns_festival,
+)
 from harvest.tasks.nav import make_action
 from retro_harness import ActionResult, TaskResult, TaskStatus
 
@@ -85,6 +89,37 @@ class FestivalEscapeTests(unittest.TestCase):
         self.assertEqual(task._phase, "return_home")
         self.assertEqual(seen["n"], 1)
         self.assertIs(task._current_task.__class__, _Day)
+
+    def test_flower_festival_keeps_map_08_and_the_day_floor(self) -> None:
+        class FlowerFestivalTask:
+            pass
+
+        class _Plan:
+            def __init__(self) -> None:
+                self._current_task = FlowerFestivalTask()
+
+            def step(self, world):
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+        plan = _Plan()
+        task = MultiDayPlannerTask()
+        task._phase = "plan_day"
+        task._current_task = plan
+        task.floor.frame_budget = 1
+        task.floor.begin_day(0)
+        self.assertTrue(day_plan_owns_festival(plan))
+        for _ in range(4):
+            result = task._step_inner(_world(0x08))
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "plan_day")
+        self.assertIs(task._current_task, plan)
+        self.assertIsNone(task._festival_escape)
+        self.assertFalse(task._floor_abandoned)
+
+        bare = MultiDayPlannerTask()
+        bare._sync_festival_phase(_world(0x08))
+        self.assertEqual(bare._phase, "festival")
+        self.assertIsNotNone(bare._festival_escape)
 
 
 if __name__ == "__main__":

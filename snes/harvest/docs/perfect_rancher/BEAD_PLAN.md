@@ -22,8 +22,8 @@ read that file and `snes/harvest/AGENTS.md` first.
    - `-d "plan key PR-0NN; snes/harvest/docs/perfect_rancher/BEAD_PLAN.md"`.
 3. Add each `Deps` entry with `bd dep add <this> <dep>`. `rr-…` IDs are
    existing beads.
-4. Then run `bd export -o .beads/issues.jsonl`, and commit it together with
-   these docs.
+4. Do not commit `.beads/` or backups with these docs. The board archive is
+   `/home/v/01_projects/11_games/archive/retro_rl-beads-2026-10-15`.
 
 Working queue: `bd ready -l harvest -l rancher999`.
 
@@ -62,7 +62,7 @@ those tests. The calendar-data probe has fifteen live sightings now.
 
 | Stage | Entry condition | Work |
 |-------|-----------------|------|
-| Feasibility repair | now, bounded probes | PR-084 clock request, native exact-ten edge, PR-098 short behavior comparison; naming prerequisites then mandatory PR-048 slot-0 birth path |
+| Feasibility repair | now, bounded probes | PR-084 clock request, native exact-ten edge, PR-098 short behavior comparison; correct interior stride; optional PR-048 breeding strategy |
 | Compatible plan | herd/naming and dated happiness sources | Reopened F7/PR-016 and F5/PR-014, then PR-022; preserve clock-before-house-2, final-night cover, children and window constraints |
 | Runtime skills | accepted dated tasks | Reopened PR-023 dispatch, PR-024 full-scale ROM day, PR-045/047/050 animals, PR-072/073 social; remaining crop, home and collectible skills |
 | Integration | lane code and native receipts available | Commit and integrate one lane at a time; bounded ROM windows on main, then PR-089/090/091 natural checkpoints |
@@ -72,7 +72,7 @@ PR-005 records an ADR ruling but is reopened because the handoff and
 zero-load acceptance text conflict with it. No new owner ruling is inferred.
 The old `milestones.yaml` is marked as a model awaiting revision. Exactly
 seven berries imply a conditional ceiling of 984; ten berries alone do not
-establish 999. Critical blockers include bought slot 0, no birth budget,
+establish 999. Critical blockers include unproved daily herd care and happiness budget,
 late child-age happiness, the clock trigger and milestone execution.
 
 ---
@@ -249,7 +249,7 @@ and egg output. Extend `livestock_econ` and `spring_opt` into a 299-day cash
 ledger.
 Done when: `research/F5_economy.md` and the ledger output show a money path
 that ends between 99,840G and 655,350G on D30 under compatible F2/F3/F4/F7
-plans, including native slot-0 replacement, births, lumber and repairs.
+plans, including the selected breeding or food strategy, lumber and repairs.
 
 ### PR-015 — F6: collectibles (10 berries, clock, turtle shell)
 Tracker: `rr-ux6x.7.7`.
@@ -325,7 +325,7 @@ girls on 3 sample days.
 
 ### PR-022 — Backward milestone solver → `milestones.yaml`
 Tracker: `rr-ux6x.8.2`.
-Audit: rebuild the bought-slot-0/no-birth milestones using accepted F5/F7
+Repair: native slot-0 feeding passes; validate the conditional milestones using accepted F5/F7
 and live native edge recipes; existing tests establish arithmetic only.
 `task · P0 · CAMPAIGN · compose · Deps: PR-019, PR-014 · W1`
 Do: From the F-gate numbers, solve latest-start dates for every term: herd
@@ -542,16 +542,14 @@ a ledger alarm when a cow cannot make it in time.
 Done when: in a what-if with one cow 20 behind, the controller closes the
 gap.
 
-### PR-048 — Mandatory breeding and born-slot-0 path
+### PR-048 — Optional breeding and happiness repair
 Tracker: `rr-ux6x.11.6`.
-`task · P0 · ANIMALS · compose · Deps: PR-079, PR-012 · repair`
-Do: Prove a native way to free slot 0 and name a calf inheriting 100
-happiness. Schedule protected care, the final sleep, all required births,
-maternal quality, barn space, miracle potions and slot turnover. Coordinate
-with F5/F7 rather than filling the barn with purchases.
-Done when: a live born-slot-0 probe reaches ≥200 at the D30 tally without
-RAM slot copies, and a dated herd/birth budget supplies twelve existing
-cows at ≥200 and the required happiness sources.
+`task · P2 · ANIMALS · compose · Deps: PR-043 · W2`
+Do: Prove native potion/birth/naming and dated calf care if the campaign
+chooses the buy-three/breed-nine happiness strategy. Slot 0's trough now
+passes native feeding; replacing it is not required.
+Done when: native naming and inherited happiness receipts, care dates and
+the complete shared F5/F7 budget justify the selected breeding plan.
 
 ### PR-049 — Fodder pipeline for 12
 Tracker: `rr-ux6x.11.7`.
@@ -708,11 +706,17 @@ Done when: +gift and −gift deltas are verified on 2 girls.
 
 ### PR-070 — Festival skills
 Tracker: `rr-ux6x.14.4`.
+Audit: Spring D23 Flower Festival with Eve as the dance partner is measured
+on what-if pins ([EVE_BAR.md](../EVE_BAR.md)): talk +12, partner +30,
+112→154, and the day rolls to D24. `build_day_phases_from_ram` now schedules
+that festival for unmarried Eve before 15:00. Harvest, egg, Thanksgiving,
+Star Night, and New Year are still open. Beads could not be updated: this
+checkout has no `bd` database (archive `retro_rl-beads-2026-10-15`).
 `task · P1 · SOCIAL · compose · Deps: PR-021, PR-018, PR-016 · W1`
-Do: Take part in the flower, harvest, egg, thanksgiving, Star Night and New
-Year festivals with the right choices (for example the dance partner) for
-hearts and happiness.
-Done when: each festival is passed on a pin with the expected deltas.
+Do: Take part in the harvest, egg, Thanksgiving, Star Night, and New Year
+festivals with the choices that pay hearts and happiness. Leave the Flower
+Festival Eve path as measured.
+Done when: each remaining festival is passed on a pin with the expected deltas.
 
 ### PR-071 — Girl events and birthdays
 Tracker: `rr-ux6x.14.5`.
@@ -756,15 +760,30 @@ Tracker: `rr-ux6x.15`.
 
 ### PR-076 — Wife selection
 Tracker: `rr-ux6x.15.1`.
+Audit: the owner chose Eve. `research/wife_choice.md` is still absent, so
+the decision file stays open. The what-if wedding is in
+[EVE_BAR.md](../EVE_BAR.md).
 `decision · P0 · SOCIAL · meta · Deps: PR-010, PR-013, PR-018 · W1`
-Do: Pick the wife by her F1 recipe, schedule proximity, gift supply and
-event risk.
+Do: Record that choice in `research/wife_choice.md` against the F1 recipe,
+schedule, gift supply, and event risk.
 Done when: `research/wife_choice.md` exists and the owner acknowledges it.
 
 ### PR-077 — Marriage skill
 Tracker: `rr-ux6x.15.2`.
+Audit: `EveProposalTask` sets wife bit 4 on a what-if Saturday pin
+(mountain stand (503,229) facing up, [EVE_BAR.md](../EVE_BAR.md)). That pin
+edited hearts and the tool slot first. `build_day_phases_from_ram` now
+schedules the Eve chain and the no-ROM suite is green. The shed fetch
+receipt is `recordings/marriage_feather.json` (tool `0x18`, shelf bit
+cleared, `ram_writes` 0). A power-on run reached Summer D8 with Eve at 250
+and `marriage_flags` 0. `FeatherBuyTask` bought on a house-bit poke
+(sprite `0x00DC` at `(568, 360)`, text `0x01C3`, wallet −1,000, shelf bit
+set, 1536 frames). That poke is not a natural receipt. The seller spawns
+only after `$7F1F64` bit `0x40`. `LN_eve_chain_summer` has `upgrade_flags`
+0, `stored_wood` 0, and 1,340G. The wife bit on a natural pin is still open.
 `task · P1 · SOCIAL · compose,spine · Deps: PR-064, PR-076, PR-068 · W3`
-Do: Meet the requirements, then run the proposal and wedding flow, Clean.
+Do: Buy the feather, fetch it from the shed, schedule the Eve chain from
+the day plan, and run the proposal Clean.
 Done when: a wife bit is set on a natural pin at or before the F4 deadline.
 
 ### PR-078 — Pregnancy gates
@@ -929,10 +948,11 @@ Tracker: `rr-ux6x.18`.
 
 ### PR-098 — Structure plan and merges before new domains
 Tracker: `rr-ux6x.18.1`.
-Audit: final proof is 3,476,992 frames, +59.84%, with 139 bad days.
-Keep this open. Check matching policies in a short trace before another
-soak, and bring campaign_composer.py (1,292) and multi_day_planner.py
-(1,029) back under the soft max through composer merges or deletion.
+Repair: reporter helpers folded into their existing owner; all relevant
+sources meet the soft max. Matched D3 fixture baseline/seeded/folded runs
+all take 17,538 frames with identical end states. The full ending still
+requires 2,175,350 frames. The 3,476,992 report used changed policies and
+features; the short comparison does not close this full-run acceptance.
 `task · P0 · GUT · stabilize · Deps: none · W0`
 Do: Bring these under the soft max: `run_to_day2.py` (1,460),
 `day_plan_orchestrator.py` (1,213), `skills.py` (1,029) and `spring_opt.py`
@@ -955,3 +975,13 @@ Tracker: `rr-ux6x.18.3`.
 Do: Add a detached launcher, crash-resume from the latest natural
 checkpoint with a lineage check, log rotation, and a memory guard.
 Done when: a 10M+ frame run survives, or resumes with its lineage recorded.
+
+## Delegated repair handoff, 2026-09-30
+
+Merged exact-slot feeding proof: [F3_all12_feed_night_probe.json](research/F3_all12_feed_night_probe.json),
+7,507 native frames, all twelve seeded cows remain at 200 after a Spring D16→17 sleep.
+Dispatch proof: [PR023_dispatch_probe.json](research/PR023_dispatch_probe.json),
+4,028 frames per chicken purchase variant. Both use audited zero live
+writes/mid-run loads/assists. Full acquisition/care/domain acceptance stays
+open. Clock/interior research remains in repair-home; no unproved clock or
+berry task is registered. See [the plan](../plan.md) for the next action.

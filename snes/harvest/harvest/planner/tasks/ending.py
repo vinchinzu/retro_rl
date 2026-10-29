@@ -11,13 +11,14 @@ identical), so "credits finished" means the terminal index plus a static screen.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional, Tuple
 
 import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.ram_catalog import read_ram_value
+from harvest.core.ranch_master import EndingIndexCapture
 from harvest.tasks.nav import make_action
 
 # Calendar: the date on which the ROM starts the ending (0-based year).
@@ -46,6 +47,7 @@ class EndingSignals:
     tilemap: int
     dialog_text_id: int
     input_lock: int
+    ranch_report: Optional[dict] = None
 
     @property
     def started(self) -> bool:
@@ -71,7 +73,7 @@ class EndingSignals:
         )
 
     def to_dict(self) -> dict:
-        return {
+        row = {
             "scene_index": self.scene_index,
             "aux_index": self.aux_index,
             "tilemap": self.tilemap,
@@ -80,6 +82,16 @@ class EndingSignals:
             "started": self.started,
             "terminal": self.terminal,
         }
+        ranch = self.ranch_report
+        if ranch:
+            row["oracle"] = ranch.get("oracle")
+            row["ranch_mastery_0x20"] = ranch.get("ranch_mastery_0x20")
+            row["ranch_mastery_0x25"] = ranch.get("ranch_mastery_0x25")
+            row["rating_text_id"] = ranch.get("rating_text_id")
+            row["rating_text_id_0x20"] = ranch.get("rating_text_id_0x20")
+            row["rating_text_id_0x25"] = ranch.get("rating_text_id_0x25")
+            row["ranch"] = ranch
+        return row
 
 
 def read_ending_signals(ram: np.ndarray) -> EndingSignals:
@@ -112,6 +124,8 @@ class EndingTask(Task):
     _last_change: int = field(default=0, init=False)
     _peak_index: int = field(default=0, init=False)
     _signals: Optional[EndingSignals] = field(default=None, init=False)
+    _score_capture: EndingIndexCapture = field(default_factory=EndingIndexCapture, init=False)
+    _ranch_report: Optional[dict] = field(default=None, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._frames = 0
@@ -119,6 +133,8 @@ class EndingTask(Task):
         self._last_change = 0
         self._peak_index = 0
         self._signals = None
+        self._score_capture = EndingIndexCapture()
+        self._ranch_report = self._score_capture.report()
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -142,6 +158,9 @@ class EndingTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         self._frames += 1
         sig = read_ending_signals(world.ram)
+        if self._score_capture.observe(world.ram, sig.scene_index) or self._ranch_report is None:
+            self._ranch_report = self._score_capture.report()
+        sig = replace(sig, ranch_report=self._ranch_report)
         self._signals = sig
         self._peak_index = max(self._peak_index, sig.scene_index)
         key = sig.screen_key()

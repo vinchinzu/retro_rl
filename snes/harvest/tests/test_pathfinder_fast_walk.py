@@ -39,6 +39,9 @@ class FastWalkTests(unittest.TestCase):
             pf = Pathfinder()
             pf.temp_blocked = {(rng.randrange(64), rng.randrange(64)) for _ in range(40)}
             pf.extra_walkable = {(rng.randrange(64), rng.randrange(64)) for _ in range(40)}
+            pf.allow_tiles = {(rng.randrange(64), rng.randrange(64)) for _ in range(40)} | set(
+                pf.base_no_go_tiles(ram)
+            )
             override = {0x58, 0xFF}
             start = (rng.randrange(64), rng.randrange(64))
             for kwargs in ({}, {"walkable_override": override}, {"current_pos": start}):

@@ -64,6 +64,9 @@ def _ram(*, tile=(13, 28), tid=0x01, selected=0, backpack=0) -> np.ndarray:
     ram[ADDR_TOOL_BACKPACK] = backpack
     ram[ADDR_INPUT_LOCK] = 1
     ram[ADDR_MAP + tile[1] * MAP_WIDTH + tile[0]] = tid
+    from tests.crop_planter_test_helpers import set_stamina
+
+    set_stamina(ram)
     return ram
 
 
@@ -631,6 +634,10 @@ class SecondPocketPlotTests(unittest.TestCase):
         for y in range(20, 32):
             for x in range(9, 22):
                 ram[ADDR_MAP + y * MAP_WIDTH + x] = UNTILLED
+        # South field (rings 3-6) is open soil too.
+        for y in range(32, 41):
+            for x in range(20, 30):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = UNTILLED
         for y in range(20, 32):
             ram[ADDR_MAP + y * MAP_WIDTH + 21] = 0xA8
         for y in (26, 27):
@@ -649,7 +656,24 @@ class SecondPocketPlotTests(unittest.TestCase):
         )
 
         self.assertEqual(SECOND_POCKET_PLANT_CENTER, (19, 28))
-        self.assertEqual(POCKET_PLANT_CENTERS, ((13, 28), (19, 28)))
+        self.assertEqual(POCKET_PLANT_CENTERS[:2], ((13, 28), (19, 28)))
+        self.assertGreaterEqual(len(POCKET_PLANT_CENTERS), 4)
+
+    def test_ring_sites_do_not_overlap_or_touch_the_pasture(self) -> None:
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
+        from harvest.tasks.grass_planter import PASTURE_BOUNDS
+
+        px0, py0, px1, py1 = PASTURE_BOUNDS
+        centers = list(POCKET_PLANT_CENTERS)
+        self.assertEqual(len(centers), len(set(centers)))
+        for i, (ax, ay) in enumerate(centers):
+            # 5x5 footprint (ring + hoe stands) clear of the pasture rect.
+            self.assertFalse(
+                px0 - 2 <= ax <= px1 + 2 and py0 - 2 <= ay <= py1 + 2, (ax, ay)
+            )
+            for bx, by in centers[i + 1:]:
+                # Neighbours keep at least a 1-tile lane between 3x3 rings.
+                self.assertTrue(abs(ax - bx) >= 4 or abs(ay - by) >= 4, ((ax, ay), (bx, by)))
 
     def test_next_center_and_water_center_follow_planted_rings(self) -> None:
         from harvest.maps.farm_pond import (
@@ -685,16 +709,24 @@ class SecondPocketPlotTests(unittest.TestCase):
             pocket_plant_target,
         )
 
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
+
         ram = self._field_ram(west_planted=True)
-        for x, y in plot_tiles((19, 28), include_center=False):
-            ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56  # grown potato
+        for center in POCKET_PLANT_CENTERS[1:]:
+            for x, y in plot_tiles(center, include_center=False):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56  # grown potato
         self.assertIsNone(pocket_plant_target(ram))
         self.assertIsNone(next_unplanted_pocket_center(ram))
 
     def test_pocket_plant_target_is_none_when_ring_has_no_bare_capacity(self) -> None:
         from harvest.maps.farm_pond import pocket_plant_target
 
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
+
         ram = self._field_ram(west_planted=True)
+        for center in POCKET_PLANT_CENTERS[2:]:
+            for x, y in plot_tiles(center, include_center=False):
+                ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56
         ring = plot_tiles((19, 28), include_center=False)
         for x, y in ring[:6]:
             ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56  # 6/8 grown crops
@@ -715,7 +747,7 @@ class SecondPocketPlotTests(unittest.TestCase):
         nav_stand = next(t for t in seq.tasks if t.name == "nav_pocket_hoe_stand")
         self.assertEqual(
             (nav_stand.target_px[0] // TILE_SIZE, nav_stand.target_px[1] // TILE_SIZE),
-            (17, 29),
+            (19, 26),
         )
 
     def test_ram_remap_skips_the_x21_bank_wall(self) -> None:
@@ -811,6 +843,92 @@ class BestEffortSkipTests(unittest.TestCase):
         self.assertEqual(done.status, TaskStatus.SUCCESS)
         self.assertTrue(skipped_group.skipped)
         self.assertFalse(nxt.skipped)
+
+
+class WaterStandArrivalTests(unittest.TestCase):
+    """Chebyshev 33 is the tile past a stand that can face the crop."""
+
+    def _world_at(self, px: int, py: int, *, dry: bool) -> WorldState:
+        ram = _ram(tile=(13, 28), tid=0x01)
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_X] = px & 0xFF
+        ram[ADDR_X + 1] = (px >> 8) & 0xFF
+        ram[ADDR_Y] = py & 0xFF
+        ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+        if dry:
+            ram[ADDR_MAP + 27 * MAP_WIDTH + 13] = 0x54
+        return WorldState(frame=0, ram=ram, info={}, obs=None)
+
+    def test_nav_crop_rejects_33px_water_stand(self) -> None:
+        from harvest.planner.tasks.navigation import WATER_STAND_ARRIVE_PX, NavTask
+        from harvest.tasks.nav import Point
+
+        center = (13 * TILE_SIZE + 8, 28 * TILE_SIZE + 8)
+        world = self._world_at(center[0] + 33, center[1], dry=True)
+        task = NavTask(
+            name="nav_NAV_CROP",
+            target_px=Point(center[0], center[1]),
+            radius=28,
+            soft_radius=64,
+            soft_stasis=90,
+            timeout=9000,
+        )
+        task.reset(world)
+        task._water_repaths = 1
+        task._navigator.stasis = 90
+        result = task.step(world)
+        dist = task._distance_to_target()
+        self.assertEqual(dist, 33)
+        self.assertLess(WATER_STAND_ARRIVE_PX, 33)
+        self.assertFalse(task._soft_arrived(world.ram))
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertNotIn("soft arrived", result.reason or "")
+        self.assertIn("dist=33", result.reason or "")
+        self.assertIn(f"limit={WATER_STAND_ARRIVE_PX}", result.reason or "")
+
+        # Same miss is still a soft arrive for a non-water hop.
+        other = self._world_at(center[0] + 33, center[1], dry=False)
+        plain = NavTask(
+            name="nav_home",
+            target_px=Point(center[0], center[1]),
+            radius=28,
+            soft_radius=64,
+            soft_stasis=90,
+            timeout=9000,
+        )
+        plain.reset(other)
+        plain._navigator.stasis = 90
+        arrived = plain.step(other)
+        self.assertEqual(arrived.status, TaskStatus.SUCCESS)
+        self.assertIn("soft arrived", arrived.reason or "")
+        self.assertIn("dist=33", arrived.reason or "")
+
+    def test_nav_crop_repaths_33px_miss_onto_stand_within_23(self) -> None:
+        """Same-day retarget. A 33px sealed center is not a soft arrive."""
+        from harvest.planner.tasks.navigation import WATER_STAND_ARRIVE_PX, NavTask
+        from harvest.tasks.nav import Point
+
+        self.assertEqual(WATER_STAND_ARRIVE_PX, 23)
+        center = (13 * TILE_SIZE + 8, 28 * TILE_SIZE + 8)
+        world = self._world_at(center[0] + 33, center[1], dry=True)
+        task = NavTask(
+            name="nav_NAV_CROP",
+            target_px=Point(center[0], center[1]),
+            radius=28,
+            soft_radius=64,
+            soft_stasis=90,
+            timeout=9000,
+        )
+        task.reset(world)
+        task._water_repaths = 0
+        task._navigator.stasis = 90
+        result = task.step(world)
+        dist = task._distance_to_target()
+        self.assertNotEqual(result.status, TaskStatus.FAILURE, result.reason)
+        self.assertNotIn("soft arrived", result.reason or "")
+        self.assertLessEqual(dist, WATER_STAND_ARRIVE_PX)
+        self.assertNotEqual((int(task.target_px.x), int(task.target_px.y)), center)
+        self.assertEqual(task._water_repaths, 1)
 
 
 if __name__ == "__main__":

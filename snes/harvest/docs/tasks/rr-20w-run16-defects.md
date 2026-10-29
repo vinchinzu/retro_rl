@@ -254,8 +254,7 @@ reached. D26 and D27 both earned nothing, and D28 died in `return_home`
 of Summer with the crop engine still working perfectly.
 
 This is a "success is punished" bug: the better the economy gets, the sooner
-it fires. `livestock_econ.py` is an explicit stub whose inputs are
-deliberately `None`, so this path was never meant to be load-bearing.
+it fires.
 
 Fix: `OPTIONAL_COW_PURCHASE_PHASES` - the purchase leg **and** the barn tail
 (skipping only the purchase would leave required chores for a cow that was
@@ -385,9 +384,13 @@ so the two are close enough in value that reordering on a guess is not
 obviously positive. §3's own warning applies - which phase gets starved keeps
 moving as other bugs are fixed, so the fix is arbitration, not a new fixed
 order.
-- **Only two ring sites exist** (`POCKET_PLANT_CENTERS` = (13,28), (19,28)),
-  so bag count saturates at 2. A third nav-executable ring needs proven
-  hoe/water/harvest stands - still the next money lever after this.
+- **Ring sites are data** (`farm_pond.POCKET_PLANT_CENTERS`: the two yard
+  rings plus three rings east of the pond). Stamina, not frames, caps the count: a
+  hoe swing and a watering are 2 stamina each, the day starts at 100, a ring
+  is 16 stamina of hoe once and 16 of watering daily (ROM: six rings watered
+  in 7.1k frames for 94 stamina). `ring_establish_affordable` gates
+  CROP_ESTABLISH on hoe cost plus the watering already owed; the water pass is
+  cut to what stamina funds instead of timing out stand by stand.
 - Second-grape pick miss at `GRAPE_STAND_PX`.
 - Why the clearer routes through the farmhouse door (§4 above).
 
@@ -502,3 +505,25 @@ What moved the numbers, each with its own tests and ROM probe:
 Regressions caught only by the merged-main spring soak: SceneGuard stole the
 grape task's dialogue frames (fixed: quiet window counts only frames the task
 pressed nothing), and the 24k/3k floor.
+
+## 2026-10-15 first house and Eve
+
+Native prerequisites and marriage now pass from the real power-on
+predecessors; receipt lineage is in [EVE_BAR.md](../EVE_BAR.md). Summer D28
+order: 252→2 wood and 6,200→1,200G. Four sleeps finish on Fall D2; the natural
+Sunday feather sale and isolated Fall D10 wedding both pass. The clock gift
+bit is set. `tests/test_house_upgrade.py -m rom` covers all six legs.
+
+Fixes: fetch the axe before wood work; save the house/feather fund before
+empty-ranch pasture purchases; clear the crop center and avoid a fenced
+hoe stand; finish the remodel scene and stage on open ground at (136,376);
+fetch the Saturday feather before proposing; keep the wedding's date roll
+owned by its task until the remodeled house is ready.
+
+Beads: the repo board is archived; `bd ready` has no usable local database,
+and the archived database path resolves to an empty default board. No issue
+was falsely closed. Next family work is house 2 and pregnancy hearts.
+
+Did not STATUS-promote. Did not start from `Y1_D2_Morning_After_D1`.
+Did not record a BFS-closable walk. Did not treat CrossMap origin-return as
+shop success. No RAM writes, mid-run state loads or assists.

@@ -5,6 +5,8 @@ ROM-mapped spring-farm facts for can refill, fence access, and no-go tiles.
 
 from typing import Dict, FrozenSet, Optional, Tuple
 
+from harvest.core.tile_catalog import MOUNTAIN_TILEMAP_IDS
+
 # Farm coordinates whose visual/collision behavior is not represented by the
 # metatile alone.  Several well-body tiles render as 0xA1, which is walkable in
 # other farm contexts, so keep the coordinate-specific facts here.
@@ -74,6 +76,22 @@ FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
     (24, 28), (25, 28), (27, 28), (28, 28),
     (24, 29), (25, 29), (27, 29), (28, 29),
 }) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | SOUTH_STREAM_FC_BANKS
+
+# The x=11 column between the F2 ditch and the west ring is in FARM_NO_GO_TILES
+# but is open ground: a teleport to (11,26) and DOWN walked to (11,30) and on
+# through the fence gap to (11,32) on the Summer D5 power-on farm. It is the
+# only way into the bin stand (11,30) once the west ring is grown and a weed
+# regrows on (12,30), and on Summer D27 the only way from the yard to the
+# pasture (the y=31 gap had moved to x=11-12). Only the harvest ship walk and the
+# pasture route allow it (``Pathfinder.allow_tiles``): opened for every farm
+# path it broke the west pocket's hoe-stand navigation (40 CROP_ESTABLISH
+# failures in a power-on year, against 6).
+SHIP_BIN_LANE_TILES: FrozenSet[Tuple[int, int]] = frozenset({(11, 26), (11, 27), (11, 28)})
+# Standing on the lane or at the bin, a grown west ring and the fence leave the
+# lane as the only way out. A walk that *starts* on these tiles may use it: a
+# sealed RETURN_HOME or can fetch after a ship walk cost whole days of watering
+# (36 "no_path sealed" events at (182,478) in one Summer).
+SHIP_BIN_STAND_TILES: FrozenSet[Tuple[int, int]] = SHIP_BIN_LANE_TILES | frozenset({(11, 29), (11, 30)})
 
 # ── Farm water sources (ROM-mapped, spring farm tilemap 0x00) ──────────────
 # CheckToolSuccess farm fill only when tile-in-front *property* is F0/F9–FD
@@ -193,12 +211,40 @@ WEST_POCKET_PLANT_CENTER: Tuple[int, int] = (13, 28)
 # fence-lip (y30) rings are excluded (score 170, route_cost 45, profit 440).
 SECOND_POCKET_PLANT_CENTER: Tuple[int, int] = (19, 28)
 
-# Ordered establish targets: fill the west pocket first, then the second ring.
-# Further potato rings should come from crop_planner.plan_crop_field
-# (one-shot crops already score farther-from-bin).
+# North face of that ring. (17, 29) is 0x02, but on LN_herd_y2_spring the
+# stump 0x09–0x0C sits on (18, 28)–(19, 29), so the hop from the west
+# pocket push-faces (18, 28), (18, 29), and (18, 32). (19, 26) is untilled
+# 0x01 and the walk from (13, 26) stays on 0x01/0x02 north of the well.
+SECOND_POCKET_HOE_STAND: Tuple[Tuple[int, int], str] = ((19, 26), "down")
+
+# East-of-pond ring sites (rr-rings). The farm is NOT stable: the monthly tile
+# check regrows the original clutter (fences on y=31, the (18-19, 28-29)
+# stump, rocks, stumps, weeds, stones) over every bare tile, so Summer D1 looks
+# like Spring D1, not like the cleared D2 farm (ROM ``PR_Y1_Summer_D1``, saved
+# as ``LN_y1econ_rings_summer_d1_farm``). Sites are therefore picked on that
+# pristine layout by ``scratch/site_study3.py``: the 5x5 footprint (ring, notch
+# and every HOE_PLAN stand) holds only bare soil plus at most four weeds or
+# stones (lifted by the plant-stand clearer), no rock, stump or fence; every
+# hoe stand is walkable from the yard with the viewport BFS rules, and fully
+# grown rings (solid crops) leave all pond stands reachable. A ring on the
+# pond's south lip (32-33, 35) would seal its only approach, and the pasture
+# (``grass_planter.PASTURE_BOUNDS`` = x13-27, y33-48) owns the field south of
+# the yard. Walking tiles to the nearest pond stand: (33,37) 3, (41,33) 8,
+# (44,29) 11. The yard ring (19,28) is dead in Summer (stump) and skipped by
+# ``_ring_bare_capacity`` until the stump is gone.
+SOUTH_POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
+    (33, 37),
+    (41, 33),
+    (44, 29),
+)
+
+# Ordered establish targets: the west pocket first, then the ring east of the
+# well, then the south field nearest the bin. Sites are data: add a centre
+# here and ``pocket_plant_targets`` / the bag count / the splice limit follow.
 POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
     WEST_POCKET_PLANT_CENTER,
     SECOND_POCKET_PLANT_CENTER,
+    *SOUTH_POCKET_PLANT_CENTERS,
 )
 
 
@@ -206,6 +252,13 @@ POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
 # freshly / recently tilled soil. A ring that is 7/8 crops + 1 unreachable
 # structure tile has 0 of these left -> no real capacity.
 _POCKET_BARE_TILE_IDS: FrozenSet[int] = frozenset({0x00, 0x01, 0x02})
+# Weed (0x03) and stone (0x04) are 1x1 debris the establish skill's
+# ``clear_plant_stands`` lifts away; they do not box a ring in.
+_POCKET_LIFTABLE_TILE_IDS: FrozenSet[int] = frozenset({0x03, 0x04})
+# Ripe tiles in a ring that make it count as "about to be empty".
+_RIPE_REPLANT_MIN = 6
+# Ripe potato (0x60/0x61) and turnip (0x6E/0x6F): they are replanted, not regrown.
+_ONE_SHOT_RIPE_TILES: FrozenSet[int] = frozenset({0x60, 0x61, 0x6E, 0x6F})
 
 
 def _ring_bare_capacity(ram, center: Tuple[int, int]) -> int:
@@ -217,7 +270,7 @@ def _ring_bare_capacity(ram, center: Tuple[int, int]) -> int:
     )
     from harvest.tasks.nav import get_tile_at
 
-    sowable = _POCKET_BARE_TILE_IDS | {FRESH_TILLED, WATERED_TILLED}
+    sowable = _POCKET_BARE_TILE_IDS | _POCKET_LIFTABLE_TILE_IDS | {FRESH_TILLED, WATERED_TILLED}
     return sum(
         1
         for tx, ty in plot_tiles(center, include_center=False)
@@ -238,24 +291,37 @@ def pocket_plant_target(ram) -> Optional[Tuple[int, int]]:
     return targets[0] if targets else None
 
 
-def pocket_plant_targets(ram) -> Tuple[Tuple[int, int], ...]:
+def pocket_plant_targets(ram, *, replant_ripe: bool = False) -> Tuple[Tuple[int, int], ...]:
     """Every pocket center that still needs *and can receive* a full bag.
 
     ``pocket_plant_target`` answers "which ring next"; this answers "how many
-    bags does the farm want today". On a harvest day both rings come back
-    empty at once, so a one-bag shop trip replants one of them and the other
-    idles until tomorrow's trip.
+    bags does the farm want today". On a harvest day every ring comes back
+    empty at once, so a one-bag shop trip replants one of them and the rest
+    idle until tomorrow's trip.
+
+    ``replant_ripe`` is for the morning shop decision, which runs before the
+    harvest: a ripe ring of one-shot Spring crops (potato/turnip) is about to
+    be empty, so it already wants its bag. That holds in Spring (the replant)
+    and in Summer (the last Spring sowings ripen on D1, and corn planted by D3
+    still gets six harvests). Ripe Summer crops regrow and never count.
     """
     if ram is None:
         return ()
-    from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted
+    from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted, count_ring_tiles
     from harvest.core.ram_catalog import read_ram_value
 
     targets = []
-    summer = int(read_ram_value(ram, "season")) == 1
+    season = int(read_ram_value(ram, "season"))
+    summer = season == 1
     for center in POCKET_PLANT_CENTERS:
         planted = count_ring_planted(ram, center)
         if planted >= PLOT_RING_SIZE:
+            if (
+                replant_ripe
+                and season <= 1
+                and count_ring_tiles(ram, center, _ONE_SHOT_RIPE_TILES) >= _RIPE_REPLANT_MIN
+            ):
+                targets.append(center)
             continue
         # Summer crops regrow. Spending another 300G bag to fill one or
         # two missed cells delays livestock and rarely earns the seed back.
@@ -264,6 +330,43 @@ def pocket_plant_targets(ram) -> Tuple[Tuple[int, int], ...]:
         if _ring_bare_capacity(ram, center) >= PLOT_RING_SIZE - planted:
             targets.append(center)
     return tuple(targets)
+
+
+# Hoe swing and watering-can use each cost 2 stamina (ROM, see
+# docs/SPRING_ECONOMY.md 2.2) and the farmer starts a day with 100. A ring is 8
+# hoe swings once and 8 waterings every day, so stamina, not frames, caps the
+# ring count: six rings cost ~96 stamina of watering alone (ROM
+# ``LN_y1econ_rings_d3_6planted_full``: 47 waters, 7.1k frames, 100 -> 2).
+STAMINA_PER_TOOL_USE = 2
+
+
+def pocket_water_reserve(ram) -> int:
+    """Stamina the standing crops still need today (2 per dry growing tile)."""
+    from harvest.tasks.crop_geometry import WATERABLE_TILES
+    from harvest.tasks.crop_skills import count_ring_tiles
+
+    dry = sum(
+        count_ring_tiles(ram, center, frozenset(WATERABLE_TILES))
+        for center in POCKET_PLANT_CENTERS
+    )
+    return dry * STAMINA_PER_TOOL_USE
+
+
+def ring_establish_affordable(ram, center: Tuple[int, int]) -> bool:
+    """True when today's stamina covers this ring's hoe swings *and* the
+    watering the farm already owes.
+
+    A new ring's own first watering may slip a day (a crop only stalls), but
+    the standing crops are not starved to open another ring. Replanting after
+    a Spring harvest leaves watered soil (0x08) and costs no hoe at all.
+    """
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.tasks.crop_skills import HOED_OR_PLANTED, count_ring_tiles, PLOT_RING_SIZE
+
+    stamina = int(read_ram_value(ram, "stamina") or 0)
+    unhoed = PLOT_RING_SIZE - count_ring_tiles(ram, center, HOED_OR_PLANTED)
+    need = max(0, unhoed) * STAMINA_PER_TOOL_USE + pocket_water_reserve(ram)
+    return stamina >= need
 
 
 def next_unplanted_pocket_center(ram) -> Optional[Tuple[int, int]]:
@@ -319,6 +422,12 @@ FARM_TILEMAP_NAMES: Dict[int, str] = {
     0x03: "farm_winter",
 }
 
+MOUNTAIN_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
+    (20, 44),  # solid cliff/rock directly north of south entry tile (20, 45)
+})
+
 NO_GO_TILES_BY_TILEMAP: Dict[int, FrozenSet[Tuple[int, int]]] = {
-    tilemap_id: FARM_NO_GO_TILES for tilemap_id in FARM_TILEMAP_IDS
+    **{tilemap_id: FARM_NO_GO_TILES for tilemap_id in FARM_TILEMAP_IDS},
+    **{tilemap_id: MOUNTAIN_NO_GO_TILES for tilemap_id in MOUNTAIN_TILEMAP_IDS},
 }
+

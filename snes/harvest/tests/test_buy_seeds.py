@@ -14,24 +14,41 @@ if str(_TESTS_DIR) not in sys.path:
 
 from harvest.core.ram_catalog import field_spec
 from harvest.maps.map_config import ROUTES, SEGMENTS, find_landmark
-from harvest.planner.day_phase_catalog import BUY_SEEDS_PHASE, buy_seeds_phase
+from harvest.planner.day_phase_catalog import (
+    BUY_SEEDS_PHASE,
+    buy_seeds_phase,
+    cow_day_phases,
+    tool_purchase_phases,
+)
+from harvest.planner.livestock_econ import missing_cow_tools, tool_shop_open
 from harvest.planner.day_phase_types import PhaseKind
 from harvest.planner.tasks.navigation import CrossMapRecordedTask
 from harvest.tasks.buy_seeds import (
     SEED_BAG_PRICE,
     SEED_CLERK_PX,
+    TOOL_SHELVES,
+    TOOL_SHOP,
     BuySeedsTask,
+    BuyShelfItemTask,
     at_seed_clerk,
     seed_stand_px,
     first_shop_nav_segment,
     first_shop_return_segment,
+    plan_tool_buys,
     purchase_closed,
     shop_door_px,
+    tool_owned,
     town_coords_settled,
 )
 from retro_harness import TaskStatus
 
-from day_plan_test_helpers import make_transition_world, make_world, set_money, set_player_pos
+from day_plan_test_helpers import (
+    make_date_world,
+    make_transition_world,
+    make_world,
+    set_money,
+    set_player_pos,
+)
 
 ADDR_POTATO = field_spec("potato_seeds").address
 
@@ -218,6 +235,170 @@ class SeedStandTests(unittest.TestCase):
             phase = buy_seeds_phase(recording_name="buy_summer", seed_type=crop)
             self.assertEqual(phase.kind, BUY_SEEDS_PHASE.kind)
             self.assertEqual(phase.params["stock_field"], f"{crop}_seeds")
+
+
+SHED_ROW_2 = 0x11F01 + 0x4000  # live WRAM mirror of $7F1F01
+BRUSH, MILKER = 0x0F, 0x0E
+
+
+def _store_world(*, money: int, shed: int = 0, selected: int = 0, backpack: int = 0, weekday: int = 1):
+    from harvest.core.ram_catalog import field_spec
+
+    world = make_date_world(0x15, season=1, day=3)
+    set_money(world.ram, money)
+    world.ram[SHED_ROW_2] = shed
+    world.ram[field_spec("tool_selected").address] = selected
+    world.ram[field_spec("tool_backpack").address] = backpack
+    world.ram[field_spec("weekday").address + 0x4000] = weekday
+    return world
+
+
+class ToolShelfTests(unittest.TestCase):
+    """Brush and milker are general-store (0x22) shelf objects, not seed-shop stock."""
+
+    def test_shelf_table_matches_rom_and_cow_geometry(self) -> None:
+        from harvest.planner.livestock_econ import SHED_ROW_2_BRUSH_BIT, SHED_ROW_2_MILKER_BIT
+
+        BRUSH_TOOL_ID, MILKER_TOOL_ID = 0x0F, 0x0E
+
+        brush, milker = TOOL_SHELVES[BRUSH], TOOL_SHELVES[MILKER]
+        self.assertEqual((brush.tool_id, brush.price, brush.shed_bit), (BRUSH_TOOL_ID, 800, SHED_ROW_2_BRUSH_BIT))
+        self.assertEqual((milker.tool_id, milker.price, milker.shed_bit), (MILKER_TOOL_ID, 1800, SHED_ROW_2_MILKER_BIT))
+        # Shelf F6 (14,22) and F4 (14,21): stand one px past the wall stop, facing right.
+        self.assertEqual(brush.stand, (217, 358))
+        self.assertEqual(milker.stand, (217, 344))
+        self.assertEqual(brush.stand[1] // 16, 22)
+        self.assertEqual(milker.stand[1] // 16, 21)
+
+    def test_owned_by_shed_bit_or_carry_pair(self) -> None:
+        self.assertFalse(tool_owned(_store_world(money=0).ram, BRUSH))
+        self.assertTrue(tool_owned(_store_world(money=0, shed=0x40).ram, BRUSH))
+        self.assertFalse(tool_owned(_store_world(money=0, shed=0x40).ram, MILKER))
+        self.assertTrue(tool_owned(_store_world(money=0, selected=MILKER).ram, MILKER))
+        self.assertTrue(tool_owned(_store_world(money=0, backpack=BRUSH).ram, BRUSH))
+
+    def test_plan_spends_the_wallet_down_in_order(self) -> None:
+        ids = (BRUSH, MILKER)
+        self.assertEqual(plan_tool_buys(_store_world(money=2600).ram, ids), [BRUSH, MILKER])
+        self.assertEqual(plan_tool_buys(_store_world(money=2599).ram, ids), [BRUSH])
+        self.assertEqual(plan_tool_buys(_store_world(money=799).ram, ids), [])
+        # Brush first leaves 1,000: the milker is never planned on a short wallet.
+        self.assertEqual(plan_tool_buys(_store_world(money=1800).ram, ids), [BRUSH])
+        self.assertEqual(plan_tool_buys(_store_world(money=1800).ram, (MILKER, BRUSH)), [MILKER])
+        self.assertEqual(plan_tool_buys(_store_world(money=5000, shed=0x40).ram, ids), [MILKER])
+        self.assertEqual(plan_tool_buys(_store_world(money=5000).ram, (BRUSH, BRUSH)), [BRUSH])
+
+    def test_task_with_nothing_to_buy_succeeds_without_walking(self) -> None:
+        world = _store_world(money=100)
+        task = BuyShelfItemTask(tool_ids=(BRUSH, MILKER))
+        task.reset(world)
+        self.assertEqual(task.shop, TOOL_SHOP)
+        self.assertEqual(task.step(world).status, TaskStatus.SUCCESS)
+        with self.assertRaises(ValueError):
+            BuyShelfItemTask(tool_ids=(0x10,))
+
+    def test_task_arms_the_first_planned_shelf(self) -> None:
+        world = _store_world(money=2600)
+        task = BuyShelfItemTask(tool_ids=(BRUSH, MILKER))
+        task.reset(world)
+        self.assertEqual(task.stand_px, (217, 358))
+        self.assertEqual(task.face, "right")
+        self.assertEqual(task.counter_segment, "tool_shop_to_brush")
+        self.assertEqual(task.bag_price, 800)
+        self.assertEqual(task.name, "buy_tools")
+
+    def test_receipt_needs_the_exact_shelf_price(self) -> None:
+        world = _store_world(money=2600)
+        task = BuyShelfItemTask(tool_ids=(BRUSH,))
+        task.reset(world)
+        self.assertFalse(task._purchase_ok(world.ram))
+        set_money(world.ram, 1800)
+        self.assertTrue(task._purchase_ok(world.ram))
+        set_money(world.ram, 800)  # paid the milker's price at the brush shelf
+        self.assertFalse(task._purchase_ok(world.ram))
+
+    def test_second_shelf_is_a_row_change_off_the_wall(self) -> None:
+        """Hugging x=217 blocks the row change: back off first, then up or down."""
+        world = _store_world(money=2600)
+        task = BuyShelfItemTask(tool_ids=(BRUSH, MILKER))
+        task.reset(world)
+        task._next_tool(world.ram)  # brush done, milker armed
+        self.assertEqual(task.stand_px, (217, 344))
+        set_player_pos(world.ram, 217, 358)
+        world.ram[0x22] = 0x22
+        action = task._align_to_stand(world).action.action
+        self.assertTrue(action[6])  # LEFT (button order B,Y,SELECT,START,UP,DOWN,LEFT,RIGHT,...)
+        set_player_pos(world.ram, 213, 358)
+        up = task._align_to_stand(world).action.action
+        self.assertTrue(up[4])
+
+    def test_routes_reach_the_general_store_door(self) -> None:
+        door = SEGMENTS["town_to_tool_door"][-1]
+        self.assertEqual((door.tilemap, door.is_exit, door.exit_direction), (0x04, True, "up"))
+        # Door metatile 0xC6 is town tile (25,53); the walkway is x=408.
+        self.assertEqual(door.target_px[0] // 16, 25)
+        for name in TOOL_SHOP.nav_segments + TOOL_SHOP.return_segments:
+            self.assertIn(name, SEGMENTS)
+        self.assertEqual(SEGMENTS["tool_shop_to_town"][-1].exit_direction, "down")
+        self.assertEqual(
+            first_shop_nav_segment(0x04, ["town_to_tool_door"], TOOL_SHOP.tilemap),
+            "town_to_tool_door",
+        )
+        self.assertIsNone(first_shop_nav_segment(0x22, list(TOOL_SHOP.nav_segments), TOOL_SHOP.tilemap))
+        self.assertEqual(
+            [first_shop_return_segment(tm, TOOL_SHOP.return_segments, TOOL_SHOP.tilemap) for tm in (0x22, 0x04, 0x0C)],
+            list(TOOL_SHOP.return_segments),
+        )
+
+    def test_exit_flip_coordinates_are_not_settled_for_the_tool_shop(self) -> None:
+        """The 0x22 -> 0x04 flip passes through (408,408): x>200 but not the apron."""
+        import numpy as np
+
+        task = BuyShelfItemTask(tool_ids=(BRUSH,))
+        ram = np.zeros(0x2000, dtype=np.uint8)
+        set_player_pos(ram, 408, 408)
+        self.assertTrue(task._town_ready(ram))  # inbound: east-gate coords are fine
+        task._bought = True
+        self.assertFalse(task._town_ready(ram))
+        set_player_pos(ram, 408, 872)
+        self.assertTrue(task._town_ready(ram))
+
+    def test_phase_wiring(self) -> None:
+        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+
+        (phase,) = tool_purchase_phases()
+        self.assertEqual((phase.phase, phase.kind), ("BUY_COW_TOOLS", PhaseKind.SHOP_BUY))
+        self.assertEqual(phase.params["tool_ids"], [BRUSH, MILKER])
+        self.assertEqual(phase.failure_policy, "optional")
+        self.assertEqual(tool_purchase_phases(["milker"])[0].params["tool_ids"], [MILKER])
+        task = build_phase_task(TaskBuildContext(), phase, make_world(0x00))
+        self.assertIsInstance(task, BuyShelfItemTask)
+        self.assertEqual(task.tool_ids, (BRUSH, MILKER))
+        # The seed phases are untouched.
+        self.assertEqual(build_phase_task(TaskBuildContext(), BUY_SEEDS_PHASE, make_world(0x00)).tool_ids, ())
+
+    def test_missing_cow_tools_and_cow_day_plan(self) -> None:
+        none = _store_world(money=0).ram
+        self.assertEqual(missing_cow_tools(none), (BRUSH, MILKER))
+        both = _store_world(money=0, shed=0x60).ram
+        self.assertEqual(missing_cow_tools(both), ())
+        self.assertEqual(missing_cow_tools(_store_world(money=0, shed=0x40).ram), (MILKER,))
+        self.assertEqual(missing_cow_tools(_store_world(money=0, selected=BRUSH, backpack=MILKER).ram), ())
+        full = [p.phase for p in cow_day_phases(both)]
+        self.assertEqual(full[0], "ENSURE_ANIMAL_TOOLS")
+        brush_only = cow_day_phases(_store_world(money=0, shed=0x40).ram)
+        self.assertEqual(brush_only[0].phase, "ENSURE_BRUSH")
+        chores = next(p for p in brush_only if p.phase == "COW_CHORES")
+        self.assertEqual((chores.params["brush"], chores.params["milk"]), (True, False))
+        bare = cow_day_phases(none)
+        self.assertNotIn("ENSURE_BRUSH", [p.phase for p in bare])
+        chores = next(p for p in bare if p.phase == "COW_CHORES")
+        self.assertEqual((chores.params["brush"], chores.params["milk"]), (False, False))
+
+    def test_tool_shop_hours_follow_the_door_flags(self) -> None:
+        self.assertTrue(tool_shop_open(_store_world(money=0, weekday=1).ram))
+        self.assertFalse(tool_shop_open(_store_world(money=0, weekday=0).ram))  # Sunday
+        self.assertFalse(tool_shop_open(_store_world(money=0, weekday=6).ram))  # Saturday
 
 
 if __name__ == "__main__":

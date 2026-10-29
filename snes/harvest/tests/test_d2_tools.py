@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import unittest
+import json
+import pytest
 
 _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
@@ -22,6 +24,49 @@ from harvest.planner.tasks.navigation import NavTask
 from retro_harness import TaskStatus
 
 
+@pytest.mark.rom
+@pytest.mark.parametrize("state", ["LN_marriage_shelf_before_take", "marriage_feather_probe"])
+def test_blue_feather_native_pickup(state):
+    """Exercise the tile-boundary miss and the real morning-to-shed fetch."""
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.core.ram_catalog import read_ram_u8, read_ram_value
+    from harvest.planner.tasks.shed_slots import feather_shelf_taken
+    from harvest.tasks.nav import make_action
+    from harvest.paths import PROJECT_DIR
+
+    env = AuditedEnv(make_harvest_env(state, lean_step=True), capabilities=AuditCapabilities(
+        provider="harvest.feather_rom_test", observes_ram_writes=True,
+        observes_mid_run_loads=True, observes_assists=True))
+    try:
+        env.reset()
+        start = {"tool_selected": read_ram_value(env.get_ram(), "tool_selected"),
+                 "shed_row": read_ram_u8(env.get_ram(), 0x11F02)}
+        assert start["shed_row"] & 0x80
+        task = EnsureCarryToolTask(tool_id=0x18, exit_when_done=False)
+        task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+        for frame in range(8000):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action else make_action())
+        ram = env.get_ram()
+        audit = env.audit()
+        passed = (result.status == TaskStatus.SUCCESS and feather_shelf_taken(ram)
+                  and audit.ram_writes == 0 and audit.mid_run_loads == 0)
+        report = {"state": state, "frames": frame, "passed": passed, "start": start,
+                  "end": {"tool_selected": read_ram_value(ram, "tool_selected"),
+                          "shed_row": read_ram_u8(ram, 0x11F02)},
+                  "reason": result.reason,
+                  "clean_run": {"ram_writes": audit.ram_writes,
+                                "mid_run_state_loads": audit.mid_run_loads}}
+        if state == "marriage_feather_probe":
+            (PROJECT_DIR / "recordings" / "marriage_feather.json").write_text(json.dumps(report, indent=2) + "\n")
+        assert passed, report
+    finally:
+        env.close()
+
+
 class ShedHammerAxeSpecTests(unittest.TestCase):
     def test_hammer_and_axe_are_bottom_shelf_stands(self) -> None:
         hammer = SHED_TOOL_SPECS[int(Tool.HAMMER)]
@@ -36,6 +81,52 @@ class ShedHammerAxeSpecTests(unittest.TestCase):
         self.assertIsNone(axe.inside_recording)
         self.assertAlmostEqual(hammer.inside_stand_px[1], 168, delta=2)
         self.assertAlmostEqual(axe.inside_stand_px[1], 168, delta=2)
+
+    def test_blue_feather_stands_above_the_shelf_facing_down(self) -> None:
+        feather = SHED_TOOL_SPECS[0x18]
+        self.assertEqual(feather.item_id, 0x18)
+        self.assertEqual(feather.inside_stand_px, (176, 185))
+        self.assertEqual(feather.inside_face, "down")
+        self.assertIsNone(feather.inside_recording)
+        world = make_world(0x26)
+        task = EnsureCarryToolTask(tool_id=0x18)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "inside")
+        self.assertIsInstance(task._task, ShedShelfToolTask)
+        self.assertEqual(task._task.stand_px, (176, 185))
+        self.assertEqual(task._task.face, "down")
+
+    def test_feather_pickup_requires_selected_tool_and_clear_shelf_bit(self) -> None:
+        world = make_world(0x26)
+        task = ShedShelfToolTask(tool_id=0x18, settle_frames=0, take_attempts=1)
+        task.reset(world)
+        task._phase = "take"
+        task._take_tries = 1
+
+        world.ram[0x0921] = 0x18
+        world.ram[0x11F02] = 0x80
+        task._step_count = 0
+        still_on_shelf = task.step(world)
+        self.assertNotEqual(still_on_shelf.status, TaskStatus.SUCCESS)
+
+        world.ram[0x0921] = 0x0F
+        world.ram[0x0923] = 0x18
+        world.ram[0x11F02] = 0x00
+        task._phase = "take"
+        task._take_tries = 1
+        task._step_count = 0
+        backpack_only = task.step(world)
+        self.assertNotEqual(backpack_only.status, TaskStatus.SUCCESS)
+
+        world.ram[0x0921] = 0x18
+        world.ram[0x0923] = 0x0F
+        world.ram[0x11F02] = 0x40
+        task._step_count = 0
+        taken = task.step(world)
+        self.assertEqual(taken.status, TaskStatus.SUCCESS)
+        self.assertIn("0x18", taken.reason or "")
 
     def test_sickle_is_bottom_shelf_between_can_and_hoe_sprite(self) -> None:
         sickle = SHED_TOOL_SPECS[int(Tool.SICKLE)]

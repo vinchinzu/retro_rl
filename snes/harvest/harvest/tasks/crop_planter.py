@@ -110,6 +110,58 @@ from harvest.tasks.crop_geometry import (  # noqa: F401
 )
 
 
+# Cross-day failure memory for watering, the twin of harvest_task's. One dry
+# crop tile no stand can reach kept CROP_WATER failing "dry_crops=1 watered=0"
+# every day and flagged a required phase bad for whole weeks. A tile whose
+# water pair was skipped ``WATER_TILE_FAIL_LIMIT`` times is parked: left out of
+# the steps and out of the dry-tile acceptance count until it stops being a
+# dry crop tile (watered, harvested, replaced) or ``WATER_PARK_DAYS`` pass.
+# The retry matters: a parked tile is never watered, so it never stops being dry,
+# and a field whose waterings failed on two bad days (a sealed bin lane) stayed
+# parked, dry and unharvested for the rest of the Summer.
+WATER_TILE_FAIL_LIMIT = 2
+WATER_PARK_DAYS = 3
+_WATER_TILE_FAILURES: dict = {}   # tile -> [failed days, day index of the last one]
+_WATER_CLOCK = {"day": 0}         # day index of the last parked_water_tiles read
+
+
+def reset_water_failure_memory() -> None:
+    _WATER_TILE_FAILURES.clear()
+    _WATER_CLOCK["day"] = 0
+
+
+def _water_day(ram) -> int:
+    from harvest.planner.day_plan_status import read_world_date
+
+    season, day = read_world_date(ram)
+    return int(season) * 30 + int(day)
+
+
+def note_water_tile_failure(tile) -> int:
+    count = _WATER_TILE_FAILURES.get(tile, [0, 0])[0] + 1
+    _WATER_TILE_FAILURES[tile] = [count, _WATER_CLOCK["day"]]
+    return count
+
+
+def parked_water_tiles(ram, bounds) -> set:
+    """Tiles at the failure limit that are still dry crops (others forgotten)."""
+    if not _WATER_TILE_FAILURES:
+        return set()
+    today = _water_day(ram)
+    _WATER_CLOCK["day"] = today
+    parked = set()
+    for tile in list(_WATER_TILE_FAILURES):
+        if not (bounds[0] <= tile[0] <= bounds[2] and bounds[1] <= tile[1] <= bounds[3]):
+            continue
+        count, last = _WATER_TILE_FAILURES[tile]
+        age = today - last
+        if not tile_needs_watering(get_tile_at(ram, tile[0], tile[1])) or age >= WATER_PARK_DAYS or age < 0:
+            del _WATER_TILE_FAILURES[tile]
+        elif count >= WATER_TILE_FAIL_LIMIT:
+            parked.add(tile)
+    return parked
+
+
 class CropState(str, Enum):
     DETECT = "detect"
     NAVIGATE = "navigate"
@@ -255,6 +307,8 @@ class CropWaterTask(Task):
     refill_count: int = field(default=0, init=False)
     # Acceptance tracking — harden SUCCESS so false greens do not pollute journals.
     _dry_crop_tiles_at_start: int = field(default=0, init=False)
+    _pair_targets: dict = field(default_factory=dict, init=False)
+    _noted_pairs: set = field(default_factory=set, init=False)
     _had_seed_stock_at_start: bool = field(default=False, init=False)
     _acceptance_snapped: bool = field(default=False, init=False)
     _season_checked: bool = field(default=False, init=False)
@@ -455,11 +509,12 @@ class CropWaterTask(Task):
     def _count_dry_crop_tiles(self, ram: np.ndarray) -> int:
         """Count dry crop / waterable tiles in task bounds (for acceptance)."""
         x0, y0, x1, y1 = self.bounds
+        parked = parked_water_tiles(ram, self.bounds)
         n = 0
         for ty in range(y0, y1 + 1):
             for tx in range(x0, x1 + 1):
                 tid = get_tile_at(ram, tx, ty)
-                if tile_needs_watering(tid):
+                if tile_needs_watering(tid) and (tx, ty) not in parked:
                     n += 1
         return n
 
@@ -480,6 +535,12 @@ class CropWaterTask(Task):
     def _note_skipped_water_pairs(self) -> None:
         if not self._water_pairs:
             return
+        for pair in self._water_pairs:
+            tile = self._pair_targets.get(getattr(pair, "name", None))
+            if tile is not None and getattr(pair, "skipped", False) and tile not in self._noted_pairs:
+                self._noted_pairs.add(tile)
+                if note_water_tile_failure(tile) == WATER_TILE_FAIL_LIMIT:
+                    print(f"[CROP] Parking unwaterable tile {tile} after {WATER_TILE_FAIL_LIMIT} failed days")
         skipped, _completed = self._best_effort_water_counts()
         if skipped:
             self.skipped_water = skipped
@@ -640,13 +701,16 @@ class CropWaterTask(Task):
         start = self._navigator.current_tile
         timeout = max(int(self.max_steps_per_target), 1)
         skills: List[Task] = []
+        parked = parked_water_tiles(ram, self.bounds)
+        self._pair_targets = {}
+        self._noted_pairs = set()
         for center in plots:
             steps = build_water_steps(
                 ram,
                 center,
                 allow_crop_walkable=False,
                 start_tile=start,
-                skip_tiles=set(self.skip_water_tiles),
+                skip_tiles=set(self.skip_water_tiles) | parked,
             )
             for index, (target, stand, face) in enumerate(steps):
                 nav = NavSkill(
@@ -656,6 +720,7 @@ class CropWaterTask(Task):
                     soft_radius=7,
                     timeout=timeout,
                     require_tilemap=0x00,
+                    water_stand=True,
                 )
                 wet = water_until_wet_skill(
                     target_tile=target,
@@ -669,7 +734,21 @@ class CropWaterTask(Task):
                     tasks=(nav, wet),
                 )
                 pairs.append(pair)
+                self._pair_targets[pair.name] = target
                 skills.append(pair)
+        # A tool use is 2 stamina and a tool at 0 stamina does nothing: the
+        # unfunded tail used to walk to every stand and wait out its timeout
+        # (ROM, six rings: 24k-frame watchdog). Water what the day can pay for.
+        # Each can fill at the pond is a tool use too (2 stamina).
+        level = int(read_ram_value(ram, "watering_can") or 0)
+        stamina = int(read_ram_value(ram, "stamina") or 0)
+        budget = stamina // 2
+        for _ in range(4):
+            fills = max(0, -(-(min(budget, len(pairs)) - level) // 20))
+            budget = max(0, stamina - 2 * fills) // 2
+        if 0 < budget < len(pairs):
+            print(f"[CROP] Stamina funds {budget} of {len(pairs)} waterings; rest wait a day")
+            pairs, skills = pairs[:budget], skills[:budget]
         self._water_pairs = pairs
         self._armed_water_tiles = len(pairs)
         if not skills:

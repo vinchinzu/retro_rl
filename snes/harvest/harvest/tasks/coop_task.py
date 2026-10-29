@@ -28,7 +28,7 @@ from typing import Deque, Optional, Tuple
 
 import numpy as np
 
-from harvest.core.animal_probe import COOP_TILEMAP, chicken_slot_snapshots
+from harvest.core.animal_probe import COOP_TILEMAP, chicken_slot_snapshots, stray_hen_px
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.core.animal_status import (  # noqa: F401 — re-export for tests
@@ -54,9 +54,11 @@ from harvest.core.animal_status import (  # noqa: F401 — re-export for tests
 )
 from harvest.core.npc_catalog import game_objects
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
-from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.core.ram_catalog import read_ram_value
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP
 from harvest.tasks.animal_navigation import fallback_action, find_path_around_blockers
 from harvest.tasks.coop_layout import (  # noqa: F401 — re-export for tests/skills
+    CHICKEN_COOP_MAP,
     CHICKEN_FEED_SPOTS,
     COOP_ENTRY_STAND,
     COOP_FALSE_OPEN_COLUMN_X,
@@ -73,6 +75,8 @@ from harvest.tasks.coop_layout import (  # noqa: F401 — re-export for tests/sk
     MAX_EGG_NAV_FRAMES,
     MAX_EXIT_PREP_FRAMES,
     MAX_FLOCK_SIZE,
+    flock_drop_alarm,
+    flock_must_stay_in,
     SHIP_BIN_INTERACT_STAND,
     SHIP_BIN_STAND,
     VISIBLE_EGG_SPRITE,
@@ -80,7 +84,11 @@ from harvest.tasks.coop_layout import (  # noqa: F401 — re-export for tests/sk
 )
 from harvest.tasks.farm_clearer import TileScanner
 from harvest.tasks.nav import MAP_WIDTH, Navigator, Pathfinder, TILE_SIZE, make_action
-from harvest.tasks.primitives import press_a_sequence
+from harvest.tasks.primitives import (
+    dismiss_dialogue_result,
+    drain_action_queue,
+    press_a_sequence,
+)
 
 
 @dataclass
@@ -139,6 +147,9 @@ class CoopChoresTask(Task):
     egg_collected: bool = field(default=False, init=False)
     egg_shipped: bool = field(default=False, init=False)
     egg_incubated: bool = field(default=False, init=False)
+    weather_hold: bool = field(default=False, init=False)
+    flock_alarms: list = field(default_factory=list, init=False)
+    _flock_before: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         self._pathfinder = Pathfinder(self._scanner)
@@ -174,8 +185,14 @@ class CoopChoresTask(Task):
         self.egg_collected = False
         self.egg_shipped = False
         self.egg_incubated = False
+        self.flock_alarms = []
 
         adults, _chicks, _eggs = count_chicken_slots(world.ram)
+        self._flock_before = adults + _chicks
+        weather = 0
+        if 0x0197 < len(world.ram):
+            weather = int(world.ram[0x0196]) | (int(world.ram[0x0197]) << 8)
+        self.weather_hold = flock_must_stay_in(weather)
         feed_goal = adults
         if self.max_feed_adults is not None:
             feed_goal = min(feed_goal, max(0, int(self.max_feed_adults)))
@@ -198,12 +215,21 @@ class CoopChoresTask(Task):
 
         print(
             f"[COOP] adults={adults} feed_goal={self._adult_count} hay={self._hay_before} "
+            f"weather_hold={int(self.weather_hold)} "
             f"egg_avail={egg_available_today(world.ram)} slot_egg={chicken_slot_eggs_available(world.ram)}"
         )
 
     def can_start(self, world: WorldState) -> bool:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         return tilemap == COOP_TILEMAP
+
+    def note_flock_count(self, count: int) -> Optional[str]:
+        """Ledger alarm when the counted flock falls. The cap stays 12."""
+        alarm = flock_drop_alarm(self._flock_before, count)
+        if alarm is not None:
+            self.flock_alarms.append(alarm)
+        self._flock_before = int(count)
+        return alarm
 
     def resume_after_hotswap(self, world: WorldState) -> None:
         self._action_queue.clear()
@@ -530,3 +556,376 @@ from harvest.tasks.coop_feed_ops import bind_task_methods as _bind_coop_feed
 
 _bind_coop_feed(CoopChoresTask)
 _bind_coop_egg(CoopChoresTask)
+
+_ITEM_CHICKEN = 0x25
+_ANIMAL_SHOP_TILEMAP = 0x24
+_TOWN_TILEMAP = 0x04
+# Fenced yard behind the animal shop (town map 0x04). Free ground is the strip
+# above the roof (rows 48-50, cols 32-40) and the column left of the building
+# (cols 32-34 down to row 53); the right edge is a one-tile corridor.
+_YARD_STRIP = (518, 770, 655, 815)
+_YARD_LEFT = (518, 770, 559, 862)
+_YARD_LANE_Y = 792
+_COOP_DROP_MAX_Y = 184
+# The shop shuts at 17:00 and its back door shuts with it, which seals the yard.
+# Do not walk in when the pickup cannot finish, and walk out before the bell.
+YARD_ENTRY_DEADLINE_MIN = 16 * 60 + 20
+YARD_LEAVE_DEADLINE_MIN = 16 * 60 + 45
+
+
+def _in_rect(rect: tuple[int, int, int, int], x: int, y: int) -> bool:
+    return rect[0] <= x <= rect[2] and rect[1] <= y <= rect[3]
+
+
+def yard_free(x: int, y: int) -> bool:
+    return _in_rect(_YARD_STRIP, x, y) or _in_rect(_YARD_LEFT, x, y)
+
+
+def hen_stand(bird: tuple[int, int], player: tuple[int, int]) -> tuple[tuple[int, int], str]:
+    """Free yard pixel beside the hen nearest the player, and the face toward her.
+
+    A hen against the fence has no free side on that edge; the stand then
+    clamps onto the nearest free ground and the press faces her from there.
+    """
+    bx, by = bird
+    options = [
+        ((bx + 16, by), "left"),
+        ((bx - 16, by), "right"),
+        ((bx, by + 16), "up"),
+        ((bx, by - 16), "down"),
+    ]
+    free = [(pt, face) for pt, face in options if yard_free(*pt)]
+    return min(free or options, key=lambda o: abs(o[0][0] - player[0]) + abs(o[0][1] - player[1]))
+
+
+def yard_step(player: tuple[int, int], stand: tuple[int, int], tol: int = 3) -> str | None:
+    """Next held direction toward a yard stand, or None on arrival.
+
+    Every leg runs along the lane above the roof (y=792): up to it, across to
+    the stand column, then down into the left strip or the right corridor.
+    """
+    px, py = player
+    sx, sy = stand
+    if abs(px - sx) <= tol and abs(py - sy) <= tol:
+        return None
+    if abs(px - sx) > tol:
+        if abs(py - _YARD_LANE_Y) > tol and not (_in_rect(_YARD_STRIP, px, py) and _in_rect(_YARD_STRIP, sx, sy)):
+            return "up" if py > _YARD_LANE_Y else "down"
+        return "right" if sx > px else "left"
+    return "down" if sy > py else "up"
+
+
+@dataclass
+class HenDeliveryTask(Task):
+    """From the animal-shop counter, carry the new hen into the coop and drop her.
+
+    The shop does not hand the hen over. She spawns in the fenced yard behind
+    the shop (about (568, 792) on town map 0x04). The yard has no gate; the
+    way in is the shop's back door, and the shop's closing time seals it. Pick
+    her up beside the sprite, walk back through the shop and the town and farm
+    gates and press A one tile inside the coop door. Only a hen set down in the
+    coop (map byte 0x28) lays. Ends inside the coop (the planner then feeds her
+    and leaves). Too late to finish before 17:00, the task walks home
+    empty-handed, ``deferred`` is set, and the hen waits in the yard; it ends
+    on the farm.
+    """
+
+    name: str = "hen_delivery"
+    pickup_tries_max: int = 6
+    drop_tries_max: int = 8
+    chase_budget: int = 1200
+
+    deferred: bool = field(default=False, init=False)
+    _phase: str = field(default="boot", init=False)
+    _child: Optional[Task] = field(default=None, init=False)
+    _step_count: int = field(default=0, init=False)
+    _chase_frames: int = field(default=0, init=False)
+    _pickup_tries: int = field(default=0, init=False)
+    _drop_tries: int = field(default=0, init=False)
+    _stand: Optional[tuple[int, int]] = field(default=None, init=False)
+    _face: str = field(default="left", init=False)
+    _action_queue: Deque[np.ndarray] = field(default_factory=deque, init=False)
+
+    def reset(self, world: WorldState) -> None:
+        self._phase = "boot"
+        self._child = None
+        self.deferred = False
+        self._step_count = 0
+        self._chase_frames = 0
+        self._pickup_tries = 0
+        self._drop_tries = 0
+        self._stand = None
+        self._face = "left"
+        self._action_queue.clear()
+
+    def can_start(self, world: WorldState) -> bool:
+        return True
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step_count += 1
+        if self._phase == "done":
+            return TaskResult(status=TaskStatus.SUCCESS, reason="deferred" if self.deferred else "hen in coop")
+        if self._phase in ("chase", "pickup_press", "drop"):
+            return self._hands(world)
+        if self._phase == "boot":
+            return self._boot(world)
+        if self._child is None:
+            return self._fail(f"no child in {self._phase}")
+        result = self._child.step(world)
+        if result.status == TaskStatus.RUNNING:
+            return result
+        if result.status != TaskStatus.SUCCESS:
+            return self._fail(f"{self._phase} failed: {result.reason}")
+        return self._advance(world)
+
+    def _boot(self, world: WorldState) -> TaskResult:
+        ram = world.ram
+        tilemap = self._tilemap(ram)
+        if read_item_on_hand(ram) == _ITEM_CHICKEN:
+            return self._carry_on(world, tilemap)
+        if self._stray_bird(ram) is None:
+            if tilemap in (_ANIMAL_SHOP_TILEMAP, _TOWN_TILEMAP):
+                self.deferred = True  # nothing to carry (the buy failed): just walk home
+                return self._carry_on(world, tilemap)
+            return self._finish("no hen outside the coop")
+        if tilemap == _TOWN_TILEMAP and yard_free(*self._player_px(ram)):
+            return self._begin_chase(world)
+        if tilemap != _ANIMAL_SHOP_TILEMAP:
+            return self._fail(f"hen delivery starts in the shop, not tilemap 0x{tilemap:02X}")
+        if self._clock_min(ram) > YARD_ENTRY_DEADLINE_MIN:
+            return self._defer(world, "too late for the yard")
+        return self._arm("to_yard", self._nav("animal_shop_to_yard", clear=False, timeout=4000), world)
+
+    def _defer(self, world: WorldState, why: str) -> TaskResult:
+        self.deferred = True
+        self._log(world, f"defer: {why}")
+        return self._carry_on(world, self._tilemap(world.ram))
+
+    def _carry_on(self, world: WorldState, tilemap: int) -> TaskResult:
+        """Head for the farm (then the coop, if the hen is in hand) from any map on the way."""
+        if tilemap == CHICKEN_COOP_MAP:
+            if read_item_on_hand(world.ram) == _ITEM_CHICKEN:
+                return self._begin_drop(world)
+            return self._finish("hen in coop")
+        if tilemap == _ANIMAL_SHOP_TILEMAP:
+            route = ("animal_shop_to_town", "animal_shop_town_to_farm")
+        elif tilemap == _TOWN_TILEMAP:
+            route = ("animal_yard_to_farm",) if yard_free(*self._player_px(world.ram)) else ("animal_shop_town_to_farm",)
+        elif self._is_farm(tilemap):
+            return self._after_farm(world)
+        else:
+            return self._fail(f"carrying a hen on tilemap 0x{tilemap:02X}")
+        from harvest.maps.map_config import ROUTES
+
+        waypoints = [wp for name in route for wp in ROUTES[name]]
+        return self._arm("to_farm", self._nav_wps("hen_home", waypoints, clear=False, timeout=20000), world)
+
+    def _after_farm(self, world: WorldState) -> TaskResult:
+        if self.deferred or read_item_on_hand(world.ram) != _ITEM_CHICKEN:
+            return self._finish("deferred" if self.deferred else "back on the farm")
+        return self._arm("to_coop_door", self._nav("farm_to_coop", clear=False, timeout=8000), world)
+
+    def _advance(self, world: WorldState) -> TaskResult:
+        phase = self._phase
+        if phase == "to_yard":
+            self._phase, self._child, self._stand = "chase", None, None
+            # The map fade-in swallows presses for about half a second.
+            self._action_queue.clear()
+            self._action_queue.extend(make_action() for _ in range(30))
+            return self._hands(world)
+        if phase == "to_farm":
+            return self._after_farm(world)
+        if phase == "to_coop_door":
+            return self._arm("enter_coop", self._enter_coop(), world)
+        if phase == "enter_coop":
+            if read_item_on_hand(world.ram) != _ITEM_CHICKEN:
+                return self._fail("coop door cleared the hen")
+            return self._begin_drop(world)
+        return self._fail(f"no advance from {phase}")
+
+    def _begin_chase(self, world: WorldState) -> TaskResult:
+        self._phase = "chase"
+        self._child = None
+        self._stand = None
+        self._action_queue.clear()
+        self._log(world, "chase")
+        return self._hands(world)
+
+    def _begin_press(self, world: WorldState) -> TaskResult:
+        self._phase = "pickup_press"
+        self._pickup_tries += 1
+        self._action_queue.clear()
+        self._action_queue.extend(
+            press_a_sequence(
+                self._face,
+                face_frames=4,
+                pre_press_settle_frames=2,
+                hold_frames=16,
+                settle_frames=24,
+                hold_face_with_a=True,
+            )
+        )
+        self._log(world, f"pickup try={self._pickup_tries}")
+        return self._hands(world)
+
+    def _begin_drop(self, world: WorldState) -> TaskResult:
+        self._phase = "drop"
+        self._child = None
+        self._drop_tries = 0
+        self._action_queue.clear()
+        self._log(world, "drop")
+        return self._hands(world)
+
+    def _hands(self, world: WorldState) -> TaskResult:
+        ram = world.ram
+        held = read_item_on_hand(ram)
+        tilemap = self._tilemap(ram)
+        if self._phase in ("chase", "pickup_press"):
+            if held == _ITEM_CHICKEN:
+                return self._carry_on(world, tilemap)
+            if tilemap != _TOWN_TILEMAP:
+                return self._fail(f"left the yard map=0x{tilemap:02X} held=0x{held:02X}")
+        if self._phase == "drop":
+            if held != _ITEM_CHICKEN and self._stray_bird(ram) is None:
+                return self._finish("hen in coop")
+            if tilemap != CHICKEN_COOP_MAP:
+                return self._fail(f"left coop during drop map=0x{tilemap:02X} held=0x{held:02X}")
+        lock = int(ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(ram) else 1
+        if lock != 1:
+            return dismiss_dialogue_result(self._step_count, pulse_every=1)
+        queued = drain_action_queue(self._action_queue)
+        if queued is not None:
+            return queued
+        if self._phase == "drop":
+            return self._drop_press(world, held)
+        self._chase_frames += 1
+        if self._clock_min(ram) > YARD_LEAVE_DEADLINE_MIN or self._chase_frames > self.chase_budget:
+            return self._defer(world, "pickup ran past the closing deadline")
+        if self._phase == "pickup_press":
+            if self._pickup_tries >= self.pickup_tries_max:
+                return self._defer(world, f"pickup missed slots={self._slots(ram)}")
+            self._phase = "chase"
+        return self._chase(world)
+
+    def _chase(self, world: WorldState) -> TaskResult:
+        """Greedy walk to the stand beside the hen, then press A at her."""
+        ram = world.ram
+        bird = self._stray_bird(ram)
+        if bird is None:
+            return self._defer(world, "hen vanished from the yard")
+        player = self._player_px(ram)
+        if self._stand is None or self._step_count % 30 == 0:
+            self._stand, self._face = hen_stand(bird, player)
+        direction = yard_step(player, self._stand)
+        if direction is None:
+            self._stand = None
+            return self._begin_press(world)
+        far = abs(player[0] - self._stand[0]) + abs(player[1] - self._stand[1]) > 24
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(**{direction: True, "b": far})))
+
+    def _drop_press(self, world: WorldState, held: int) -> TaskResult:
+        # The door mat (tile 8,12) refuses the drop. One tile up takes it.
+        if self._player_px(world.ram)[1] > _COOP_DROP_MAX_Y:
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(up=True)))
+        if self._drop_tries >= self.drop_tries_max:
+            return self._fail(f"drop missed held=0x{held:02X} slots={self._slots(world.ram)}")
+        self._drop_tries += 1
+        self._action_queue.extend(
+            press_a_sequence(None, face_frames=0, pre_press_settle_frames=4, hold_frames=12, settle_frames=30)
+        )
+        queued = drain_action_queue(self._action_queue)
+        return queued or TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+    def _arm(self, phase: str, child: Task, world: WorldState) -> TaskResult:
+        self._phase = phase
+        self._child = child
+        child.reset(world)
+        self._log(world, "arm")
+        result = child.step(world)
+        if result.status == TaskStatus.RUNNING:
+            return result
+        if result.status != TaskStatus.SUCCESS:
+            return self._fail(f"{phase} failed: {result.reason}")
+        return self._advance(world)
+
+    def _nav(self, route: str, *, clear: bool, timeout: int) -> Task:
+        from harvest.maps.map_config import ROUTES
+
+        return self._nav_wps(route, list(ROUTES[route]), clear=clear, timeout=timeout)
+
+    def _nav_wps(self, name: str, waypoints: list, *, clear: bool, timeout: int) -> Task:
+        from harvest.planner.tasks.multi_nav import MultiMapNavTask
+
+        return MultiMapNavTask(
+            name=name,
+            waypoints=list(waypoints),
+            timeout=timeout,
+            allow_opportunistic_clear=clear,
+            initial_settle_frames=20,
+        )
+
+    def _enter_coop(self) -> Task:
+        from harvest.planner.tasks.transitions import DirectionalTransitionTask
+
+        return DirectionalTransitionTask(
+            name="hen_enter_coop",
+            direction="up",
+            origin_tilemap=0x00,
+            target_tilemap=CHICKEN_COOP_MAP,
+            timeout=1200,
+            stand_tile=(28, 22),
+            stand_tolerance=0,
+            target_stand_tile=(8, 12),
+            target_stand_tolerance=1,
+            settle_frames=60,
+            door_align_px=28 * 16 + 8,
+            overshoot_limit_px=330,
+            require_empty_hands=False,
+        )
+
+    def _finish(self, reason: str) -> TaskResult:
+        self._phase = "done"
+        self._child = None
+        print(f"[HEN] DONE {reason}", flush=True)
+        return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
+
+    def _fail(self, reason: str) -> TaskResult:
+        self._phase = "failed"
+        self._child = None
+        print(f"[HEN] FAIL {reason}", flush=True)
+        return TaskResult(status=TaskStatus.FAILURE, reason=reason)
+
+    def _log(self, world: WorldState, note: str) -> None:
+        ram = world.ram
+        print(
+            f"[HEN] f={getattr(world, "frame", 0)} {note} phase={self._phase} map=0x{self._tilemap(ram):02X} "
+            f"clock={self._clock_min(ram) // 60}:{self._clock_min(ram) % 60:02d} "
+            f"bird={self._stray_bird(ram)} player={self._player_px(ram)}",
+            flush=True,
+        )
+
+    def _clock_min(self, ram: np.ndarray) -> int:
+        return int(read_ram_value(ram, "hour")) * 60 + int(read_ram_value(ram, "minute"))
+
+    def _tilemap(self, ram: np.ndarray) -> int:
+        return int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+
+    def _is_farm(self, tilemap: int) -> bool:
+        from harvest.planner.day_plan_status import is_farm_tilemap
+
+        return bool(is_farm_tilemap(tilemap))
+
+    def _player_px(self, ram: np.ndarray) -> tuple[int, int]:
+        from harvest.tasks.nav import get_pos_from_ram
+
+        pos = get_pos_from_ram(ram)
+        return int(pos.x), int(pos.y)
+
+    def _stray_bird(self, ram: np.ndarray) -> tuple[int, int] | None:
+        return stray_hen_px(ram)
+
+    def _slots(self, ram: np.ndarray) -> str:
+        return ",".join(
+            f"{row.get('slot')}:{row.get('status_hex')}@{row.get('map_hex')}:{row.get('pixel')}"
+            for row in chicken_slot_snapshots(ram, require_coop=False)
+        )

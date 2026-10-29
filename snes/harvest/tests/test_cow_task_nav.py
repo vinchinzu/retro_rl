@@ -107,6 +107,30 @@ class CowChoresNavTests(unittest.TestCase):
         self.assertEqual(int(result.action.action[7]), 0)
         self.assertEqual(int(result.action.action[0]), 1)
 
+    def test_milk_nav_exits_left_trough_before_crossing_stall(self) -> None:
+        """Slot-0 pixel (113, 277) is not a milk stand. Leave it without A."""
+        ram = _make_barn_ram(cows=1, fed=1, hay=20, tool_selected=MILKER_TOOL_ID)
+        _set_player_px(ram, COW_FEED_SPOTS[3].interact_px)
+        _set_cow_slot(ram, 0, (9, 17), status=0x09)
+        _set_cow_daily(
+            ram,
+            0,
+            flags=COW_DAILY_TALKED_FLAG | COW_DAILY_BRUSHED_FLAG,
+            happiness=40,
+        )
+        task = CowChoresTask(feed=False)
+        task.reset(_make_world(ram))
+
+        result = task.step(_make_world(ram))
+
+        self.assertEqual(task._phase, "milk_nav")
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIsNotNone(result.action)
+        self.assertEqual(int(result.action.action[5]), 1)
+        self.assertEqual(int(result.action.action[7]), 0)
+        self.assertEqual(int(result.action.action[8]), 0)
+        self.assertEqual(int(result.action.action[0]), 1)
+
     def test_milk_ship_nav_uses_barn_bin_interact_tile(self) -> None:
         ram = _make_barn_ram(cows=1, fed=1, hay=20, held_item=0x16, player_tile=BARN_SHIP_BIN_STAND)
         task = CowChoresTask(talk=False, brush=False, milk=False, feed=False)

@@ -202,12 +202,12 @@ class WorldProbe:
         RAM-only: ``False`` when no RAM is available (callers default the
         planning flag to ``True`` in that case).
         """
-        from harvest.maps.farm_pond import pocket_plant_target
+        from harvest.maps.farm_pond import pocket_plant_targets
 
         ram = self._require_ram()
         if ram is None:
             return False
-        return pocket_plant_target(ram) is not None
+        return bool(pocket_plant_targets(ram, replant_ripe=True))
 
     def has_waterable_crops(self) -> bool:
         ram = self._require_ram()

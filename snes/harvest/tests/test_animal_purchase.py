@@ -2,19 +2,21 @@
 
 import numpy as np
 
-from harvest.core.ram_catalog import field_spec, read_ram_value
+from harvest.core.ram_catalog import COW_SLOT_BASE, field_spec, read_ram_value
 from harvest.planner.day_phase_catalog import PHASE_SEQUENCES
-from harvest.planner.tasks.sale_menu import (
-    CHICKEN_CONFIRM_TEXT_ID,
+from harvest.planner.livestock_econ import (
     CHICKEN_PRICE,
     COW_PRICE,
-    GRASS_SHORT_TEXT_ID,
-    SHOP_MENU_TEXT_ID,
-    AnimalPurchaseSession,
     animal_bought_today,
     purchase_block_reason,
     purchase_grass_required,
     weather_blocks_animal_delivery,
+)
+from harvest.planner.tasks.sale_menu import (
+    CHICKEN_CONFIRM_TEXT_ID,
+    GRASS_SHORT_TEXT_ID,
+    SHOP_MENU_TEXT_ID,
+    AnimalPurchaseSession,
 )
 from harvest.tasks.nav import make_action
 
@@ -189,22 +191,32 @@ def test_registered_buy_waits_for_receipt_and_name_screen_to_close():
     receipt = CowPurchaseTask(species="cow", timeout=3600)
     receipt.reset(world(_shop(), 0))
     locked = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=0)
+    locked[COW_SLOT_BASE] = 1
     for frame in range(1, 180):
         result = receipt.step(world(locked, frame))
         assert result.status == TaskStatus.RUNNING
     result = receipt.step(world(locked, 180))
     assert result.status == TaskStatus.RUNNING
     assert result.reason is not None and "4->5" in result.reason
-    assert "7830->2830" in result.reason
+    assert "7830->2830" in result.reason and "shop=0x24" in result.reason
+    assert "slot=0" in result.reason
     for frame in range(181, 3602):
         result = receipt.step(world(locked, frame))
     assert result.status == TaskStatus.FAILURE
 
+    noslot = CowPurchaseTask(species="cow", timeout=3600)
+    noslot.reset(world(_shop(), 0))
+    free = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=1)
+    result = noslot.step(world(free, 1))
+    assert result.status == TaskStatus.RUNNING
+
     opened = CowPurchaseTask(species="cow", timeout=3600)
     opened.reset(world(_shop(), 0))
-    free = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=1)
-    result = opened.step(world(free, 1))
+    slotted = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=1)
+    slotted[COW_SLOT_BASE] = 1
+    result = opened.step(world(slotted, 1))
     assert result.status == TaskStatus.SUCCESS
+    assert result.reason is not None and "shop=0x24" in result.reason and "slot=0" in result.reason
 
     named = CowPurchaseTask(species="chicken", timeout=3600)
     named.reset(world(_shop(), 0))
@@ -219,6 +231,201 @@ def test_registered_buy_waits_for_receipt_and_name_screen_to_close():
     for frame in range(181, 3602):
         result = named.step(world(grid, frame))
     assert result.status == TaskStatus.FAILURE
+
+
+def test_cow_name_advances_feed_text_before_the_slot_can_succeed():
+    """Payment is not the buy. Decline 0x0341, name on 0x5F, then walk."""
+    from retro_harness import TaskStatus, WorldState
+
+    from harvest.planner.tasks.chicken_sale import CowPurchaseTask
+
+    def world(ram, frame: int) -> WorldState:
+        return WorldState(frame=frame, ram=ram, info={})
+
+    def buttons(result) -> np.ndarray:
+        assert result.action is not None
+        return result.action.action
+
+    task = CowPurchaseTask(species="cow", timeout=80)
+    task.reset(world(_shop(), 0))
+    stuck = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=2)
+    _set_text(stuck, 0x0341)
+    stuck[0x019B] |= 0x10
+    saw_down = False
+    for _ in range(30):
+        result = task.step(world(stuck, task._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        assert not np.array_equal(buttons(result), make_action(a=True))
+        if np.array_equal(buttons(result), make_action(down=True)):
+            saw_down = True
+    assert saw_down
+
+    stuck[field_spec("dialog_choice_result").address] = 1
+    declined = False
+    for _ in range(16):
+        result = task.step(world(stuck, task._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        if np.array_equal(buttons(result), make_action(a=True)):
+            declined = True
+            break
+    assert declined
+
+    receipt = CowPurchaseTask(species="cow", timeout=80)
+    receipt.reset(world(_shop(), 0))
+    box = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=2)
+    _set_text(box, 0x0308)
+    box[0x019B] |= 0x04
+    advanced = False
+    for _ in range(12):
+        result = receipt.step(world(box, receipt._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        if np.array_equal(buttons(result), make_action(a=True)):
+            advanced = True
+            break
+    assert advanced
+
+    grid = _shop(money=7830 - COW_PRICE, num_cows=5, tilemap=0x5F, input_lock=5)
+    named = False
+    for _ in range(8):
+        result = receipt.step(world(grid, receipt._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        if result.reason and result.reason.startswith("name entry char"):
+            named = True
+            assert np.array_equal(buttons(result), make_action(a=True))
+            break
+    assert named
+
+    done = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=1)
+    done[COW_SLOT_BASE] = 1
+    result = receipt.step(world(done, receipt._step_count + 1))
+    assert result.status == TaskStatus.SUCCESS
+    assert result.reason is not None and "slot=0" in result.reason
+
+    still = _shop(money=7830 - COW_PRICE, num_cows=5, input_lock=1)
+    result = task.step(world(still, task._step_count + 1))
+    assert result.status == TaskStatus.RUNNING
+
+
+def _armed_name_ram() -> np.ndarray:
+    """Fall town after CODE_81E08A. The slot does not exist yet."""
+    ram = _shop(tilemap=0x06, money=3800, num_cows=1, planted_grass=33, input_lock=1)
+    _set_text(ram, 0x0305)
+    ram[0x096E] = 0x42
+    ram[0x096F] = 1
+    ram[0x019B] = 0
+    return ram
+
+
+def test_armed_name_does_not_walk_and_quotes_a_stuck_machine():
+    """$096F=1 is the bought-name machine. 600 idle frames, then stop."""
+    from retro_harness import TaskStatus, WorldState
+
+    from harvest.planner.tasks.chicken_sale import CowPurchaseTask
+
+    def world(ram, frame: int) -> WorldState:
+        return WorldState(frame=frame, ram=ram, info={})
+
+    def buttons(result) -> np.ndarray:
+        assert result.action is not None
+        return result.action.action
+
+    stuck = CowPurchaseTask(species="cow", timeout=80)
+    ram = _armed_name_ram()
+    stuck.reset(world(ram, 0))
+    assert stuck._name_armed
+    for frame in range(1, 600):
+        result = stuck.step(world(ram, frame))
+        assert result.status == TaskStatus.RUNNING
+        assert np.array_equal(buttons(result), make_action())
+    result = stuck.step(world(ram, 600))
+    assert result.status == TaskStatus.FAILURE
+    assert result.reason is not None
+    assert "096F=1" in result.reason
+    assert "text=0x0305" in result.reason
+    assert "inputstate=1" in result.reason
+    assert "0196=0x0000" in result.reason
+
+    live = CowPurchaseTask(species="cow", timeout=80)
+    box = _armed_name_ram()
+    live.reset(world(box, 0))
+    live.step(world(box, 1))
+    box[0x096F] = 2
+    box[0x019A] = 2
+    box[0x019B] |= 0x04
+    _set_text(box, 0x030C)
+    advanced = False
+    for _ in range(12):
+        result = live.step(world(box, live._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        pressed = buttons(result)
+        assert pressed[4] == pressed[5] == pressed[6] == pressed[7] == 0
+        if np.array_equal(pressed, make_action(a=True)):
+            advanced = True
+            break
+    assert advanced
+
+    grid = _armed_name_ram()
+    grid[field_spec("tilemap").address] = 0x5F
+    grid[0x019A] = 5
+    grid[0x096F] = 3
+    named = False
+    for _ in range(8):
+        result = live.step(world(grid, live._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        if result.reason and result.reason.startswith("name entry char"):
+            named = True
+            assert np.array_equal(buttons(result), make_action(a=True))
+            break
+    assert named
+
+    done = _armed_name_ram()
+    done[COW_SLOT_BASE] = 0x05
+    result = live.step(world(done, live._step_count + 1))
+    assert result.status == TaskStatus.SUCCESS
+    assert result.reason is not None and "slot=0" in result.reason
+
+
+def test_paid_shop_menu_does_not_press_a_while_script_is_2e():
+    """Name bit plus $096E=$2E hands off. A stays off the shop menu."""
+    from retro_harness import TaskStatus, WorldState
+
+    from harvest.core.scene import SceneGuard, cow_name_awaits_gate, unowned_scene_press
+    from harvest.planner.tasks.chicken_sale import CowPurchaseTask
+    from harvest.planner.tasks.navigation import nav_needs_menu_dismiss
+
+    def world(ram, frame: int) -> WorldState:
+        return WorldState(frame=frame, ram=ram, info={})
+
+    task = CowPurchaseTask(species="cow", timeout=80)
+    task.reset(world(_shop(money=5300, num_cows=1, planted_grass=33), 0))
+    paid = _shop(money=300, num_cows=2, planted_grass=33, input_lock=1, tilemap=0x24)
+    paid[0x096E] = 0x2E
+    _set_u16(paid, 0x11F5A, 0x0002)
+    assert cow_name_awaits_gate(paid)
+    result = task.step(world(paid, 1))
+    assert result.status == TaskStatus.SUCCESS
+    assert result.action is None or not np.array_equal(result.action.action, make_action(a=True))
+
+    locked = paid.copy()
+    locked[field_spec("input_lock").address] = 2
+    receipt = CowPurchaseTask(species="cow", timeout=80)
+    receipt.reset(world(_shop(money=5300, num_cows=1, planted_grass=33), 0))
+    _set_text(locked, 0x0308)
+    locked[0x019B] |= 0x04
+    pressed = False
+    for _ in range(12):
+        result = receipt.step(world(locked, receipt._step_count + 1))
+        assert result.status == TaskStatus.RUNNING
+        if result.action is not None and np.array_equal(result.action.action, make_action(a=True)):
+            pressed = True
+            break
+    assert pressed
+
+    assert nav_needs_menu_dismiss(paid, 1) is None
+    held = nav_needs_menu_dismiss(locked, 1)
+    assert held is not None and held.action is not None
+    assert not np.array_equal(held.action.action, make_action(a=True))
+    assert unowned_scene_press(paid, SceneGuard(), step=4) is None
 
 
 def test_counter_sequences_buy_one_species_at_the_sale_counter():

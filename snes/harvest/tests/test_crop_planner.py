@@ -159,20 +159,24 @@ class CropPlannerTests(unittest.TestCase):
 
         self.assertEqual(plan.seed_bags_needed, 0)
 
-    def test_late_spring_potato_still_plants_because_it_harvests_in_summer(self) -> None:
-        ram = _blank_ram()
-        config = CropPlanningConfig(
-            seed_type="potato",
-            season="spring",
-            day=28,
-            max_seed_bags=1,
-            bounds=(10, 28, 25, 40),
-        )
+    def test_spring_crops_are_not_sown_after_the_ring_cutoff(self) -> None:
+        # A potato sown after SPRING_LAST_SOW_DAY would still ripen in Summer, but
+        # it holds its ring past D1 and costs corn or tomato harvests.
+        from harvest.planner.crop_planner import SPRING_LAST_SOW_DAY, should_buy_seeds_for_date
 
-        plan = plan_crop_field(ram, config)
+        potato = CROP_SPECS["potato"]
+        self.assertEqual(potato.harvests_from_planting_day(SPRING_LAST_SOW_DAY), 1)
+        self.assertEqual(potato.harvests_from_planting_day(SPRING_LAST_SOW_DAY + 1), 0)
+        self.assertEqual(CROP_SPECS["turnip"].harvests_from_planting_day(28), 0)
+        self.assertTrue(should_buy_seeds_for_date("spring", SPRING_LAST_SOW_DAY))
+        self.assertFalse(should_buy_seeds_for_date("spring", SPRING_LAST_SOW_DAY + 1))
+        self.assertFalse(should_buy_seeds_for_date("spring", 30))
 
-        self.assertEqual(plan.seed_bags_needed, 1)
-        self.assertEqual(CROP_SPECS["potato"].harvests_from_planting_day(28), 1)
+    def test_cutoff_leaves_a_ring_planted_on_d1_ripe_on_summer_d1(self) -> None:
+        from harvest.planner.crop_planner import SPRING_LAST_SOW_DAY, SEASON_LENGTH
+
+        potato = CROP_SPECS["potato"]
+        self.assertLessEqual(SPRING_LAST_SOW_DAY + potato.days_to_first_harvest, SEASON_LENGTH)
 
     def test_choose_crop_for_date_accounts_for_summer_regrow(self) -> None:
         crop = choose_crop_for_date("summer", 12, layout_tiles=7)

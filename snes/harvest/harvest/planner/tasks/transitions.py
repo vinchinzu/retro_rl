@@ -503,6 +503,10 @@ class DirectionalTransitionTask(Task):
                 return make_action(down=True, b=True)
 
         if pos.y < BARN_EXIT_LOWER_Y - 2:
+            # Tile (11, 18) is the cow talk pin (~188, 299). The right aisle
+            # is the cow body, so slide south to the door lane before east.
+            if pos.y >= 18 * 16 and 11 * 16 <= pos.x < BARN_EXIT_RIGHT_AISLE_X - 8:
+                return make_action(down=True, b=True)
             if pos.x <= BARN_EXIT_TROUGH_MAX_X:
                 if abs(pos.x - BARN_EXIT_TROUGH_X) > 2:
                     return make_action(right=pos.x < BARN_EXIT_TROUGH_X, left=pos.x > BARN_EXIT_TROUGH_X, b=True)

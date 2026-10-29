@@ -59,6 +59,17 @@ def _sleep_planner(gs, tilemap=0x15):
     return planner, result
 
 
+def test_door_dog_is_met_from_the_south():
+    from harvest.tasks.nav import Point
+
+    stand, face = hr.dog_release_stand(Point(139, 422))
+    assert stand == (136, 456)
+    assert face == "up"
+    stand, face = hr.dog_release_stand(Point(200, 300))
+    assert stand == (184, 300)
+    assert face == "right"
+
+
 def test_stuck_flag_detection():
     # Stuck is bit 0x0800, with or without the 0x0080 warp/carry bit.
     assert hr.dog_pickup_stuck(_ram(gs=0x4C01))

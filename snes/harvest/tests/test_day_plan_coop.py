@@ -34,6 +34,7 @@ from unittest.mock import patch
 import numpy as np
 
 from harvest.core.animal_status import CHICKEN_SLOT_BASE, CHICKEN_SLOT_SIZE, COW_DAILY_TALKED_FLAG
+from harvest.planner.livestock_econ import COW_PRICE
 from harvest.planner.day_plan import (
     ADDR_CHICKEN_COUNT,
     ADDR_CORN_SEEDS,
@@ -59,7 +60,6 @@ from harvest.planner.day_plan import (
     COOP_TILEMAP,
     CoopPickupChickenTask,
     COW_PHASES,
-    COW_PURCHASE_COST,
     CrossMapRecordedTask,
     DayPlannerPolicy,
     DayPlanTask,
@@ -447,6 +447,50 @@ class DayPlanSequenceCoopTests(unittest.TestCase):
         self.assertEqual(int(second.action.action[5]), 1)
         self.assertEqual(int(second.action.action[7]), 0)
 
+    def test_barn_exit_drops_south_from_cow_pin_to_door(self) -> None:
+        """Tile (11, 18) is the cow talk pin. South to the door lane, then
+        left onto the door. A farm tilemap at outdoor coords completes it."""
+        for start in ((188, 299), (188, 301)):
+            with self.subTest(start=start):
+                world = make_transition_world(0x27)
+                set_player_pos(world.ram, start[0], start[1])
+                task = DirectionalTransitionTask(
+                    direction="down",
+                    origin_tilemap=0x27,
+                    target_tilemap=0x00,
+                    stand_tile=(8, 22),
+                    stand_tolerance=1,
+                )
+                task.reset(world)
+                x, y = start
+                reached_door = False
+                for _ in range(80):
+                    result = task.step(world)
+                    self.assertEqual(result.status, TaskStatus.RUNNING, result.reason)
+                    self.assertIsNotNone(result.action)
+                    act = result.action.action
+                    if 288 <= y < 326 and 176 <= x < 196:
+                        self.assertEqual(int(act[5]), 1, f"down from pin {(x, y)}")
+                        self.assertEqual(int(act[7]), 0, f"not right into the cow at {(x, y)}")
+                    if (
+                        int(act[5]) == 1
+                        and int(act[6]) == 0
+                        and int(act[7]) == 0
+                        and y >= 326
+                        and abs(x - 136) <= 4
+                    ):
+                        reached_door = True
+                        world.ram[ADDR_TILEMAP] = 0x00
+                        set_player_pos(world.ram, 329, 360)
+                        break
+                    x += (int(act[7]) - int(act[6])) * 2
+                    y += (int(act[5]) - int(act[4])) * 2
+                    set_player_pos(world.ram, x, y)
+                self.assertTrue(reached_door, f"never reached the barn door from {start}, ended {(x, y)}")
+                done = task.step(world)
+                self.assertEqual(done.status, TaskStatus.SUCCESS, done.reason)
+                self.assertIn("tilemap=0x00", done.reason or "")
+
     def test_farm_to_barn_route_starts_south_of_house_exit(self) -> None:
         route = ROUTES["farm_to_barn"]
 
@@ -549,8 +593,24 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
         chicken_start = names.index("NAV_TO_COOP")
         self.assertEqual(names[chicken_start:chicken_start + len(chicken_names)], chicken_names)
 
-    def test_oversupplied_chickens_schedule_sale_and_limited_chores(self) -> None:
+    def test_flock_of_six_is_kept_fed_and_incubated_by_default(self) -> None:
+        """Chicken economy: the flock grows to the coop's 12 by incubation.
+
+        The old default (max_adult_chickens=2) sold a hen a day and fed two.
+        Now every adult is fed, the incubator takes eggs while the flock is
+        under 12 (egg_mode auto ships the rest), and nothing is sold.
+        """
         phases = build_day_phases(None, hour=6, has_chickens=True, adult_chickens=6)
+        names = self._phase_names(phases)
+
+        self.assertNotIn("SELL_CHICKEN", names)
+        coop_phase = phases[names.index("COOP_CHORES")]
+        self.assertEqual(coop_phase.params["egg_mode"], "auto")
+        self.assertNotIn("max_feed_adults", coop_phase.params)
+
+    def test_lower_cap_still_schedules_sale_and_limited_chores(self) -> None:
+        policy = DayPlannerPolicy(max_adult_chickens=2)
+        phases = build_day_phases(None, hour=6, has_chickens=True, adult_chickens=6, policy=policy)
         names = self._phase_names(phases)
 
         self.assertLess(names.index("SELL_CHICKEN"), names.index("NAV_TO_COOP"))
@@ -559,14 +619,20 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
         self.assertEqual(coop_phase.params["max_feed_adults"], 2)
 
     def test_chicken_sale_skips_after_cutoff(self) -> None:
-        phases = build_day_phases(None, hour=14, has_chickens=True, adult_chickens=6)
+        phases = build_day_phases(
+            None, hour=14, has_chickens=True, adult_chickens=6,
+            policy=DayPlannerPolicy(max_adult_chickens=2),
+        )
         names = self._phase_names(phases)
 
         self.assertNotIn("SELL_CHICKEN", names)
         self.assertIn("COOP_CHORES", names)
 
     def test_chicken_sale_skips_sunday(self) -> None:
-        phases = build_day_phases(None, weekday=0, hour=6, has_chickens=True, adult_chickens=6)
+        phases = build_day_phases(
+            None, weekday=0, hour=6, has_chickens=True, adult_chickens=6,
+            policy=DayPlannerPolicy(max_adult_chickens=2),
+        )
         names = self._phase_names(phases)
 
         self.assertNotIn("SELL_CHICKEN", names)
@@ -641,7 +707,8 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
         self.assertEqual(names, ["NAV_TO_COOP", "ENTER_COOP", "COOP_CHORES", "EXIT_COOP"])
         self.assertEqual(kinds, ["multi_nav", "directional_transition", "coop_chores", "directional_transition"])
         self.assertEqual(CHICKEN_PHASES[-1].params["stand_tile"], (8, 12))
-        self.assertEqual(CHICKEN_PHASES[-1].params["settle_frames"], 5)
+        from harvest.planner.day_phase_chicken import COOP_EXIT_INPUT_LOCK_FRAMES
+        self.assertEqual(CHICKEN_PHASES[-1].params["settle_frames"], COOP_EXIT_INPUT_LOCK_FRAMES)
         self.assertEqual(len(ROUTES["barn_to_coop"]), 1)
         self.assertEqual(ROUTES["barn_to_coop"][0].target_px, (454, 360))
         self.assertIsNone(ROUTES["barn_to_coop"][0].run_direction)
@@ -659,13 +726,16 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
         self.assertEqual(COW_PHASES[-1].params["stand_tile"], (8, 22))
 
     def test_build_day_phases_from_ram_sells_when_adult_chickens_exceed_target(self) -> None:
+        """An explicit low cap still sells; the default (12) keeps the flock."""
         world = make_date_world(0x00, season=0, day=13, hour=6)
         world.ram[ADDR_WEEKDAY + 0x4000] = 2
         world.ram[ADDR_CHICKEN_COUNT + 0x4000] = 6
         world.ram[ADDR_HAY_COUNT + 0x4000] = 50
         set_live_chicken_slots(world.ram, adults=6)
 
-        phases = build_day_phases_from_ram(world.ram)
+        kept = self._phase_names(build_day_phases_from_ram(world.ram))
+        self.assertNotIn("SELL_CHICKEN", kept)
+        phases = build_day_phases_from_ram(world.ram, policy=DayPlannerPolicy(max_adult_chickens=2))
         names = self._phase_names(phases)
 
         self.assertIn("SELL_CHICKEN", names)
@@ -763,7 +833,7 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
         world.ram[ADDR_WEEKDAY + 0x4000] = 2
         world.ram[ADDR_CHICKEN_COUNT + 0x4000] = 1
         world.ram[ADDR_EGG_AVAILABLE + 0x4000] = 1
-        set_money(world.ram, COW_PURCHASE_COST + 300)
+        set_money(world.ram, COW_PRICE + 300)
         from harvest.core.ram_catalog import field_spec, ram_index
         for field, value in (("planted_grass", 32), ("stored_grass", 20)):
             spec = field_spec(field)
@@ -774,14 +844,54 @@ class BuildDayPhasesCoopTests(DayPlanPhaseHelpers):
 
         self.assertLess(names.index("BUY_COW_VENDOR"), names.index("NAV_TO_COOP"))
         self.assertLess(names.index("RETURN_FARM_AFTER_COW_PURCHASE"), names.index("NAV_TO_COOP"))
+        self.assertEqual(phases[names.index("BUY_COW_VENDOR")].params["species"], "cow")
         self.assertEqual(names[-1], "DYNAMIC_OUTDOOR_PLAN")
+
+    def test_morning_after_first_cow_raises_before_buying_the_hen(self) -> None:
+        world = make_date_world(0x15, season=1, day=21, hour=6)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+        world.ram[ADDR_COW_COUNT + 0x4000] = 1
+        world.ram[ADDR_FED_COWS_N + 0x4000] = 0
+        set_money(world.ram, 2300)
+        from harvest.core.ram_catalog import field_spec, ram_index
+        for field, value in (("planted_grass", 32), ("stored_grass", 20)):
+            spec = field_spec(field)
+            world.ram[ram_index(world.ram, spec.address, live_offset=spec.live_offset)] = value
+        set_live_cow_slot(world.ram, 0, flags=0, happiness=0)
+
+        phases = build_day_phases_from_ram(world.ram)
+        names = self._phase_names(phases)
+
+        self.assertIn("COW_CHORES", names)
+        self.assertLess(names.index("COW_CHORES"), names.index("BUY_COW_VENDOR"))
+        self.assertEqual(phases[names.index("BUY_COW_VENDOR")].params["species"], "chicken")
+        self.assertEqual(phases[names.index("COW_CHORES")].params.get("milk"), False)
+        self.assertTrue(phases[names.index("COW_CHORES")].params.get("feed"))
+
+    def test_stopped_purchases_keep_the_owned_cow_cared_for(self) -> None:
+        world = make_date_world(0x15, season=1, day=21, hour=6)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 2
+        world.ram[ADDR_COW_COUNT + 0x4000] = 1
+        world.ram[ADDR_FED_COWS_N + 0x4000] = 0
+        set_money(world.ram, 2300)
+        from harvest.core.ram_catalog import field_spec, ram_index
+        for field, value in (("planted_grass", 32), ("stored_grass", 20)):
+            spec = field_spec(field)
+            world.ram[ram_index(world.ram, spec.address, live_offset=spec.live_offset)] = value
+        set_live_cow_slot(world.ram, 0, flags=0, happiness=0)
+
+        policy = DayPlannerPolicy(include_animal_purchases=False)
+        names = self._phase_names(build_day_phases_from_ram(world.ram, policy=policy))
+
+        self.assertIn("COW_CHORES", names)
+        self.assertNotIn("BUY_COW_VENDOR", names)
 
     def test_build_day_phases_from_ram_skips_cow_purchase_when_already_owned(self) -> None:
         world = make_date_world(0x15, season=0, day=16, hour=6)
         world.ram[ADDR_WEEKDAY + 0x4000] = 2
         world.ram[ADDR_COW_COUNT + 0x4000] = 1
         world.ram[ADDR_FED_COWS_N + 0x4000] = 1
-        set_money(world.ram, COW_PURCHASE_COST)
+        set_money(world.ram, COW_PRICE)
 
         phases = build_day_phases_from_ram(world.ram)
         names = self._phase_names(phases)

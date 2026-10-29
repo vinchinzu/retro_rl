@@ -537,6 +537,7 @@ def _mark_brushed_if_changed(task, ram: np.ndarray) -> None:
         task._brush_happiness_before,
     ):
         print(f"[COW] Brush OK slot={task._target_cow_slot} attempts={task._brush_attempts}")
+        task._note_care_delta(ram, "brush", task._brush_happiness_before)
         task.brushed = True
         task._remember_current_pin()
 

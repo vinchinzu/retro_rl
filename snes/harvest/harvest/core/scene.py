@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-from harvest.core.ram_catalog import field_spec, read_ram_value
+from harvest.core.ram_catalog import field_spec, ram_index, read_ram_u16, read_ram_value
 from harvest.maps.map_config import FARM_TILEMAP_IDS, MAP_REGISTRY, get_map_name
 
 
@@ -52,6 +52,8 @@ HOUSE_VARIANTS = {
     0x17: "level2",
 }
 SHOP_VARIANTS = {
+    0x22: "tool_shop",
+    0x23: "tool_shop_back",
     0x1C: "seed_shop",
     0x1D: "flower_back",
     0x24: "animal_shop",
@@ -572,6 +574,20 @@ def name_entry_press(
     return buttons, reason, step
 
 
+def cow_name_awaits_gate(ram: np.ndarray) -> bool:
+    """Payment set ``$7F1F5A`` bit ``0x0002`` while the shop script is still ``$2E``.
+
+    A on that menu does not open the name screen. The farm-gate hold moves
+    ``$096E`` to ``$42``, and the name screen creates the slot.
+    """
+    if ram is None or len(ram) <= 0x096E:
+        return False
+    script = int(ram[ram_index(ram, 0x096E, live_offset=False)])
+    if script != 0x2E:
+        return False
+    return (read_ram_u16(ram, 0x11F5A) & 0x0002) != 0
+
+
 def unowned_scene_press(
     ram: np.ndarray,
     guard: SceneGuard,
@@ -598,6 +614,11 @@ def unowned_scene_press(
         guard._name_press_step = last
         return buttons, reason
 
+    # Shop menu $2E with the bought-cow name bit: do not press A. Walking
+    # to the farm gate is what arms $42.
+    if cow_name_awaits_gate(ram):
+        return None
+
     if shipping_scene_needs_dismiss(ram):
         buttons: tuple[str, ...] | None = ("a",)
         reason = "shipping scene"
@@ -620,6 +641,7 @@ __all__ = [
     "classify_scene",
     "classify_scene_from_ram",
     "morning_scene_ready",
+    "cow_name_awaits_gate",
     "name_entry_press",
     "scene_indicates_ending",
     "unowned_scene_press",

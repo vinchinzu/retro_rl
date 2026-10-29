@@ -1,5 +1,17 @@
 # F7 happiness
 
+## Repair status, 2026-09-30
+
+Nine births are a candidate strategy, not a required consequence of a
+missing slot-0 trough. F3 now proves native feeding for every slot. The
+conditional calendar moves marriage to index 128 to include child 2's
+age-60 bonus and reserves 31,500G for 105 modeled drinks. Repeated native
+food access and the combined F5 budget remain unproved; the alternative
+buy-three/breed-nine schedule also needs native naming and dated care.
+This supersedes mandatory-birth and late-child assumptions below. F7 and
+PR-073 remain open; no new happiness campaign floor is claimed.
+
+
 Date: 2026-09-29. Bead PR-016. Static decode of the USA ROM and `HM-Decomp`. No emulator frames. The delta histogram matches MASTER_PLAN section F7, so this file is the plan, not a contradiction.
 
 ## Audit: dated floor must be rebuilt, 2026-09-30

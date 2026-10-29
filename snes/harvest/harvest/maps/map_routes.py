@@ -3,7 +3,7 @@
 Coordinate lists are hand-authored from recordings; do not "simplify" hops.
 """
 
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from harvest.core.tile_catalog import TILE_SIZE
 from harvest.maps.farm_gate import farm_to_west_gate_waypoints
@@ -98,6 +98,7 @@ def mountain_downhill_escape(
     py: int,
     *,
     tilemap: Optional[int] = None,
+    hops: Optional[Sequence[Waypoint]] = None,
 ) -> List[Waypoint]:
     """Mountain hops strictly south of the live pose, toward the south exit.
 
@@ -106,12 +107,12 @@ def mountain_downhill_escape(
     South means higher y: skip the terrace and drop to (520, 712).
     From the grape stand (y=409) this still includes the x=20 cliff drop.
     """
-    hops = list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
-    south = [wp for wp in hops if wp.target_px[1] > py + 16]
+    hops_list = list(hops) if hops is not None else list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
+    south = [wp for wp in hops_list if wp.target_px[1] > py + 16]
     if south:
         return list(south)
     return slice_route_from_position(
-        hops, px, py, tilemap=MOUNTAIN_TILEMAP_ID if tilemap is None else tilemap
+        hops_list, px, py, tilemap=MOUNTAIN_TILEMAP_ID if tilemap is None else tilemap
     )
 
 
@@ -459,6 +460,26 @@ _FIRST_BERRY_TO_MOUNTAIN_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=(312, 744), radius=16, is_exit=True, exit_direction="down"),
 ]
 
+# These pixels are the east ladder from the mushroom stand.
+_MUSHROOM_EAST_LADDER_PX: Tuple[Tuple[int, int], ...] = (
+    (616, 712),
+    (616, 696),
+    (632, 696),
+    (632, 664),
+    (648, 664),
+    (648, 632),
+    (662, 633),
+)
+_MOUNTAIN_ENTRY_TO_FIRST_MUSHROOM: List[Waypoint] = [
+    *_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:3],
+    *[Waypoint(tilemap=0x10, target_px=px, radius=4) for px in _MUSHROOM_EAST_LADDER_PX],
+]
+_FIRST_MUSHROOM_TO_MOUNTAIN_EXIT: List[Waypoint] = [
+    Waypoint(tilemap=0x10, target_px=px, radius=16 if px == (616, 712) else 10)
+    for px in reversed(_MUSHROOM_EAST_LADDER_PX)
+] + list(_FIRST_BERRY_TO_MOUNTAIN_EXIT[-4:])
+
+
 # Farm/path land → carpenter-gap dirt → west climb → east mid → lip.
 # Same hops as first grape until (312, 360), plus a 40px north pull
 # after land so BFS to (424,712) does not walk off the south exit.
@@ -527,7 +548,42 @@ _TOWN_TO_ANIMAL_SHOP_DOOR: List[Waypoint] = [
 _ANIMAL_SHOP_STAGING = Waypoint(
     tilemap=0x24, target_px=(128, 200), radius=12, run_direction="up"
 )
-_HOUSE_L1: List[Waypoint] = [Waypoint(tilemap=0x00, target_px=(136, 344), radius=12)]
+# General store (tilemap 0x22, door metatile 0xC6 at town tile (25,53) =
+# (408,856); the two 0xFF tiles under it are the walkway). Same east road
+# and y=890 lower road as the animal shop, then west to x=408 and up.
+_TOWN_TO_TOOL_SHOP_DOOR: List[Waypoint] = [
+    Waypoint(tilemap=0x04, target_px=(728, 424), radius=18),
+    Waypoint(tilemap=0x04, target_px=(696, 890), radius=6, run_direction="down", force_run=True),
+    Waypoint(tilemap=0x04, target_px=(440, 890), radius=10, run_direction="left"),
+    Waypoint(tilemap=0x04, target_px=(408, 880), radius=10, is_exit=True, exit_direction="up"),
+]
+# Interior spawn is (144,456). The shelves are in column 14, so the stands
+# are x=217 (one px past the wall stop at 216) facing right: milker rows
+# y=336..351 (tile 21), brush y=352..367 (tile 22). The hop ends 17px short
+# of the wall; BuyShelfItemTask closes the last px and the row.
+_TOOL_SHOP_TO_MILKER: List[Waypoint] = [
+    Waypoint(tilemap=0x22, target_px=(150, 400), radius=10),
+    Waypoint(tilemap=0x22, target_px=(190, 360), radius=10),
+    Waypoint(tilemap=0x22, target_px=(196, 344), radius=3),
+]
+_TOOL_SHOP_TO_BRUSH: List[Waypoint] = [
+    Waypoint(tilemap=0x22, target_px=(150, 400), radius=10),
+    Waypoint(tilemap=0x22, target_px=(196, 358), radius=3),
+]
+_TOOL_SHOP_TO_TOWN: List[Waypoint] = [
+    Waypoint(tilemap=0x22, target_px=(190, 360), radius=12),
+    Waypoint(tilemap=0x22, target_px=(160, 420), radius=12),
+    Waypoint(tilemap=0x22, target_px=(144, 440), radius=10),
+    Waypoint(tilemap=0x22, target_px=(144, 452), radius=10, is_exit=True, exit_direction="down"),
+]
+# Exit lands at (408,872) after ~120f of leaked interior coords.
+_TOWN_TOOL_SHOP_TO_PATH: List[Waypoint] = [
+    Waypoint(tilemap=0x04, target_px=(440, 900), radius=10),
+    Waypoint(tilemap=0x04, target_px=(696, 890), radius=6, run_direction="right", force_run=True),
+    Waypoint(tilemap=0x04, target_px=(696, 424), radius=8, run_direction="up", force_run=True),
+    Waypoint(tilemap=0x04, target_px=(728, 424), radius=12, is_exit=True, exit_direction="right"),
+]
+_HOUSE_L1: List[Waypoint] = [Waypoint(tilemap=0x00, target_px=(136, 376), radius=8)]
 _FARM_TO_TOWN: List[Waypoint] = list(_FARM_TO_PATH) + list(_PATH_TO_TOWN)
 # Plaza → farm gate. Town/shop return and leaked farm-west ~(10, 422).
 # NEVER concatenate this after a mountain 0x10 exit: (7,7)/(8,7) are
@@ -580,11 +636,31 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "shop_to_counter": list(_SHOP_TO_COUNTER),
     "shop_to_town": list(_SHOP_TO_TOWN),
     "town_shop_to_path": list(_TOWN_SHOP_TO_PATH),
+    "town_to_tool_door": list(_TOWN_TO_TOOL_SHOP_DOOR),
+    "tool_shop_to_milker": list(_TOOL_SHOP_TO_MILKER),
+    "tool_shop_to_brush": list(_TOOL_SHOP_TO_BRUSH),
+    "tool_shop_to_town": list(_TOOL_SHOP_TO_TOWN),
+    "town_tool_shop_to_path": list(_TOWN_TOOL_SHOP_TO_PATH),
+    "town_south_to_path": [
+        Waypoint(0x04, (688, 924), radius=12),
+        Waypoint(0x04, (688, 700), radius=12, run_direction="up"),
+        Waypoint(0x04, (688, 424), radius=12, run_direction="up"),
+        Waypoint(0x04, (728, 424), radius=12, is_exit=True, exit_direction="right"),
+    ],
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
-    "mountain_entry_to_first_mushroom": [*_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:3],
-        *[Waypoint(tilemap=0x10, target_px=px, radius=4) for px in
-          ((616, 712), (616, 696), (632, 696), (632, 664), (648, 664), (648, 632), (662, 633))]],
+    # ROM MapMountain ($A7A600): spring grape (2,4). The upper west
+    # plateau is reached around the cliff at column 3, not up its south lip.
+    "mountain_entry_to_second_grape": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:-1]) + [
+        Waypoint(0x10, px, radius=4, run_direction=face, force_run=True)
+        for px, face in (((312,328), "up"), ((408,328), "right"),
+                         ((408,264), "up"), ((408,200), "up"),
+                         ((304,200), "left"), ((200,200), "left"),
+                         ((200,136), "up"), ((104,136), "left"),
+                         ((56,136), "left"), ((56,56), "up"))
+    ] + [Waypoint(0x10, (40,57), radius=2, run_direction="left", force_run=True)],
+    "mountain_entry_to_first_mushroom": list(_MOUNTAIN_ENTRY_TO_FIRST_MUSHROOM),
     "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
+    "first_mushroom_to_mountain_exit": list(_FIRST_MUSHROOM_TO_MOUNTAIN_EXIT),
     "farm_west_gate_to_shipping_bin": list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
 }
 
@@ -604,12 +680,16 @@ ROUTES: Dict[str, List[Waypoint]] = {
     + list(_PATH_TO_TOWN_SHOP)
     + list(_TOWN_TO_SHOP_DOOR),
     "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
-    "mountain_entry_to_first_mushroom": [*_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:3],
-        *[Waypoint(tilemap=0x10, target_px=px, radius=4) for px in
-          ((616, 712), (616, 696), (632, 696), (632, 664), (648, 664), (648, 632), (662, 633))]],
+    "mountain_entry_to_first_mushroom": list(SEGMENTS["mountain_entry_to_first_mushroom"]),
     "farm_to_first_mountain_berry": list(_FARM_TO_MOUNTAIN_GATE)
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
+    "first_mushroom_to_mountain_exit": list(SEGMENTS["first_mushroom_to_mountain_exit"]),
     "first_mountain_berry_to_shipping_bin": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
+    + list(_PATH_MOUNTAIN_GATE_TO_FARM)
+    + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
+    + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
+    "first_mushroom_to_shipping_bin": list(_FIRST_MUSHROOM_TO_MOUNTAIN_EXIT)
     + list(_PATH_MOUNTAIN_GATE_TO_FARM)
     + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
     + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
@@ -859,3 +939,17 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
     ],
 }
+
+# The animal shop has a back door at interior tile (5, 3) into the fenced yard
+# where a bought hen spawns (~(568, 792) on town map 0x04). The yard has no
+# other way in. Walking down at x~582 from the hen stand re-enters the shop.
+ROUTES["animal_shop_to_yard"] = [
+    Waypoint(tilemap=0x24, target_px=(88, 112), radius=8),
+    Waypoint(tilemap=0x24, target_px=(88, 72), radius=6, is_exit=True, exit_direction="up"),
+    Waypoint(tilemap=0x04, target_px=(584, 808), radius=10),
+]
+ROUTES["animal_yard_to_farm"] = [
+    Waypoint(tilemap=0x04, target_px=(582, 800), radius=3, is_exit=True, exit_direction="down"),
+    *ROUTES["animal_shop_to_town"],
+    *ROUTES["animal_shop_town_to_farm"],
+]

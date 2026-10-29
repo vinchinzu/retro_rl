@@ -22,3 +22,11 @@ def set_player_tile(ram: np.ndarray, tile: tuple[int, int]) -> None:
     ram[ADDR_X + 1] = (px >> 8) & 0xFF
     ram[ADDR_Y] = py & 0xFF
     ram[ADDR_Y + 1] = (py >> 8) & 0xFF
+
+
+def set_stamina(ram: np.ndarray, value: int = 100) -> None:
+    """Stamina byte through the catalog (live-WRAM offset on full buffers)."""
+    from harvest.core.ram_catalog import field_spec, ram_index
+
+    spec = field_spec("stamina")
+    ram[ram_index(ram, spec.address, live_offset=spec.live_offset)] = int(value)

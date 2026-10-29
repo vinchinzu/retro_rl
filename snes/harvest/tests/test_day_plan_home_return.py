@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import pytest
 
 # Path-stable import of sibling helpers (works under unittest and pytest importlib mode).
 _TESTS_DIR = Path(__file__).resolve().parent
@@ -36,6 +37,36 @@ from harvest.planner.day_plan import (
 )
 from harvest.core.tile_catalog import ADDR_MAP
 from harvest.core.ram_catalog import field_spec
+
+
+@pytest.mark.rom
+@pytest.mark.parametrize("state,tilemap", [("LN_marriage_after_propose_FAIL", 0x16), ("LN_marriage_propose_candidate_FAIL", 0x16), ("LN_marriage_propose_verified_candidate_FAIL", 0x17)])
+def test_storm_remodeled_house_sleeps_from_diary_or_near_bed(state, tilemap):
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.tasks.home import GoToSleepTask
+    from harvest.tasks.nav import make_action
+    from retro_harness import WorldState, AuditedEnv, AuditCapabilities
+
+    env = AuditedEnv(make_harvest_env(state, lean_step=True), capabilities=AuditCapabilities(
+        provider="harvest.storm_sleep_test", observes_ram_writes=True,
+        observes_mid_run_loads=True, observes_assists=True))
+    try:
+        env.reset()
+        assert read_ram_value(env.get_ram(), "tilemap") == tilemap
+        start_day = read_ram_value(env.get_ram(), "day")
+        task = GoToSleepTask(earliest_sleep_hour=0)
+        task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+        for frame in range(1600):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action else make_action())
+        assert result.status == TaskStatus.SUCCESS, result.reason
+        assert read_ram_value(env.get_ram(), "day") == start_day + 1
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
 
 
 class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
@@ -300,7 +331,7 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
 
         self.assertEqual(task._phase, "nav_house_front")
         self.assertIsInstance(task._task, MultiMapNavTask)
-        self.assertEqual(task._task.waypoints[-1].target_px, (136, 344))
+        self.assertEqual(task._task.waypoints[-1].target_px, (136, 376))
 
     def test_return_home_enter_house_accepts_remodel_tilemap(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=18)

@@ -414,6 +414,18 @@ def dog_position(ram: np.ndarray) -> Optional[Point]:
     return Point(x, y)
 
 
+# The door dog on power-on D5 sits at (139, 422). A stand on that row warps
+# into the house, and the flag never clears.
+_HOUSE_DOOR = (136, 424)
+
+
+def dog_release_stand(dog: Point) -> tuple[tuple[int, int], str]:
+    """Where to face the dog from. The house-door dog is met from the south."""
+    if abs(dog.x - _HOUSE_DOOR[0]) <= 32 and abs(dog.y - _HOUSE_DOOR[1]) <= 32:
+        return (_HOUSE_DOOR[0], _HOUSE_DOOR[1] + 32), "up"
+    return (int(dog.x) - 16, int(dog.y)), "right"
+
+
 def dog_adjacent(ram: np.ndarray, radius: int = DOG_A_RADIUS_PX) -> bool:
     from harvest.core.animal_status import read_held_item
     from harvest.core.ram_catalog import read_ram_value
@@ -526,12 +538,11 @@ class DogReleaseTask(Task):
         dog = dog_position(world.ram)
         if dog is None:
             return TaskResult(status=TaskStatus.FAILURE, reason="dog release: no dog")
+        stand, face = dog_release_stand(dog)
         if self._child is None or isinstance(self._child, ExitToFarmTask):
             self._child = MultiMapNavTask(
                 name="nav_dog",
-                waypoints=[
-                    Waypoint(tilemap=0x00, target_px=(int(dog.x) - 16, int(dog.y)), radius=12)
-                ],
+                waypoints=[Waypoint(tilemap=0x00, target_px=stand, radius=8)],
                 timeout=1200,
                 initial_settle_frames=0,
             )
@@ -543,7 +554,7 @@ class DogReleaseTask(Task):
         self._child = None
         self._tries += 1
         self._queue = (
-            [make_action(right=True)] * 6
+            [make_action(**{face: True})] * 6
             + [make_action()] * 4
             + [make_action(a=True)]
             + [make_action()] * 20

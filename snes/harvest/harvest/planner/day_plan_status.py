@@ -8,8 +8,11 @@ import numpy as np
 
 from harvest.paths import TASKS_DIR as PROJECT_TASKS_DIR
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, tile_needs_watering
-from harvest.core.tile_catalog import CLEARABLE_DEBRIS_TYPES
-from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.core.tile_catalog import (
+    ADDR_TILEMAP,
+    CLEARABLE_DEBRIS_TYPES,
+    MOUNTAIN_TILEMAP_IDS,
+)
 from harvest.tasks.nav import get_tile_at
 from harvest.tasks.farm_ops import TileScanner
 from harvest.tasks.harvest_task import live_harvestable_crop_tiles, state_harvestable_crop_tiles
@@ -59,13 +62,22 @@ def is_farm_tilemap(tilemap: int) -> bool:
     return int(tilemap) in FARM_TILEMAPS
 
 
+def is_mountain_tilemap(tilemap: int) -> bool:
+    """True for the mountain map in any season."""
+    return int(tilemap) in MOUNTAIN_TILEMAP_IDS
+
+
 def tilemaps_match(actual: int, expected: int) -> bool:
-    """Compare tilemaps while treating seasonal farm maps as equivalent."""
+    """Compare tilemaps while treating seasonal farm and mountain maps as equivalent."""
     actual = int(actual)
     expected = int(expected)
     if actual == expected:
         return True
-    return is_farm_tilemap(actual) and is_farm_tilemap(expected)
+    if is_farm_tilemap(actual) and is_farm_tilemap(expected):
+        return True
+    if is_mountain_tilemap(actual) and is_mountain_tilemap(expected):
+        return True
+    return False
 
 
 ADDR_WEEKDAY = field_spec("weekday").address
@@ -102,7 +114,6 @@ SUNDAY_WEEKDAY = 0
 # town shop door tile 0xC3 refuses UP for good, so a Saturday trip is wasted.
 SATURDAY_WEEKDAY = 6
 SHOP_CLOSED_WEEKDAYS = (SUNDAY_WEEKDAY, SATURDAY_WEEKDAY)
-COW_PURCHASE_COST = 5000
 RAINY_WEATHER_CODES = frozenset({1, 2, 3})
 RAINY_WEATHER_FLAG_MASK = 0x0002 | 0x0008 | 0x0010
 # $0196 bit 0x10: hurricane/blizzard TODAY (SetWeatherFlags code 3).
@@ -279,12 +290,12 @@ def state_has_cows(state_name: Optional[str]) -> bool:
 
 
 def ram_should_buy_cow(ram: np.ndarray) -> bool:
-    """Return True when the route should prioritize buying the first cow."""
+    """Return True when the next animal purchase is the first cow."""
     if read_ram_u8(ram, ADDR_COW_COUNT) > 0:
         return False
-    from harvest.planner.day_phase_catalog import summer_animal_species
+    from harvest.planner.livestock_econ import animal_shop_errand
 
-    return summer_animal_species(ram, chickens=False) == "cow"
+    return animal_shop_errand(ram) == "cow"
 
 
 def state_should_buy_cow(state_name: Optional[str]) -> bool:
@@ -419,7 +430,6 @@ __all__ = [
     "SATURDAY_WEEKDAY",
     "SHOP_CLOSED_WEEKDAYS",
     "SUNDAY_WEEKDAY",
-    "COW_PURCHASE_COST",
     "RAINY_WEATHER_CODES",
     "RAINY_WEATHER_FLAG_MASK",
     "parse_save_state",
@@ -458,6 +468,8 @@ __all__ = [
     "resolve_seed_type_from_ram",
     "is_farm_tilemap",
     "is_house_tilemap",
+    "is_mountain_tilemap",
+    "MOUNTAIN_TILEMAP_IDS",
     "tilemaps_match",
     "ram_has_chickens",
     "ram_has_cows",

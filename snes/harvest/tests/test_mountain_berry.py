@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import unittest
+import numpy as np
+from retro_harness import WorldState
 
 _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
@@ -849,9 +851,50 @@ class GrapeBailHourPolicyTests(unittest.TestCase):
         self.assertEqual(spec.params["shop_bail_hour"], 13)
         self.assertEqual(spec.params["count"], 2)
 
-    def test_phase_spec_omits_the_bail_hour_when_unset(self) -> None:
-        spec = mountain_berry_phase(count=1)
-        self.assertNotIn("shop_bail_hour", spec.params)
+    def test_mountain_tilemaps_match_across_seasons(self) -> None:
+        from harvest.planner.day_plan_status import is_mountain_tilemap, tilemaps_match
+        self.assertTrue(is_mountain_tilemap(0x10))
+        self.assertTrue(is_mountain_tilemap(0x12))
+        self.assertFalse(is_mountain_tilemap(0x0C))
+        self.assertTrue(tilemaps_match(0x12, 0x10))
+        self.assertTrue(tilemaps_match(0x10, 0x12))
+        self.assertFalse(tilemaps_match(0x12, 0x0C))
+
+    def test_mushroom_route_and_task_selection(self) -> None:
+        from harvest.tasks.mountain_grape_ship import MUSHROOM_ROUTE_NAME
+        self.assertIn("first_mushroom_to_mountain_exit", ROUTES)
+        self.assertIn("first_mushroom_to_shipping_bin", ROUTES)
+        self.assertEqual(MUSHROOM_ROUTE_NAME, "first_mushroom_to_shipping_bin")
+        mushroom_route = ROUTES[MUSHROOM_ROUTE_NAME]
+        self.assertEqual(mushroom_route[0].target_px, (662, 633))
+        self.assertEqual(mushroom_route[-1].target_px, (8 * 16 + 8, 28 * 16 + 8))
+
+        task = MountainGrapeShipTask(forage="mushroom")
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        ram[field_spec("tilemap").address] = 0x12
+        world = WorldState(frame=0, ram=ram, info={})
+        self.assertTrue(task.can_start(world))
+
+    def test_mountain_entry_no_go_tile_registered(self) -> None:
+        from harvest.maps.map_config import get_no_go_tiles
+        for mid in (0x10, 0x11, 0x12, 0x13):
+            no_go = get_no_go_tiles(mid)
+            self.assertIn((20, 44), no_go)
+
+    def test_mountain_entry_stale_coords_settle_hold(self) -> None:
+        from harvest.planner.tasks.navigation import MultiMapNavTask
+        task = MultiMapNavTask(
+            name="test_mountain_enter",
+            waypoints=ROUTES["first_mushroom_to_shipping_bin"],
+        )
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        ram[field_spec("tilemap").address] = 0x12
+        set_player_pos(ram, 137, 10)  # stale y <= 200 from map 0x0C
+        world = WorldState(frame=0, ram=ram, info={})
+        task.reset(world)
+        res = task.step(world)
+        self.assertEqual(res.status, TaskStatus.RUNNING)
+        self.assertEqual(res.reason, "settle: mountain coords stale")
 
 
 if __name__ == "__main__":

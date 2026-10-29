@@ -11,6 +11,7 @@ from harvest.core.animal_status import (
     ITEM_FODDER,
     cow_needs_milking,
     read_cow_daily_flags,
+    read_cow_happiness,
     read_held_item,
     read_stored_grass,
 )
@@ -89,6 +90,7 @@ def _mark_milked_if_changed(task, ram: np.ndarray) -> None:
     if task._target_cow_slot not in task._milked_slots:
         task._milked_slots.add(task._target_cow_slot)
         task.milked_count += 1
+        task._note_care_delta(ram, "milk", read_cow_happiness(ram, task._target_cow_slot))
         print(f"[COW] Milk OK slot={task._target_cow_slot} attempts={task._milk_attempts}")
 
 def _after_milk(task, ram: np.ndarray) -> TaskResult:
@@ -172,6 +174,10 @@ def _step_milk_nav(task, world: WorldState) -> TaskResult:
         task._milk_select_frames = 0
         return TaskResult(status=TaskStatus.RUNNING)
     task._talk_face = task._face_for_target_cow(world.ram)
+    # (113, 277) faces (8, 17) $2F, not a stall. Exit south; no A and no east step.
+    action = task._care_trough_exit_action(world.ram)
+    if action is not None:
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
     action = task._recorded_left_tool_nav_action(world.ram)
     handled = task._handle_pixel_nav_action(world.ram, action, tool=True)
     if handled is not None:

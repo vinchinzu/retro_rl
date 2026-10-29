@@ -132,6 +132,13 @@ def attend_festival_phase(season: int | str, day: int, year: int = 0) -> PhaseSp
     """Build a PhaseSpec to attend today's festival in town."""
     s = normalize_season(season)
     d = int(day)
+    if (s, d) == (SEASON_SPRING, 23):  # talk to everyone, dance with Eve; the finale ends the day
+        return PhaseSpec(
+            "ATTEND_FESTIVAL",
+            PhaseKind.FLOWER_FESTIVAL,
+            {"festival_name": "Flower Festival", "season": s, "day": d, "ends_day": True},
+            failure_policy="optional",
+        )
     return PhaseSpec(
         "ATTEND_FESTIVAL",
         PhaseKind.RECORDED,

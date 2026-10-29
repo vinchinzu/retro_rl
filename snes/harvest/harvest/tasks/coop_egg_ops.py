@@ -19,6 +19,7 @@ from harvest.core.animal_status import (
     read_item_on_hand,
 )
 from harvest.core.npc_catalog import game_objects
+from harvest.core.ram_catalog import read_ram_value
 from harvest.tasks.coop_layout import (
     CHICKEN_EGG_FLAGS,
     CHICKEN_EGG_SPAWN_PIXELS,
@@ -31,7 +32,7 @@ from harvest.tasks.coop_layout import (
     MAX_EGG_DEFERRALS,
     MAX_EGG_NAV_FRAMES,
     MAX_EXIT_PREP_FRAMES,
-    MAX_FLOCK_SIZE,
+    egg_route,
     SHIP_APPROACH_Y,
     SHIP_BIN_FACE,
     SHIP_BIN_INTERACT_STAND,
@@ -453,14 +454,17 @@ def _step_egg_verify(task, world: WorldState) -> TaskResult:
     return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
 def _step_decide(task, world: WorldState) -> TaskResult:
-    mode = task.egg_mode
-    if mode == "auto":
-        adults, chicks, eggs = count_chicken_slots(world.ram)
-        total = adults + chicks + eggs
-        if not is_incubating(world.ram) and total < MAX_FLOCK_SIZE:
-            mode = "incubate"
-        else:
-            mode = "ship"
+    adults, chicks, eggs = count_chicken_slots(world.ram)
+    try:
+        counter = int(read_ram_value(world.ram, "num_chickens"))
+    except (KeyError, ValueError):
+        counter = 0
+    mode = egg_route(
+        task.egg_mode,
+        chicks_n=max(adults + chicks, counter),
+        slot_total=adults + chicks + eggs,
+        incubating=is_incubating(world.ram),
+    )
     if mode == "incubate":
         task._incubator_wp_index = 0
         task._phase = "incubate_nav"

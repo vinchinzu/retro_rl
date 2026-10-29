@@ -17,6 +17,7 @@ from harvest.core.animal_status import (
     cow_needs_milking,
     existing_cow_slots,
     read_cow_daily_flags,
+    read_cow_happiness,
 )
 from harvest.tasks.animal_navigation import align_to_pixel
 from harvest.tasks.cow_geometry import (
@@ -336,7 +337,9 @@ def _slot_needs_care(task, ram: np.ndarray, slot: int) -> bool:
     )
 
 def _care_needed_cow_slots(task, ram: np.ndarray) -> list[int]:
-    return [slot for slot in task._barn_cow_slots(ram) if task._slot_needs_care(ram, slot)]
+    """Lowest happiness first. Equal bytes keep slot order."""
+    slots = [slot for slot in task._barn_cow_slots(ram) if task._slot_needs_care(ram, slot)]
+    return sorted(slots, key=lambda slot: (read_cow_happiness(ram, slot), slot))
 
 
 def bind_task_methods(cls: type) -> None:

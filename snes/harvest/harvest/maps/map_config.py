@@ -29,6 +29,7 @@ from harvest.core.tile_catalog import (
     CHURCH_WALKABLE,
     COOP_WALKABLE,
     FARM_WALKABLE,
+    MOUNTAIN_TILEMAP_IDS,
     MOUNTAIN_WALKABLE,
     PATH_WALKABLE,
     SHOP_WALKABLE,
@@ -321,7 +322,7 @@ MAP_REGISTRY: Dict[int, MapConfig] = {
         walkable_tiles=INTERIOR_WALKABLE,
         exits=[],
         landmarks=(
-            MapLandmark("bed_stand", (4, 5), "bed", face="up", action="press_a", source="provisional_same_as_base"),
+            MapLandmark("bed_stand", (3, 5), "bed", face="up", action="press_a", source="marriage_storm_rom_probe"),
             MapLandmark("house_exit_inside", (8, 12), "door", face="down", source="verified_level1_exit"),
         ),
         source="recorded_provisional",
@@ -372,6 +373,10 @@ MAP_REGISTRY: Dict[int, MapConfig] = {
         ),
         source="recorded_provisional",
     ),
+    0x22: MapConfig(name="tool_shop", walkable_tiles=SHOP_WALKABLE,
+                    exits=[], source="marriage_poweron_rom_probe"),
+    0x23: MapConfig(name="tool_shop_back", walkable_tiles=SHOP_WALKABLE,
+                    exits=[], source="marriage_poweron_rom_probe"),
     0x1C: MapConfig(
         name="shop",
         walkable_tiles=SHOP_WALKABLE,
@@ -462,6 +467,8 @@ MAP_REGISTRY: Dict[int, MapConfig] = {
 def _config_for_tilemap(tilemap_id: int) -> Optional[MapConfig]:
     if tilemap_id in FARM_TILEMAP_IDS:
         return MAP_REGISTRY.get(0x00)
+    if tilemap_id in MOUNTAIN_TILEMAP_IDS:
+        return MAP_REGISTRY.get(0x10)
     return MAP_REGISTRY.get(tilemap_id)
 
 

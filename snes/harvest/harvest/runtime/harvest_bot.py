@@ -153,13 +153,19 @@ def main() -> None:
     play.add_argument(
         "--eve-loop",
         action="store_true",
-        help='Run the recorded Eve "No" dialogue loop from the bar exterior',
+        help="Night loop from the bar exterior: enter, talk to Eve, leave, repeat (docs/EVE_BAR.md)",
     )
     play.add_argument(
         "--eve-target-hearts",
         type=int,
         default=10,
         help="Target Eve heart tier for --eve-loop (1-10, default: 10)",
+    )
+    play.add_argument(
+        "--eve-target-points",
+        type=int,
+        default=None,
+        help="Target Eve heart points for --eve-loop (overrides the tier; 250 is the proposal floor)",
     )
     play.add_argument("--money", type=int, default=None, help="Set money each frame (e.g. --money 7000)")
     play.add_argument(
@@ -294,6 +300,7 @@ def main() -> None:
             multi_day_until_season=until_season,
             multi_day_count=args.days,
             eve_target_hearts=args.eve_target_hearts,
+            eve_target_points=args.eve_target_points,
             power_on=bool(args.power_on),
             d1_handoff=False if args.no_d1_handoff else (True if args.power_on else None),
         )

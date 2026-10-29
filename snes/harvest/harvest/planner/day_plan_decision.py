@@ -187,6 +187,8 @@ def build_day_plan_decision(
     is_post_storm: bool = False,
     is_festival: Optional[bool] = None,
     festival_name: Optional[str] = None,
+    milestone_intents: Sequence[Mapping] = (),
+    intent_completed: Sequence[str] = (),
 ) -> DayPlanDecision:
     """Build rule-based phases plus explicit tomorrow-facing deferrals."""
 
@@ -210,6 +212,17 @@ def build_day_plan_decision(
         festival_name=festival_name,
     )
     deferred = tuple(collect_deferred_plans(facts, phases, policy=policy))
+    if milestone_intents:
+        from harvest.planner.campaign_composer import apply_block_order, milestone_phases
+        native, missing = milestone_phases(milestone_intents, completed=intent_completed,
+                                          storm=bool(facts.is_storm))
+        # A building exit is the physical prefix. Native deadlines then run
+        # through DayPlanTask's one table alongside the ordinary day work.
+        at = next((i for i, phase in enumerate(phases)
+                   if phase.kind not in {"exit", "farm_building_exit"}), len(phases))
+        phases = tuple(apply_block_order(phases[:at] + tuple(native) + phases[at:],
+                                         storm=bool(facts.is_storm)))
+        deferred += tuple(missing)
     notes = _planning_notes(facts, phases)
     return DayPlanDecision(phases=phases, facts=facts, deferred=deferred, notes=notes)
 
@@ -224,6 +237,8 @@ def auto_day_plan_decision(
     is_post_storm: bool = False,
     is_festival: Optional[bool] = None,
     festival_name: Optional[str] = None,
+    milestone_intents: Sequence[Mapping] = (),
+    intent_completed: Sequence[str] = (),
 ) -> DayPlanDecision:
     """Build a day-plan decision and optionally pass it through an advisor."""
 
@@ -235,6 +250,8 @@ def auto_day_plan_decision(
         is_post_storm=is_post_storm,
         is_festival=is_festival,
         festival_name=festival_name,
+        milestone_intents=milestone_intents,
+        intent_completed=intent_completed,
     )
     if advisor is None:
         return decision

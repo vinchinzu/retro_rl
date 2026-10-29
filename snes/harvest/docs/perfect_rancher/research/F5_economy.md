@@ -8,13 +8,15 @@ Ledger: `research/F5_ledger.json`. 300 mornings, index 0 through 299.
 
 ## Audit: model is not a compatible campaign, 2026-09-30
 
-PR-014 is reopened. The 620,000G ledger is retained as a historical paper
-model: twelve bought cows, no births or miracle-potion spend. F7 needs
-nine namings and F10 needs a born replacement for slot 0. The late wedding
-also cannot supply child 2's age-60 happiness bonus before the ending.
-Rebuild one dated herd/happiness/cash plan, including actual milk/egg
-receipts, slot turnover, 750 lumber, care frames, losses and food repairs.
-The model numbers below do not establish a feasible 999 campaign.
+PR-014 remains open. The 620,000G ledger is a historical paper model,
+not an accepted campaign budget. The slot-0 replacement premise is now
+falsified by the merged native feed/night proof. Breeding is an optional
+happiness strategy. The new conditional milestone table proposes marriage
+by index 128 plus funded food repairs, or a buy-three/breed-nine alternative.
+Neither has its complete acquisition, repeated-food/naming and shared cash
+proof. Reconcile 750 lumber, feed, milk/egg receipts, losses and happiness
+repairs before accepting F5. The old slot-0 income and decline rows below
+are superseded by F3's repair evidence.
 
 ## Verdict
 

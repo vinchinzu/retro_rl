@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -79,6 +80,15 @@ class MultiDayTargetTests(unittest.TestCase):
 
 
 class RunnerTargetTests(unittest.TestCase):
+    def test_perfect_rancher_is_explicit_and_reaches_the_planner(self) -> None:
+        with patch("harvest.scripts.run_to_day2.MultiDayPlannerTask") as planner:
+            _build_task(_parse_args(["--days", "1"]), (0, 0, 3))
+            self.assertNotIn("perfect_rancher", planner.call_args.kwargs)
+            _build_task(_parse_args(["--perfect-rancher", "--days", "1"]), (0, 0, 3))
+            self.assertTrue(planner.call_args.kwargs["perfect_rancher"])
+        with self.assertRaises(SystemExit):
+            _build_task(_parse_args(["--perfect-rancher", "--day-plan", "mountain_berry"]), (0, 0, 3))
+
     def test_previous_day(self) -> None:
         self.assertEqual(_previous_day((0, 0, 4)), (0, 0, 3))
         self.assertEqual(_previous_day((0, 1, 1)), (0, 0, 30))

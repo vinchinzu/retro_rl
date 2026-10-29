@@ -63,6 +63,7 @@ class AutoClearBot:
         multi_day_until_season: Optional[int] = None,
         multi_day_count: Optional[int] = None,
         eve_target_hearts: int = 10,
+        eve_target_points: Optional[int] = None,
         power_on: bool = False,
         d1_handoff: Optional[bool] = None,
     ):
@@ -129,6 +130,7 @@ class AutoClearBot:
         self.multi_day_until_season = multi_day_until_season
         self.multi_day_count = multi_day_count
         self.eve_target_hearts = eve_target_hearts
+        self.eve_target_points = eve_target_points
         self.day_plan_policy = DayPlannerPolicy()
         self.day_plan_advisor = build_local_llm_plan_advisor_from_env()
         self.day_plan_decision = None
@@ -222,8 +224,8 @@ class AutoClearBot:
                     "EVE_TALK_LOOP",
                     "eve_talk_loop",
                     {
-                        "task_name": "talk_eve_loop",
                         "target_hearts": self.eve_target_hearts,
+                        "target_points": self.eve_target_points,
                     },
                 )
             ]

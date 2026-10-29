@@ -234,6 +234,13 @@ class UseToolUntilTileSkill(Task):
             )
         held = int(read_held_item(world.ram))
         facing = int(read_ram_value(world.ram, "player_direction") or 0)
+        if wanted in (int(Tool.HOE), int(Tool.WATERING_CAN)) and int(
+            read_ram_value(world.ram, "stamina") or 0
+        ) < 2:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"{self.name} stamina exhausted tid=0x{tid:02X} at {tile}",
+            )
         if self._steps > self.timeout:
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -510,6 +517,10 @@ def _pocket_hoe_stand_blocked(
         return True
     if not _hoe_stand_tile_ok(ram, stand):
         return True
+    # The fence-lip rules below belong to the yard rings north of the y=31
+    # row; the south-field rings sit on open soil where y>=30 is ordinary.
+    if center[1] >= _FENCE_LIP_Y:
+        return False
     if stand[1] >= _FENCE_LIP_Y:
         return True
     # Face-up on y=29 nudges into y=30 leftover stones (live (12,30) sealed
@@ -572,6 +583,7 @@ def _ring_nav_tool_skills(
                 soft_radius=_RING_NAV_SOFT_RADIUS,
                 timeout=nav_timeout,
                 require_tilemap=0x00,
+                water_stand="water" in nav_prefix,
             )
         )
         skills.append(make_tool(target, face, timeout))
