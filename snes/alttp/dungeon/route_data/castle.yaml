@@ -1,0 +1,269 @@
+schema_version: 1
+slug: castle
+name: Hyrule Castle
+z3_id: 83
+room_type: Dungeon
+source_file: regions/dungeons/escape/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Hyrule Castle
+  nodes:
+  - Hyrule Castle Exit (East)
+  - Hyrule Castle Exit (West)
+  - Hyrule Castle Exit (South)
+  - Throne Room
+  - Hyrule Castle - Boomerang Chest
+  - Hyrule Castle - Map Chest
+  - Hyrule Castle - Zelda's Chest
+- name: Sewer Drop
+  nodes:
+  - Sewer Drop
+- name: Sewers (Dark)
+  nodes:
+  - Sewers Door
+  - Sewers - Dark Cross
+- name: Sewers
+  nodes:
+  - Sanctuary Push Door
+  - Sewers Back Door
+  - Sewers - Secret Room - Left
+  - Sewers - Secret Room - Middle
+  - Sewers - Secret Room - Right
+- name: Sanctuary
+  nodes:
+  - Sanctuary Exit
+  - Sanctuary
+locations:
+- id: 5
+  name: Hyrule Castle - Boomerang Chest
+  region: Hyrule Castle
+  node_type: item
+  item: BlueBoomerang
+  address: '0xE974'
+  requires: []
+  keys: []
+  items: []
+- id: 6
+  name: Hyrule Castle - Map Chest
+  region: Hyrule Castle
+  node_type: item
+  item: MapH2
+  address: '0xEB0C'
+  requires: []
+  keys: []
+  items: []
+- id: 7
+  name: Hyrule Castle - Zelda's Chest
+  region: Hyrule Castle
+  node_type: item
+  item: Lamp
+  address: '0xEB09'
+  requires: []
+  keys: []
+  items: []
+- id: 10
+  name: Sewers - Dark Cross
+  region: Sewers (Dark)
+  node_type: item
+  item: KeyH2
+  address: '0xE96E'
+  requires: []
+  keys: []
+  items: []
+- id: 13
+  name: Sewers - Secret Room - Left
+  region: Sewers
+  node_type: item
+  item: ThreeBombs
+  address: '0xEB5D'
+  requires:
+  - KeyH2
+  keys:
+  - name: KeyH2
+    count: 1
+  items: []
+- id: 14
+  name: Sewers - Secret Room - Middle
+  region: Sewers
+  node_type: item
+  item: ThreeHundredRupees
+  address: '0xEB60'
+  requires:
+  - KeyH2
+  keys:
+  - name: KeyH2
+    count: 1
+  items: []
+- id: 15
+  name: Sewers - Secret Room - Right
+  region: Sewers
+  node_type: item
+  item: TenArrows
+  address: '0xEB63'
+  requires:
+  - KeyH2
+  keys:
+  - name: KeyH2
+    count: 1
+  items: []
+- id: 17
+  name: Sanctuary
+  region: Sanctuary
+  node_type: item
+  item: SanctuaryHeart
+  address: '0xEA79'
+  requires:
+  - KeyH2
+  keys:
+  - name: KeyH2
+    count: 1
+  items: []
+gates:
+- id: 1
+  name: Hyrule Castle Exit (East)
+  region: Hyrule Castle
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 2
+  name: Hyrule Castle Exit (West)
+  region: Hyrule Castle
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 3
+  name: Hyrule Castle Exit (South)
+  region: Hyrule Castle
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 4
+  name: Throne Room
+  region: Hyrule Castle
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 8
+  name: Sewer Drop
+  region: Sewer Drop
+  node_type: drop
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Sewers Door
+  region: Sewers (Dark)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 11
+  name: Sanctuary Push Door
+  region: Sewers
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 12
+  name: Sewers Back Door
+  region: Sewers
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 16
+  name: Sanctuary Exit
+  region: Sanctuary
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: KeyH2
+    count: 1
+    nodes:
+    - Sewers - Secret Room - Left
+    - Sewers - Secret Room - Middle
+    - Sewers - Secret Room - Right
+    - Sanctuary
+  items: []
+connections:
+- connection_type: Door
+  description: Door connection between Throne Room and Sewers (Dark)
+  origin: Throne Room
+  destination: Sewers (Dark)
+  internal: true
+- connection_type: Door
+  description: Door connection between Sewers Door and Sewers
+  origin: Sewers Door
+  destination: Sewers
+  internal: true
+- connection_type: Door
+  description: Door connection between Sanctuary Push Door and Sanctuary
+  origin: Sanctuary Push Door
+  destination: Sanctuary
+  internal: true
+- connection_type: Drop
+  description: Drop connection between Sewer Drop and Sewers
+  origin: Sewer Drop
+  destination: Sewers
+  internal: true
+- connection_type: Door
+  description: Door connection between Sewers Back Door and Sewers (Dark)
+  origin: Sewers Back Door
+  destination: Sewers (Dark)
+  internal: true
+- connection_type: Door
+  description: Door connection between Sanctuary and Sanctuary
+  origin: Sanctuary
+  destination: Sanctuary
+  internal: true
+- connection_type: Door
+  description: Door connection between Sanctuary Grave and Sewer Drop
+  origin: Sanctuary Grave
+  destination: Sewer Drop
+  internal: false
+- connection_type: Door
+  description: Door connection between Sanctuary Exit and Light World
+  origin: Sanctuary Exit
+  destination: Light World
+  internal: false
+- connection_type: Door
+  description: Door connection between Hyrule Castle Entrance (South) and Hyrule Castle
+  origin: Hyrule Castle Entrance (South)
+  destination: Hyrule Castle
+  internal: false
+- connection_type: Door
+  description: Door connection between Hyrule Castle Entrance (West) and Hyrule Castle
+  origin: Hyrule Castle Entrance (West)
+  destination: Hyrule Castle
+  internal: false
+- connection_type: Door
+  description: Door connection between Hyrule Castle Entrance (East) and Hyrule Castle
+  origin: Hyrule Castle Entrance (East)
+  destination: Hyrule Castle
+  internal: false
+- connection_type: Door
+  description: Door connection between Hyrule Castle Exit (South) and Light World
+  origin: Hyrule Castle Exit (South)
+  destination: Light World
+  internal: false
+- connection_type: Door
+  description: Door connection between Hyrule Castle Exit (West) and Hyrule Castle Ledge
+  origin: Hyrule Castle Exit (West)
+  destination: Hyrule Castle Ledge
+  internal: false
+- connection_type: Door
+  description: Door connection between Hyrule Castle Exit (East) and Hyrule Castle Ledge
+  origin: Hyrule Castle Exit (East)
+  destination: Hyrule Castle Ledge
+  internal: false
+strats: []
+notes: []

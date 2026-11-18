@@ -2,6 +2,40 @@
 
 Date: 2026-09-29. Bead PR-015. Dep PR-007 is done (`research/whatif_pins.md`, live load `fails=0`). Static decode of the USA ROM and `HM-Decomp`. No emulator. Frames: 0.
 
+## Corrected inventory, 2026-11-03: ten sources, nine with ROM receipts
+
+The "designed seven" conclusion below is **wrong**. Group 23's NEWCC at $B48E44 targets $B48E94 in its own bank, not the berry
+script at $B38E94, and its positive choice writes tool 0x14 (gold axe), not a berry. The real set is ten sources (the web
+walkthroughs fogu.com and almarsguides.com list the same ten); the ROM's persistent receipt flag and the green test for each:
+
+| # | source | receipt flag | ROM receipt |
+| ---: | --- | --- | --- |
+| 1-2 | hoe, twice (1/64 a swing) | `$7F1F64` 0x0800, 0x1000 | `test_field_berry_is_dug_picked_and_eaten` |
+| 3 | mountain stump (1/16 a six-chop tree) | `$7F1F64` 0x0400 | `test_stump_berry_is_acquired_and_eaten` |
+| 4 | chicken statue, hammer (1/4 a swing) | `$7F1F64` 0x0200 | `test_statue_berry_is_hammered_picked_and_eaten` |
+| 5 | cave, via the pocket stump after the first Winter snowstorm | `$7F1F6A` 0x0040 | `test_cave_berry_*` |
+| 6 | fish: catch one, put it back in the pool | `$7F1F66` 0x2000 | `test_fish_is_caught_returned_and_its_berry_eaten` |
+| 7 | wandering hawker, first Fall hen sale (the hen goes, no gold) | `$7F1F66` 0x4000 | `test_hawker_chicken_trade_berry_is_eaten` |
+| 8 | Harvest Festival (Fall D12), a fish offered | `$7F1F6C` 0x8000 | `test_harvest_festival_fish_offering_berry_is_eaten` |
+| 9 | Egg Festival (Fall D20) win: coin flip, 0x1000 turtle shell or 0x2000 arms the house berry (0x4000 eaten) | `$7F1F6C` | `test_egg_festival_win_*` (both faces) |
+| 10 | snow flower seed (2,000G, Flower Festival peddler Spring D23) planted on the summit in Winter | purchase `$7F1F6E & 0x0800`; seed consumed on planting | `test_snow_flower_is_eaten_and_kept_through_the_return_and_night` |
+
+The persistent `count == 10` ending check is unchanged. Notes that cost a fix each: the permanent bit of a *spawned* berry is set
+at spawn, so an unpicked hoe or stump berry is gone for good (e2e `s4` lost three); the Egg Festival's house berry lies on the
+table's edge and lifts only from its east side facing left; the hunt's barrel 7 sits in a pen whose gate tile is `0xA6`.
+Details and the planner hookup: [plan.md](../../plan.md#power-berry-calendar-star-night-and-wife-drift-2026-11-03-handoff).
+
+The rows below are the 2026-09-29 static decode and keep their original errors in the "seven" count and the goddess-axe row.
+
+**Cave berry (row 5), measured 2026-11-02.** The `$29` spawn and the eat flag (`$7F1F6A & 0x40`) are real:
+the native recipe takes 3,530 frames. But "first day `$29` can be entered" is not the earliest date. The
+chamber is sealed from the cave's rooms; the way in is the special stump at mountain (10,38), whose hole
+drops the farmer beside the berry (17 frames). That stump is in a west pocket behind a 2x2 boulder at tile
+(23,39), which `ReplaceTilesMoutain` (`$81AC7F`) removes only once `$7F1F64` bit 0x0002 is set, by weather 4
+(a Winter snowstorm; `WeatherTomorrow` forces it when the day reads 7 in Year 1 Winter). Earliest is the
+first Year 1 Winter snowstorm, and no later than the Winter D8 morning.
+
+
 ## Verdict
 
 Designed one-shot power berries are 7. The bead asks to confirm 10. `MASTER_PLAN` F6 says "All 10 power berries" and "Festival berries give 2–3 chances." The ROM does not. This file is the contradiction. Best-ending `$83F075` compares `power_berry_N` (`$7F1F36`) to `#$0A` at `$83F097` and branches away on any other value. Seven eaten berries leave max stamina at 170 and the stamina term at 35, short of 50.

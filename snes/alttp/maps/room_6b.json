@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 107,
+  "roomHex": "0x6B",
+  "name": "Ganon's Tower above the lobby",
+  "measured": "2026-10-18",
+  "sourceState": "Scan_gt_0x6b",
+  "points": [],
+  "doors": [
+    {
+      "label": "stair_to_0x0c",
+      "direction": "UP",
+      "toRoom": 12,
+      "role": "backtrack",
+      "notes": "0x5E at (31, 5). Hold UP from Scan_gt_0x6b returned to room 0x000C (6393, 54) floor 1. No door slot."
+    },
+    {
+      "label": "north_big_key",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x1E big_key pos $025C anchor (46, 4). Graphic 0xF0 at (47-48, 5-6). A wall separates that graphic from the landing corridor. big_key field 0. Not entered."
+    },
+    {
+      "label": "north_shutter_east",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x18 shutter pos $125C anchor (46, 36). Door-family tiles at (47-48, 27-28) are south of the landing floor, across the row 27 wall. Not entered."
+    },
+    {
+      "label": "west_shutter",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x18 shutter pos $17C4 anchor (34, 47). South component. Landing is layer 0. Not entered."
+    },
+    {
+      "label": "north_shutter_west",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x18 shutter pos $121C anchor (14, 36). Door-family tiles at (15-16, 27-28). A west walk from the corridor died on module 0x12 before that mouth."
+    },
+    {
+      "label": "south_regular_layer",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 9 type 0x00 regular pos $0D5C, other layer of slot 1. Landing is layer 0. Not entered."
+    },
+    {
+      "label": "east_shutter_layer",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 10 type 0x18 shutter pos $17B4, other layer of slot 2. Not entered."
+    },
+    {
+      "label": "south_shutter_layer",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 11 type 0x18 shutter pos $0D1C, other layer of slot 3. Not entered."
+    }
+  ],
+  "notes": [
+    "Door-only skeleton. Pin Scan_gt_0x6b, landing (5880, 3123), layer 0, floor 2, keys=0, big_key=0, hp=24, follower=5. Isolated scan, not natural.",
+    "Chests none. Sprites: two crystal switches, green eyegore, red eyegores, antifairy, statue, two spike blocks, two beamos.",
+    "hit_switch on the crystal at (5808, 3136) set $C172 from 00 to 01. Door slots and 0x66/0x67 counts did not change. The following south walk died, module 0x12, at (5824, 3224)."
+  ]
+}

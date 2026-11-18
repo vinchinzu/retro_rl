@@ -185,10 +185,13 @@ class PathSegmentTests(unittest.TestCase):
         self.assertEqual(landmark.tile, (20, 25))
         self.assertEqual(stand.target_px, (326, 409))
         hops = SEGMENTS["mountain_entry_to_first_berry"]
-        # Cliff blocks due-north from land; recorded gap is east to x=32.
-        # Spa pull-up (328, 688) is spa-only — grape inbound stays land→east.
+        # Cliff blocks due-north from land; recorded gap is east to x=32. The 40px north pull
+        # after the landing (as on the spa and mushroom routes) keeps a pixel-stuck replan from
+        # walking back off the south exit: Spring D3 of y1new failed three grape trips without it
+        # and shipped on a replay with it (D3-D5).
         self.assertEqual(hops[0].target_px, (328, 728))
-        self.assertEqual(hops[1].target_px, (424, 712))
+        self.assertEqual(hops[1].target_px, (328, 688))
+        self.assertEqual(hops[2].target_px, (424, 712))
         self.assertGreaterEqual(max(wp.target_px[0] for wp in hops), 500)
         self.assertEqual(hops[-1].target_px, (326, 409))
 
@@ -859,6 +862,15 @@ class GrapeBailHourPolicyTests(unittest.TestCase):
         self.assertTrue(tilemaps_match(0x12, 0x10))
         self.assertTrue(tilemaps_match(0x10, 0x12))
         self.assertFalse(tilemaps_match(0x12, 0x0C))
+
+    def test_mushroom_entry_pulls_north_off_the_landing(self) -> None:
+        """Fall: BFS from the (328,728) landing walked off the south exit."""
+        hops = SEGMENTS["mountain_entry_to_first_mushroom"]
+        self.assertEqual(hops[0].target_px, (328, 728))
+        self.assertEqual(hops[1].target_px, (328, 688))
+        self.assertEqual(hops[1].run_direction, "up")
+        self.assertTrue(hops[1].force_run)
+        self.assertEqual(hops[2].target_px, (424, 712))
 
     def test_mushroom_route_and_task_selection(self) -> None:
         from harvest.tasks.mountain_grape_ship import MUSHROOM_ROUTE_NAME

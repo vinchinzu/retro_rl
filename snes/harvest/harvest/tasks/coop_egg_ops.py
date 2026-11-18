@@ -77,6 +77,8 @@ def _begin_exit_prep(task) -> TaskResult:
     task._verify_count = 0
     task._exit_prep_started_step = task._step_count
     task._exit_prep_route_index = 0
+    task._exit_prep_last_pos = (-1, -1)
+    task._exit_prep_stall = 0
     task._clear_left_top_route()
     task._pathfinder.temp_blocked.clear()
     task._phase = "exit_prep_nav"
@@ -564,6 +566,14 @@ def _step_exit_prep_nav(task, world: WorldState) -> TaskResult:
         return TaskResult(status=TaskStatus.RUNNING)
     x = task._navigator.current_pos.x
     y = task._navigator.current_pos.y
+    here = (x, y)
+    last_pos = getattr(task, "_exit_prep_last_pos", (-1, -1))
+    stall = getattr(task, "_exit_prep_stall", 0) + 1 if here == last_pos else 0
+    task._exit_prep_last_pos = here
+    task._exit_prep_stall = stall
+    if stall >= 12 and not (x <= 50 and y >= 165):
+        task._phase = "done"
+        return TaskResult(status=TaskStatus.RUNNING)
     door_x = EXIT_PREP_STAND[0] * TILE_SIZE + 8
     safe_cross_max_y = 7 * TILE_SIZE + 8
     # Match EXIT_COOP: leave bin pocket, climb above false-open, cross,

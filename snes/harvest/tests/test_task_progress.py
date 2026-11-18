@@ -16,6 +16,7 @@ from harvest.core.task_progress import (
     MOTION_STALL_FRAMES,
     ProgressSnapshot,
     RunProgressSidecar,
+    WorkFrameLedger,
     atomic_write_json,
     build_run_progress_record,
     checkpoint_progress_key,
@@ -24,6 +25,8 @@ from harvest.core.task_progress import (
     stall_progress_key,
     stalled,
     task_progress_snapshot,
+    work_snapshot,
+    work_receipt,
 )
 from harvest.planner.day_plan_orchestrator import DayPlanTask, MultiDayPlannerTask
 
@@ -179,6 +182,95 @@ class _FakeD2:
 
 
 class RunProgressSidecarTests(unittest.TestCase):
+    def test_required_failure_records_work_before_recovery_discards_the_child(self):
+        from unittest.mock import patch
+        from harvest.planner.day_phase_catalog import CROP_WATER_PHASE
+        from retro_harness import TaskResult, TaskStatus
+        ram = _progress_ram(day=30, hour=12, tilemap=0x15)
+        day = DayPlanTask(phase_sequence=[CROP_WATER_PHASE])
+        day._phase_start_frame = 10
+        day._current_task = SimpleNamespace(watered_count=0, skipped_water=1)
+        world = SimpleNamespace(frame=30, ram=ram)
+        with patch.object(day, "_start_recovery", return_value=TaskResult(status=TaskStatus.RUNNING)):
+            day._handle_failed_phase(CROP_WATER_PHASE, TaskStatus.FAILURE, "dry crop remains", world)
+        self.assertEqual(day.phase_results[0]["status"], "failure")
+        self.assertEqual(day.phase_results[0]["work"]["counts"]["skipped_water"], 1)
+        self.assertEqual(day.phase_results[0]["frames"], 20)
+
+    def test_day_floor_preserves_inflight_work_counters_and_elapsed_frames(self):
+        from harvest.planner.day_phase_catalog import CROP_WATER_PHASE
+        ram = _progress_ram(day=9, hour=18, tilemap=0x15)
+        day = DayPlanTask(phase_sequence=[CROP_WATER_PHASE])
+        day._phase_start_frame = 10
+        day._current_task = SimpleNamespace(watered_count=4, skipped_water=2)
+        planner = MultiDayPlannerTask()
+        planner._current_task = day
+        planner._capture_day_plan_outcomes(SimpleNamespace(frame=30, ram=ram))
+        planner._capture_day_plan_outcomes()
+        self.assertEqual(len(planner._last_day_phase_results), 1)
+        row = planner._last_day_phase_results[0]
+        self.assertEqual((row["status"], row["frames"]), ("interrupted", 20))
+        self.assertEqual(row["work"]["counts"], {"watered_count": 4, "skipped_water": 2})
+
+    def test_work_ledger_counts_only_actions_and_preserves_target_visits(self):
+        from harvest.tasks.crop_skills import water_until_wet_skill
+        ram = _progress_ram(day=4, hour=8, tilemap=0x15, stamina=80)
+        original = ram.copy()
+        leaf = water_until_wet_skill(target_tile=(12, 27))
+        composer = DayPlanTask(phase_sequence=[])
+        composer._current_task = leaf
+        ledger = WorkFrameLedger()
+        ledger.observe(frame=100, ram=ram, task=composer)
+        ledger.observe(frame=101, ram=ram, task=composer)
+        leaf.target_tile = (13, 27)
+        ledger.observe(frame=102, ram=ram, task=composer)
+        row = ledger.report(ram)
+        self.assertEqual(row["frames"], 3)
+        self.assertEqual([s["frames"] for s in row["segments"]], [2, 1])
+        self.assertEqual(row["segments"][-1]["end_frame"], 103)
+        self.assertEqual(row["segments"][-1]["context"][-1][3], [13, 27])
+        np.testing.assert_array_equal(ram, original)
+
+    def test_work_ledger_idle_counts_dead_runs_and_ignores_pressed_or_moving_frames(self):
+        from harvest.core.task_progress import DEAD_RUN_MIN_FRAMES
+        from harvest.tasks.nav import make_action
+        composer = DayPlanTask(phase_sequence=[])
+        ledger = WorkFrameLedger()
+        still = _progress_ram(day=4, tilemap=0x15, player_x=100, player_y=200)
+        moved = _progress_ram(day=4, tilemap=0x15, player_x=101, player_y=200)
+        frame = 0
+        for ram, action in (
+            [(still, make_action())] * (DEAD_RUN_MIN_FRAMES + 5)   # waiting: dead
+            + [(still, make_action(A=1))] * 10                      # button held, not moving: busy
+            + [(moved, make_action())] * (DEAD_RUN_MIN_FRAMES - 7)  # 1 moving + 112 dead: too short to list
+            + [(moved, make_action(right=1))]
+        ):
+            ledger.observe(frame=frame, ram=ram, task=composer, action=action)
+            frame += 1
+        idle = ledger.report(moved)["idle"]
+        self.assertEqual(idle["input_frames"], 11)
+        self.assertEqual(idle["idle_frames"], frame - 11)
+        runs = idle["dead_runs"]
+        self.assertEqual(len(runs), 1)
+        # The first frame has no earlier pose to equal, so the run starts on frame 1.
+        self.assertEqual((runs[0]["start_frame"], runs[0]["frames"]), (1, DEAD_RUN_MIN_FRAMES + 4))
+        self.assertEqual(ledger.segments[0]["input_frames"], 11)
+
+    def test_work_ledger_without_actions_reports_no_idle_section(self):
+        ledger = WorkFrameLedger()
+        ledger.observe(frame=0, ram=_progress_ram(day=4), task=DayPlanTask(phase_sequence=[]))
+        self.assertNotIn("idle", ledger.report(_progress_ram(day=4)))
+
+    def test_failed_partial_work_keeps_counts_and_indoor_gate_is_unknown(self):
+        before = _progress_ram(tilemap=0x15, stamina=80, watering_can=10)
+        after = _progress_ram(tilemap=0x15, stamina=72, watering_can=6)
+        receipt = work_receipt(work_snapshot(before), after,
+                               SimpleNamespace(watered_count=4, skipped_water=1))
+        self.assertEqual(receipt["counts"], {"watered_count": 4, "skipped_water": 1})
+        self.assertEqual(receipt["delta"]["watering_can"], -4)
+        self.assertIsNone(receipt["after"]["gates"]["all_growing_crops_wet"])
+        self.assertIsNone(receipt["after"]["crops"])
+
     def test_atomic_write_replaces_a_complete_document(self) -> None:
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "sidecar.json"
@@ -361,3 +453,17 @@ class RunProgressSidecarTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_scorecard_idle_section_lists_dead_runs_and_is_absent_without_data():
+    from harvest.tools import final_score
+
+    assert final_score.render_idle({"work_metrics": {}}) == []
+    report = {"work_metrics": {"idle": {
+        "input_frames": 900, "idle_frames": 100, "dead_frames": 60, "dead_run_min_frames": 120,
+        "dead_runs": [{"start_frame": 5000, "frames": 700, "phase": "SLEEP", "date": [1, 2, 9], "tilemap": 21}],
+    }}}
+    text = "\n".join(final_score.render_idle(report))
+    assert "| 1,000 | 900 | 100 | 60 | 1 | 700 | 700 |" in text
+    assert "| SLEEP | 1 | 700 |" in text
+    assert "700 frames (11.7 s) in SLEEP, Y2 Fa D9, map 0x15, from frame 5,000" in text

@@ -809,7 +809,7 @@ def _restore_planner(planner: object, carried: object) -> None:
 
 
 class SeasonPinSession:
-    """Write ``PR_Y{n}_{Season}_D1`` and remember the parent run.
+    """Write season or daily morning pins and remember the parent run.
 
     The pin is the morning the new season's day plan starts (settle already
     finished, day task not stepped). The trace is every env step after that
@@ -825,8 +825,12 @@ class SeasonPinSession:
         start_key: tuple[int, int, int],
         state_name: str,
         save_dir: Path,
+        daily: bool = False,
+        prefix: str = "PR_",
     ) -> None:
         self.save = bool(save)
+        self.daily = bool(daily)
+        self.prefix = prefix
         self.save_dir = Path(save_dir)
         self.start_key = (int(start_key[0]), int(start_key[1]), int(start_key[2]))
         self.parent_hash = parent_run_hash(
@@ -836,15 +840,17 @@ class SeasonPinSession:
         )
         self._pins: list[dict] = []
         self._open: Optional[dict] = None
-        self._saved: set[tuple[int, int]] = set()
+        self._saved: set[tuple[int, int, int]] = set()
         self.trace: Optional[_DayTrace] = None
         self.loaded: Optional[dict] = None
-        if state_name.startswith("PR_"):
-            path = self.save_dir / f"{state_name}.lineage.json"
-            if path.is_file():
-                self.loaded = json.loads(path.read_text(encoding="utf-8"))
+        path = self.save_dir / f"{state_name}.lineage.json"
+        if not power_on and state_name and path.is_file():
+            self.loaded = json.loads(path.read_text(encoding="utf-8"))
+            # Frozen runs and copied checkouts move; resync the state beside
+            # the lineage we actually opened, not its historical pathname.
+            self.loaded["path"] = str(self.save_dir / f"{state_name}.state")
 
-    def before_step(self, planner: object, ram, frame: int, save_state: SaveState, env: object = None) -> None:
+    def before_step(self, planner: object, ram, frame: int, save_state: SaveState, env: object = None, *, terminal_morning: bool = False) -> None:
         if self.loaded is not None and self.trace is None:
             _resync_loaded_pin(env, self.loaded, ram)
             _restore_planner(planner, self.loaded.get("planner"))
@@ -853,35 +859,37 @@ class SeasonPinSession:
             return
         year, season, day = read_world_ymd(ram)
         key = (int(year), int(season), int(day))
-        if day != 1 or key == self.start_key or (key[0], key[1]) in self._saved:
+        if (day != 1 and not self.daily) or key == self.start_key or key in self._saved:
             return
-        if getattr(planner, "_phase", None) != "plan_day":
+        if not terminal_morning and getattr(planner, "_phase", None) != "plan_day":
             return
-        if getattr(planner, "_current_task", None) is not None:
+        if not terminal_morning and getattr(planner, "_current_task", None) is not None:
             return
         hour = int(read_ram_value(ram, "hour"))
         if not morning_scene_ready(classify_scene_from_ram(ram), hour):
             return
-        name = season_pin_name(year, season)
+        name = f"{self.prefix}Y{year + 1}_{SEASONS[season]}_D{day}"
         path = self.save_dir / f"{name}.state"
         save_state(path)
+        from harvest.planner.power_berry_calendar import berry_receipts
         record = {
             "pin": name,
             "path": str(path),
             "parent_run_hash": self.parent_hash,
             "saved_frame": int(frame),
             "date": {"year": key[0], "season": key[1], "day": key[2]},
+            "power_berries": berry_receipts(ram),
             "planner": _carry_planner(planner),
             "next_day": None,
         }
         self._pins.append(record)
         self._open = record
-        self._saved.add((key[0], key[1]))
+        self._saved.add(key)
         if self.trace is None:
             self.trace = _DayTrace()
         self._write_lineage(record)
         print(
-            f"[RUN] season pin {name} frame={frame} parent={self.parent_hash[:12]}",
+            f"[RUN] {'morning' if self.daily else 'season'} pin {name} frame={frame} parent={self.parent_hash[:12]}",
             flush=True,
         )
 
@@ -918,11 +926,13 @@ class SeasonPinSession:
 
 
 def season_pin_session(args: object, start_key: tuple[int, int, int], source_sha256: Optional[str]):
-    """None unless this run saves season pins or resumes a ``PR_`` pin."""
+    """None unless this run saves morning pins or resumes a pin with lineage."""
     power_on = bool(getattr(args, "power_on", False))
     state_name = "" if power_on else str(getattr(args, "state", "") or "")
-    save = bool(getattr(args, "save_season_pins", False))
-    if not save and not state_name.startswith("PR_"):
+    daily = bool(getattr(args, "save_day_pins", False))
+    save = bool(getattr(args, "save_season_pins", False)) or daily
+    has_lineage = bool(state_name) and (GAME_DIR / f"{state_name}.lineage.json").is_file()
+    if not save and not state_name.startswith("PR_") and not has_lineage:
         return None
     return SeasonPinSession(
         save=save,
@@ -931,4 +941,6 @@ def season_pin_session(args: object, start_key: tuple[int, int, int], source_sha
         start_key=tuple(start_key),
         state_name=state_name,
         save_dir=GAME_DIR,
+        daily=daily,
+        prefix=str(getattr(args, "pin_prefix", "PR_")),
     )

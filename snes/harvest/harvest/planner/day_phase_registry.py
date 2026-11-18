@@ -41,14 +41,16 @@ from harvest.planner.tasks.navigation import (
 )
 from harvest.planner.tasks.transitions import DirectionalTransitionTask, ExitBuildingTask
 from harvest.tasks.coop_task import CoopChoresTask
-from harvest.tasks.cow_task import CowChoresTask
+from harvest.tasks.cow_task import CowChoresTask, CowRoundupTask
+from harvest.tasks.eve_gift import FishWifeGiftTask, GiveWifeTask
 from harvest.tasks.crop_planter import CropWaterTask
 from harvest.tasks.eve_loop_task import EveTalkLoopTask
 from harvest.tasks.eve_proposal import EveProposalTask
 from harvest.tasks.flower_festival import FlowerFestivalTask
+from harvest.planner.tasks.festival_escape import HarvestHappinessTask
 from harvest.tasks.farm_clear_task import FarmClearTask
 from harvest.tasks.nav import Point
-from harvest.core.tile_catalog import Tool
+from harvest.core.tile_catalog import Tool, is_path_tilemap
 from harvest.tasks.harvest_task import HarvestTask, crop_nav_target_px, live_harvestable_crop_tiles
 from harvest.tasks.buy_seeds import BuyShelfItemTask
 from harvest.tasks.mountain_berry import MountainBerryTask
@@ -57,22 +59,17 @@ from harvest.tasks.recorded_task import RecordedTask
 
 PhaseTaskBuilder = Callable[["TaskBuildContext", PhaseSpec, WorldState], Optional[Task]]
 
-
 @dataclass(frozen=True)
 class TaskBuildContext:
-    """Inputs shared by all phase task builders.
-
-    Keep builders pure functions of ``(ctx, spec, world)``. Optional policy and
-    world_context let skills share calendar/stamina facts and cached reads
-    without re-probing RAM on every construction.
-    """
+    """Shared inputs and cached world reads for pure ``(ctx, spec, world)`` builders."""
 
     seed_type: str = "potato"
     tasks_dir: str = TASKS_DIR
     state_name: Optional[str] = None
     policy: Optional[DayPlannerPolicy] = None
     world_context: Optional["WorldContext"] = None
-
+    chicken_sale_baseline: tuple[int, int] | None = None
+    social_visits: set = field(default_factory=set, compare=False)
 
 @dataclass
 class _ImmediateSuccessTask(Task):
@@ -90,7 +87,6 @@ class _ImmediateSuccessTask(Task):
     def step(self, world: WorldState) -> TaskResult:
         return TaskResult(status=TaskStatus.SUCCESS, reason=self.reason)
 
-
 def _build_exit(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -100,7 +96,6 @@ def _build_exit(
         timeout=spec.params.get("timeout", 600),
     )
 
-
 def _build_farm_building_exit(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -108,7 +103,6 @@ def _build_farm_building_exit(
         tasks_dir=ctx.tasks_dir,
         house_timeout=spec.params.get("timeout", 2200),
     )
-
 
 def _build_farm_exit(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -120,9 +114,18 @@ def _build_farm_exit(
         timeout=spec.params.get("timeout", 3000),
     )
 
-
 def _build_nav(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
     px = spec.params.get("target_px", (0, 0))
+    if spec.params.get("via_px"):
+        from harvest.maps.map_routes import densify_waypoints
+        from harvest.maps.map_types import Waypoint
+        from harvest.tasks.nav import get_pos_from_ram
+
+        pos = get_pos_from_ram(world.ram)
+        points = [(pos.x, pos.y), *spec.params["via_px"], px]
+        return MultiMapNavTask(name=f"nav_{spec.phase}", waypoints=densify_waypoints([
+            Waypoint(tilemap=0x00, target_px=p, radius=8) for p in points]),
+            timeout=spec.params.get("timeout", 4000), initial_settle_frames=0)
     if spec.phase == "NAV_CROP":
         px = crop_nav_target_px(
             world.ram,
@@ -137,7 +140,6 @@ def _build_nav(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Tas
         timeout=spec.params.get("timeout", 3000),
     )
 
-
 def _build_recorded(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Optional[Task]:
@@ -148,57 +150,30 @@ def _build_recorded(
         print(f"[DAY_PLAN] Recording not found: {task_name}")
         return None
 
-
-def _build_recorded_slice(
-    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Task:
+def _build_recorded_slice(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
     return load_recording_slice(
-        RecordingSliceSpec(
-            task_name=spec.params.get("task_name", ""),
-            start_frame=spec.params.get("start_frame", 0),
-            end_frame=spec.params.get("end_frame"),
-        ),
-        ctx.tasks_dir,
-    )
+        RecordingSliceSpec(task_name=spec.params.get("task_name", ""),
+                           start_frame=spec.params.get("start_frame", 0),
+                           end_frame=spec.params.get("end_frame")), ctx.tasks_dir)
 
+def _build_cow_purchase(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
+    return CowPurchaseTask(species=str(spec.params.get("species", "cow")),
+                           timeout=int(spec.params.get("timeout", 3600)))
 
-def _build_cow_purchase(
-    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Task:
-    return CowPurchaseTask(
-        species=str(spec.params.get("species", "cow")),
-        timeout=int(spec.params.get("timeout", 3600)),
-    )
-
-
-def _build_hen_delivery(
-    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Task:
+def _build_hen_delivery(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
     from harvest.tasks.coop_task import HenDeliveryTask
-
     return HenDeliveryTask()
 
+def _build_pickup_chicken(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
+    return CoopPickupChickenTask(name=f"pickup_chicken_{spec.phase.lower()}",
+                                 timeout=spec.params.get("timeout", 1800))
 
-def _build_pickup_chicken(
-    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Task:
-    return CoopPickupChickenTask(
-        name=f"pickup_chicken_{spec.phase.lower()}",
-        timeout=spec.params.get("timeout", 1800),
-    )
-
-
-def _build_drop_chicken(
-    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
-) -> Task:
+def _build_drop_chicken(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
     target_px = spec.params.get("target_px", (60, 480))
-    return DropCarriedChickenTask(
-        name=f"drop_chicken_{spec.phase.lower()}",
-        target_px=(int(target_px[0]), int(target_px[1])),
-        radius=spec.params.get("radius", 2),
-        timeout=spec.params.get("timeout", 3000),
-    )
-
+    return DropCarriedChickenTask(name=f"drop_chicken_{spec.phase.lower()}",
+                                 target_px=(int(target_px[0]), int(target_px[1])),
+                                 radius=spec.params.get("radius", 2),
+                                 timeout=spec.params.get("timeout", 3000))
 
 def _build_chicken_sale_followup(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -214,7 +189,6 @@ def _build_chicken_sale_followup(
         success_settle_frames=spec.params.get("success_settle_frames", 30),
     )
 
-
 def _build_chicken_sale_request(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -229,7 +203,6 @@ def _build_chicken_sale_request(
         timeout=spec.params.get("timeout", 900),
     )
 
-
 def _build_chicken_sale_event(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -241,8 +214,8 @@ def _build_chicken_sale_event(
         target_sales=spec.params.get("target_sales", 1),
         timeout=spec.params.get("timeout", 18000),
         success_settle_frames=spec.params.get("success_settle_frames", 30),
+        sale_baseline=ctx.chicken_sale_baseline,
     )
-
 
 def _build_recorded_transition(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -256,7 +229,6 @@ def _build_recorded_transition(
         timeout=spec.params.get("timeout", 2000),
         min_frames_before_success=spec.params.get("min_frames_before_success", 1),
     )
-
 
 def _build_cross_map(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -278,65 +250,118 @@ def _build_cross_map(
         require_purchase=bool(stock_field),
     )
 
-
 def _shop_bag_count(spec: PhaseSpec, world: WorldState, stock_field: str) -> int:
-    """Bags to buy this trip: one per ring still waiting on seed, less stock.
+    """Batch the ~2480-frame trip: one bag per empty or ripe one-shot plot, less stock.
 
-    The shop round trip is ~2480 f whether it carries one bag or six, so a
-    harvest day that empties several rings should not pay for it per ring.
-    Capped by ``max_bags`` (default: every ring site) and by the task's own
-    wallet clamp (``BuySeedsTask._bags_target``). In Spring a ripe one-shot
-    ring counts: the shop runs before the harvest empties it.
+    ``max_bags`` defaults to every plot; the task's wallet clamp and the crop quota also apply.
     """
     from harvest.core.ram_catalog import read_ram_value
-    from harvest.maps.farm_pond import POCKET_PLANT_CENTERS, pocket_plant_targets
+    from harvest.maps.farm_pond import active_plot_centers, pocket_plant_targets, ram_year
 
     if "target_stock" in spec.params:
         return max(1, int(spec.params["target_stock"]) - int(read_ram_value(world.ram, stock_field)))
-    cap = int(spec.params.get("max_bags", len(POCKET_PLANT_CENTERS)))
+    cap = int(spec.params.get("max_bags", len(active_plot_centers(ram_year(world.ram), int(read_ram_value(world.ram, "season"))))))
     if cap <= 1:
         return 1
     try:
         wanted = len(pocket_plant_targets(world.ram, replant_ripe=True))
         in_stock = int(read_ram_value(world.ram, stock_field) or 0)
+        from harvest.planner.run_strategy import seed_bags_for_quota
+
+        wanted = seed_bags_for_quota(world.ram, stock_field.removesuffix("_seeds"), wanted, in_stock)
     except Exception:
         return 1
-    return max(1, min(cap, wanted - in_stock))
+    return max(1, min(cap, wanted))
+
+def _joint_summer_bags(world: WorldState, stock_field: str) -> Optional[tuple[int, tuple[tuple[str, int], ...]]]:
+    """Year 3 Summer: this trip's bags of the planned crop plus the other crop's (``run_strategy.joint_summer_bags``)."""
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.maps.farm_pond import pocket_plant_targets
+    from harvest.planner.run_strategy import SUMMER_CROPS, joint_summer_bags
+
+    crop = stock_field.removesuffix("_seeds")
+    if crop not in SUMMER_CROPS:
+        return None
+    try:
+        stock = {f"{c}_seeds": int(read_ram_value(world.ram, f"{c}_seeds") or 0) for c in SUMMER_CROPS}
+        bags = joint_summer_bags(world.ram, len(pocket_plant_targets(world.ram, replant_ripe=True)), stock)
+    except Exception:
+        return None
+    if bags.get(crop, 0) <= 0:
+        return None
+    return bags[crop], tuple((f"{c}_seeds", n) for c, n in bags.items() if c != crop and n > 0)
 
 
 def _build_shop_buy(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
+    latest = spec.params.get("latest_start_hour")
+    if latest is not None:
+        from harvest.core.ram_catalog import read_ram_value
+
+        if int(read_ram_value(_world.ram, "hour")) >= int(latest):
+            return _ImmediateSuccessTask(name=f"shop_{spec.phase.lower()}_late",
+                                         reason=f"no_work:shop start deadline {latest}:00")
     stock_field = spec.params.get("stock_field", "potato_seeds")
     tool_ids = tuple(int(t) for t in spec.params.get("tool_ids", ()))
+    bags, then = (1, ()) if tool_ids else _joint_summer_bags(_world, stock_field) or (_shop_bag_count(spec, _world, stock_field), ())
     return BuyShelfItemTask(
         name=f"shop_buy_{spec.phase.lower()}",
-        timeout=spec.params.get("timeout", 14_000),
+        timeout=spec.params.get("timeout", 14_000) + 4_000 * len(then),
         nav_timeout=spec.params.get("nav_timeout", 6_000),
         stock_field=stock_field,
-        bags=1 if tool_ids else _shop_bag_count(spec, _world, stock_field),
+        bags=bags,
+        then=then,
         tool_ids=tool_ids,
+        social_visits=ctx.social_visits,
     )
-
 
 def _build_grass(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
     from harvest.maps.farm_pond import SHIP_BIN_LANE_TILES
-    from harvest.tasks.grass_planter import GrassPlantTask, PASTURE_BOUNDS
+    from harvest.tasks.grass_planter import GrassPlantTask, PASTURE_BOUNDS, PASTURE_NAV_PX
     from harvest.tasks.primitives import TaskSequence
     from harvest.maps.map_config import Waypoint
 
     cutting = bool(spec.params.get("cut_only", False))
-    bounds = tuple(spec.params.get("bounds", PASTURE_BOUNDS))
-    work = GrassPlantTask(bounds=bounds, no_go_rects=[], cut_only=cutting,
-                          target_tiles=0 if cutting else int(spec.params.get("target_tiles", 32)),
-                          bag_limit=0 if cutting else int(spec.params.get("bag_limit", 2)))
-    fetch = (EnsureCarryToolTask(tool_id=int(Tool.SICKLE)) if cutting
-             else EnsureCropSeedsTask(seed_type="grass"))
-    nav = MultiMapNavTask(waypoints=[Waypoint(0x00, px, radius=8) for px in
-                         ((136, 424), (232, 392), (296, 392), (312, 488), (312, 520), (296, 536), (264, 536))],
-                         timeout=4000, auto_slice=True, allow_tiles=SHIP_BIN_LANE_TILES)
-    return TaskSequence(tasks=[fetch, nav, work], name=spec.phase.lower())
+    tilling = bool(spec.params.get("till_only", False))
+    stands = [tuple(s) for s in spec.params.get("stands", ())]
+    covering = bool(stands)
+    # Whole-field cover works the stands the planner chose anywhere on the farm; everything else stays in the pasture.
+    bounds = (0, 0, 63, 63) if covering else tuple(spec.params.get("bounds", PASTURE_BOUNDS))
+    final_fill = bool(spec.params.get("final_fill", False))
+    ragged = bool(spec.params.get("ragged", False))
+    work = GrassPlantTask(
+        bounds=bounds, no_go_rects=[], cut_only=cutting, till_only=tilling, hay_goal=int(spec.params.get("hay_goal", 0)),
+        target_tiles=0 if cutting or tilling or covering else int(spec.params.get("target_tiles", 32)),
+        till_limit=int(spec.params.get("till_limit", 32)) if tilling and not covering else 0,
+        bag_limit=0 if cutting or tilling else int(spec.params.get("bag_limit", 2)),
+        stands=stands or None,
+        min_bag_tiles=1 if final_fill or ragged else 6,
+        release_reserved=final_fill,
+        release_cells=tuple((int(x), int(y)) for x, y in spec.params.get("released", ())),
+        # A whole-field pass restarts from its first stand after every soak: a few squares the hoe cannot take
+        # must not use up the failure budget before the pass reaches the stands behind them.
+        max_failures=400 if covering else 50,
+    )
+    if cutting:
+        fetch = EnsureCarryToolTask(tool_id=int(Tool.SICKLE))
+    elif tilling:
+        fetch = EnsureCarryToolTask(tool_id=int(Tool.HOE))
+    else:
+        fetch = EnsureCropSeedsTask(seed_type="grass")
+    nav_px = [tuple(p) for p in spec.params.get("route_px", ())] if covering else []
+    if covering:
+        # Every restart (after a soak) walks to the first stand with work left, not to the first of the list (long done).
+        from harvest.planner.field_cover import restart_route_px
 
+        fresh = restart_route_px(world.ram, stands, till=tilling)
+        if fresh:
+            nav_px = [tuple(p) for p in fresh]
+    nav = MultiMapNavTask(
+        waypoints=[Waypoint(0x00, px, radius=8) for px in ([PASTURE_NAV_PX[0], *nav_px] if covering else PASTURE_NAV_PX)],
+        timeout=4000 if not covering else 9000, auto_slice=True, allow_tiles=SHIP_BIN_LANE_TILES, soft_timeout=covering,
+    )
+    return TaskSequence(tasks=[fetch, nav, work], name=spec.phase.lower(), keep_last_reason=covering or cutting)
 
 def _build_directional_transition(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -346,6 +371,7 @@ def _build_directional_transition(
         direction=spec.params.get("direction", "down"),
         origin_tilemap=spec.params.get("origin_tilemap"),
         target_tilemap=spec.params.get("target_tilemap", FARM_TILEMAP),
+        target_tilemaps=spec.params.get("target_tilemaps"),
         timeout=spec.params.get("timeout", 600),
         min_frames_before_success=spec.params.get("min_frames_before_success", 15),
         settle_frames=spec.params.get("settle_frames", 0),
@@ -360,7 +386,6 @@ def _build_directional_transition(
         clear_hands_limit=spec.params.get("clear_hands_limit", 4),
         walk_into_door=spec.params.get("walk_into_door", False),
     )
-
 
 def _build_multi_nav(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -378,7 +403,6 @@ def _build_multi_nav(
         auto_slice=True,
     )
 
-
 def _build_mountain_berry(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -392,6 +416,7 @@ def _build_mountain_berry(
             target_count=spec.params.get("count", 1),
             shop_bail_hour=spec.params.get("shop_bail_hour", 10),
             forage=spec.params.get("forage", "grape"),
+            loop_hours=spec.params.get("loop_hours", 4),
         )
     return MountainBerryTask(
         name=f"mountain_berry_{spec.phase.lower()}",
@@ -401,7 +426,6 @@ def _build_mountain_berry(
         approach_only=spec.params.get("approach_only", True),
     )
 
-
 def _build_ensure_tool(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -410,7 +434,6 @@ def _build_ensure_tool(
         tool_id=spec.params.get("tool_id", int(Tool.WATERING_CAN)),
         tasks_dir=ctx.tasks_dir,
     )
-
 
 def _build_ensure_animal_tools(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -422,7 +445,6 @@ def _build_ensure_animal_tools(
         second_tool_id=spec.params.get("second_tool_id", int(Tool.BRUSH)),
     )
 
-
 def _build_ensure_seed(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -432,7 +454,6 @@ def _build_ensure_seed(
         tasks_dir=ctx.tasks_dir,
     )
 
-
 def _build_deadline(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -441,7 +462,6 @@ def _build_deadline(
         latest_hour=spec.params.get("latest_hour", 17),
         latest_minute=spec.params.get("latest_minute", 0),
     )
-
 
 def _build_wait_until_time(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -453,13 +473,11 @@ def _build_wait_until_time(
         timeout=spec.params.get("timeout", 4000),
     )
 
-
 def _build_harvest(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
     return HarvestTask(
         name=f"harvest_{spec.phase.lower()}",
         state_name=ctx.state_name,
     )
-
 
 def _build_clear_field(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -488,7 +506,6 @@ def _build_clear_field(
         handoff=str(spec.params.get("handoff") or ""),
         quota=spec.params.get("quota"),
     )
-
 
 def _build_fence_clear(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -519,7 +536,6 @@ def _build_fence_clear(
         timeout=int(spec.params.get("timeout", 0) or 0),
     )
 
-
 def _build_coop_chores(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
@@ -528,7 +544,6 @@ def _build_coop_chores(
         egg_mode=spec.params.get("egg_mode", "auto"),
         max_feed_adults=spec.params.get("max_feed_adults"),
     )
-
 
 def _build_cow_chores(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -539,8 +554,14 @@ def _build_cow_chores(
         brush=spec.params.get("brush", True),
         milk=spec.params.get("milk", True),
         feed=spec.params.get("feed", True),
+        medicine=spec.params.get("medicine", True),
+        timeout=spec.params.get("timeout", CowChoresTask.timeout),
     )
 
+def _build_cow_roundup(
+    ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
+) -> Task:
+    return CowRoundupTask(timeout=spec.params.get("timeout", CowRoundupTask.timeout))
 
 def _build_eve_talk_loop(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -553,18 +574,16 @@ def _build_eve_talk_loop(
         timeout=spec.params.get("timeout", 360000),
     )
 
-
 def _build_flower_festival(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
-    return FlowerFestivalTask(name=f"festival_{spec.phase.lower()}", timeout=spec.params.get("timeout", 60000))
-
+    return FlowerFestivalTask(name=f"festival_{spec.phase.lower()}", timeout=spec.params.get("timeout", 60000),
+                              buy_snow_seed=bool(spec.params.get("buy_snow_seed", False)))
 
 def _build_propose_eve(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
     return EveProposalTask(name=f"eve_{spec.phase.lower()}", timeout=spec.params.get("timeout", 60000))
-
 
 def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
     refill_bounds = spec.params.get("refill_bounds")
@@ -583,37 +602,49 @@ def _build_crop(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Ta
                 name=f"crop_{spec.phase.lower()}_noop",
                 reason="no_work:no pocket ring needs planting",
             )
-        if not ring_establish_affordable(world.ram, center):
+        from harvest.planner.day_phase_stamina import WATER_SPA_REFRESHES_PER_DAY
+
+        # The day plan may now splice up to four soaks for watering; count three, keep one spare.
+        spa_refills = WATER_SPA_REFRESHES_PER_DAY - 1 if getattr(ctx.policy, "include_spa", True) else 0
+        if not ring_establish_affordable(world.ram, center, spa_refills=spa_refills):
             return _ImmediateSuccessTask(
                 name=f"crop_{spec.phase.lower()}_noop",
                 reason=f"no_work:stamina for hoe and standing-crop watering ({center})",
             )
+        from harvest.maps.farm_pond import plot_layout_name, ram_year
+
         return farm_pocket_plant_skill(
             seed_type=ctx.seed_type,
             center=center,
             ram=world.ram,
             include_water=False,
+            layout_name=plot_layout_name(center, ram_year(world.ram)),
         )
     if str(work_mode) == "pocket":
         from harvest.maps.farm_pond import pocket_water_center
         from harvest.tasks.skills import farm_pocket_water_skill
 
         return farm_pocket_water_skill(center=pocket_water_center(world.ram))
+    from harvest.tasks.buy_seeds import tool_owned
+    from harvest.tasks.sprinkler import SprinklerWaterTask
+    from harvest.planner.tasks.home_recover import toss_held_first
     skip_water_tiles = set(live_harvestable_crop_tiles(world.ram, ctx.state_name))
-    return CropWaterTask(
+    if str(work_mode) == "water" and tool_owned(world.ram, int(Tool.SPRINKLER)):
+        return toss_held_first(
+            SprinklerWaterTask(skip_water_tiles=skip_water_tiles, stop_hour=spec.params.get("stop_hour")), world)
+    return toss_held_first(CropWaterTask(
         seed_type=ctx.seed_type,
         work_mode=str(work_mode),
         refill_bounds=refill_bounds,
         skip_water_tiles=skip_water_tiles,
-    )
-
+        stop_hour=spec.params.get("stop_hour"),
+    ), world)
 
 def _min_stamina_param(params: dict) -> int | None:
     raw = params.get("min_stamina", "full")
     if raw in (None, "full", "max", ""):
         return None
     return int(raw)
-
 
 def _build_hot_spring(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -628,18 +659,15 @@ def _build_hot_spring(
         timeout=int(spec.params.get("timeout", 24000)),
     )
 
-
 def _build_return_home(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
     return ReturnHomeTask(tasks_dir=ctx.tasks_dir)
 
-
 def _build_sleep(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
     return GoToSleepTask(tasks_dir=ctx.tasks_dir)
-
 
 def _build_ready_to_go_home(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
@@ -648,7 +676,6 @@ def _build_ready_to_go_home(
 
     return ReadyToGoHomeTask()
 
-
 _WIFE_MASK = 0x001F
 _FEATHER = 0x18
 _PROPOSE_HEARTS = 250
@@ -656,22 +683,18 @@ _PROPOSE_HEARTS = 250
 _FEATHER_SHED = 0x11F02
 _FEATHER_BIT = 0x80
 
-
 def _u16(ram, key: str) -> int:
     from harvest.core.ram_catalog import read_ram_value
 
     return int(read_ram_value(ram, key))
 
-
 def _wife_bits(ram) -> int:
     return _u16(ram, "marriage_flags") & _WIFE_MASK
-
 
 def _best_girl(ram) -> tuple[str, int] | None:
     # Only Ann has a measured proposal route. Other hearts never select it.
     hearts = _u16(ram, "ann_hearts")
     return ("ann", hearts) if hearts >= _PROPOSE_HEARTS else None
-
 
 def proposal_phase_for_ram(ram) -> PhaseSpec | None:
     from harvest.core.carry import tool_in_carry_pair
@@ -685,11 +708,9 @@ def proposal_phase_for_ram(ram) -> PhaseSpec | None:
     owned = tool_in_carry_pair(ram, _FEATHER) or bool(read_ram_u8(ram, _FEATHER_SHED) & _FEATHER_BIT)
     return PhaseSpec("PROPOSE", PhaseKind.PROPOSE, failure_policy="optional") if owned else None
 
-
 def _ann_stand(weekday: int) -> tuple[int, int, int, int]:
     # get_engaged: Summer Saturday at (402,901), feather Y+Up.
     return (0x04, 402, 889, 0x0226)
-
 
 def _to_ann(tilemap: int, weekday: int, ram=None) -> list | None:
     from harvest.maps.map_routes import ROUTES, segment_waypoints
@@ -709,12 +730,11 @@ def _to_ann(tilemap: int, weekday: int, ram=None) -> list | None:
         return town
     if is_farm_tilemap(tilemap):
         return list(ROUTES["farm_to_town"]) + town
-    if tilemap == 0x0C:
+    if is_path_tilemap(tilemap):
         return list(ROUTES["path_to_town"]) + town
     if tilemap == 0x1C:
         return segment_waypoints("shop_to_town") + town
     return None
-
 
 def _to_farm_for_feather(tilemap: int, ram=None) -> list | None:
     from harvest.maps.map_routes import ROUTES, segment_waypoints
@@ -730,7 +750,7 @@ def _to_farm_for_feather(tilemap: int, ram=None) -> list | None:
             pos = get_pos_from_ram(ram)
             square = slice_route_from_position(square, pos.x, pos.y, tilemap=tilemap)
         return square + tail
-    if tilemap == 0x0C:
+    if is_path_tilemap(tilemap):
         return list(ROUTES["path_to_farm"])
     return None
 
@@ -744,7 +764,6 @@ def _nav(waypoints: list, timeout: int) -> Task:
         initial_settle_frames=8,
     )
 
-
 def _live_girl(ram, sprite: int):
     from harvest.core.npc_catalog import game_objects
     best, best_delta = None, 99
@@ -753,7 +772,6 @@ def _live_girl(ram, sprite: int):
         if not obj.is_player and delta <= 8 and delta < best_delta:
             best, best_delta = obj, delta
     return best
-
 
 @dataclass
 class ProposalTask(Task):
@@ -905,7 +923,6 @@ class ProposalTask(Task):
             self._mode = "plan"
         return self._plan(world)
 
-
 def _close_enough(ram, weekday: int) -> bool:
     from harvest.core.tile_catalog import ADDR_TILEMAP
     from harvest.tasks.nav import get_pos_from_ram
@@ -919,7 +936,6 @@ def _close_enough(ram, weekday: int) -> bool:
     if girl is None:
         return False
     return abs(pos.x - girl.pixel[0]) <= 15 and 6 <= pos.y - girl.pixel[1] <= 10
-
 
 def _face_girl(ram) -> str:
     from harvest.tasks.nav import get_pos_from_ram
@@ -935,64 +951,63 @@ def _face_girl(ram) -> str:
         return "right" if dx > 0 else "left"
     return "down" if dy > 0 else "up"
 
-
 def _build_propose(
     ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState
 ) -> Task:
     return ProposalTask()
 
-
 def _build_marriage_skill(ctx: TaskBuildContext, spec: PhaseSpec, _world: WorldState) -> Task:
     from harvest.tasks.proposal import AnnCourtTask, FeatherBuyTask
     return AnnCourtTask() if spec.kind == PhaseKind.COURT else FeatherBuyTask()
 
+def _build_power_berry(ctx: TaskBuildContext, spec: PhaseSpec, world: WorldState) -> Task:
+    from harvest.tasks.power_berry import PowerBerryTask
+    return PowerBerryTask(source=str(spec.params["source"]), timeout=int(spec.params.get("timeout", 180000)))
+
 
 PHASE_TASK_BUILDERS: dict[PhaseKind, PhaseTaskBuilder] = {
+    PhaseKind.POWER_BERRY: _build_power_berry,
     PhaseKind.HOUSE_WOOD: lambda ctx, spec, world: GatherHouseWoodTask(),
     PhaseKind.HOME_UPGRADE: lambda ctx, spec, world: HouseUpgradeTask(goal=spec.params.get("goal", "order")),
-    PhaseKind.EXIT: _build_exit,
-    PhaseKind.FARM_BUILDING_EXIT: _build_farm_building_exit,
-    PhaseKind.FARM_EXIT: _build_farm_exit,
-    PhaseKind.NAV: _build_nav,
-    PhaseKind.RECORDED: _build_recorded,
-    PhaseKind.RECORDED_SLICE: _build_recorded_slice,
-    PhaseKind.COW_PURCHASE: _build_cow_purchase,
-    PhaseKind.HEN_DELIVERY: _build_hen_delivery,
-    PhaseKind.PICKUP_CHICKEN: _build_pickup_chicken,
-    PhaseKind.DROP_CHICKEN: _build_drop_chicken,
+    PhaseKind.EXIT: _build_exit, PhaseKind.FARM_BUILDING_EXIT: _build_farm_building_exit,
+    PhaseKind.FARM_EXIT: _build_farm_exit, PhaseKind.NAV: _build_nav,
+    PhaseKind.RECORDED: _build_recorded, PhaseKind.RECORDED_SLICE: _build_recorded_slice,
+    PhaseKind.COW_PURCHASE: _build_cow_purchase, PhaseKind.HEN_DELIVERY: _build_hen_delivery,
+    PhaseKind.PICKUP_CHICKEN: _build_pickup_chicken, PhaseKind.DROP_CHICKEN: _build_drop_chicken,
     PhaseKind.CHICKEN_SALE_FOLLOWUP: _build_chicken_sale_followup,
     PhaseKind.CHICKEN_SALE_REQUEST: _build_chicken_sale_request,
     PhaseKind.CHICKEN_SALE_EVENT: _build_chicken_sale_event,
     PhaseKind.RECORDED_TRANSITION: _build_recorded_transition,
-    PhaseKind.CROSS_MAP: _build_cross_map,
-    PhaseKind.SHOP_BUY: _build_shop_buy,
+    PhaseKind.CROSS_MAP: _build_cross_map, PhaseKind.SHOP_BUY: _build_shop_buy,
     PhaseKind.DIRECTIONAL_TRANSITION: _build_directional_transition,
-    PhaseKind.MULTI_NAV: _build_multi_nav,
-    PhaseKind.MOUNTAIN_BERRY: _build_mountain_berry,
-    PhaseKind.ENSURE_TOOL: _build_ensure_tool,
-    PhaseKind.ENSURE_ANIMAL_TOOLS: _build_ensure_animal_tools,
-    PhaseKind.ENSURE_SEED: _build_ensure_seed,
-    PhaseKind.DEADLINE: _build_deadline,
-    PhaseKind.WAIT_UNTIL_TIME: _build_wait_until_time,
-    PhaseKind.HARVEST: _build_harvest,
-    PhaseKind.CLEAR_FIELD: _build_clear_field,
-    PhaseKind.FENCE_CLEAR: _build_fence_clear,
-    PhaseKind.COOP_CHORES: _build_coop_chores,
-    PhaseKind.COW_CHORES: _build_cow_chores,
-    PhaseKind.EVE_TALK_LOOP: _build_eve_talk_loop,
-    PhaseKind.FLOWER_FESTIVAL: _build_flower_festival,
-    PhaseKind.PROPOSE_EVE: _build_propose_eve,
-    PhaseKind.CROP: _build_crop,
-    PhaseKind.GRASS: _build_grass,
-    PhaseKind.HOT_SPRING: _build_hot_spring,
-    PhaseKind.RETURN_HOME: _build_return_home,
-    PhaseKind.SLEEP: _build_sleep,
-    PhaseKind.READY_TO_GO_HOME: _build_ready_to_go_home,
-    PhaseKind.PROPOSE: _build_propose,
-    PhaseKind.COURT: _build_marriage_skill,
-    PhaseKind.FEATHER_BUY: _build_marriage_skill,
+    PhaseKind.MULTI_NAV: _build_multi_nav, PhaseKind.MOUNTAIN_BERRY: _build_mountain_berry,
+    PhaseKind.ENSURE_TOOL: _build_ensure_tool, PhaseKind.ENSURE_ANIMAL_TOOLS: _build_ensure_animal_tools,
+    PhaseKind.ENSURE_SEED: _build_ensure_seed, PhaseKind.DEADLINE: _build_deadline,
+    PhaseKind.WAIT_UNTIL_TIME: _build_wait_until_time, PhaseKind.HARVEST: _build_harvest,
+    PhaseKind.CLEAR_FIELD: _build_clear_field, PhaseKind.FENCE_CLEAR: _build_fence_clear,
+    PhaseKind.COOP_CHORES: _build_coop_chores, PhaseKind.COW_CHORES: _build_cow_chores, PhaseKind.COW_ROUNDUP: _build_cow_roundup,
+    PhaseKind.HARVEST_HAPPINESS: lambda _ctx, spec, _world: HarvestHappinessTask(),
+    PhaseKind.EVE_TALK_LOOP: _build_eve_talk_loop, PhaseKind.FLOWER_FESTIVAL: _build_flower_festival,
+    PhaseKind.PROPOSE_EVE: _build_propose_eve, PhaseKind.GIVE_WIFE: lambda _ctx, spec, _world: (
+        FishWifeGiftTask()
+        if spec.params.get("fish") else GiveWifeTask()),
+    PhaseKind.CROP: _build_crop, PhaseKind.GRASS: _build_grass, PhaseKind.HOT_SPRING: _build_hot_spring,
+    PhaseKind.RETURN_HOME: _build_return_home, PhaseKind.SLEEP: _build_sleep,
+    PhaseKind.READY_TO_GO_HOME: _build_ready_to_go_home, PhaseKind.PROPOSE: _build_propose,
+    PhaseKind.COURT: _build_marriage_skill, PhaseKind.FEATHER_BUY: _build_marriage_skill,
+    PhaseKind.CHURCH_COURT: lambda _ctx, spec, _world: _social(spec),
+    PhaseKind.TOWN_COURT: lambda _ctx, spec, _world: _social(spec),
 }
 
+
+def _social(spec: PhaseSpec) -> Task:
+    from harvest.tasks.relationships import ChurchCourtTask, TownCourtTask
+    p = spec.params
+    if spec.kind == PhaseKind.TOWN_COURT:
+        return TownCourtTask(girl=str(p["girl"]), cap=int(p["cap"]), loops=int(p.get("loops", 4)),
+                             timeout=int(p.get("timeout", 60_000)))
+    return ChurchCourtTask(targets=dict(p.get("targets", {})), max_entries=int(p.get("max_entries", 8)),
+                           timeout=int(p.get("timeout", 60_000)))
 
 def build_phase_task(
     ctx: TaskBuildContext,
@@ -1006,9 +1021,4 @@ def build_phase_task(
     if builder is None:
         return None
     return builder(ctx, spec, world)
-__all__ = [
-    "PHASE_TASK_BUILDERS",
-    "PhaseTaskBuilder",
-    "TaskBuildContext",
-    "build_phase_task",
-]
+__all__ = ["PHASE_TASK_BUILDERS", "PhaseTaskBuilder", "TaskBuildContext", "build_phase_task"]

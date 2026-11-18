@@ -1,6 +1,7 @@
 """Dog pickup flag (game_state 0x0800) guards and recovery (rr-bu62.19 / .21)."""
 
 import numpy as np
+import pytest
 
 from harvest.planner.tasks import home_recover as hr
 from harvest.tasks.nav import make_action
@@ -68,6 +69,49 @@ def test_door_dog_is_met_from_the_south():
     stand, face = hr.dog_release_stand(Point(200, 300))
     assert stand == (184, 300)
     assert face == "right"
+
+
+def test_dog_release_finishes_the_building_exit_after_the_map_flips():
+    from retro_harness import WorldState
+
+    house = WorldState(frame=0, ram=_ram(gs=0x4C01, tilemap=0x16, player=(56, 86)), info={}, obs=None)
+    task = hr.DogReleaseTask()
+    task.reset(house)
+    task.step(house)
+    # The farm id appears at y=344 while the remodeled-house warp is still
+    # crossing its blocked door tiles. Keep the exit controller in charge.
+    farm = WorldState(frame=1, ram=_ram(gs=0x4C81, tilemap=0, player=(136, 344)), info={}, obs=None)
+    result = task.step(farm)
+    assert result.reason == "dog release: leaving building"
+
+
+@pytest.mark.rom
+def test_remodeled_house_dog_release_restores_sleep():
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.tasks.home_sleep import GoToSleepTask
+    from retro_harness import AuditedEnv, AuditCapabilities, TaskStatus, WorldState
+
+    env = AuditedEnv(make_harvest_env("LN_y23_dog_failure", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.dog_sleep_test"))
+    try:
+        env.reset()
+        assert read_ram_value(env.get_ram(), "tilemap") == 0x16
+        assert hr.dog_pickup_stuck(env.get_ram())
+        start_day = read_ram_value(env.get_ram(), "day")
+        for task in (hr.DogReleaseTask(), GoToSleepTask()):
+            task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+            for frame in range(5000):
+                result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+                if result.status != TaskStatus.RUNNING:
+                    break
+                env.step(result.action.action if result.action else make_action())
+            assert result.status == TaskStatus.SUCCESS, result.reason
+        assert not hr.dog_pickup_stuck(env.get_ram())
+        assert read_ram_value(env.get_ram(), "day") == start_day + 1
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
 
 
 def test_stuck_flag_detection():

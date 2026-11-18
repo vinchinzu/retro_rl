@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 169,
+  "roomHex": "0xA9",
+  "name": "Eastern Palace big-chest hall",
+  "measured": "2026-09-30",
+  "sourceState": "Scan_eastern_0xa9",
+  "points": [],
+  "doors": [
+    {
+      "label": "south_from_0xb9",
+      "direction": "DOWN",
+      "toRoom": 185,
+      "role": "backtrack",
+      "notes": "Slot 5 type 0x00 pos $1D3C. 0xB9 north enters here at (4856,5592). The return push was not walked."
+    },
+    {
+      "label": "west_shutter",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x18. Push stayed in 0xA9 at (4648,5366). Pot lifts left the type at 0x18."
+    },
+    {
+      "label": "east_shutter",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x18. Push stayed in 0xA9 at (5064,5366). Pot lifts left the type at 0x18."
+    },
+    {
+      "label": "north_big_key",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x1E big key pos $023C. Keys held were 0 and big_key was 0. Far side not entered."
+    },
+    {
+      "label": "west_regular",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x40 pos $278A. No floor cell inside the door on layer 0."
+    },
+    {
+      "label": "east_regular",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 4 type 0x40 pos $27EE. No floor cell inside the door on layer 0."
+    }
+  ],
+  "notes": [
+    "Door-only skeleton. Pin Scan_eastern_0xa9, landing (4856,5592), layer 0, keys=0, big_key=0, hp=8.",
+    "Chest 0 is the big chest, item Bow, z3=0xE97D, layer 1, tile (30,26), opened=0. No floor path on layer 0.",
+    "Layer-0 pots (6,38), (56,38), (8,40), (54,40) were lifted in play. Tiles became 0x00. Keys stayed 0. The two south pots raised hp 8 to 16. Landing sprites: two green eyegores and two stalfos. That fight was not run."
+  ]
+}

@@ -523,6 +523,10 @@ class PolicyGuard:
     def failed(self) -> bool:
         return bool(getattr(self.inner, "failed", False))
 
+    def drop_detour(self) -> None:
+        """Forget a committed detour so the next step follows ``inner``."""
+        self._queue.clear()
+
     def _copy(self) -> Any:
         import copy
 

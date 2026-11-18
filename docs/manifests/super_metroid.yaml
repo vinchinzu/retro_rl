@@ -20,5 +20,5 @@ assist_contract: snes/super_metroid/docs/ASSIST_CONTRACT.md
 status_doc: snes/super_metroid/docs/STATUS.md
 plan_doc: snes/super_metroid/docs/plan.md
 last_verified: 2026-08-24
-blocker: Gravity on the Phantoon tip (rr-kw8t); then Maridia → LN → Tourian+credits
+blocker: Clean master proves 35 room transitions; finish row 39 natural ammo farm and Spore rollout kill
 notes: Continuous power-on → Phantoon defeat + basement leave (KPDR K6, 195,336f x2); not yet ending.

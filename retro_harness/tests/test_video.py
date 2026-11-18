@@ -229,6 +229,29 @@ def test_frame_video_writer_abort_keeps_prior_output_when_audio(tmp_path: Path) 
     assert list(tmp_path.glob(".*")) == []
 
 
+def test_recorder_splits_a_long_capture_into_playable_parts(tmp_path: Path) -> None:
+    stem = tmp_path / "day.mp4"
+    height, width = 16, 16
+    config = VideoCaptureConfig(
+        fps=30, scale=1, crf=28, preset="ultrafast", audio=False, footer=False,
+    )
+    recorder = VideoRecorder(
+        stem, width=width, height=height, config=config, segment_frames=4,
+    )
+    assert recorder._writer._process.stderr is None
+    for i in range(10):
+        recorder.write(np.full((height, width, 3), i, dtype=np.uint8))
+    recorder.close()
+    assert recorder.frames == 10
+    assert [part.name for part in recorder.parts] == [
+        "day_part001.mp4",
+        "day_part002.mp4",
+        "day_part003.mp4",
+    ]
+    assert [probe_video_evidence(part, expected_frames=0)["frames"] for part in recorder.parts] == [4, 4, 2]
+    assert list(tmp_path.glob(".*")) == []
+
+
 def test_frame_video_writer_abort_removes_direct_output(tmp_path: Path) -> None:
     out = tmp_path / "clip.mp4"
     height, width = 16, 16

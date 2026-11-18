@@ -30,24 +30,27 @@ DIRS = {"up": (0, -1, 1), "down": (0, 1, 2), "left": (-1, 0, 4), "right": (1, 0,
 TOLERANCE = 3  # the first frames after a stop walk a little short
 
 
-def probe_hop(em, step, pos, tilemap, state: bytes, name: str, expect_tilemap: int):
+def probe_hop(em, step, pos, tilemap, state: bytes, name: str, expect_tilemap: int, *, exact: bool = False):
     """Restore ``state``, walk one hop, report (moved, state_after)."""
     dx, dy, _ = DIRS[name]
     em.set_state(state)
     step()
     x0, y0 = pos()
-    for _ in range(STEP):
+    goal = (x0 + dx * STEP, y0 + dy * STEP)
+    for _ in range(STEP * 3 if exact else STEP):
         step(**{name: True})
+        if exact and pos() == goal:
+            break
     x1, y1 = pos()
     moved = (
-        abs(x1 - (x0 + dx * STEP)) <= TOLERANCE
-        and abs(y1 - (y0 + dy * STEP)) <= TOLERANCE
+        abs(x1 - goal[0]) <= (0 if exact else TOLERANCE)
+        and abs(y1 - goal[1]) <= (0 if exact else TOLERANCE)
         and tilemap() == expect_tilemap
     )
     return moved, (em.get_state() if moved else None)
 
 
-def explore(em, step, pos, tilemap, expect_tilemap: int, limit: int = 4000) -> Dict[Tuple[int, int], int]:
+def explore(em, step, pos, tilemap, expect_tilemap: int, limit: int = 4000, *, exact: bool = False) -> Dict[Tuple[int, int], int]:
     """BFS over lattice cells, every cell probing all four hops. Returns cell -> mask."""
     em.set_state(em.get_state())
     states = {(0, 0): em.get_state()}
@@ -58,7 +61,7 @@ def explore(em, step, pos, tilemap, expect_tilemap: int, limit: int = 4000) -> D
         cell = queue.popleft()
         mask = 0
         for name, (dx, dy, bit) in DIRS.items():
-            moved, after = probe_hop(em, step, pos, tilemap, states[cell], name, expect_tilemap)
+            moved, after = probe_hop(em, step, pos, tilemap, states[cell], name, expect_tilemap, exact=exact)
             probes += 1
             if not moved:
                 continue
@@ -84,6 +87,7 @@ def main() -> int:
     ap.add_argument("--setup", default="")
     ap.add_argument("--tilemap", type=lambda s: int(s, 0), required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--exact", action="store_true", help="Require exact 8-pixel endpoints so hop drift cannot accumulate.")
     args = ap.parse_args()
     os.environ.setdefault("HEADLESS", "1")
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -114,7 +118,7 @@ def main() -> int:
     em = env.unwrapped.em
     run_setup(step, args.setup)
     origin = pos()
-    masks = explore(em, step, pos, tilemap, args.tilemap)
+    masks = explore(em, step, pos, tilemap, args.tilemap, exact=args.exact)
     cells: List[List[int]] = sorted([i, j, m] for (i, j), m in masks.items() if m)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(

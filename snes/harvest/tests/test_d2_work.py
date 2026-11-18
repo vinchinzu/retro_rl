@@ -34,7 +34,7 @@ from harvest.planner.day_plan_phases import pocket_plant_phases
 
 class D2WholeFarmContractTests(unittest.TestCase):
     def test_crop_targets_are_not_debris_quotas(self) -> None:
-        self.assertEqual(D2_TARGETS, {"plant": 8, "water": 8})
+        self.assertEqual(D2_TARGETS, {"plant": 8, "water": 8, "grass": 9})
 
     def test_smash_builders_are_exhaustive_required_quota(self) -> None:
         bushes = bush_clear_phase()
@@ -68,6 +68,14 @@ class D2WholeFarmContractTests(unittest.TestCase):
 
 
 class D2LeftoverOrderTests(unittest.TestCase):
+    def test_opens_all_weedy_chunks_before_hauling_fences(self) -> None:
+        ram = _farm_ram()
+        _set_tile(ram, 16, 13, 0x05)
+        _set_tile(ram, 44, 24, 0x03)
+        status = observe_d2_farm(ram)
+        spec = next_d2_spec(status)
+        self.assertEqual((spec.phase, spec.params["chunk"]), ("CLEAR_BUSHES", "ne"))
+
     def test_low_stam_spas_before_rocks_not_before_bushes(self) -> None:
         ram = _farm_ram(stamina=8)
         _set_tile(ram, 40, 40, 0x03)
@@ -470,6 +478,7 @@ def _farm_ram(*, stamina=100, lock=1, season=0, day=2, hour=12, player=(10, 10))
     ram[field_spec("hour").address] = hour
     ram[field_spec("season").address] = season
     ram[field_spec("day").address] = day
+    ram[field_spec("planted_grass").address] = 9
     for i in range(MAP_WIDTH * MAP_WIDTH):
         ram[ADDR_MAP + i] = 0xA1
     px, py = player[0] * TILE_SIZE + 8, player[1] * TILE_SIZE + 8
@@ -853,15 +862,15 @@ class D2NextSpecTests(unittest.TestCase):
         ram[field_spec("potato_seeds").address] = 0
         _plant_eight_wet(ram)
         leftover = observe_d2_farm(ram, _SHIP_OK)
-        stones = next_d2_spec(leftover)
-        self.assertEqual(stones.phase, "CLEAR_STONES")
-        self.assertEqual(stones.params["chunk"], "sw")
-        _set_tile(ram, 8, 40, 0xA1)
-        leftover = observe_d2_farm(ram, _SHIP_OK)
         bushes = next_d2_spec(leftover)
         self.assertEqual(bushes.phase, "CLEAR_BUSHES")
         self.assertEqual(bushes.params["chunk"], "se")
         _set_tile(ram, 40, 40, 0xA1)
+        leftover = observe_d2_farm(ram, _SHIP_OK)
+        stones = next_d2_spec(leftover)
+        self.assertEqual(stones.phase, "CLEAR_STONES")
+        self.assertEqual(stones.params["chunk"], "sw")
+        _set_tile(ram, 8, 40, 0xA1)
         leftover = observe_d2_farm(ram, _SHIP_OK)
         fences = next_d2_spec(leftover)
         self.assertEqual(fences.phase, "CLEAR_FENCES")
@@ -1385,6 +1394,30 @@ class D2DaytimeClearPhaseTests(unittest.TestCase):
 
 
 class D2RunnerFlagTests(unittest.TestCase):
+    def test_campaign_d2_clear_owns_its_completion_instead_of_the_day_floor(self) -> None:
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from retro_harness import TaskResult, TaskStatus, WorldState
+        from harvest.planner.multi_day_planner import MultiDayPlannerTask
+
+        world = WorldState(frame=0, ram=_farm_ram(), info={}, obs=None)
+        planner = MultiDayPlannerTask()
+        planner.reset(world)
+        planner.floor.frame_budget = 1
+        planner.floor.clock_grace = 0
+        planner._step_count = 50000
+        planner._current_task = SimpleNamespace(
+            phases=[SimpleNamespace(phase="D2_FARM_CLEAR", params={})],
+            step=lambda world: TaskResult(status=TaskStatus.RUNNING),
+        )
+        with patch("harvest.planner.multi_day_planner.unowned_scene_press", return_value=None):
+            result = planner._step_inner(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertFalse(planner.floor._tripped)
+        blocked = TaskResult(status=TaskStatus.BLOCKED, reason="required chunk stuck")
+        self.assertIs(planner._handle_result(world, blocked), blocked)
+        self.assertEqual(planner._phase, "plan_day")
+
     def test_argparse_has_stop_after_d2_clear(self) -> None:
         from harvest.scripts.run_to_day2 import _parse_args
 

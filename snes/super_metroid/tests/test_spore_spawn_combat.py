@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from super_metroid.combat.spore_spawn import (
     ROOM_SPORE_SPAWN,
@@ -236,3 +237,93 @@ def test_floor_bounce_reports_defeat_when_hp_hits_zero() -> None:
     )
     assert hop.observed_hp == fight.observed_hp
     assert any(reason == "fight_spore_spawn" for _, reason in session.actions)
+
+
+@pytest.mark.rom
+def test_rom_rollout_lands_one_missile_without_losing_energy() -> None:
+    """The natural enter pin must yield real damage and a bit-exact replay."""
+    from super_metroid.combat.spore_spawn import play_spore_spawn_rollout
+    from super_metroid.dev.common import boot_from_state, make_dev_env
+    from super_metroid.paths import GAME_DIR
+    from super_metroid.ram import parse_env_state
+
+    class Session:
+        def __init__(self, env):
+            self.env, self.frame = env, 0
+            self.state = parse_env_state(env, mode="nav")
+
+        def step(self, action, reason):
+            self.env.step(action)
+            self.frame += 1
+            self.state = parse_env_state(self.env, frame=self.frame, mode="nav")
+            return self.state
+
+    env = make_dev_env()
+    try:
+        boot_from_state(env, GAME_DIR / "tasks/full_start_v1_anchors/"
+                        "f015374_enter_0x9DC7_0x9DC7.state", settle_frames=0)
+        session = Session(env)
+        before = session.state
+        report = play_spore_spawn_rollout(
+            session, workers=4, target_damage=100, max_frames=600,
+        )
+        assert report["outcome"] == "damage_window"
+        assert session.state.health == before.health
+        assert session.state.enemy0_hp <= before.enemy0_hp - 100
+        assert session.state.missiles == before.missiles - 1
+        assert report["rollout_restores"] > 0
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
+@pytest.mark.parametrize(
+    ("pin_name", "energy_spent", "missiles_spent"),
+    [
+        ("spore_rollout_hp60_seat_clean.state", 0, 1),
+        ("scratch/spore_master_hp160_clean.state", 12, 0),
+    ],
+    ids=["human-hit-free", "master-energy-retry"],
+)
+def test_rom_rollout_finishes_kill_and_exit_to_super_room(
+    pin_name: str, energy_spent: int, missiles_spent: int,
+) -> None:
+    """The late fight clears from the human and the natural master entries."""
+    from super_metroid.dev.common import boot_from_state, make_dev_env
+    from super_metroid.paths import INTEGRATION_DIR
+    from super_metroid.ram import parse_env_state
+    from super_metroid.routes.kpdr.brinstar.spore_spawn import (
+        play_clean_spore_spawn_leave,
+    )
+
+    pin = INTEGRATION_DIR / pin_name
+    if not pin.is_file():
+        pytest.skip("development safe-seat pin not present in clone")
+
+    class Session:
+        def __init__(self, env):
+            self.env, self.frame = env, 0
+            self.state = parse_env_state(env, mode="nav")
+
+        def step(self, action, reason):
+            self.env.step(action)
+            self.frame += 1
+            self.state = parse_env_state(self.env, frame=self.frame, mode="nav")
+            return self.state
+
+    env = make_dev_env()
+    try:
+        boot_from_state(env, pin, settle_frames=0)
+        session = Session(env)
+        before = session.state
+        result = play_clean_spore_spawn_leave(session)
+        assert result.report["outcome"] == "spore_spawn_defeated"
+        assert session.state.room_id == 0x9B5B
+        assert session.state.game_state == 8
+        assert not session.state.door_transition
+        assert session.state.health == before.health - energy_spent
+        assert session.state.missiles == before.missiles - missiles_spent
+        assert parse_env_state(env).boss_bits[1] & 0x02
+        assert result.fight.rollout_restores > 0
+    finally:
+        env.close()

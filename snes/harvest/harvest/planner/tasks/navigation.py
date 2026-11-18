@@ -27,6 +27,14 @@ from harvest.core.tile_catalog import (
 from harvest.tasks.farm_ops import TileScanner
 
 from harvest.core.scene import classify_scene_from_ram, cow_name_awaits_gate
+from harvest.core.task_progress import (
+    NAV_NEAR_PX,
+    NAV_NO_PROGRESS_FRAMES,
+    NAV_NO_PROGRESS_NEAR_FRAMES,
+    NAV_PROGRESS_PX,
+    NAV_WEDGE_FRAMES,
+    MotionBox,
+)
 from harvest.core.shipping_credit import shipping_scene_needs_dismiss
 from harvest.tasks.primitives import dismiss_dialogue_result, drain_action_queue
 from harvest.tasks.recorded_task import RecordedTask
@@ -210,6 +218,12 @@ class NavTask(Task):
     _repath_cooldown: int = field(default=0, init=False)
     # One stuck repath before a too-far watering stand fails the hop.
     _water_repaths: int = field(default=0, init=False)
+    # Wedge watch: a walk that has not left a 24 px box for NAV_WEDGE_FRAMES gets one clean repath,
+    # then fails. Without it a sealed pocket ran the whole 9,000f timeout (Y1 D12-13, Y2/Y3 18:00).
+    _motion: MotionBox = field(default_factory=MotionBox, init=False)
+    _unwedges: int = field(default=0, init=False)
+    _best_dist: int = field(default=1 << 30, init=False)
+    _best_at: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._pathfinder = Pathfinder(self._scanner)
@@ -220,6 +234,10 @@ class NavTask(Task):
         self._door_leave_steps = 0
         self._repath_cooldown = 0
         self._water_repaths = 0
+        self._motion.clear()
+        self._unwedges = 0
+        self._best_dist = 1 << 30
+        self._best_at = 0
         self._action_queue.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
@@ -229,6 +247,7 @@ class NavTask(Task):
     def resume_after_hotswap(self, world: WorldState) -> None:
         self._action_queue.clear()
         self._water_repaths = 0
+        self._motion.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -355,6 +374,48 @@ class NavTask(Task):
         self.target_px = Point(best[0], best[1])
         return True
 
+    def _wedge_check(self, world: WorldState, tilemap: int) -> Optional[TaskResult]:
+        """One clean repath after NAV_WEDGE_FRAMES in a 24 px box, then FAILURE; also fail on pacing."""
+        pos = self._navigator.current_pos
+        still = self._motion.observe(self._step_count, tilemap, int(pos.x), int(pos.y))
+        if still == 0:
+            self._unwedges = 0  # it moved: each new stall earns its own clean repath
+        dist = self._distance_to_target()
+        if dist < self._best_dist - NAV_PROGRESS_PX:
+            self._best_dist, self._best_at = dist, self._step_count
+        stalled = still >= NAV_WEDGE_FRAMES or (dist > self.radius and self._step_count - self._best_at >= (
+            NAV_NO_PROGRESS_NEAR_FRAMES if dist <= NAV_NEAR_PX else NAV_NO_PROGRESS_FRAMES
+        ))
+        if stalled and dist <= self._arrival_limit(world.ram):
+            # Close enough and going nowhere: the soft arrival the old code reached at 80% of the timeout
+            # (stasis never gets there while the farmer wobbles over a tile line). The shed shelf walk ended
+            # this way every day; failing it cost the snow-flower berry and the Y1 stump/wood chain.
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                reason=f"soft arrived stalled dist={dist} still={still}f best={self._best_dist}",
+            )
+        if still >= NAV_WEDGE_FRAMES:
+            where = (f"{self.name} pos=({pos.x},{pos.y}) tile={self._navigator.current_tile} "
+                     f"target=({self.target_px.x},{self.target_px.y}) dist={dist} "
+                     f"path={len(self._navigator.path)} blocked={len(self._pathfinder.temp_blocked)}")
+            print(f"[NAV_WEDGE] {where} still={still}f unwedges={self._unwedges}", flush=True)
+            if self._unwedges >= 1:
+                return TaskResult(status=TaskStatus.FAILURE, reason=f"nav wedged {still}f {where}")
+            self._unwedges += 1
+            self._motion.restart(self._step_count)
+            self._pathfinder.temp_blocked.clear()
+            self._navigator.path = []
+            self._navigator.stasis = 0
+            self._repath_cooldown = 0
+        elif dist > self.radius and self._step_count - self._best_at >= (
+            NAV_NO_PROGRESS_NEAR_FRAMES if dist <= NAV_NEAR_PX else NAV_NO_PROGRESS_FRAMES
+        ):
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"nav no progress {self._step_count - self._best_at}f best={self._best_dist} dist={dist}",
+            )
+        return None
+
     def _hop_target(self) -> tuple:
         """BFS target clamped to MAX_HOP tiles from current position."""
         cur = self._navigator.current_tile
@@ -421,7 +482,7 @@ class NavTask(Task):
         self._navigator.update(world.ram)
         self._step_count += 1
 
-        # Shed outdoor door: A-dismiss / BFS-up re-enters. Leave west first
+        # Shed outdoor door: A-dismiss / BFS-up re-enters. Leave south first
         # even while input_lock is settling after ExitToFarm.
         cur_tile = self._navigator.current_tile
         final_tile = (self.target_px.x // TILE_SIZE, self.target_px.y // TILE_SIZE)
@@ -431,17 +492,10 @@ class NavTask(Task):
             and self._door_leave_steps < 90
         ):
             self._door_leave_steps += 1
-            pos = self._navigator.current_pos
-            if pos.y < 30 * TILE_SIZE + 8:
-                return TaskResult(
-                    status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action(down=True)),
-                    reason="leave shed door west",
-                )
             return TaskResult(
                 status=TaskStatus.RUNNING,
-                action=ActionResult(make_action(left=True)),
-                reason="leave shed door west",
+                action=ActionResult(make_action(down=True)),
+                reason="leave shed door south",
             )
 
         # Dialog / menu dismissal (tool menus and shop prompts block BFS).
@@ -474,6 +528,10 @@ class NavTask(Task):
                     f"stasis={self._navigator.stasis}"
                 ),
             )
+
+        wedged = self._wedge_check(world, tilemap)
+        if wedged is not None:
+            return wedged
 
         if self._step_count > self.timeout:
             return TaskResult(status=TaskStatus.FAILURE, reason="nav timeout")

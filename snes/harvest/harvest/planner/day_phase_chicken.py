@@ -8,7 +8,7 @@ from harvest.planner.day_phase_types import DayPlannerPolicy, PhaseSpec
 
 # ── Chicken coop phases ──
 
-COOP_EXIT_INPUT_LOCK_FRAMES = 90  # measured 85 frames from tilemap 0x00 to the first step
+COOP_EXIT_INPUT_LOCK_FRAMES = 8  # counted from the end of the fade-in; the pad wakes 3 frames later
 
 NAV_TO_COOP_PHASE = PhaseSpec(
     "NAV_TO_COOP",
@@ -71,9 +71,10 @@ EXIT_COOP_PHASE = PhaseSpec(
         "stand_tile": (8, 12),
         "stand_tolerance": 1,
         "door_align_px": 8 * 16 + 8,
-        # The farm fades in after the door: the farmer ignores every button for
-        # ~85 frames at (456, 360). A route started sooner reads that as a push
-        # block, replans through the coop door and re-enters the coop.
+        # The farm fades in after the door and the farmer ignores every button
+        # until it ends (``screen_faded_in``), ~70 frames at (456, 360). A route
+        # started sooner reads that as a push block, cycles left, down, up, and
+        # the up lands first: back into the coop, 27 rescues in Y3 Spring.
         "settle_frames": COOP_EXIT_INPUT_LOCK_FRAMES,
     },
 )
@@ -96,6 +97,22 @@ COOP_CURRENT_PHASES: List[PhaseSpec] = [
     COOP_CHORES_PHASE,
     EXIT_COOP_PHASE,
 ]
+
+def splice_coop_reentry(schedule, index: int, chores: PhaseSpec, tilemap: int, done: set) -> bool:
+    """After a recovery walked the farmer out of the coop, walk back in once.
+
+    ``COOP_CHORES`` that times out walking to the feed bin is recovered by an
+    exit to the farm; the retry then reads "not in coop" and blocks the day with
+    the hens unfed (Y1 Fall D24, Y2 Spring D3 and D13). ``done`` is the day's
+    one-shot ledger.
+    """
+    if chores.phase != "COOP_CHORES" or "COOP_REENTRY" in done or int(tilemap) != 0x00:
+        return False
+    done.add("COOP_REENTRY")
+    schedule.splice_at(index, [NAV_TO_COOP_PHASE, ENTER_COOP_PHASE, chores])
+    print("[DAY_PLAN] COOP_CHORES recovered outside the coop; walking back in once")
+    return True
+
 
 NAV_TO_COOP_FOR_CHICKEN_SALE_PHASE = PhaseSpec(
     "NAV_TO_COOP_FOR_SALE",
@@ -142,7 +159,8 @@ SELL_CHICKEN_PHASE = PhaseSpec(
 NAV_TO_ANIMAL_SHOP_FOR_CHICKEN_SALE_PHASE = PhaseSpec(
     "NAV_TO_ANIMAL_SHOP_FOR_SALE",
     "multi_nav",
-    {"route": "farm_to_animal_shop_counter_sale", "timeout": 9000, "initial_settle_frames": 0},
+    # Default settle: it also reruns after the path-to-town relocalization.
+    {"route": "farm_to_animal_shop_counter_sale", "timeout": 9000},
     failure_policy="optional",
 )
 
@@ -170,7 +188,10 @@ WAIT_BEFORE_CHICKEN_PICKUP_RETURN_PHASE = PhaseSpec(
 RETURN_FARM_AFTER_CHICKEN_SALE_PHASE = PhaseSpec(
     "RETURN_FARM_AFTER_CHICKEN_SALE",
     "multi_nav",
-    {"route": "town_to_farm_west_gate_sale", "timeout": 7000, "initial_settle_frames": 0},
+    # The cow buy's return, with its settle: the town door holds input for a
+    # few frames, and a walk started at once read that as stuck and replanned
+    # back into the shop (and its menu: 900G of feed in one pin run).
+    {"route": "animal_shop_town_to_farm", "timeout": 7000},
     failure_policy="optional",
 )
 
@@ -227,6 +248,7 @@ def chicken_sale_cycle_phases(
     suffix: str = "",
     failure_policy: str = "optional",
     wait_before_return: bool = True,
+    event_hour: int = 15,
 ) -> List[PhaseSpec]:
     suffix_text = f"_{suffix}" if suffix else ""
     phases = [
@@ -270,7 +292,7 @@ def chicken_sale_cycle_phases(
             PhaseSpec(
                 f"SELL_CHICKEN{suffix_text}",
                 "chicken_sale_event",
-                dict(SELL_CHICKEN_PHASE.params),
+                {**SELL_CHICKEN_PHASE.params, "event_hour": event_hour},
                 failure_policy=failure_policy,
             ),
         ]
@@ -370,15 +392,13 @@ def _chicken_oversupplied(adult_chickens: int, policy: DayPlannerPolicy) -> bool
 
 
 def _coop_chores_phase(*, oversupplied: bool, policy: DayPlannerPolicy) -> PhaseSpec:
-    if not oversupplied:
-        if policy.hold_flock_growth:
-            return PhaseSpec("COOP_CHORES", "coop_chores", {"egg_mode": "ship"})
+    """A hen waiting for sale is not fed; the incubator still follows the hatch gate."""
+    if not oversupplied and not policy.hold_flock_growth:
         return COOP_CHORES_PHASE
-    return PhaseSpec(
-        "COOP_CHORES",
-        "coop_chores",
-        {"egg_mode": "ship", "max_feed_adults": policy.max_adult_chickens},
-    )
+    params = {"egg_mode": "ship" if policy.hold_flock_growth else "auto"}
+    if oversupplied:
+        params["max_feed_adults"] = policy.max_adult_chickens
+    return PhaseSpec("COOP_CHORES", "coop_chores", params)
 
 
 def _chicken_phases(
@@ -413,6 +433,10 @@ def _chicken_sale_phases(
         or hour >= policy.chicken_sale_cutoff_hour
     ):
         return []
+    # The ROM pays as soon as the farmer re-enters the farm with the request
+    # flag set and the hen at the drop (``Event_UNKChickenRelated``); there is
+    # no hour in the check, so the trip does not wait out the morning.
+    phases = chicken_sale_cycle_phases(failure_policy="optional", wait_before_return=False, event_hour=0)
     return [
         PhaseSpec(
             "SELL_CHICKEN_WINDOW",
@@ -420,9 +444,31 @@ def _chicken_sale_phases(
             {"latest_hour": policy.chicken_sale_cutoff_hour, "latest_minute": 0},
             failure_policy="optional",
         ),
-        *chicken_sale_cycle_phases(failure_policy="optional"),
+        *phases,
     ]
 
+
+# Married Eve takes the morning egg at home (``harvest.tasks.eve_gift``) while
+# her hearts sit below the score window. The chain runs before the day's work;
+# a failed step skips the rest of it.
+WIFE_GIFT_PHASES: List[PhaseSpec] = [
+    PhaseSpec("NAV_TO_COOP_FOR_GIFT", "multi_nav", dict(NAV_TO_COOP_PHASE.params), failure_policy="optional"),
+    PhaseSpec("ENTER_COOP_FOR_GIFT", "directional_transition", dict(ENTER_COOP_PHASE.params),
+              failure_policy="optional"),
+    PhaseSpec("COOP_GIFT", "coop_chores", {"egg_mode": "gift"}, failure_policy="optional"),
+    PhaseSpec("EXIT_COOP_FOR_GIFT", "directional_transition", dict(EXIT_COOP_PHASE.params),
+              failure_policy="optional"),
+    PhaseSpec("NAV_HOUSE_FOR_GIFT", "nav", {"target_px": (136, 376), "radius": 8, "soft_radius": 14,
+                                           "via_px": [(456, 392), (136, 392)],
+                                           "timeout": 4000}, failure_policy="optional"),
+    # The house door takes the farmer with an egg in hand.
+    PhaseSpec("ENTER_HOUSE_FOR_GIFT", "directional_transition", {
+        "direction": "up", "origin_tilemap": 0x00, "target_tilemap": 0x16, "timeout": 2500,
+        "settle_frames": 20, "stand_tile": (8, 23), "door_align_px": 136, "overshoot_limit_px": 328,
+    }, failure_policy="optional"),
+    PhaseSpec("GIVE_WIFE", "give_wife", {}, failure_policy="optional"),
+]
+OPTIONAL_WIFE_GIFT_PHASES = frozenset(phase.phase for phase in WIFE_GIFT_PHASES)
 
 OPTIONAL_CHICKEN_SALE_PHASES = frozenset({
     "SELL_CHICKEN_WINDOW",
@@ -440,6 +486,8 @@ OPTIONAL_CHICKEN_SALE_PHASES = frozenset({
 })
 
 __all__ = [
+    "WIFE_GIFT_PHASES",
+    "OPTIONAL_WIFE_GIFT_PHASES",
     "NAV_TO_COOP_PHASE",
     "NAV_BARN_TO_COOP_PHASE",
     "ENTER_COOP_PHASE",

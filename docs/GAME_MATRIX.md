@@ -13,7 +13,7 @@ independent. See [ROADMAP.md](ROADMAP.md),
 [DEVELOPMENT_LADDER.md](DEVELOPMENT_LADDER.md), and
 [BENCHMARK_SPEC.md](BENCHMARK_SPEC.md).
 
-Manifest count: **38**.
+Manifest count: **39**.
 
 ## Active and scaffolded workspaces
 
@@ -33,7 +33,7 @@ Manifest count: **38**.
 | `nes/tmnt_i` / Teenage Mutant Ninja Turtles | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Area 1 building/segment clear |
 | `nes/tmnt_ii` / Teenage Mutant Ninja Turtles II: The Arcade Game | linear_combat | P1 | segment_clear | M3 | bronze | clean | no | extend past first wave (score≥5); natural-entry M4 |
 | `nes/tmnt_iii` / Teenage Mutant Ninja Turtles III: The Manhattan Project | linear_combat | P1 | boot_verified | M1 | bronze | clean | no | first Stage 1 segment clear |
-| `snes/tmnt_iv` / Teenage Mutant Ninja Turtles IV: Turtles in Time | linear_combat | P1 | verified | M8 | bronze | resource_assisted+protection_assisted | yes | Whole-run Bronze/Clean dry-run (Alleycat Clean 2/4; S2–S9 suites first) |
+| `snes/tmnt_iv` / Teenage Mutant Ninja Turtles IV: Turtles in Time | linear_combat | P1 | verified_capture | M8 | bronze | clean | yes | — |
 | `snes/battle_clash` / Battle Clash | cursor_and_peripheral | P2 | blocked | M1 | bronze | clean | no | infrastructure — Super Scope / light-gun injection unsupported |
 | `snes/f_zero` / F-Zero | continuous_vehicle_control | P2 | instrumented | M2 | bronze | clean | no | one Mute City lap without crash |
 | `snes/pilotwings` / Pilotwings | continuous_vehicle_control | P2 | instrumented | M2 | bronze | clean | no | complete light-plane Lesson 1 objective |
@@ -51,10 +51,11 @@ Manifest count: **38**.
 | `snes/alttp` / The Legend of Zelda: A Link to the Past | top_down_navigation, metroidvania_navigation | P4 | active | M1 | bronze | clean | no | C2 Eastern Palace prize from the Clean Sanctuary predecessor |
 | `nes/metroid` / Metroid | metroidvania_navigation, graph_navigation | P4 | segment_verified | M5 | bronze | clean | no | morph return + (5,14) door for first missiles; then bombs |
 | `snes/smz3` / SMZ3 (Super Metroid + ALttP Combined Randomizer) | metroidvania_navigation, top_down_navigation | P4 | scaffolded | M2 | bronze | clean | no | map portal → settled Z3 Link; longer one-bot segment + video; dual-bot race later |
-| `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Gravity on the Phantoon tip (rr-kw8t); then Maridia → LN → Tourian+credits |
+| `snes/super_metroid` / Super Metroid | metroidvania_navigation | P4 | route-building | M5 | bronze | resource_assisted | no | Clean master proves 35 room transitions; finish row 39 natural ammo farm and Spore rollout kill |
 | `nes/zelda_i` / The Legend of Zelda | graph_navigation | P4 | verified_capture | M8 | bronze | clean | yes | none for credits; live policy's Level 9 lookahead stages run below real time (rr-yzb4) |
 | `nes/zelda_ii` / Zelda II: The Adventure of Link | graph_navigation | P4 | boot_verified | M1 | bronze | clean | no | leave North Palace / first side-scroll segment |
-| `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Ending contract TBD (maturity not promoted). Power-on farm economy is weak ($5,730 at the ending, rr-bu62.25); Gate B (rr-5in) not re-scored.  |
+| `snes/chrono_trigger` / Chrono Trigger | structured_campaign_rpg | P5 | segmenting | M1 | bronze | clean | no | Lab 32, Proto Dome and Factory; full-game completion detector pending |
+| `snes/harvest` / Harvest Moon | simulation_and_scheduling, tactical_planning | P6 | instrumented | M3 | bronze | clean | no | Perfect is the ending contract (ADR 0007); the 999 run is not verified, so maturity stays M3. Power-on farm economy is weak ($5,730 at the ending, rr-bu62.25); Gate B (rr-5in) not re-scored.  |
 | `snes/alttp_rando` / A Link to the Past Randomizer | top_down_navigation, metroidvania_navigation | P7 | scaffolded | M1 | bronze | clean | no | M1 FirstPlay (Link's House) on JP 1.0; ./play records; ALTTPR patch + multi-seed next |
 | `snes/sm_rando` / Super Metroid Randomizer | metroidvania_navigation | P7 | playable_boot | M1 | bronze | clean | no | M1 real-ROM SolverSession vertical slice, held-out Landing BC candidate, and multi-seed early tip S/T dry-run (fixture seeds, vanilla substrate) done; real shuffled seed ROM / generator still open for live multi-seed claims |
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+import pytest
 
 import numpy as np
 
@@ -50,6 +51,38 @@ from retro_harness import TaskResult, TaskStatus, WorldState
 from retro_harness.actions import action_names
 
 ADDR_DIR = field_spec("player_direction").address
+
+
+@pytest.mark.rom
+def test_d7_waters_every_potato_after_the_natural_tool_swap():
+    from retro_harness import AuditCapabilities, AuditedEnv
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.planner.day_plan import DayPlanTask, DayPlannerPolicy
+    from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE, crop_water_phases
+    from harvest.tasks.nav import make_action
+    from harvest.tasks.crop_geometry import count_crop_survival
+    env = AuditedEnv(make_harvest_env("PR_spring_check_Y1_Spring_D7", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.d7_water"))
+    try:
+        env.reset()
+        task = DayPlanTask(policy=DayPlannerPolicy(include_end_day=False),
+                           phase_sequence=[EXIT_TO_FARM_PHASE, *crop_water_phases(include_nav=False)])
+        task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+        for frame in range(5_000):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action else make_action())
+        census = count_crop_survival(env.get_ram())
+        assert result.status == TaskStatus.SUCCESS, (frame, result.reason)
+        assert census["wet"] == 8 and census["dry"] == 0, (frame, census, task.phase_results)
+        row = next(row for row in task.phase_results if row["phase"] == "CROP_WATER")
+        assert row["watered_count"] == 8 and row["skipped_water"] == 0
+        assert row["work"]["after"]["gates"]["all_growing_crops_wet"] is True
+        print({"frames": frame, "water_frames": row["frames"], "wet": census["wet"]})
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
 
 
 def _ram(*, tile=(13, 28), tid=0x01, selected=0, backpack=0) -> np.ndarray:
@@ -188,6 +221,20 @@ class UseToolUntilTileTests(unittest.TestCase):
         result = skill.step(world)
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertNotIn("wait player_state", result.reason)
+
+    def test_tool_swap_does_not_consume_the_facing_window(self) -> None:
+        ram = _ram(tile=(14, 30), selected=int(Tool.HOE), backpack=int(Tool.WATERING_CAN))
+        ram[ADDR_MAP + 29 * MAP_WIDTH + 14] = 0x5C
+        ram[ADDR_DIR] = 3
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        skill = water_until_wet_skill(target_tile=(14, 29), face="up", timeout=1200)
+        skill.reset(world)
+        for _ in range(50):
+            self.assertIn("x-swap", skill.step(world).reason)
+        ram[ADDR_TOOL] = int(Tool.WATERING_CAN)
+        result = skill.step(world)
+        self.assertIn("face up", result.reason)
+        self.assertNotIn("Y until", result.reason)
 
     def test_water_gives_up_when_the_face_never_lands(self) -> None:
         world = self._edge_world(py=424, facing=1)
@@ -425,7 +472,7 @@ class PocketPlantComposeTests(unittest.TestCase):
             cheb(west_neighbor, right_center), _RING_NAV_RADIUS
         )
 
-    def test_hoe_stand_nav_leaves_shed_door_south_then_west(self) -> None:
+    def test_hoe_stand_nav_leaves_shed_door_south_past_the_facade(self) -> None:
         ram = _ram(tile=(26, 30), tid=0x01)
         ram[ADDR_TILEMAP] = 0x00
         py = 30 * TILE_SIZE + 4
@@ -442,7 +489,7 @@ class PocketPlantComposeTests(unittest.TestCase):
         ram[ADDR_Y + 1] = (py >> 8) & 0xFF
         second = skill.step(world)
         self.assertEqual(second.status, TaskStatus.RUNNING)
-        self.assertIn("LEFT", set(action_names(second.action.action)))
+        self.assertIn("DOWN", set(action_names(second.action.action)))
         self.assertNotIn("UP", set(action_names(second.action.action)))
 
     def test_hoe_stand_nav_fails_inside_shed(self) -> None:
@@ -653,10 +700,13 @@ class SecondPocketPlotTests(unittest.TestCase):
         from harvest.maps.farm_pond import (
             POCKET_PLANT_CENTERS,
             SECOND_POCKET_PLANT_CENTER,
+            ring_layout_name,
         )
 
         self.assertEqual(SECOND_POCKET_PLANT_CENTER, (19, 28))
-        self.assertEqual(POCKET_PLANT_CENTERS[:2], ((13, 28), (19, 28)))
+        self.assertIn(SECOND_POCKET_PLANT_CENTER, POCKET_PLANT_CENTERS)
+        second = {"legacy": (9, 35), "blocks": (8, 35)}.get(ring_layout_name(), (19, 28))
+        self.assertEqual(POCKET_PLANT_CENTERS[:2], ((13, 28), second))
         self.assertGreaterEqual(len(POCKET_PLANT_CENTERS), 4)
 
     def test_ring_sites_do_not_overlap_or_touch_the_pasture(self) -> None:
@@ -685,8 +735,10 @@ class SecondPocketPlotTests(unittest.TestCase):
         self.assertEqual(next_unplanted_pocket_center(empty), (13, 28))
         self.assertEqual(pocket_water_center(empty), (13, 28))
 
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
+
         west = self._field_ram(west_planted=True)
-        self.assertEqual(next_unplanted_pocket_center(west), (19, 28))
+        self.assertEqual(next_unplanted_pocket_center(west), POCKET_PLANT_CENTERS[1])
         self.assertEqual(pocket_water_center(west), (13, 28))
 
     def test_pocket_plant_target_is_west_center_when_rings_are_bare(self) -> None:
@@ -724,7 +776,9 @@ class SecondPocketPlotTests(unittest.TestCase):
         from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
 
         ram = self._field_ram(west_planted=True)
-        for center in POCKET_PLANT_CENTERS[2:]:
+        for center in POCKET_PLANT_CENTERS:
+            if center in {(13, 28), (19, 28)}:
+                continue
             for x, y in plot_tiles(center, include_center=False):
                 ram[ADDR_MAP + y * MAP_WIDTH + x] = 0x56
         ring = plot_tiles((19, 28), include_center=False)

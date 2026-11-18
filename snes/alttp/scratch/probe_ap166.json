@@ -1,0 +1,861 @@
+{
+  "tries": [
+    {
+      "name": "west_quad",
+      "walk": {
+        "result": "coast",
+        "trace": [
+          {
+            "frames": 0,
+            "xy": [
+              7488,
+              365
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          {
+            "frames": 20,
+            "xy": [
+              7464,
+              369
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          {
+            "frames": 40,
+            "xy": [
+              7445,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 2,
+            "hp": 64,
+            "body": [
+              "0x83",
+              "0x83",
+              "0x83",
+              "0x83"
+            ]
+          },
+          {
+            "frames": 60,
+            "xy": [
+              7423,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x01",
+            "state": 0,
+            "doorway": 2,
+            "hp": 64,
+            "body": [
+              "0x83",
+              "0x83",
+              "0x83",
+              "0x83"
+            ]
+          },
+          {
+            "frames": 80,
+            "xy": [
+              7423,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x01",
+            "state": 0,
+            "doorway": 2,
+            "hp": 64,
+            "body": [
+              "0x83",
+              "0x83",
+              "0x83",
+              "0x83"
+            ]
+          },
+          {
+            "frames": 100,
+            "xy": [
+              7423,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x01",
+            "state": 0,
+            "doorway": 2,
+            "hp": 64,
+            "body": [
+              "0x83",
+              "0x83",
+              "0x83",
+              "0x83"
+            ]
+          },
+          {
+            "frames": 120,
+            "xy": [
+              7386,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x01",
+            "state": 0,
+            "doorway": 2,
+            "hp": 64,
+            "body": [
+              "0x83",
+              "0x83",
+              "0x83",
+              "0x83"
+            ]
+          },
+          {
+            "frames": 140,
+            "xy": [
+              7368,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x05",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          {
+            "frames": 160,
+            "xy": [
+              7349,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          {
+            "frames": 180,
+            "xy": [
+              7332,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x0F",
+              "0x00",
+              "0x0F",
+              "0x00"
+            ]
+          },
+          {
+            "frames": 200,
+            "xy": [
+              7316,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 220,
+            "xy": [
+              7287,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 240,
+            "xy": [
+              7257,
+              376
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 64,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 260,
+            "xy": [
+              7281,
+              403
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 2,
+            "doorway": 0,
+            "hp": 60,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 280,
+            "xy": [
+              7273,
+              403
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 60,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 300,
+            "xy": [
+              7255,
+              400
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 60,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 320,
+            "xy": [
+              7249,
+              400
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 2,
+            "doorway": 0,
+            "hp": 56,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 340,
+            "xy": [
+              7247,
+              415
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 56,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 360,
+            "xy": [
+              7247,
+              401
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 56,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 380,
+            "xy": [
+              7246,
+              375
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 56,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 400,
+            "xy": [
+              7262,
+              392
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 2,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 420,
+            "xy": [
+              7259,
+              396
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 440,
+            "xy": [
+              7253,
+              389
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 460,
+            "xy": [
+              7249,
+              375
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 480,
+            "xy": [
+              7249,
+              374
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          }
+        ],
+        "frames": 493,
+        "xy": [
+          7249,
+          374
+        ],
+        "room": "0x0E",
+        "sub": "0x00",
+        "state": 0,
+        "doorway": 0,
+        "hp": 52,
+        "body": [
+          "0x0F",
+          "0x0F",
+          "0x0F",
+          "0x0F"
+        ]
+      },
+      "goal": [
+        7232,
+        367
+      ],
+      "block_stand": null
+    },
+    {
+      "name": "scan_1e_stand",
+      "block_stand": null
+    }
+  ],
+  "f3cc_written": false,
+  "start": {
+    "tag": "melted",
+    "room": "0x0E",
+    "module": "0x07",
+    "layer": 0,
+    "xy": [
+      7488,
+      365
+    ],
+    "origin": [
+      7168,
+      0
+    ],
+    "local": [
+      320,
+      365
+    ],
+    "control": true,
+    "hp": 64,
+    "armor": 0,
+    "big_key": 64,
+    "keys": 2,
+    "hammer": 1,
+    "magic": 80,
+    "ability": 30,
+    "follower": 5,
+    "body": [
+      "0x00",
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "reachable": 294,
+    "touched": {
+      "0x8E:door": 4
+    },
+    "frontier": {
+      "0x00:floor": 75,
+      "0x02:wall": 23,
+      "0x54:unknown": 2,
+      "0x01:wall": 7,
+      "0x10:unknown": 10,
+      "0x04:wall": 6,
+      "0x83:unknown": 2,
+      "0x8E:door": 5
+    },
+    "attr_70": [],
+    "objects": [],
+    "chests": [
+      "chests room=0x000E (none)"
+    ],
+    "doors": [
+      "doors room=0x000E",
+      "  slot 0 north type=0x22 stairs pos=$121C dest=0x1E",
+      "  slot 1 west type=0x18 shutter pos=$17C4 dest=unknown",
+      "  slot 2 south type=0x0A entrance pos=$1D5C dest=screen=0x36",
+      "  slot 9 east type=0x18 shutter pos=$17B4 layer of slot 1"
+    ],
+    "sprites": [
+      {
+        "type": "0x24",
+        "xy": [
+          7248,
+          352
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7248,
+          384
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7248,
+          416
+        ],
+        "hp": 2,
+        "state": 9
+      }
+    ]
+  },
+  "west": {
+    "tag": "after_west",
+    "room": "0x0E",
+    "module": "0x07",
+    "layer": 0,
+    "xy": [
+      7249,
+      374
+    ],
+    "origin": [
+      7168,
+      0
+    ],
+    "local": [
+      81,
+      374
+    ],
+    "control": true,
+    "hp": 52,
+    "armor": 0,
+    "big_key": 64,
+    "keys": 2,
+    "hammer": 1,
+    "magic": 80,
+    "ability": 30,
+    "follower": 5,
+    "body": [
+      "0x0F",
+      "0x0F",
+      "0x0F",
+      "0x0F"
+    ],
+    "reachable": 172,
+    "touched": {
+      "0xF0:door": 2
+    },
+    "frontier": {
+      "0x0F:ice": 23,
+      "0x04:wall": 28,
+      "0xF0:door": 3,
+      "0x02:wall": 2,
+      "0x00:floor": 12,
+      "0x01:wall": 1,
+      "0x34:unknown": 1
+    },
+    "attr_70": [],
+    "objects": [],
+    "chests": [
+      "chests room=0x000E (none)"
+    ],
+    "doors": [
+      "doors room=0x000E",
+      "  slot 0 north type=0x22 stairs pos=$121C dest=0x1E",
+      "  slot 1 west type=0x18 shutter pos=$17C4 dest=unknown",
+      "  slot 2 south type=0x0A entrance pos=$1D5C dest=screen=0x36",
+      "  slot 9 east type=0x18 shutter pos=$17B4 layer of slot 1"
+    ],
+    "sprites": [
+      {
+        "type": "0x24",
+        "xy": [
+          7230,
+          377
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7244,
+          419
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7258,
+          410
+        ],
+        "hp": 2,
+        "state": 9
+      }
+    ]
+  },
+  "scan_1e": {
+    "tag": "scan_1e",
+    "room": "0x1E",
+    "module": "0x07",
+    "layer": 0,
+    "xy": [
+      7289,
+      822
+    ],
+    "origin": [
+      7168,
+      512
+    ],
+    "local": [
+      121,
+      310
+    ],
+    "control": true,
+    "hp": 60,
+    "armor": 0,
+    "big_key": 64,
+    "keys": 1,
+    "hammer": 1,
+    "magic": 80,
+    "ability": 30,
+    "follower": 5,
+    "body": [
+      "0x00",
+      "0x00",
+      "0x00",
+      "0x00"
+    ],
+    "reachable": 136,
+    "touched": {
+      "0x5E:stairs": 2
+    },
+    "frontier": {
+      "0x00:floor": 39,
+      "0x04:wall": 25,
+      "0x02:wall": 7,
+      "0x5E:stairs": 3,
+      "0x24:unknown": 2,
+      "0x01:wall": 1,
+      "0x30:unknown": 1
+    },
+    "attr_70": [
+      [
+        42,
+        18,
+        116
+      ],
+      [
+        43,
+        18,
+        116
+      ],
+      [
+        42,
+        19,
+        116
+      ],
+      [
+        43,
+        19,
+        116
+      ],
+      [
+        47,
+        48,
+        117
+      ],
+      [
+        48,
+        48,
+        117
+      ],
+      [
+        47,
+        49,
+        117
+      ],
+      [
+        48,
+        49,
+        117
+      ]
+    ],
+    "objects": [
+      {
+        "slot": 0,
+        "state": 12336,
+        "pos": 1884
+      },
+      {
+        "slot": 1,
+        "state": 12593,
+        "pos": 1888
+      },
+      {
+        "slot": 2,
+        "state": 12850,
+        "pos": 2140
+      },
+      {
+        "slot": 3,
+        "state": 13107,
+        "pos": 2144
+      },
+      {
+        "slot": 4,
+        "state": 4369,
+        "pos": 2388
+      },
+      {
+        "slot": 5,
+        "state": 0,
+        "pos": 22622
+      }
+    ],
+    "chests": [
+      "chests room=0x001E (none)"
+    ],
+    "doors": [
+      "doors room=0x001E",
+      "  slot 0 east type=0x18 shutter pos=$17F4 dest=unknown",
+      "  slot 1 west type=0x18 shutter pos=$17C4 dest=unknown",
+      "  slot 2 north type=0x18 shutter pos=$125C dest=0x0E",
+      "  slot 3 south type=0x00 regular pos=$1D5C dest=unknown",
+      "  slot 9 east type=0x18 shutter pos=$17B4 layer of slot 1",
+      "  slot 10 south type=0x00 regular pos=$0D5C layer of slot 2"
+    ],
+    "sprites": [
+      {
+        "type": "0x1E",
+        "xy": [
+          7584,
+          656
+        ],
+        "hp": 0,
+        "state": 9
+      },
+      {
+        "type": "0x23",
+        "xy": [
+          7520,
+          592
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x23",
+        "xy": [
+          7568,
+          592
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x23",
+        "xy": [
+          7520,
+          672
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x23",
+        "xy": [
+          7568,
+          672
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x8F",
+        "xy": [
+          7296,
+          896
+        ],
+        "hp": 4,
+        "state": 9
+      },
+      {
+        "type": "0x8F",
+        "xy": [
+          7248,
+          960
+        ],
+        "hp": 4,
+        "state": 9
+      }
+    ]
+  },
+  "scan_1e_room_word": 30
+}

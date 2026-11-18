@@ -71,3 +71,33 @@ Milk S (item `$15`, held 21) was thrown twice. JSON `bin_milk_s`: y=185, facing 
 ## Probe files
 
 JSON: `snes/harvest/docs/perfect_rancher/research/F8_shipping_probe.json`. Pins under `snes/harvest/custom_integrations/HarvestMoon-Snes/`: `LN_mgr-ship_whatif_potato_bin`, `_p2`, `_p3`, `_ground`, `_milk`, `_milk_lip`. Commands from `snes/harvest` with `HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy QT_QPA_PLATFORM=offscreen`, `--trials 1`, `setsid nohup uv run python`. Logs: `/tmp/f8_ship_probe.log`, `/tmp/f8_ship_probe3.log`, `/tmp/f8_ship_probe4.log`, `/tmp/f8_ship_probe5.log`.
+
+## Saddlebag: the adult horse ships a thrown crop (2026-11-01, ROM probes)
+
+Answers the F8 question "do the horse saddlebag count?" and corrects the guess above that the
+path "uses the same per-item `INC` as the bin": it does, and it is reachable. Research pins
+`LN_saddle_whatif_carry_y2` (a naturally picked corn, Y2 Summer D20 12:xx) and
+`LN_saddle_whatif_harvest_y2d22` (48 ripe crops, 12:11); scripts were session scratch, the
+measurements below are what `tests/test_horse_rom.py` re-checks.
+
+- **What pays.** A throw (`player_action` 5, hold A 14 frames) that hits the horse sprite adds the item's
+  bin price to `shipping_money` and INCs its crop counter (`CODE_819195`), but only while
+  `$7F1F5C & 0x0010` is set and `hour < 17`. With the bit clear the crop is consumed and nothing is
+  paid (measured: corn 342 -> 342, `shipping_money` unchanged). A corn pays +12 raw = 120G and the
+  counter moves 342 -> 343, exactly like a bin drop.
+- **Who raises the bit.** The horse's event (`Event_UNKPlayerPos`, CC struct 0x17 at `$7EBB46`) every
+  frame: it clears the bit, then sets it again when the horse is an adult (`horse_age` 0x15, reached
+  on its 21st night; the first adult morning plays the saddlebag scene, upgrade flag `0x0100`) and the
+  farmer stands on the tile **north, south or west** of it and faces it. It rises about 5 frames after
+  the direction is held (0 frames when already settled), so a throw must wait for the bit. East of the
+  horse and two tiles away never raised it.
+- **Mounting** is the same A with empty hands while the bit is up: `player_state` 0x11 within ~30
+  frames (carrying blocks it). A second A, idle, dismounts one tile south of the horse's tile and the
+  horse stays where it stood, then wanders about one tile per 400 frames. Riding with B held covers
+  about 2 px a frame, twice the walk, so a 37-tile ride across the farm takes ~240 frames.
+- **Where the horse is.** Every morning at tile (17,20) near the stable, wandering at most a few
+  pixels all day. That is farther from every ring than the bin (11,30) is, so the only use is to park it.
+- **Result.** Parked beside the far east rings, 14 corn shipped in 3,300 frames against 6 at the bin from
+  the same pin and the same 12:11 start (the bin walk to those rings is ~500 frames a crop). A full
+  Summer D13 -> Fall D1 A/B at the real planner schedule was worse with an up-front park: see
+  [Y1_BENCH.md](../../Y1_BENCH.md#saddle-shipping-ab-2026-11-01).

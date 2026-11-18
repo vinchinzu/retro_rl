@@ -1,18 +1,17 @@
-"""Segment policy behavior tree for TMNT IV (all stages; Clean path Stage 0).
+"""Base policy for TMNT IV (all stages): progress, not safety.
 
-Clean lessons (do not relearn): ``docs/plan.md`` and ``AGENTS.md``.
+``GuardedPolicy`` (``tmnt_iv.lookahead``) wraps this tree and verifies every
+frame on the ROM before it is played, so dodging is the guard's job. This
+tree walks, fights, collects pizza, and runs the stage/boss progress tactics
+(dumpster unstick, Starbase rail, Neon lane, Baxter/Slash/Technodrome/form-2
+approaches).
 
-Production rules already burned in:
+Choices that still hold under the guard:
 
-- Pizza is the only Clean heal; full ``PizzaSeek`` is **stage-0-only**.
-  Alleycat may **underfoot-pickup** only (no seek path change).
-- Walk uses ``pickup_every=0`` — no empty-screen RIGHT+Y stutter.
-- Stage 1 wrecking-ball jump-dodge is **offline** in ``Stage1Policy.tick``
-  (jump-through caused Clean deaths). ``HazardAvoid`` stays for future
-  phase-safe work.
-- Baxter uses left standoff + elevated jump-slash; never approach into body.
-- Jump-slash only where grounded Y fails; suppress for Slash / Rat King /
-  form-2 / Mode-7 depth.
+- Full ``PizzaSeek`` is stage-0-only; Alleycat/Sewer take underfoot or
+  between-wave pizza (global seek soft-locks Skull and Crossbones).
+- Walk uses ``pickup_every=0`` (no empty-screen RIGHT+Y stutter).
+- ``HazardAvoid`` is not ticked; the guard sees hazards on the ROM.
 """
 
 from __future__ import annotations

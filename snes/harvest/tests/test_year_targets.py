@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import inspect
+import io
 import unittest
 from unittest.mock import patch
 
 import numpy as np
+from retro_harness import WorldState
 
 from harvest.core.ram_catalog import field_spec, ram_index
 from harvest.planner.day_plan_status import (
@@ -167,6 +170,33 @@ class RunnerTargetTests(unittest.TestCase):
 
 
 class EndingHandoffReportTests(unittest.TestCase):
+    def test_final_overnight_is_journaled_once_after_credits_settle(self) -> None:
+        planner = MultiDayPlannerTask()
+        planner.reset(WorldState(0, _ram(2, 1, 29), {}))
+        planner._phase = "sleep"
+        planner._eod_economy = {"bin_gold": 120, "money": 500}
+        final = _ram(2, 1, 30)
+        spec = field_spec("ending_scene_index")
+        final[ram_index(final, spec.address, live_offset=spec.live_offset)] = 0x25
+        world = WorldState(16000, final, {})
+        before = final.copy()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(planner.journal_ending_day(world))
+            self.assertFalse(planner.journal_ending_day(world))
+        self.assertTrue(np.array_equal(before, final))
+        self.assertEqual(planner._days_completed, 1)
+        self.assertEqual(len(planner.day_journal), 1)
+        row = planner.day_journal[0]
+        self.assertEqual((row["plan_day"], row["end_day"]), (29, 30))
+        self.assertEqual(row["eod"]["bin_gold"], 120)
+
+    def test_ending_journal_does_not_invent_a_day_for_an_ending_pin(self) -> None:
+        planner = MultiDayPlannerTask()
+        world = WorldState(0, _ram(2, 1, 30), {})
+        planner.reset(world)
+        self.assertFalse(planner.journal_ending_day(world))
+        self.assertEqual(planner.day_journal, ())
+
     def test_year_fields_come_from_the_planner_not_ending_task(self) -> None:
         planner = MultiDayPlannerTask()
         planner._days_completed = 12

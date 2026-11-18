@@ -1,84 +1,74 @@
-"""Barn cow stands, routes, and pure geometry helpers.
+"""Barn map and the walker: where the farmer can stand, and how he gets there among the cows.
 
-Extracted from ``cow_task`` so the chore FSM owns composition only.
-Constants and pure functions here must stay free of ``CowChoresTask`` state.
+Measured on the ROM (2026-11-05): 24 farmers ran an empty barn at random for 400k frames each with no RAM
+writes, and every pixel they stood on is in ``BARN_WALK_ROWS`` (4 px cells). A map poked cell by cell is
+wrong: tile collision only stops a step into a solid, so a poked farmer walks freely inside the rails.
+
+- The two wings are wide aisles (x 12..52, x 180..219), joined by the top row, the crossing rows y 180..187
+  and the bottom hall. The centre aisle is 8 px wide (x 108..115). Each stall is an 8 px lane off a wing.
+- A cow body stops a walk for good at 13 px. A run (B held) stands at that edge about 40 frames and then
+  shoves her ahead of it, unless a wall is behind her. She can be shoved aside, never walked through.
+- A press reaches the point 16 px ahead of the farmer, +-12 px around it (``COW_REACH_PX``). Talk reads that
+  at the press. A tool reads the contact left by the last step, so a swing needs a real step towards her
+  from the stand (``COW_STAND_PX``) and misses if she walks off before it lands, about 65 frames later.
+- A cow takes a 32-frame step about every 256 frames, and entering the barn puts every cow in its stall.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Collection, Optional, Sequence, Tuple
+import heapq
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Deque, Iterable, Optional, Sequence, Tuple
+
+import numpy as np
 
 from harvest.core.animal_probe import BARN_TILEMAP
+from harvest.core.animal_status import existing_cow_slots
+from harvest.core.ram_catalog import read_animal_slot_field
 from harvest.maps.map_config import find_landmark
-from harvest.tasks.nav import MAP_WIDTH
-
+from harvest.tasks.nav import make_action
 
 Tile = Tuple[int, int]
 Pixel = Tuple[int, int]
-StandFace = Tuple[Tile, str]
 
+BLOCKED_REASON = "cow walk blocked"  # CowChoresTask failure the day plan answers with a barn re-entry
+# A cow stepping on the door tile ($C2) leaves the barn and stops getting care. Entering resets every cow
+# to her stall, so a chore pass walks out and back in before the quickest cow can reach the door.
+BARN_SHIFT_REASON = "barn shift over"
+# Cows wander from the first frame (a 16 px step every few hundred frames) and the door is the far end of the hall. Eight idle
+# runs of 30,000 frames from a fresh entry saw nobody leave, the first cow within 72 px of the door at 1,870 and the median at
+# 14,500, within 32 px at 13,490 and later. With the farmer working it was faster: fuzz seed 78 had a cow walk from 57 px to
+# the door tile in 350 frames, between two job boundaries, 6,000 frames after entry; the old 6,000 timer and `y >= 308` rule
+# hid that at ~3.7 resets a day. A reset is ~450 frames of exit and entry plus the walk to the door, so it is spent when a cow
+# is within ``BARN_DOOR_DANGER_PX`` of the door (checked every job boundary and every walking frame with empty hands), or when
+# the pass runs ``BARN_SHIFT_FRAMES``. A cow in the hall rows above (y 308..329) only slows the route to the bin.
+BARN_SHIFT_FRAMES = 14000
+BARN_DOOR_CENTER_PX: Pixel = (136, 360)  # tile (8, 22), the door tile $C2
+BARN_DOOR_DANGER_PX = 72
 
-# ── landmarks / static stands ─────────────────────────────────────────
-
-_COW_TALK = find_landmark("cow_talk_stand", tilemap_id=BARN_TILEMAP)
-_FODDER = find_landmark("fodder_dispenser", tilemap_id=BARN_TILEMAP)
-_TROUGH = find_landmark("cow_feed_trough", tilemap_id=BARN_TILEMAP)
 _BARN_BIN = find_landmark("barn_shipping_bin", tilemap_id=BARN_TILEMAP)
-
-COW_TALK_STAND: Tile = _COW_TALK[1].tile if _COW_TALK else (10, 17)
-COW_TALK_FACE: str = _COW_TALK[1].face if _COW_TALK and _COW_TALK[1].face else "left"
-COW_TALK_ROUTE: Tuple[Tile, ...] = ((11, 21), COW_TALK_STAND)
-COW_TALK_ANCHOR: Tile = COW_TALK_ROUTE[0]
-COW_BAD_INTERACT_STANDS: set[Tile] = {(9, 17), (10, 16), (10, 18), (13, 18)}
-
-FACE_VECTORS: dict[str, Tile] = {
-    "up": (0, -1),
-    "down": (0, 1),
-    "left": (-1, 0),
-    "right": (1, 0),
-}
-
+_FODDER = find_landmark("fodder_dispenser", tilemap_id=BARN_TILEMAP)
 FODDER_STAND: Tile = _FODDER[1].tile if _FODDER else (13, 11)
 FODDER_FACE: str = _FODDER[1].face if _FODDER and _FODDER[1].face else "right"
-FODDER_ROUTE: Tuple[Tile, ...] = ((11, 11), FODDER_STAND)
-FODDER_TROUGH_ROUTE: Tuple[Tile, ...] = ((9, 11), (11, 11), FODDER_STAND)
-LEFT_TROUGH_RETURN_X = 130
-LEFT_TROUGH_LANE_Y = FODDER_STAND[1] * 16 + 8
-
-COW_EXIT_PREP_STAND: Tile = COW_TALK_ANCHOR
-COW_EXIT_PREP_PX: Pixel = (
-    COW_EXIT_PREP_STAND[0] * 16 + 8,
-    COW_EXIT_PREP_STAND[1] * 16 + 8,
-)
-COW_INTERACT_X_OFFSET = 13
-COW_INTERACT_Y_OFFSET = 3
-COW_LEFT_INTERACT_X = 163
-LEFT_COW_VERTICAL_LANE_X = 38
-LEFT_COW_LOWER_LANE_X = 55
-LEFT_COW_LANE_SWITCH_Y = 315
-COW_UPPER_RIGHT_ROUTE_MAX_Y = 100
-COW_RIGHT_AISLE_X = 204
-UPPER_BARN_SHIP_ESCAPE_Y = 184
-UPPER_BARN_RIGHT_AISLE_X = 216
-UPPER_BARN_SHIP_CROSS_Y = 217
-UPPER_BARN_SHIP_AISLE_X = 205
-UPPER_BARN_SHIP_LOWER_LANE_Y = 315
-LEFT_BARN_SHIP_LANE_X = 55
-LEFT_BARN_SHIP_LOWER_Y = 346
-
+FODDER_STAND_PX: Pixel = (FODDER_STAND[0] * 16 + 8, FODDER_STAND[1] * 16 + 8)
+# The dispenser answers from the tile above the stand as well (ROM probe: A at (217,169) takes the
+# fodder); a cow standing on one stand would otherwise eat the press as a talk.
+FODDER_NORTH_STAND_PX: Pixel = (FODDER_STAND_PX[0], FODDER_STAND_PX[1] - 16)
 BARN_SHIP_BIN_STAND: Tile = _BARN_BIN[1].tile if _BARN_BIN else (2, 22)
-BARN_SHIP_BIN_INTERACT_STAND: Tile = BARN_SHIP_BIN_STAND
-BARN_SHIP_BIN_FACE = _BARN_BIN[1].face if _BARN_BIN and _BARN_BIN[1].face else "left"
-MILK_SHIP_ROUTE: Tuple[Tile, ...] = ((11, 21), (5, 22), BARN_SHIP_BIN_STAND)
-MILK_SHIP_PIXEL_ROUTE: Tuple[Pixel, ...] = (
-    (183, 328),
-    (139, 328),
-    (139, 346),
-    (55, 346),
-    (55, 358),
-    (38, 361),
-)
+BARN_SHIP_BIN_FACE: str = _BARN_BIN[1].face if _BARN_BIN and _BARN_BIN[1].face else "left"
+BARN_SHIP_BIN_PX: Pixel = (56, 348)  # ROM-paid left throw; avoids the lower-left corner's cow trap
+BARN_DOOR_PX: Pixel = (128, 356)
+# Where a farmer with a bottle waits for a cow to leave the bin stand: in the south hall, off her edge (seed 20 of the fuzz lost a
+# bottle to a reset after nudging her for 1,300 frames).
+BIN_HOLD_PX: Pixel = (BARN_SHIP_BIN_PX[0] + 40, BARN_SHIP_BIN_PX[1] + 4)
+
+# Stand four pixels off a cow's edge, in line with her, so the step towards her ends at the edge.
+COW_STAND_PX = 17
+COW_EDGE_PX = 13
+COW_REACH_PX = 12
+PRESS_AHEAD_PX = 16
+FACE_UNITS = {"left": (-1, 0), "right": (1, 0), "up": (0, -1), "down": (0, 1)}
 
 
 @dataclass(frozen=True)
@@ -92,10 +82,10 @@ class CowFeedSpot:
 # Feed trough coordinates decoded from the barn replacement table
 # (DATA16_81B0ED) and Cow_Feed_Flags in the decomp.
 COW_FEED_SPOTS: Tuple[CowFeedSpot, ...] = (
-    CowFeedSpot((7, 9), "right", (113, 149), 0x0008),
-    CowFeedSpot((7, 13), "right", (113, 213), 0x0004),
-    CowFeedSpot((7, 15), "right", (113, 245), 0x0002),
     CowFeedSpot((7, 17), "right", (113, 277), 0x0001),
+    CowFeedSpot((7, 15), "right", (113, 245), 0x0002),
+    CowFeedSpot((7, 13), "right", (113, 213), 0x0004),
+    CowFeedSpot((7, 9), "right", (113, 149), 0x0008),
     CowFeedSpot((7, 7), "right", (113, 117), 0x0010),
     CowFeedSpot((7, 5), "right", (113, 85), 0x0020),
     CowFeedSpot((6, 17), "left", (111, 277), 0x0040),
@@ -105,267 +95,321 @@ COW_FEED_SPOTS: Tuple[CowFeedSpot, ...] = (
     CowFeedSpot((6, 7), "left", (111, 117), 0x0400),
     CowFeedSpot((6, 5), "left", (111, 85), 0x0800),
 )
-
 PREGNANT_COW_FEED_SPOT = CowFeedSpot((11, 22), "right", (177, 357), 0x1000)
 
-CARE_TROUGH_EXIT_X = COW_FEED_SPOTS[0].interact_px[0]
-CARE_TROUGH_EXIT_MIN_Y = COW_FEED_SPOTS[0].interact_px[1] - 8
-CARE_TROUGH_EXIT_ANCHOR_X = COW_TALK_ANCHOR[0] * 16 + 8
-CARE_TROUGH_EXIT_BOTTOM_Y = COW_TALK_ANCHOR[1] * 16 + 8
-FEED_TROUGH_STAND: Tile = COW_FEED_SPOTS[0].stand if not _TROUGH else _TROUGH[1].tile
-FEED_TROUGH_FACE: str = (
-    COW_FEED_SPOTS[0].face if not _TROUGH else (_TROUGH[1].face or COW_FEED_SPOTS[0].face)
+
+# ── measured walk map ─────────────────────────────────────────────────
+
+BARN_GRID = 4
+BARN_MASK_Y0 = 52
+BARN_WALK_ROWS: Tuple[str, ...] = (
+    "...##########################################################...",  # y=52
+    "...##########################################################...",  # y=56
+    "...########................##................##########.........",  # y=60
+    "...########................##................##########.........",  # y=64
+    "...########................##................##########.........",  # y=68
+    "...########................##................##########.........",  # y=72
+    "...########................##................##########.........",  # y=76
+    "...########................##................##########.........",  # y=80
+    "...################........##........##################.........",  # y=84
+    "...################........##........##################.........",  # y=88
+    "...########................##................##########.........",  # y=92
+    "...########................##................##########.........",  # y=96
+    "...########................##................##########.........",  # y=100
+    "...########................##................##########.........",  # y=104
+    "...########................##................##########.........",  # y=108
+    "...########................##................##########.........",  # y=112
+    "...################........##........########################...",  # y=116
+    "...################........##........########################...",  # y=120
+    "...########................##................################...",  # y=124
+    "...########................##................################...",  # y=128
+    "...########................##................################...",  # y=132
+    "...########................##................################...",  # y=136
+    "...########................##................################...",  # y=140
+    "...########................##................################...",  # y=144
+    "...################........##........##################.........",  # y=148
+    "...################........##........##################.........",  # y=152
+    "...########................##................##########.........",  # y=156
+    "...########................##................##########.........",  # y=160
+    "...########................##................##########.........",  # y=164
+    "...########................##................##########.........",  # y=168
+    "...########................##................##########.........",  # y=172
+    "...########................##................##########.........",  # y=176
+    "...####################################################.........",  # y=180
+    "...####################################################.........",  # y=184
+    "...########................##................##########.........",  # y=188
+    "...########................##................##########.........",  # y=192
+    "...########................##................##########.........",  # y=196
+    "...########................##................##########.........",  # y=200
+    "...########................##................##########.........",  # y=204
+    "...########................##................##########.........",  # y=208
+    "...################........##........########################...",  # y=212
+    "...################........##........########################...",  # y=216
+    "...########................##................################...",  # y=220
+    "...########................##................################...",  # y=224
+    "...########................##................################...",  # y=228
+    "...########................##................################...",  # y=232
+    "...########................##................######......####...",  # y=236
+    "...########................##................######......####...",  # y=240
+    "...################........##........##############......####...",  # y=244
+    "...################........##........##############......####...",  # y=248
+    "...########................##................######......####...",  # y=252
+    "...########................##................######......####...",  # y=256
+    "...########................##................######......####...",  # y=260
+    "...########................##................######......####...",  # y=264
+    "...########................##................######......####...",  # y=268
+    "...########................##................######......####...",  # y=272
+    "...################........##........########################...",  # y=276
+    "...################........##........########################...",  # y=280
+    "...########................##................######.............",  # y=284
+    "...########................##................######.............",  # y=288
+    "...########................##................######.............",  # y=292
+    "...########................##................######.............",  # y=296
+    "...########................##................######.............",  # y=300
+    "...########................##................######.............",  # y=304
+    "...##########################################################...",  # y=308
+    "...##########################################################...",  # y=312
+    ".....########################################################...",  # y=316
+    ".....########################################################...",  # y=320
+    ".....########################################################...",  # y=324
+    ".....########################################################...",  # y=328
+    ".............################################........########...",  # y=332
+    ".............################################........########...",  # y=336
+    ".............################################........########...",  # y=340
+    ".............################################........########...",  # y=344
+    ".............################################........########...",  # y=348
+    ".............################################........########...",  # y=352
+    ".........####################################........########...",  # y=356
+    ".........####################################........########...",  # y=360
 )
-FEED_TROUGH_ROUTE: Tuple[Tile, ...] = ((9, 11), FEED_TROUGH_STAND)
-FEED_TROUGH_INTERACT_PX: Pixel = COW_FEED_SPOTS[0].interact_px
+BARN_CELLS: frozenset[Pixel] = frozenset(
+    (col * BARN_GRID, BARN_MASK_Y0 + row * BARN_GRID)
+    for row, text in enumerate(BARN_WALK_ROWS)
+    for col, mark in enumerate(text)
+    if mark == "#"
+)
+# Grid-following keeps the farmer up to two pixels off a cell centre, so a route along a wall scrapes.
+_NEIGHBOURS = ((BARN_GRID, 0), (-BARN_GRID, 0), (0, BARN_GRID), (0, -BARN_GRID))
+_WALL_COST: dict[Pixel, int] = {
+    cell: 3 if any((cell[0] + dx, cell[1] + dy) not in BARN_CELLS for dx, dy in _NEIGHBOURS) else 0
+    for cell in BARN_CELLS
+}
+COW_SOFT_COST = 6  # a route skirts a cow when that is cheap, and goes through her when it is not
+COW_SOFT_BOX_PX = 14
 
 
-# ── pure geometry ─────────────────────────────────────────────────────
-
-def facing_tile(stand: Tile, face: str) -> Tile:
-    """Return the tile the player faces from ``stand`` looking ``face``."""
-    dx, dy = FACE_VECTORS.get(face, (-1, 0))
-    return stand[0] + dx, stand[1] + dy
-
-
-def cow_body_tile(cow_tile: Tile) -> Tile:
-    """Cow hitbox body tile one row below the head/slot tile."""
-    return cow_tile[0], cow_tile[1] + 1
-
-
-def is_adjacent_to_cow_tile(stand: Tile, face: str, cow_tile: Tile) -> bool:
-    """True when facing the cow head tile or a valid body-side pin."""
-    facing = facing_tile(stand, face)
-    if facing == cow_tile:
-        return True
-    body = cow_body_tile(cow_tile)
-    # Horizontal sides and below-body (face up) are valid talk/brush pins.
-    return facing == body and face in ("left", "right", "up")
+def nearest_cell(pixel: Pixel) -> Pixel:
+    """The walkable cell closest to ``pixel`` (a cow or a farmer can sit a few pixels off the grid)."""
+    x = int(pixel[0]) // BARN_GRID * BARN_GRID
+    y = int(pixel[1]) // BARN_GRID * BARN_GRID
+    if (x, y) in BARN_CELLS:
+        return x, y
+    for radius in range(1, 24):
+        ring = [
+            (x + dx * BARN_GRID, y + dy * BARN_GRID)
+            for dx in range(-radius, radius + 1)
+            for dy in range(-radius, radius + 1)
+            if max(abs(dx), abs(dy)) == radius
+        ]
+        hits = [cell for cell in ring if cell in BARN_CELLS]
+        if hits:
+            return min(hits, key=lambda cell: abs(cell[0] - pixel[0]) + abs(cell[1] - pixel[1]))
+    return x, y
 
 
-def feed_route_for_spot(spot: CowFeedSpot) -> Tuple[Tile, ...]:
-    """Tile route to a feed trough spot from the barn aisle."""
-    if spot.stand[0] <= 7:
-        return ((9, 11), spot.stand)
-    return ((11, 11), spot.stand)
+def walk_distances(start: Pixel) -> dict[Pixel, int]:
+    """Cells of walking from ``start`` to every cell of the walk map (breadth first, cows ignored)."""
+    source = nearest_cell(start)
+    steps = {source: 0}
+    queue = deque([source])
+    while queue:
+        cell = queue.popleft()
+        for dx, dy in _NEIGHBOURS:
+            step = (cell[0] + dx, cell[1] + dy)
+            if step in BARN_CELLS and step not in steps:
+                steps[step] = steps[cell] + 1
+                queue.append(step)
+    return steps
 
 
-def fodder_route_from(current_tile: Tile) -> Tuple[Tile, ...]:
-    """Fodder dispenser approach route from the player's current barn tile."""
-    tx, ty = current_tile
-    if tx == 10 and 13 <= ty <= 18:
-        return ((11, ty),) + FODDER_ROUTE
-    if (ty >= 18 and tx <= 9) or (ty >= 13 and tx <= 8):
-        return FODDER_TROUGH_ROUTE
-    return FODDER_ROUTE
+def walk_cost(steps: dict[Pixel, int], pixel: Pixel) -> int:
+    """Pixels of walking to ``pixel`` from the origin of ``steps``; far when the map never reaches it."""
+    return steps.get(nearest_cell(pixel), 1 << 12) * BARN_GRID
 
 
-def talk_route_to(stand: Tile) -> Tuple[Tile, ...]:
-    """Standard talk/brush approach: lower-aisle anchor then interact stand."""
-    return (COW_TALK_ANCHOR, stand)
+def plan_route(start: Pixel, goal: Pixel, cows: Iterable[Pixel] = (), *, clear: bool = False) -> list[Pixel]:
+    """Corner waypoints from ``start`` to ``goal`` on the walk map (Dijkstra, four neighbours).
 
-
-def left_cow_lane_x(current_y: int) -> int:
-    """Vertical lane X for left-wall cow care (switches near the lower corridor)."""
-    if current_y > LEFT_COW_LANE_SWITCH_Y:
-        return LEFT_COW_LOWER_LANE_X
-    return LEFT_COW_VERTICAL_LANE_X
-
-
-def preferred_cow_stands(cx: int, cy: int) -> list[StandFace]:
-    """Geometric interact stand candidates ordered by cow column preference.
-
-    Does not include the player's current tile or path/walkability filters —
-    callers prepend adjacency pins and score/filter for reachability.
+    ``clear`` closes the cells around every cow, so a walk never shoves one: a cow pushed along the hall
+    ends up on the door tile and out of the barn. An empty list means no such route exists.
     """
-    preferred: list[StandFace] = []
-    if cx <= 4:
-        # Wall-side cows: stay on the right/body column. Same-x stands
-        # (face up/down) trap the player on the cow's tile column.
-        preferred.extend(
-            [
-                ((cx + 1, cy + 1), "left"),
-                ((cx + 1, cy), "left"),
-                ((cx - 1, cy), "right"),
-                ((cx - 1, cy + 1), "right"),
-            ]
-        )
-    elif cx <= 10:
-        preferred.append(((cx + 1, cy), "left"))
-        preferred.append(((cx + 1, cy + 1), "left"))
-    elif cx >= 12:
-        preferred.append(((cx - 1, cy), "right"))
-        preferred.append(((cx - 1, cy + 1), "right"))
-        # Prefer staying on the right aisle for right-side cows instead of
-        # flipping to a left-face stand that pixel-nav used to mis-aim.
-        preferred.append(((cx + 1, cy), "left"))
-        preferred.append(((cx + 1, cy + 1), "left"))
-    else:
-        preferred.extend(
-            [
-                ((cx + 1, cy), "left"),
-                ((cx - 1, cy), "right"),
-                ((cx + 1, cy + 1), "left"),
-                ((cx - 1, cy + 1), "right"),
-            ]
-        )
-
-    preferred.extend(
-        [
-            ((cx, cy + 1), "up"),
-            ((cx, cy - 1), "down"),
-            ((cx + 1, cy + 1), "left"),
-            ((cx - 1, cy + 1), "right"),
-            ((cx + 1, cy), "left"),
-            ((cx - 1, cy), "right"),
-        ]
-    )
-    return preferred
-
-
-def body_side_stand_candidates(cx: int, cy: int) -> list[StandFace]:
-    """Body-side interact stands preferred for talk/brush pinning."""
-    if cx <= 4:
-        return [
-            ((cx + 1, cy + 1), "left"),
-            ((cx + 1, cy), "left"),
-        ]
-    if cx <= 10:
-        return [((cx + 1, cy + 1), "left"), ((cx + 1, cy), "left")]
-    if cx >= 12:
-        return [((cx - 1, cy + 1), "right"), ((cx - 1, cy), "right")]
-    return [
-        ((cx + 1, cy + 1), "left"),
-        ((cx - 1, cy + 1), "right"),
-        ((cx + 1, cy), "left"),
-        ((cx - 1, cy), "right"),
+    source, target = nearest_cell(start), nearest_cell(goal)
+    soft: set[Pixel] = set()
+    for cx, cy in cows:
+        reach = COW_SOFT_BOX_PX // BARN_GRID + 1
+        bx, by = int(cx) // BARN_GRID * BARN_GRID, int(cy) // BARN_GRID * BARN_GRID
+        for dx in range(-reach, reach + 1):
+            for dy in range(-reach, reach + 1):
+                soft.add((bx + dx * BARN_GRID, by + dy * BARN_GRID))
+    soft -= {source, target}
+    best = {source: 0}
+    came: dict[Pixel, Pixel] = {}
+    queue: list[Tuple[int, Pixel]] = [(0, source)]
+    while queue:
+        cost, cell = heapq.heappop(queue)
+        if cell == target:
+            break
+        if cost > best[cell]:
+            continue
+        for dx, dy in _NEIGHBOURS:
+            step = (cell[0] + dx, cell[1] + dy)
+            if step not in BARN_CELLS or (clear and step in soft):
+                continue
+            total = cost + 1 + _WALL_COST[step] + (COW_SOFT_COST if step in soft else 0)
+            if total < best.get(step, 1 << 30):
+                best[step] = total
+                came[step] = cell
+                heapq.heappush(queue, (total, step))
+    if target not in best:
+        return []
+    cells = [target]
+    while cells[-1] != source:
+        cells.append(came[cells[-1]])
+    cells.reverse()
+    corners = [
+        cells[index]
+        for index in range(1, len(cells) - 1)
+        if (cells[index][0] - cells[index - 1][0], cells[index][1] - cells[index - 1][1])
+        != (cells[index + 1][0] - cells[index][0], cells[index + 1][1] - cells[index][1])
     ]
+    route = [*corners, cells[-1]] if len(cells) > 1 else [cells[-1]]
+    return [(x + BARN_GRID // 2, y + BARN_GRID // 2) for x, y in route]
 
 
-def geometric_fallback_stands(
-    cx: int,
-    cy: int,
-    cow_tiles: Collection[Tile],
-    *,
-    current: Tile,
-    current_face: str,
-) -> list[StandFace]:
-    """Last-resort stands when path/walkability filters reject all candidates."""
-    if cx >= 12:
-        return [((cx - 1, cy), "right"), ((cx - 1, cy + 1), "right")]
-    if cx <= 10:
-        return [((cx + 1, cy), "left"), ((cx + 1, cy + 1), "left")]
-    if COW_TALK_STAND not in cow_tiles and COW_TALK_STAND not in COW_BAD_INTERACT_STANDS:
-        return [(COW_TALK_STAND, COW_TALK_FACE)]
-    return [(current, current_face)]
+# ── walker ────────────────────────────────────────────────────────────
+
+WALK_STILL_FRAMES = 8
+COW_PUSH_FRAMES = 24  # retreat before the ~40-frame run hold starts shoving her
+COW_AHEAD_PX = 17
+MAX_WALK_NUDGES = 16
+GOAL_DRIFT_PX = 12
+_NUDGE_PATTERN = (("back", 5), ("side", 7), ("back", 9), ("other", 7), ("back", 14), ("side", 14), ("other", 14))
+OPPOSITE_FACE = {"left": "right", "right": "left", "up": "down", "down": "up"}
+_SIDES = {"left": ("up", "down"), "right": ("up", "down"), "up": ("left", "right"), "down": ("left", "right")}
 
 
-def cow_push_escape_tile(cow_tile: Tile, stand: Tile, face: str) -> Optional[Tile]:
-    """Tile the cow would be pushed into when interacting from ``stand``/``face``.
-
-    Returns ``None`` when the stand does not face the cow head tile.
-    """
-    dx, dy = FACE_VECTORS.get(face, (0, 0))
-    if (stand[0] + dx, stand[1] + dy) != cow_tile:
-        return None
-    return cow_tile[0] + dx, cow_tile[1] + dy
+def axis_step(pos: Pixel, target: Pixel) -> Tuple[Optional[str], int]:
+    """Direction and remaining pixels along the longer axis from ``pos`` to ``target``."""
+    dx, dy = target[0] - pos[0], target[1] - pos[1]
+    if abs(dx) >= abs(dy):
+        return ("right" if dx > 0 else "left" if dx < 0 else None), abs(dx)
+    return ("down" if dy > 0 else "up"), abs(dy)
 
 
-def face_for_cow_at_stand(
-    stand: Tile,
-    cow_tile: Optional[Tile],
-    *,
-    default_face: str = COW_TALK_FACE,
-    talk_stand: Optional[Tile] = None,
-    talk_face: Optional[str] = None,
-) -> str:
-    """Choose face direction for a stand next to a cow tile.
+@dataclass
+class BarnWalker:
+    """Walk the map to a pixel. A held-still farmer steps back and tries again, which also clears a cow."""
 
-    When the stand is not orthogonally adjacent to head or body, returns
-    ``talk_face`` if ``stand == talk_stand``, else ``default_face``.
-    """
-    if cow_tile is None:
-        return default_face
-    dx = cow_tile[0] - stand[0]
-    dy = cow_tile[1] - stand[1]
-    body = cow_body_tile(cow_tile)
-    body_dx = body[0] - stand[0]
-    body_dy = body[1] - stand[1]
-    if abs(dx) + abs(dy) != 1 and not (body_dy == 0 and abs(body_dx) == 1):
-        if talk_stand is not None and stand == talk_stand and talk_face is not None:
-            return talk_face
-        return default_face
-    if dx > 0:
-        return "right"
-    if dx < 0:
-        return "left"
-    if body_dy == 0:
-        if body_dx > 0:
-            return "right"
-        if body_dx < 0:
-            return "left"
-    if dy > 0:
-        return "down"
-    return "up"
+    _path: list[Pixel] = field(default_factory=list)
+    _goal: Optional[Pixel] = None
+    _last: Pixel = (-1, -1)
+    _still: int = 0
+    _heading: str = "down"
+    _queue: Deque[np.ndarray] = field(default_factory=deque)
+    nudges: int = 0
 
+    def clear(self) -> None:
+        self._path, self._goal, self._last, self._still = [], None, (-1, -1), 0
+        self._queue.clear()
+        self.nudges = 0
 
-def cow_interact_pixel(
-    cow_px: Pixel,
-    face: str,
-    *,
-    tool: bool,
-    cow_tile: Optional[Tile] = None,
-) -> Optional[Pixel]:
-    """Pixel target for talk/brush/milk approach from a known cow pixel."""
-    px, py = cow_px
-    if face == "left":
-        # Recorded left-aisle clamp (x=163) for left/center stall cows.
-        # Right-side cows (tile x >= 12) must keep px+offset or pixel nav
-        # aims through the cow toward the wrong aisle.
-        target_x = px + COW_INTERACT_X_OFFSET
-        if cow_tile is None or cow_tile[0] <= 10:
-            target_x = min(target_x, COW_LEFT_INTERACT_X)
-        if cow_tile is not None:
-            if cow_tile[1] == 17 and tool:
-                return target_x, 278
-            if cow_tile[1] == 15:
-                return target_x, 249
-        return target_x, py
-    if face == "right":
-        return px - COW_INTERACT_X_OFFSET, py + COW_INTERACT_Y_OFFSET
-    if face == "up":
-        return px, py + COW_INTERACT_X_OFFSET
-    if face == "down":
-        return px, py - COW_INTERACT_X_OFFSET
-    return None
+    @property
+    def blocked(self) -> bool:
+        return self.nudges >= MAX_WALK_NUDGES
 
+    def _nudge(self, pos: Pixel) -> None:
+        kind, frames = _NUDGE_PATTERN[self.nudges % len(_NUDGE_PATTERN)]
+        self.nudges += 1
+        first, second = _SIDES[self._heading]
+        direction = {"back": OPPOSITE_FACE[self._heading], "side": first, "other": second}[kind]
+        if direction == "down" and pos[1] >= BARN_DOOR_PX[1] - 8 and abs(pos[0] - BARN_DOOR_PX[0]) <= 24:
+            direction = "up"  # a step down here is the door, and the farm
+        self._queue.extend(make_action(**{direction: True}) for _ in range(frames))
+        self._path, self._goal, self._still = [], None, 0
 
-def stand_in_bounds(stand: Tile) -> bool:
-    sx, sy = stand
-    return 0 <= sx < MAP_WIDTH and 0 <= sy < MAP_WIDTH
+    def _cow_ahead(self, pos: Pixel, cows: Sequence[Pixel]) -> bool:
+        ux, uy = FACE_UNITS[self._heading]
+        for cx, cy in cows:
+            along = (cx - pos[0]) * ux + (cy - pos[1]) * uy
+            across = abs((cx - pos[0]) * uy) + abs((cy - pos[1]) * ux)
+            if 0 <= along <= COW_AHEAD_PX and across <= COW_AHEAD_PX:
+                return True
+        return False
+
+    def step(self, pos: Pixel, goal: Pixel, *, tolerance: int = 2, cows: Sequence[Pixel] = ()) -> Optional[np.ndarray]:
+        """The next pad frame towards ``goal``, or None once within ``tolerance`` on both axes."""
+        if abs(goal[0] - pos[0]) <= tolerance and abs(goal[1] - pos[1]) <= tolerance:
+            self.clear()
+            return None
+        if self._queue:
+            self._last = pos
+            return self._queue.popleft()
+        self._still = self._still + 1 if pos == self._last else 0
+        self._last = pos
+        limit = COW_PUSH_FRAMES if self._cow_ahead(pos, cows) else WALK_STILL_FRAMES
+        if self._still >= limit:
+            self._nudge(pos)
+            return self._queue.popleft()
+        if self._goal is None or abs(goal[0] - self._goal[0]) + abs(goal[1] - self._goal[1]) > GOAL_DRIFT_PX:
+            self._goal = goal
+            self._path = plan_route(pos, goal, cows, clear=True) or plan_route(pos, goal, cows)
+        elif cows and self._still >= 2 and self._cow_ahead(pos, cows):
+            clear = plan_route(pos, goal, cows, clear=True)
+            if clear:
+                self._path, self._still = clear, 0
+        while self._path and abs(self._path[0][0] - pos[0]) <= 2 and abs(self._path[0][1] - pos[1]) <= 2:
+            self._path.pop(0)
+        direction, remaining = axis_step(pos, self._path[0] if self._path else goal)
+        if direction is None:
+            return make_action()
+        self._heading = direction
+        return make_action(**{direction: True, "b": remaining > 2 and not self._cow_ahead(pos, cows)})
 
 
-def stand_blocked(stand: Tile, cow_tiles: Collection[Tile]) -> bool:
-    return stand in cow_tiles or stand in COW_BAD_INTERACT_STANDS
+def cow_stands(cow: Pixel) -> list[Tuple[Pixel, str]]:
+    """The four stands in line with a cow, each with the facing that reaches her. Walkable ones only."""
+    cx, cy = cow
+    rows = (
+        ((cx + COW_STAND_PX, cy), "left"),
+        ((cx - COW_STAND_PX, cy), "right"),
+        ((cx, cy + COW_STAND_PX), "up"),
+        ((cx, cy - COW_STAND_PX), "down"),
+    )
+    return [row for row in rows if (row[0][0] // BARN_GRID * BARN_GRID, row[0][1] // BARN_GRID * BARN_GRID) in BARN_CELLS]
 
 
-def next_unfed_spot(
-    flags: int,
-    goal: int,
-    spots: Sequence[CowFeedSpot] = COW_FEED_SPOTS,
-) -> CowFeedSpot:
-    """First feed spot within ``goal`` whose trough flag is clear."""
-    goal = max(0, goal)
-    for spot in spots[:goal]:
-        if not (flags & spot.flag):
-            return spot
-    return spots[max(0, goal - 1)]
+def press_reaches(stand: Pixel, face: str, cow: Pixel) -> bool:
+    """A press from ``stand`` facing ``face`` lands on a cow at ``cow`` (the ROM's probe box)."""
+    ux, uy = FACE_UNITS[face]
+    return (
+        abs(stand[0] + ux * PRESS_AHEAD_PX - cow[0]) <= COW_REACH_PX
+        and abs(stand[1] + uy * PRESS_AHEAD_PX - cow[1]) <= COW_REACH_PX
+    )
 
 
-def count_fed_trough_flags(
-    flags: int,
-    goal: int,
-    spots: Sequence[CowFeedSpot] = COW_FEED_SPOTS,
-) -> int:
-    """How many of the first ``goal`` trough flags are set."""
-    return min(goal, sum(1 for spot in spots if flags & spot.flag))
+def barn_cow_pixels(ram: np.ndarray) -> list[Pixel]:
+    """Where every barn cow stands right now (the slot mirrors her sprite each frame)."""
+    rows = []
+    for slot in existing_cow_slots(ram):
+        if read_animal_slot_field(ram, "cow", slot, "home_map_raw") in (0, BARN_TILEMAP):
+            rows.append((
+                int(read_animal_slot_field(ram, "cow", slot, "position_x")),
+                int(read_animal_slot_field(ram, "cow", slot, "position_y")),
+            ))
+    return rows
+
+
+def next_unfed_spot(flags: int, spots: Sequence[CowFeedSpot], *, near_y: int = FODDER_STAND_PX[1]) -> Optional[CowFeedSpot]:
+    """The empty trough closest to the crossing row, or None when every required trough is filled."""
+    empty = [spot for spot in spots if not flags & spot.flag]
+    return min(empty, key=lambda spot: abs(spot.interact_px[1] - near_y)) if empty else None

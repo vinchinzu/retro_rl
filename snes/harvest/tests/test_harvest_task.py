@@ -32,6 +32,11 @@ from harvest.tasks.harvest_task import (
 )
 from retro_harness import TaskStatus
 
+from harvest.tasks import harvest_task as _ht
+
+# The throw animation runs ~36 frames; the fast press waits on it, the centred press on a 26-frame queue.
+SHIP_VERIFY_LIMIT = _ht.THROW_WAIT_FRAMES if _ht.FAST_PRESS else 20
+
 # Large-rock residual left by CLEAR_FIELD on power-on soaks (rr-9xyy).
 HELD_LARGE_ROCK = 0x0D
 
@@ -337,6 +342,7 @@ class HarvestTaskTests(unittest.TestCase):
         task._phase = "target_verify"
         task._current = HarvestStep(target=(5, 34), stand=(5, 33), face="down")
         task._target_live_before = 0x60
+        task._recentre = True          # the centred retry already ran
         task._verify_count = 12
 
         result = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
@@ -345,6 +351,72 @@ class HarvestTaskTests(unittest.TestCase):
         self.assertEqual(task.harvested_count, 0)
         self.assertEqual(task.skipped_count, 1)
         self.assertEqual(task._phase, "select")
+
+    def test_a_potato_rising_into_the_hands_is_shipped_not_dropped(self) -> None:
+        """The potato tile turns to soil on the A edge; the carry bit lags the 23-frame lift.
+
+        Fast-press run ``fastbase`` (Spring D8): the verify read "tile changed, not carrying",
+        went back to select, walked to the next potato and its A dropped the one in hand: 8 picked,
+        0 shipped, every Spring day.
+        """
+        from harvest.core.ram_catalog import field_spec, ram_index
+
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        _set_tile(ram, 5, 34, 0x08)                       # soil: the potato has left the tile
+        spec = field_spec("player_action")
+        ram[ram_index(ram, spec.address, live_offset=spec.live_offset)] = 4   # lift animation
+        task = HarvestTask()
+        task._phase = "target_verify"
+        task._current = HarvestStep(target=(5, 34), stand=(5, 33), face="down")
+        task._target_live_before = 0x60
+        task._verify_count = 3
+
+        task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual((task._phase, task.harvested_count), ("target_verify", 0))
+        ram[ram_index(ram, spec.address, live_offset=spec.live_offset)] = 0
+        _set_carry(ram, 0x12)
+        task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+        self.assertEqual((task._phase, task.harvested_count), ("ship_nav", 1))
+
+    def test_the_fast_throw_waits_until_the_rom_faces_the_bin(self) -> None:
+        """A one-frame turn after a run can fail to register; A then throws the crop on the ground."""
+        from harvest.core.ram_catalog import field_spec, ram_index
+        from harvest.tasks import harvest_task as ht
+
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        spec = field_spec("player_direction")
+        at = ram_index(ram, spec.address, live_offset=spec.live_offset)
+        ram[at] = ht.FACE_CODE["down"]
+        task = HarvestTask()
+        task._phase = "ship_verify"
+        with patch.object(ht, "FAST_PRESS", True):
+            task._queue_press(ram, "left")
+            first = task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+            self.assertEqual(task._phase, "press")
+            self.assertFalse(first.action.action[8])            # no A while facing down
+            ram[at] = ht.FACE_CODE["left"]
+            task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+        self.assertEqual(task._phase, "ship_verify")
+        self.assertTrue(any(a[8] for a in task._action_queue))    # A queued once facing left
+
+    def test_a_missed_fast_pick_retries_once_from_the_centred_stand(self) -> None:
+        """The lift ignores A a pixel short of the crop; the first miss re-centres instead of skipping."""
+        from harvest.tasks import harvest_task as ht
+
+        ram = np.zeros(0x20000, dtype=np.uint8)
+        _set_tile(ram, 5, 34, 0x60)
+        task = HarvestTask(state_name="fake")
+        task._phase = "target_verify"
+        task._current = HarvestStep(target=(5, 34), stand=(5, 33), face="down")
+        task._target_live_before = 0x60
+        task._verify_count = ht.LIFT_WAIT_FRAMES
+
+        with patch.object(ht, "FAST_PRESS", True):
+            task.step(SimpleNamespace(ram=ram, info={}, obs=None))
+
+        self.assertEqual((task._phase, task._recentre, task.fast_misses, task.skipped_count),
+                         ("target_nav", True, 1, 0))
 
     def test_pick_success_clears_stale_nav_blocks_before_shipping(self) -> None:
         ram = np.zeros(0x20000, dtype=np.uint8)
@@ -649,6 +721,51 @@ class HarvestTaskTests(unittest.TestCase):
         self.assertGreater(len(task._action_queue), 0)
         self.assertEqual(task.shipped_count, 0)
 
+    def _clock_ram(self, hour: int, minute: int) -> np.ndarray:
+        from harvest.core.ram_catalog import field_spec, ram_index
+
+        ram = np.zeros(0x24000, dtype=np.uint8)
+        ram[ADDR_INPUT_LOCK] = 1
+        for name, value in (("hour", hour), ("minute", minute)):
+            spec = field_spec(name)
+            ram[ram_index(ram, spec.address, live_offset=spec.live_offset)] = value
+        return ram
+
+    def test_ship_eta_counts_both_walks_and_the_throw(self) -> None:
+        from harvest.tasks.harvest_task import (
+            SHIP_FRAMES_PER_TILE, SHIP_MARGIN_FRAMES, SHIP_PICK_THROW_FRAMES, ship_eta_frames,
+        )
+
+        eta = ship_eta_frames((11, 30), (44, 31), (11, 30))
+        self.assertAlmostEqual(eta, 34 * 2 * SHIP_FRAMES_PER_TILE + SHIP_PICK_THROW_FRAMES + SHIP_MARGIN_FRAMES)
+
+    def test_clock_tick_reads_the_rom_minute_byte_as_fifteen_an_hour(self) -> None:
+        """``UpdateTime``: 60 ticks a minute byte, 15 bytes an hour; 17:00 is tick 15,300."""
+        from harvest.tasks.harvest_task import SHIP_CLOSE_TICK, clock_tick
+
+        self.assertEqual(clock_tick(self._clock_ram(17, 0)), SHIP_CLOSE_TICK)
+        self.assertEqual(clock_tick(self._clock_ram(16, 14)) + 60, SHIP_CLOSE_TICK)
+
+    def test_select_leaves_a_crop_that_cannot_reach_the_bin_before_five(self) -> None:
+        """ROM ``Dropedonsaleplace``: a bin drop at 17:00+ pays nothing, a ripe crop keeps."""
+        from harvest.tasks.harvest_task import ship_window_fits
+
+        late = self._clock_ram(16, 11)   # 16:44, 240 frames before the close
+        self.assertFalse(ship_window_fits(late, (11, 30), (44, 31)))
+        self.assertTrue(ship_window_fits(late, (11, 30), (12, 30)))
+        # The old minute-as-0..59 reading let this 68-tile walk start at 16:56 (minute byte 14).
+        self.assertFalse(ship_window_fits(self._clock_ram(16, 14), (11, 30), (20, 35)))
+        task = HarvestTask()
+        task._phase = "select"
+        task._steps = [HarvestStep(target=(44, 30), stand=(44, 31), face="up")]
+        task._initial_target_count = 1
+
+        result = task.step(SimpleNamespace(ram=late, info={}, obs=None))
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("ship window closed: 1 ripe left", result.reason)
+        self.assertEqual(task.harvested_count, 0)
+
     def test_select_ships_when_crop_pick_is_pending(self) -> None:
         ram = np.zeros(0x20000, dtype=np.uint8)
         _set_carry(ram, 0x12)  # non-debris crop-like held id
@@ -668,7 +785,7 @@ class HarvestTaskTests(unittest.TestCase):
         ram[ADDR_INPUT_LOCK] = 1
         task = HarvestTask()
         task._phase = "ship_verify"
-        task._verify_count = 21
+        task._verify_count = SHIP_VERIFY_LIMIT + 1
         task._ship_options = [((11, 30), "left")]
         task._ship_option_index = 0  # exhausted after try_next
 
@@ -684,7 +801,7 @@ class HarvestTaskTests(unittest.TestCase):
         ram[ADDR_INPUT_LOCK] = 1
         task = HarvestTask()
         task._phase = "ship_verify"
-        task._verify_count = 21
+        task._verify_count = SHIP_VERIFY_LIMIT + 1
         task.harvested_count = 1
         task.shipped_count = 0
         task._ship_options = [((11, 30), "left")]

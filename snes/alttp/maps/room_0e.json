@@ -10,6 +10,7 @@
     {"label": "freezor_stand", "xy": [7520, 328], "role": "waypoint", "notes": "On ice, aligned with Freezor 0xA1; fire rod from here"},
     {"label": "west_door_approach", "xy": [7469, 364], "role": "approach", "notes": "West lip after Freezor dead; hold LEFT → west quadrant"},
     {"label": "west_quad_landing", "xy": [7232, 367], "role": "waypoint", "notes": "Ice Jelly Key quadrant; same $A0=0x0E"},
+    {"label": "stair_approach", "xy": [7280, 360], "role": "approach", "notes": "South of north stairs tiles (15,35)-(16,35). Hold UP enters 0x1E."},
     {"label": "south_door_approach", "xy": [7544, 472], "role": "approach", "notes": "Hold DOWN → overworld (pin is LW-warped; screen 0x36)"}
   ],
   "doors": [
@@ -20,7 +21,7 @@
       "toRoomHex": null,
       "approachXy": [7469, 364],
       "landingXy": [7232, 367],
-      "role": "primary",
+      "role": "alternate",
       "path": ["freezor_stand", "west_door_approach"],
       "pathTolerances": {"freezor_stand": 10, "default": 12},
       "pushFrames": 520,
@@ -39,6 +40,19 @@
       "pathTolerances": {"default": 12},
       "pushFrames": 300,
       "notes": "Ice Palace Exit. Pin was Module_PreDungeon from LW, so landing screen is 0x36 not DW 0x75."
+    },
+    {
+      "label": "north_to_0x1e",
+      "direction": "UP",
+      "toRoom": 30,
+      "toRoomHex": "0x1E",
+      "approachXy": [7280, 360],
+      "landingXy": [7289, 822],
+      "role": "primary",
+      "path": ["west_door_approach", "stair_approach"],
+      "pathTolerances": {"default": 16, "stair_approach": 24},
+      "pushFrames": 420,
+      "notes": "North stairs after the Freezor shutter. Room id changes 0x0E to 0x1E. Engine state is Play_ice_0x0e_melted (fire rod in play, Freezor gone). Not natural. West shutter type stays 0x18 but the mouth is passable."
     }
   ],
   "clearPolicy": {

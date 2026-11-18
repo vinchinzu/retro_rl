@@ -1,0 +1,126 @@
+{
+  "bead": "PR-012",
+  "blocked": "PR-012",
+  "latest_date_cow_k_reaches_200": null,
+  "pins_not_route_evidence": [
+    "LN_mgr-f3_whatif_buy0",
+    "LN_mgr-f3_whatif_care1",
+    "LN_mgr-f3_whatif_care2"
+  ],
+  "command": "cwd snes/harvest; HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy QT_QPA_PLATFORM=offscreen setsid nohup uv run python /tmp/f3_herd_probe.py <buy|care>",
+  "reset_crash_not_a_try": {
+    "log": "/tmp/f3_buy_probe.log",
+    "error": "RetroEnv.reset() got an unexpected keyword argument 'state'"
+  },
+  "buy": {
+    "pin": "LN_mgr-f3_whatif_buy0",
+    "base": "Y1_After_Buy_Potato",
+    "day0_happiness_live": null,
+    "rom_store_when_bought": 0,
+    "rom_site": "AddNewCow $83C8DC via SetCowNameBought $80815F",
+    "boot": {
+      "frame": 0,
+      "tilemap": 0,
+      "x": 93,
+      "y": 448,
+      "hour": 9,
+      "minute": 4,
+      "weekday": 2,
+      "day": 2,
+      "money_display": 8000,
+      "money_raw": 800,
+      "num_cows": 0,
+      "planted_grass": 256,
+      "weather": 32993,
+      "flags_1f5a": 32768,
+      "cows": []
+    },
+    "tries": [
+      {
+        "n": 1,
+        "pid": 2315811,
+        "log": "/tmp/f3_buy_probe2.log",
+        "result": "PROBE_BUY_FAIL nav",
+        "frame": 674,
+        "detail": "relocalized to tilemap 0x04 at (744,424); hop toward (696,890) push-faced tile (45,26); landed on tilemap 0x0C; no slot"
+      },
+      {
+        "n": 2,
+        "pid": 2330091,
+        "log": "/tmp/f3_buy_probe3.log",
+        "result": "ended while oscillating, shop already closed",
+        "shop_closed_frame": 8000,
+        "last_log_frame": 76000,
+        "detail": "tilemap 0x04 xy (670,830)/(670,834), hour 18, cows [], text 0x02f7; no slot and no probe JSON"
+      }
+    ]
+  },
+  "care": {
+    "happiness_injected": 40,
+    "base": "buy_cow_end",
+    "daytime_deltas": {
+      "talk": 1,
+      "brush": 3,
+      "milk": 0,
+      "feed": 0
+    },
+    "tries": [
+      {
+        "n": 1,
+        "pin": "LN_mgr-f3_whatif_care1",
+        "pid": 2337931,
+        "log": "/tmp/f3_care_probe_try1.log",
+        "result": "PROBE_CARE_FAIL sleep",
+        "talk_frame": 1480,
+        "talk_happiness": 41,
+        "brush_frame": 1702,
+        "brush_happiness": 44,
+        "chores_frame": 2184,
+        "fed_flags": "0x0008",
+        "end_frame": 47184,
+        "end_happiness": 44,
+        "end_day": 16,
+        "end_hour": 16,
+        "note": "barn tilemap 0x27 froze the clock; age 13 and map 45 in that log are a bad raw index"
+      },
+      {
+        "n": 2,
+        "pin": "LN_mgr-f3_whatif_care2",
+        "pid": 2352582,
+        "log": "/tmp/f3_care_probe2.log",
+        "json": "/tmp/f3_care_probe.json",
+        "result": "PROBE_CARE_OK",
+        "boot_frame": 0,
+        "boot_happiness": 40,
+        "boot_weather": 192,
+        "milk_frame": 961,
+        "milk_happiness": 40,
+        "fed_frame": 1316,
+        "fed_flags": "0x0008",
+        "talk_frame": 1610,
+        "talk_happiness": 41,
+        "brush_frame": 1832,
+        "brush_happiness": 44,
+        "chores_frame": 2369,
+        "pre_sleep_frame": 3000,
+        "pre_sleep_happiness": 44,
+        "night_frame": 3518,
+        "night_happiness": 36,
+        "night_delta": -8,
+        "morning_frame": 3565,
+        "morning_day": 17,
+        "morning_hour": 6,
+        "morning_happiness": 36,
+        "morning_status": 9,
+        "morning_flags": 0,
+        "morning_map": 39,
+        "morning_age": 0,
+        "hay_before": 179,
+        "hay_after": 178,
+        "wallet_display_unchanged": 3690,
+        "slot0_night_mask": "0x0001",
+        "note": "0x0008 is Cow_Feed_Flags word 3, so slot 0 took the unfed -8; weather 0x00C0 matched none of the outdoors penalty bits"
+      }
+    ]
+  }
+}

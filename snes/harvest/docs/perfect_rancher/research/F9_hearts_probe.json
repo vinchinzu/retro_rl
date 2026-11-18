@@ -1,0 +1,516 @@
+{
+  "bead": "PR-018",
+  "entry": "power-on",
+  "clean_talk": true,
+  "predicted": {
+    "ann_talk": 0,
+    "maria_talk": "0, or +8 if rng==1 and choice==0, or +2 if rng==1 and choice==1",
+    "maria_gift_item5": 5,
+    "ann_gift_item5": 6
+  },
+  "power_on": {
+    "frames": 5755,
+    "summary": {
+      "completed": true,
+      "frames": 5756,
+      "phase": "POWER_ON_SETTLE",
+      "reason": "Spring day 1 controllable after power-on",
+      "date": {
+        "year": 0,
+        "season": 0,
+        "day": 1,
+        "weekday": 1,
+        "hour": 7,
+        "minute": 0
+      },
+      "scene": {
+        "mode": "normal_map",
+        "location": "town",
+        "variant": "",
+        "tilemap": 4,
+        "tilemap_hex": "0x04",
+        "tilemap_name": "town",
+        "player": {
+          "pixel": [
+            712,
+            424
+          ],
+          "tile": [
+            44,
+            26
+          ]
+        },
+        "input_lock": 1,
+        "reason": "",
+        "event_code": 0,
+        "dialogue": {
+          "text_id": 243,
+          "text_id_hex": "0x00F3",
+          "text_mode": 2,
+          "menu_cursor": 0
+        },
+        "ending": {
+          "scene_index": 0,
+          "aux_scene_index": 0
+        }
+      },
+      "player_name": "AAAA",
+      "initial_state_loads": 0,
+      "ram_writes": 0
+    }
+  },
+  "nav_maria": {
+    "status": "success",
+    "frame": 6541,
+    "at": {
+      "frame": 6541,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 243,
+      "choice": 0,
+      "held": 0,
+      "old_held": 0,
+      "action": 0,
+      "tilemap": 27,
+      "x": 108,
+      "y": 411,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 0,
+      "input_lock": 1
+    }
+  },
+  "talk_maria": {
+    "status": "success",
+    "frames": 282,
+    "end_frame": 6823,
+    "before": {
+      "frame": 6541,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 243,
+      "choice": 0,
+      "held": 0,
+      "old_held": 0,
+      "action": 0,
+      "tilemap": 27,
+      "x": 108,
+      "y": 411,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 0,
+      "input_lock": 1
+    },
+    "after": {
+      "frame": 6823,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 249,
+      "choice": 0,
+      "held": 0,
+      "old_held": 0,
+      "action": 9,
+      "tilemap": 27,
+      "x": 108,
+      "y": 409,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 1
+    },
+    "changes": [
+      {
+        "frame": 6547,
+        "hearts": {
+          "maria": 0,
+          "ann": 0,
+          "nina": 0,
+          "ellen": 0,
+          "eve": 0
+        },
+        "happiness": 0,
+        "text_id": 249,
+        "choice": 0,
+        "held": 0,
+        "old_held": 0,
+        "action": 0,
+        "tilemap": 27,
+        "x": 108,
+        "y": 409,
+        "day": 1,
+        "season": 0,
+        "hour": 7,
+        "minute": 0,
+        "mask": 32,
+        "input_lock": 2
+      }
+    ],
+    "delta": 0,
+    "happiness_delta": 0,
+    "ram_writes": 0
+  },
+  "talk_maria_again": {
+    "frames": 700,
+    "end_frame": 7523,
+    "before": {
+      "frame": 6823,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 249,
+      "choice": 0,
+      "held": 0,
+      "old_held": 0,
+      "action": 9,
+      "tilemap": 27,
+      "x": 108,
+      "y": 409,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 1
+    },
+    "after": {
+      "frame": 7523,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 250,
+      "choice": 0,
+      "held": 0,
+      "old_held": 0,
+      "action": 0,
+      "tilemap": 27,
+      "x": 108,
+      "y": 405,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 2
+    },
+    "changes": [
+      {
+        "frame": 6829,
+        "hearts": {
+          "maria": 0,
+          "ann": 0,
+          "nina": 0,
+          "ellen": 0,
+          "eve": 0
+        },
+        "happiness": 0,
+        "text_id": 250,
+        "choice": 0,
+        "held": 0,
+        "old_held": 0,
+        "action": 0,
+        "tilemap": 27,
+        "x": 108,
+        "y": 407,
+        "day": 1,
+        "season": 0,
+        "hour": 7,
+        "minute": 0,
+        "mask": 32,
+        "input_lock": 2
+      }
+    ],
+    "delta": 0,
+    "happiness_delta": 0,
+    "ram_writes": 0
+  },
+  "nav_ann": {
+    "status": "failure",
+    "frame": 12523,
+    "at": {
+      "frame": 12523,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 250,
+      "choice": 0,
+      "held": 0,
+      "old_held": 0,
+      "action": 0,
+      "tilemap": 27,
+      "x": 91,
+      "y": 408,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 1
+    }
+  },
+  "blocked_reason": "nav_ann failure",
+  "talk_end_frame": 12523,
+  "plant_maria": {
+    "held": 5,
+    "old_held": 5,
+    "action": 5,
+    "indexes": {
+      "091D": 8259869,
+      "091E": 8259870,
+      "00D4": 8257748,
+      "00D5": 8257749
+    },
+    "ram_len": 147456
+  },
+  "gift_maria": {
+    "pin": "LN_mgr-hearts_whatif_maria_flower",
+    "action_set": 5,
+    "item": 5,
+    "status": "mashed",
+    "frames": 900,
+    "before": {
+      "frame": 0,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 249,
+      "choice": 0,
+      "held": 5,
+      "old_held": 5,
+      "action": 5,
+      "tilemap": 27,
+      "x": 108,
+      "y": 409,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 1
+    },
+    "after": {
+      "frame": 900,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 250,
+      "choice": 0,
+      "held": 5,
+      "old_held": 5,
+      "action": 0,
+      "tilemap": 27,
+      "x": 108,
+      "y": 405,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 2
+    },
+    "changes": [
+      {
+        "frame": 24,
+        "hearts": {
+          "maria": 0,
+          "ann": 0,
+          "nina": 0,
+          "ellen": 0,
+          "eve": 0
+        },
+        "happiness": 0,
+        "text_id": 250,
+        "choice": 0,
+        "held": 5,
+        "old_held": 5,
+        "action": 0,
+        "tilemap": 27,
+        "x": 108,
+        "y": 407,
+        "day": 1,
+        "season": 0,
+        "hour": 7,
+        "minute": 0,
+        "mask": 32,
+        "input_lock": 2
+      }
+    ],
+    "ram_writes_on_route": 0,
+    "whatif": true,
+    "route_evidence": false,
+    "delta": 0
+  },
+  "plant_maria_try2": {
+    "held": 5,
+    "old_held": 5,
+    "action": 4,
+    "indexes": {
+      "091D": 8259869,
+      "091E": 8259870,
+      "00D4": 8257748,
+      "00D5": 8257749
+    },
+    "ram_len": 147456
+  },
+  "gift_maria_try2": {
+    "pin": "LN_mgr-hearts_whatif_maria_carry",
+    "action_set": 4,
+    "item": 5,
+    "status": "mashed",
+    "frames": 900,
+    "before": {
+      "frame": 0,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 249,
+      "choice": 0,
+      "held": 5,
+      "old_held": 5,
+      "action": 4,
+      "tilemap": 27,
+      "x": 108,
+      "y": 409,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 1
+    },
+    "after": {
+      "frame": 900,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 250,
+      "choice": 0,
+      "held": 0,
+      "old_held": 5,
+      "action": 0,
+      "tilemap": 27,
+      "x": 108,
+      "y": 405,
+      "day": 1,
+      "season": 0,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "input_lock": 2
+    },
+    "changes": [
+      {
+        "frame": 22,
+        "hearts": {
+          "maria": 0,
+          "ann": 0,
+          "nina": 0,
+          "ellen": 0,
+          "eve": 0
+        },
+        "happiness": 0,
+        "text_id": 874,
+        "choice": 0,
+        "held": 5,
+        "old_held": 5,
+        "action": 0,
+        "tilemap": 27,
+        "x": 108,
+        "y": 409,
+        "day": 1,
+        "season": 0,
+        "hour": 7,
+        "minute": 0,
+        "mask": 32,
+        "input_lock": 2
+      },
+      {
+        "frame": 132,
+        "hearts": {
+          "maria": 0,
+          "ann": 0,
+          "nina": 0,
+          "ellen": 0,
+          "eve": 0
+        },
+        "happiness": 0,
+        "text_id": 250,
+        "choice": 0,
+        "held": 0,
+        "old_held": 5,
+        "action": 0,
+        "tilemap": 27,
+        "x": 108,
+        "y": 407,
+        "day": 1,
+        "season": 0,
+        "hour": 7,
+        "minute": 0,
+        "mask": 32,
+        "input_lock": 2
+      }
+    ],
+    "ram_writes_on_route": 0,
+    "whatif": true,
+    "route_evidence": false,
+    "delta": 0
+  }
+}

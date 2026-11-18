@@ -35,6 +35,19 @@ from retro_harness.actions import action_names
 
 
 class CarryToPondStandTests(unittest.TestCase):
+    def test_return_home_north_yard_uses_the_carry_corridor_immediately(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.planner.tasks.home_recover import PondTossTask
+
+        world = self._world(player=(16, 4))
+        world.ram[ADDR_HELD_ITEM] = 0x0D
+        task = PondTossTask()
+        task.reset(world)
+        task.step(world)
+        self.assertIsNone(task._nav)
+        self.assertEqual(task._carry._stand, EAST_SPUR_FA_STAND)
+        self.assertTrue(task._carry._navigator.path)
+
     def _world(self, player=(20, 20)):
         ram = _blank_ram()
         ram[ADDR_TILEMAP] = 0x00

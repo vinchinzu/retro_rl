@@ -107,6 +107,41 @@ def test_eastern_approach_replay_requires_mapped_point_and_loaded_screen(
 
 
 @pytest.mark.parametrize(
+    "offset, indoors, capacity, marker, source_ok, accepted",
+    [
+        (0, True, 32, 3, True, True),
+        (4, True, 32, 3, True, True),
+        (5, True, 32, 3, True, False),
+        (0, False, 32, 3, True, False),
+        (0, True, 24, 3, True, False),
+        (0, True, 32, 1, True, False),
+        (0, True, 32, 3, False, False),
+    ],
+)
+def test_eastern_entry_replay_requires_lobby_landing_and_heart(
+    offset: int, indoors: bool, capacity: int, marker: int,
+    source_ok: bool, accepted: bool,
+) -> None:
+    from alttp.room_map import load_room_map
+
+    door = load_room_map("screen_1e_eastern").door("eastern_door_to_0xc9")
+    assert door is not None and door.landing_xy is not None
+    x, y = door.landing_xy
+    final = {
+        "has_control": True, "indoors": indoors, "dark_world": False,
+        "room_base_id": 0xC9, "screen_id": 0, "link_x": x + offset, "link_y": y,
+        "has_fighter_sword": True, "has_lamp": True, "hp": 28,
+    }
+    story = {
+        "follower": 0, "progress": 2, "progress_flags": 0x15,
+        "max_hp": capacity, "map_indicator": marker,
+    }
+    assert audit.replay_goal_accepted(
+        {"through": "eastern_entry", "source_ok": source_ok}, final, story
+    ) is accepted
+
+
+@pytest.mark.parametrize(
     "source_ok, progress, flags, follower, submodule, accepted",
     [
         (True, 1, 0, 1, 0, False),  # Sanctuary arrival before Zelda/priest dialogue.

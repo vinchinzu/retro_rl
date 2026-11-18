@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 184,
+  "roomHex": "0xB8",
+  "name": "Eastern Palace big-key room",
+  "measured": "2026-10-30",
+  "sourceState": "pending earned B8 predecessor",
+  "points": [
+    {
+      "label": "switch_pot_stand",
+      "xy": [
+        4480,
+        5850
+      ],
+      "role": "approach",
+      "notes": "South-facing stand below room 184 switch pot tile (48,26)."
+    },
+    {
+      "label": "switch",
+      "xy": [
+        4480,
+        5832
+      ],
+      "role": "waypoint",
+      "notes": "Link foot position over secret switch tile (48,26)."
+    },
+    {
+      "label": "chest_stand",
+      "xy": [
+        4480,
+        5768
+      ],
+      "role": "approach",
+      "notes": "South-facing stand below revealed big-key chest tile (48,16)."
+    },
+    {
+      "label": "rail_south_east",
+      "xy": [
+        4544,
+        5980
+      ],
+      "role": "waypoint",
+      "notes": "East of central horizontal block."
+    },
+    {
+      "label": "rail_gap_east",
+      "xy": [
+        4544,
+        5936
+      ],
+      "role": "waypoint",
+      "notes": "East gap between horizontal block and vertical rails."
+    },
+    {
+      "label": "rail_gap_center",
+      "xy": [
+        4480,
+        5936
+      ],
+      "role": "waypoint",
+      "notes": "Center lane between vertical rails south of switch pot."
+    },
+    {
+      "label": "rail_north_east",
+      "xy": [
+        4552,
+        5816
+      ],
+      "role": "waypoint",
+      "notes": "Candidate bypass above eastern rail after clear; pending ROM walk."
+    }
+  ],
+  "doors": [],
+  "notes": [
+    "Source: local snesrev assets/dungeon/dungeon-184.yaml and Sprite_82_AntifairyCircle. Coordinates are candidates until the real predecessor is exercised; no natural-entry claim.",
+    "Required enemies:2Popo0x4E,2Stalfos0xA7,1greenEyegore0x83. Circular antifairies0x82 become0x15 only after the real room-clear predicate.",
+    "Switch secret beneath pot tile(48,26); heart pots at(44,32),(52,32); chest tile(48,16). Lift/throw and stepping the switch must precede chest A."
+  ]
+}

@@ -1,0 +1,353 @@
+{
+  "source_pin": "Y1_Summer_Pasture",
+  "evidence_kind": "native_fixture",
+  "imports": "/home/v/01_projects/11_games/retro_rl/snes/harvest/harvest/planner/multi_day_planner.py",
+  "emulator_frames": 8056,
+  "variants": [
+    {
+      "variant": "legacy_skill",
+      "frames": 4028,
+      "terminal": {
+        "status": "success",
+        "reason": "day plan complete"
+      },
+      "before": {
+        "power_berry_count": 0,
+        "max_stamina": 100,
+        "num_cows": 0,
+        "num_chickens": 0,
+        "money": 4090,
+        "planted_grass": 17,
+        "upgrade_flags": 0,
+        "family_event_flags": 0,
+        "romance_event_flags": 0,
+        "incubator_flags": 0,
+        "clock_request_flags": 1
+      },
+      "after": {
+        "power_berry_count": 0,
+        "max_stamina": 100,
+        "num_cows": 0,
+        "num_chickens": 1,
+        "money": 3090,
+        "planted_grass": 17,
+        "upgrade_flags": 0,
+        "family_event_flags": 0,
+        "romance_event_flags": 0,
+        "incubator_flags": 0,
+        "clock_request_flags": 1
+      },
+      "phase_results": [
+        {
+          "phase": "NAV_TO_ANIMAL_SHOP",
+          "kind": "multi_nav",
+          "status": "success",
+          "reason": "all waypoints reached",
+          "step": 1906,
+          "start_frame": 0,
+          "end_frame": 1905,
+          "frames": 1905
+        },
+        {
+          "phase": "BUY_COW_VENDOR",
+          "kind": "cow_purchase",
+          "status": "success",
+          "reason": "chicken 0->1 money 4090->3090",
+          "step": 2797,
+          "start_frame": 1905,
+          "end_frame": 2795,
+          "frames": 890
+        },
+        {
+          "phase": "EXIT_ANIMAL_SHOP",
+          "kind": "multi_nav",
+          "status": "success",
+          "reason": "all waypoints reached",
+          "step": 3107,
+          "start_frame": 2795,
+          "end_frame": 3104,
+          "frames": 309
+        },
+        {
+          "phase": "RETURN_FARM_AFTER_COW_PURCHASE",
+          "kind": "multi_nav",
+          "status": "success",
+          "reason": "all waypoints reached",
+          "step": 4032,
+          "start_frame": 3104,
+          "end_frame": 4028,
+          "frames": 924
+        }
+      ],
+      "arbitration": {
+        "order": [
+          "deadline",
+          "animals",
+          "crops",
+          "social",
+          "cover",
+          "hoeing"
+        ],
+        "blocks": [
+          {
+            "block": "deadline",
+            "lane": "day",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "animals",
+            "lane": "day",
+            "account": 10000,
+            "frames": 2123,
+            "phases": [
+              "BUY_COW_VENDOR",
+              "EXIT_ANIMAL_SHOP",
+              "RETURN_FARM_AFTER_COW_PURCHASE"
+            ],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "crops",
+            "lane": "day",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "social",
+            "lane": "day",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "cover",
+            "lane": "post_18",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "hoeing",
+            "lane": "post_18",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          }
+        ],
+        "frame_source": "native_frame_clock"
+      },
+      "audit": {
+        "ram_writes": 0,
+        "mid_run_loads": 0,
+        "assists": {},
+        "runtime_observation_class": null,
+        "intervention_class": null,
+        "start_identity_digest": null,
+        "policy_identity_digest": null,
+        "audit_capabilities": {
+          "schema_version": 1,
+          "provider": "harvest.pr023.dispatch",
+          "observes_ram_writes": true,
+          "observes_mid_run_loads": true,
+          "observes_assists": true
+        }
+      }
+    },
+    {
+      "variant": "milestone_skill",
+      "frames": 4028,
+      "terminal": {
+        "status": "success",
+        "reason": "day plan complete"
+      },
+      "before": {
+        "power_berry_count": 0,
+        "max_stamina": 100,
+        "num_cows": 0,
+        "num_chickens": 0,
+        "money": 4090,
+        "planted_grass": 17,
+        "upgrade_flags": 0,
+        "family_event_flags": 0,
+        "romance_event_flags": 0,
+        "incubator_flags": 0,
+        "clock_request_flags": 1
+      },
+      "after": {
+        "power_berry_count": 0,
+        "max_stamina": 100,
+        "num_cows": 0,
+        "num_chickens": 1,
+        "money": 3090,
+        "planted_grass": 17,
+        "upgrade_flags": 0,
+        "family_event_flags": 0,
+        "romance_event_flags": 0,
+        "incubator_flags": 0,
+        "clock_request_flags": 1
+      },
+      "phase_results": [
+        {
+          "phase": "MILESTONE_HEN_NAV_TO_ANIMAL_SHOP",
+          "kind": "multi_nav",
+          "status": "success",
+          "reason": "all waypoints reached",
+          "step": 1906,
+          "start_frame": 0,
+          "end_frame": 1905,
+          "frames": 1905
+        },
+        {
+          "phase": "MILESTONE_HEN_BUY_COW_VENDOR",
+          "kind": "cow_purchase",
+          "status": "success",
+          "reason": "chicken 0->1 money 4090->3090",
+          "step": 2797,
+          "start_frame": 1905,
+          "end_frame": 2795,
+          "frames": 890,
+          "intent_id": "hen",
+          "receipt": {
+            "before": {
+              "power_berry_count": 0,
+              "max_stamina": 100,
+              "num_cows": 0,
+              "num_chickens": 0,
+              "money": 4090,
+              "planted_grass": 17,
+              "upgrade_flags": 0,
+              "family_event_flags": 0,
+              "romance_event_flags": 0,
+              "incubator_flags": 0,
+              "clock_request_flags": 1
+            },
+            "after": {
+              "power_berry_count": 0,
+              "max_stamina": 100,
+              "num_cows": 0,
+              "num_chickens": 1,
+              "money": 3090,
+              "planted_grass": 17,
+              "upgrade_flags": 0,
+              "family_event_flags": 0,
+              "romance_event_flags": 0,
+              "incubator_flags": 0,
+              "clock_request_flags": 1
+            },
+            "verified": true
+          }
+        },
+        {
+          "phase": "MILESTONE_HEN_EXIT_ANIMAL_SHOP",
+          "kind": "multi_nav",
+          "status": "success",
+          "reason": "all waypoints reached",
+          "step": 3107,
+          "start_frame": 2795,
+          "end_frame": 3104,
+          "frames": 309
+        },
+        {
+          "phase": "MILESTONE_HEN_RETURN_FARM_AFTER_COW_PURCHASE",
+          "kind": "multi_nav",
+          "status": "success",
+          "reason": "all waypoints reached",
+          "step": 4032,
+          "start_frame": 3104,
+          "end_frame": 4028,
+          "frames": 924
+        }
+      ],
+      "arbitration": {
+        "order": [
+          "deadline",
+          "animals",
+          "crops",
+          "social",
+          "cover",
+          "hoeing"
+        ],
+        "blocks": [
+          {
+            "block": "deadline",
+            "lane": "day",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "animals",
+            "lane": "day",
+            "account": 17000,
+            "frames": 4028,
+            "phases": [
+              "MILESTONE_HEN_NAV_TO_ANIMAL_SHOP",
+              "MILESTONE_HEN_BUY_COW_VENDOR",
+              "MILESTONE_HEN_EXIT_ANIMAL_SHOP",
+              "MILESTONE_HEN_RETURN_FARM_AFTER_COW_PURCHASE"
+            ],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "crops",
+            "lane": "day",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "social",
+            "lane": "day",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "cover",
+            "lane": "post_18",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          },
+          {
+            "block": "hoeing",
+            "lane": "post_18",
+            "account": 0,
+            "frames": 0,
+            "phases": [],
+            "hot_spring_refills": 0
+          }
+        ],
+        "frame_source": "native_frame_clock"
+      },
+      "audit": {
+        "ram_writes": 0,
+        "mid_run_loads": 0,
+        "assists": {},
+        "runtime_observation_class": null,
+        "intervention_class": null,
+        "start_identity_digest": null,
+        "policy_identity_digest": null,
+        "audit_capabilities": {
+          "schema_version": 1,
+          "provider": "harvest.pr023.dispatch",
+          "observes_ram_writes": true,
+          "observes_mid_run_loads": true,
+          "observes_assists": true
+        }
+      }
+    }
+  ]
+}

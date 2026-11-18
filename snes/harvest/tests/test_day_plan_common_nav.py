@@ -91,6 +91,130 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
                 break
         self.assertTrue(yielded, "centering never yielded after left/right flips")
 
+    def test_stalled_centering_against_a_solid_yields_to_the_path(self) -> None:
+        """Y1 Fall D12 Harvest Festival (score_policy_final): the farmer stood 7 px above the tile centre
+        with a solid below, so the vertical centring before a sideways step could never finish.
+
+        Every pixel-stuck replan reset ``stasis`` to 0, which re-armed centring (it yields at stasis 30,
+        but the 48-frame replan always came first), and four replans failed the walk. Centring that does
+        not move the farmer for ``CENTER_STALL_FRAMES`` frames must give way; centring that works must not.
+        """
+        from harvest.tasks.nav import CENTER_STALL_FRAMES
+
+        from harvest.core.ram_catalog import live_wram_base
+
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[0x0025 + live_wram_base(ram)] = 15  # faded in: the pad is live
+        navigator = Navigator(Pathfinder(TileScanner()))
+        navigator.center_stall_limit = CENTER_STALL_FRAMES
+        set_player_pos(ram, 13 * 16 + 8, 8 * 16 + 1)  # 7 px above centre, cannot move down
+        navigator.update(ram)
+        navigator.path = [(14, 8)]  # a sideways step wants Y centred first
+
+        for _ in range(CENTER_STALL_FRAMES + 1):  # the first frame only records the pixel
+            action = navigator.follow_path(ram)
+            self.assertEqual(int(action[5]), 1)  # down toward the centre
+            self.assertEqual(int(action[7]), 0)
+            navigator.update(ram)  # same pixel: the solid held the farmer
+            navigator.stasis = 0  # replans reset it, which is what kept the old 30-frame valve from ever firing
+        walking = navigator.follow_path(ram)
+        self.assertEqual(int(walking[7]), 1)  # right, no centring
+        self.assertEqual(int(walking[5]), 0)
+
+        navigator.update(ram)
+        set_player_pos(ram, 14 * 16 + 8, 8 * 16 + 1)  # reached the next tile: centring is armed again
+        navigator.update(ram)
+        navigator.path = [(15, 8)]
+        again = navigator.follow_path(ram)
+        self.assertEqual(int(again[5]), 1)
+
+    def test_a_dead_pad_does_not_count_as_stalled_centering(self) -> None:
+        """The farm's fade-in (WRAM $0025 below 15) and any non-free player state ignore the pad for ~70 frames.
+
+        compose3 (first stall detector) counted those frames, skipped centring before the farmer reached the
+        one-tile house walkway, and died on Y1 Spring D2 with ``ensure_hoe ... pixel_stuck (131,415)``.
+        """
+        from harvest.core.ram_catalog import live_wram_base
+        from harvest.tasks.nav import CENTER_STALL_FRAMES
+
+        for label, poke in (("fade-in", lambda ram: ram.__setitem__(0x0025 + live_wram_base(ram), 7)),
+                            ("tool animation", lambda ram: ram.__setitem__(0x00D2 + live_wram_base(ram), 4))):
+            ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+            ram[ADDR_INPUT_LOCK] = 1
+            poke(ram)
+            navigator = Navigator(Pathfinder(TileScanner()))
+            navigator.center_stall_limit = CENTER_STALL_FRAMES
+            set_player_pos(ram, 13 * 16 + 8, 8 * 16 + 1)
+            navigator.update(ram)
+            navigator.path = [(14, 8)]
+            for step in range(CENTER_STALL_FRAMES * 3):
+                action = navigator.follow_path(ram)
+                self.assertEqual(int(action[7]), 0, f"{label}: gave up centring at step {step} while the pad was dead")
+                navigator.update(ram)
+                navigator.stasis = 0
+
+    def test_stall_detector_is_off_unless_a_walk_asks_for_it(self) -> None:
+        """compose4 died on Y1 Spring D2 with the detector on for every walk. Default navigators keep the
+        original behaviour: only ``stasis`` yields centring, and replans reset it."""
+        from harvest.core.ram_catalog import live_wram_base
+        from harvest.tasks.nav import CENTER_STALL_FRAMES
+
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[0x0025 + live_wram_base(ram)] = 15
+        navigator = Navigator(Pathfinder(TileScanner()))
+        self.assertIsNone(navigator.center_stall_limit)
+        set_player_pos(ram, 13 * 16 + 8, 8 * 16 + 1)
+        navigator.update(ram)
+        navigator.path = [(14, 8)]
+        for step in range(CENTER_STALL_FRAMES * 3):
+            action = navigator.follow_path(ram)
+            self.assertEqual(int(action[5]), 1, f"default navigator stopped centring at step {step}")
+            navigator.update(ram)
+            navigator.stasis = 0
+
+    def test_multinav_hands_the_stall_limit_to_every_navigator_it_builds(self) -> None:
+        from harvest.tasks.nav import CENTER_STALL_FRAMES
+
+        plain = MultiMapNavTask(waypoints=[Waypoint(tilemap=0x00, target_px=(136, 120), radius=8)])
+        self.assertIsNone(plain._navigator.center_stall_limit)
+        task = MultiMapNavTask(waypoints=[Waypoint(tilemap=0x00, target_px=(136, 120), radius=8)],
+                               center_stall_frames=CENTER_STALL_FRAMES)
+        self.assertEqual(task._navigator.center_stall_limit, CENTER_STALL_FRAMES)
+        task._rebuild_pathfinder(0x10)  # every map change builds a new navigator
+        self.assertEqual(task._navigator.center_stall_limit, CENTER_STALL_FRAMES)
+
+    def test_cover_walk_that_runs_out_of_time_ends_where_the_farmer_stands(self) -> None:
+        """Y3 Summer: the route to the first cover stand hit a bank every evening for 12 days and forfeited the sowing."""
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        world = type("W", (), {"ram": ram})()
+        wp = [Waypoint(tilemap=0x00, target_px=(136, 120), radius=8)]
+        hard = MultiMapNavTask(waypoints=list(wp), timeout=0)
+        soft = MultiMapNavTask(waypoints=list(wp), timeout=0, soft_timeout=True)
+        for task in (hard, soft):
+            task.reset(world)
+        self.assertEqual(hard.step(world).status, TaskStatus.FAILURE)
+        result = soft.step(world)
+        self.assertEqual(result.status, TaskStatus.SUCCESS)
+        self.assertIn("soft", result.reason)
+
+    def test_centering_that_moves_the_farmer_never_counts_as_a_stall(self) -> None:
+        from harvest.tasks.nav import CENTER_STALL_FRAMES
+
+        ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
+        ram[ADDR_INPUT_LOCK] = 1
+        navigator = Navigator(Pathfinder(TileScanner()))
+        navigator.center_stall_limit = CENTER_STALL_FRAMES
+        navigator.path = [(14, 8)]
+        for step in range(CENTER_STALL_FRAMES * 2):  # twice the stall budget, pixel always changing
+            set_player_pos(ram, 13 * 16 + 8, 8 * 16 + (1 + step % 3))  # creeping, never the same pixel twice in a row
+            navigator.update(ram)
+            navigator.stasis = 0  # replans reset it
+            action = navigator.follow_path(ram)
+            self.assertIsNotNone(action)
+            self.assertEqual(int(action[7]), 0, f"yielded to the path at step {step} while centring was moving")
+
     def test_multinav_fails_closed_on_pixel_stuck_leftright(self) -> None:
         ram = make_navigation_ram(current_tile=(13, 8), blocked_tile=(63, 63))
         world = SimpleNamespace(ram=ram, info={}, obs=None, frame=0)
@@ -252,6 +376,51 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
 
         self.assertNotIn("yield to sprite", result.reason or "")
 
+    def test_a_parked_town_sprite_gets_a_padded_ring(self) -> None:
+        """Y2 Spring D16 (compose7): a villager parked in front of the animal shop sealed the walk home.
+
+        Ring-padding only existed on the mountain map, so on the town map BFS routed tight against the villager
+        and its hit box (+-12 px) spilled onto the neighbouring tile: four pixel-stuck replans failed the leg and the
+        rescue chain ended inside the shop. Once a sprite is judged parked (the yield timed out), pad its ring.
+        """
+        from unittest import mock
+
+        sprite = "harvest.planner.tasks.nav_corridor.entity_tiles"
+        task, world = self._pinned_nav(_entity_tiles={(8, 7)})
+        world.ram[ADDR_TILEMAP] = 0x04
+        with mock.patch(sprite, return_value={(8, 7)}):
+            task._sync_entity_blocks(world.ram)
+        self.assertFalse(getattr(task, "_pad_parked", False))
+        self.assertEqual(task._pathfinder.no_go_tiles & {(8, 7), (9, 7), (7, 7)}, {(8, 7)},
+                         "a passing sprite is only waited for, never padded")
+
+        task, world = self._pinned_nav(_entity_tiles={(8, 7)}, _yield_frames=90)
+        world.ram[ADDR_TILEMAP] = 0x04
+        task.waypoints = [wp._replace(tilemap=0x04) for wp in task.waypoints]
+        task.step(world)
+        self.assertTrue(task._pad_parked)
+        with mock.patch(sprite, return_value={(8, 7)}):
+            task._sync_entity_blocks(world.ram)
+        ring = {(8 + dx, 7 + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)} - {task._navigator.current_tile}
+        self.assertTrue(ring <= task._pathfinder.no_go_tiles, ring - task._pathfinder.no_go_tiles)
+        task._advance_waypoint()
+        self.assertFalse(task._pad_parked)
+
+    def test_parked_farm_dog_does_not_seal_the_approach_target(self):
+        from unittest import mock
+        ram = self._path_map_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        task, world = self._crossroads_nav(ram)
+        task._navigator.update(ram)
+        task._pad_parked = True
+        # As on D1: the target is beside the dog's tile. A padded ring
+        # makes that ground unreachable even though a path skirts the dog.
+        with mock.patch("harvest.planner.tasks.nav_corridor.entity_tiles", return_value={(8, 7)}):
+            task._sync_entity_blocks(ram)
+        path = task._pathfinder.find_path(ram, (8, 6), (8, 8))
+        self.assertTrue(path)
+        self.assertNotIn((8, 7), path)
+
     def test_navigator_clears_path_for_known_nonwalkable_tile(self) -> None:
         ram = make_navigation_ram(blocked_tile=(14, 8), blocked_id=0xA6)
         navigator = Navigator(Pathfinder(TileScanner()))
@@ -305,6 +474,7 @@ class DayPlanSequenceCommonNavTests(unittest.TestCase):
         origin = make_transition_world(0x28, current_tile=(8, 12))
         target = make_transition_world(0x00, current_tile=(8, 13))
         set_player_pos(target.ram, 456, 360)
+        target.ram[0x0025] = 15  # farm faded in
         task = DirectionalTransitionTask(
             direction="down",
             origin_tilemap=0x28,

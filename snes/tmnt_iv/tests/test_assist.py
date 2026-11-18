@@ -19,12 +19,9 @@ from tmnt_iv.paths import (
     clean_artifact_stem,
     default_full_run_paths,
 )
-from tmnt_iv.scripts.record_full_hard_run import (
-    RunMetrics,
-    _FREEZE_ABORT_FRAMES,
-    _build_parser,
-    resolve_cli_paths,
-)
+from tmnt_iv.run.freeze import FREEZE_ABORT_FRAMES as _FREEZE_ABORT_FRAMES
+from tmnt_iv.run.metrics import RunMetrics
+from tmnt_iv.scripts.run import _parser
 
 
 class _FakeEnv:
@@ -109,29 +106,16 @@ def test_clean_stems_never_overwrite_assisted() -> None:
     assert c_dry.name != ASSISTED_FULL_RUN_DRY_REPORT
 
 
-def test_clean_cli_isolates_artifacts() -> None:
-    parser = _build_parser()
-    args = parser.parse_args(["--clean", "--dry-run"])
-    emergency_hp = not (args.clean or args.no_emergency_hp)
-    iframe_hold = not (args.clean or args.no_iframe_hold)
-    video, report = resolve_cli_paths(
-        output=None,
-        report=None,
-        dry_run=True,
-        clean_artifacts=not emergency_hp or not iframe_hold,
-    )
-    assert emergency_hp is False
-    assert iframe_hold is False
+def test_cli_defaults_to_clean_lookahead_and_isolates_artifacts() -> None:
+    args = _parser().parse_args([])
+    assert args.assisted is False and args.no_lookahead is False
+    assert args.entry == "NONE" and args.until_stage is None
+    video, report = default_full_run_paths(clean=True)
     assert video.name == f"{CLEAN_FULL_RUN_STEM}.mp4"
-    assert report.name == f"{CLEAN_FULL_RUN_STEM}_dry_run.json"
-
-    default = parser.parse_args([])
-    assert default.clean is False
-    d_video, d_report = resolve_cli_paths(
-        output=None, report=None, dry_run=False, clean_artifacts=False
-    )
-    assert d_video.name == f"{ASSISTED_FULL_RUN_STEM}.mp4"
-    assert d_report.name == f"{ASSISTED_FULL_RUN_STEM}.json"
+    assert report.name == f"{CLEAN_FULL_RUN_STEM}.json"
+    a_video, a_report = default_full_run_paths()
+    assert a_video.name == f"{ASSISTED_FULL_RUN_STEM}.mp4"
+    assert report != a_report
 
 
 def test_freeze_abort_is_above_pin_dumpster_and_rail() -> None:

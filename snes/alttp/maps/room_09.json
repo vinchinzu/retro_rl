@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 9,
+  "roomHex": "0x09",
+  "name": "Palace of Darkness shooter room",
+  "measured": "2026-10-18",
+  "sourceState": "Whatif_PalaceOfDarknessEntry_parallel",
+  "points": [],
+  "doors": [
+    {
+      "label": "stair_back_to_0x4a",
+      "direction": "UP",
+      "toRoom": 74,
+      "toRoomHex": "0x4A",
+      "role": "backtrack",
+      "notes": "No door slots. UP from the stair landing (4985,54) returns to room 0x4A at (5496,2100). Floor byte 0xFF. Door-only skeleton; approach xy omitted."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0xC5", "xy": [4720, 128], "notes": "medusa hp 0"},
+    {"type": "0xC5", "xy": [4736, 128], "notes": "medusa hp 0"},
+    {"type": "0x15", "xy": [4973, 173], "notes": "antifairy hp 255"}
+  ],
+  "notes": [
+    "Reached from room 0x4A east 0x5E stairs. Not a saved Scan pin.",
+    "Chest 0 KeyD1 z3=0xEA5B tile (24,22) layer 0 opened=0. open_free_chests: no path from the landing.",
+    "Rays from (4985,54) stayed in 0x09: DOWN (4985,192), LEFT (4904,88), RIGHT (5064,88). Keys stayed 1 (the poke).",
+    "Some other 0x5E cells had no layer-0 path from the landing. Isolated development. Not natural."
+  ]
+}

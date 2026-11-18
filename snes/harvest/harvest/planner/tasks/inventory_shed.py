@@ -246,25 +246,13 @@ class ShedFetchItemTask(Task):
         if result.status == TaskStatus.RUNNING:
             return result
 
-        if self._phase == "leave_door":
-            return TaskResult(
-                status=TaskStatus.SUCCESS,
-                reason=f"tool 0x{self.item_id:02X} ready",
-            )
-
-        if result.status == TaskStatus.FAILURE:
+        if result.status in {TaskStatus.FAILURE, TaskStatus.BLOCKED}:
             tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
             if self._phase in {"route", "nav", "enter"} and tilemap == SHED_TILEMAP:
                 spec = self._spec()
                 if spec is not None:
                     return self._activate("inside", self._inside_task(spec), world)
             reason = result.reason or "unknown"
-            if self._phase == "exit_after_ready":
-                # Item is equipped; leave farm even if exit path was messy.
-                return TaskResult(
-                    status=TaskStatus.SUCCESS,
-                    reason=f"tool 0x{self.item_id:02X} ready; shed exit failed: {reason}",
-                )
             if self._phase == "exit_after_failure":
                 return TaskResult(
                     status=TaskStatus.FAILURE,
@@ -283,7 +271,7 @@ class ShedFetchItemTask(Task):
             return TaskResult(status=TaskStatus.FAILURE, reason=f"{self._phase} failed: {reason}")
 
         # Sub-task succeeded.
-        if self._phase == "exit_after_ready":
+        if self._phase in {"exit_after_ready", "leave_door"}:
             return self._finish_ready(world, f"tool 0x{self.item_id:02X} ready")
 
         if self._phase == "exit_after_failure":
@@ -347,6 +335,10 @@ class EnsureCarryToolTask(Task):
     _fetch: Optional[ShedFetchItemTask] = field(default=None, init=False)
 
     def reset(self, world: WorldState) -> None:
+        from harvest.tasks.buy_seeds import tool_owned
+
+        if self.tool_id == int(Tool.WATERING_CAN) and tool_owned(world.ram, int(Tool.SPRINKLER)):
+            self.tool_id = int(Tool.SPRINKLER)  # it took the can's shelf slot: the can no longer exists
         self._fetch = ShedFetchItemTask(
             name=f"shed_fetch_0x{self.tool_id:02X}",
             item_id=self.tool_id,

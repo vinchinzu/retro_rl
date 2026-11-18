@@ -11,7 +11,12 @@
     {"label": "south_hall", "xy": [5880, 7048], "role": "waypoint", "notes": "North of spawn in the south corridor"},
     {"label": "mid_hall", "xy": [5880, 6968], "role": "waypoint", "notes": "North end of south corridor; water to the east"},
     {"label": "east_south", "xy": [5940, 7104], "role": "waypoint", "notes": "East along south corridor from spawn"},
-    {"label": "conveyor", "xy": [5940, 6865], "role": "waypoint", "notes": "East conveyor toward 0xDC; RIGHT from here still 0xDB this sitting"}
+    {"label": "conveyor", "xy": [5940, 6865], "role": "waypoint", "notes": "Old east approach. room_engine try 1 stuck at (5928,7072) before this point. Not a 0x68 conveyor."},
+    {"label": "north_band", "xy": [5880, 7072], "role": "waypoint", "notes": "Live floor corner local (248,416) on the way to the northeast pots"},
+    {"label": "east_band", "xy": [5952, 7072], "role": "waypoint", "notes": "Live floor corner local (320,416)"},
+    {"label": "walkway", "xy": [5952, 6720], "role": "waypoint", "notes": "North walkway local (320,64), west of the 0x71 pots"},
+    {"label": "pot_stand", "xy": [6064, 6720], "role": "approach", "notes": "RIGHT stuck here on ThievesTownEntry. On Whatif_ThievesTownEntry_lift a facing-right lift cleared cols 56-57 rows 8-9 from 0x71 to 0x00."},
+    {"label": "shutter_bonk", "xy": [6088, 6903], "role": "approach", "notes": "After that lift, path to local (464,248) bonked here dir 6 hp 56. Still room 0xDB. East shutter anchor tile (58,31)."}
   ],
   "doors": [
     {
@@ -33,13 +38,13 @@
       "direction": "RIGHT",
       "toRoom": 220,
       "toRoomHex": "0xDC",
-      "approachXy": [5940, 6865],
+      "approachXy": [6064, 6720],
       "landingXy": null,
       "role": "primary",
-      "path": ["east_south", "conveyor"],
+      "path": ["north_band", "east_band", "walkway", "pot_stand"],
       "pathTolerances": {"default": 12},
-      "pushFrames": 300,
-      "notes": "Huge-room east quadrant (compass). Conveyor approach measured; RIGHT from (5940,6865) still 0xDB. Not isolated."
+      "pushFrames": 90,
+      "notes": "Shutter to 0xDC, slot pos $0FF4 anchor (58,31). 0x71 at (56,8) lifts only when ability bit 0x40 is set. After that lift, RIGHT still bonks at (6088,6903) in 0xDB. Not isolated 2026-09-30."
     }
   ],
   "clearPolicy": {
@@ -64,7 +69,7 @@
   "notes": [
     "Confirmed $A0=0xDB on ThievesTownEntry (which_entrance=$010E=0x34, $040C=0x16).",
     "0xDB is the SW quadrant of the huge lobby; 0xDC east, 0xCB north. Map + BK chests are in 0xDB.",
-    "South door is overworld backtrack (screen 0x58). First indoor hop east_to_0xDC is not isolated (conveyor / pots / hostiles).",
+    "South door is overworld backtrack (screen 0x58). east_to_0xDC is not isolated. Layer 0 has no 0x68-0x6B conveyor. Whatif_ThievesTownEntry_lift cleared the northeast 0x71 and still bonked at (6088,6903).",
     "Pin is isolated/state-load via Module_PreDungeon. $0FFF stays 0 (no DW overworld walk).",
     "Authority: maps/room_db.json (load via alttp.room_sense.load_room_map)."
   ]

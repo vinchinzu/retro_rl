@@ -1,0 +1,9 @@
+{
+  "north_steps": 0,
+  "end_x": -1,
+  "end_y": -1,
+  "illegal_on_path": 0,
+  "exposed_poses": 0,
+  "path": [],
+  "note": "End pose (-1, -1). No 0x1E cell touches end pose (-1, -1). Start (4896, 5976) is the legal 8px-phase pose within 8px of (4896, 5977) at room_origin (4608, 5632) and is not exposed. Masked 22 stairs-kind bytes to legend wall 0x01. tile_kind unknown is not a stair. Byte 0x1E is not on the path."
+}

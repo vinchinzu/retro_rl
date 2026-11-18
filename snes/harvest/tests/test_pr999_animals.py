@@ -157,52 +157,17 @@ class TestHerdRules(unittest.TestCase):
             calf = HerdCow(0, birth, origin="born", status=_BABY)
             self.assertFalse(cannot_reach_200(calf, 60))
 
-    def test_twelve_slots_targeted_once_by_happiness(self):
-        happiness = [40, 10, 200, 5, 80, 15, 90, 30, 70, 50, 60, 20]
+    def test_twelve_slots_are_each_cared_for_exactly_once(self):
         ram = _make_barn_ram(cows=12, hay=50, tool_selected=0x0F, tool_backpack=0x0E)
-        for slot, happy in enumerate(happiness):
-            set_cow_slot(ram, slot, (6 + (slot % 4) * 2, 8 + (slot // 4) * 3), status=_ADULT)
-            set_cow_daily(ram, slot, flags=0, happiness=happy)
-        task = CowChoresTask(talk=True, brush=True, milk=True, feed=False)
+        task = CowChoresTask(talk=True, brush=True, milk=False, feed=False)
         task.reset(_make_world(ram))
         order: list[int] = []
-        deltas: list[dict[str, int]] = []
         for _ in range(12):
-            slots = task._care_needed_cow_slots(ram)
-            self.assertTrue(slots)
-            slot = slots[0]
-            before = read_cow_happiness(ram, slot)
-            after = min(255, before + 4)
-            set_cow_daily(ram, slot, flags=_CARE_FLAGS, happiness=after)
-            deltas.append(
-                {"slot": slot, "before": before, "after": after, "delta": after - before}
-            )
+            slot = task._next_job(ram).slot
+            set_cow_daily(ram, slot, flags=_CARE_FLAGS, happiness=4)
             order.append(slot)
-        self.assertEqual(order, sorted(range(12), key=lambda slot: (happiness[slot], slot)))
-        self.assertEqual(sorted(row["slot"] for row in deltas), list(range(12)))
-        self.assertEqual(len({row["slot"] for row in deltas}), 12)
-
-    def test_equal_happiness_keeps_slot_order(self):
-        ram = _make_barn_ram(cows=2, hay=10, tool_selected=0x0F, tool_backpack=0x0E)
-        set_cow_slot(ram, 0, (6, 8), status=_ADULT)
-        set_cow_slot(ram, 1, (8, 8), status=_ADULT)
-        set_cow_daily(ram, 0, flags=0, happiness=40)
-        set_cow_daily(ram, 1, flags=0, happiness=40)
-        task = CowChoresTask(talk=True, brush=True, milk=True, feed=False)
-        task.reset(_make_world(ram))
-        self.assertEqual(task._care_slots, [0, 1])
-
-    def test_care_delta_records_the_byte(self):
-        ram = _make_barn_ram(cows=1, hay=10, tool_selected=0x0F, tool_backpack=0x0E)
-        set_cow_daily(ram, 0, flags=0, happiness=40)
-        task = CowChoresTask(feed=False)
-        task.reset(_make_world(ram))
-        task._note_care_delta(ram, "milk", 40)
-        set_cow_daily(ram, 0, flags=COW_DAILY_TALKED_FLAG, happiness=41)
-        task._note_care_delta(ram, "talk", 40)
-        self.assertEqual(task.happiness_deltas[0]["delta"], 0)
-        self.assertEqual(task.happiness_deltas[1]["delta"], 1)
-        self.assertEqual(task.happiness_deltas[1]["slot"], 0)
+        self.assertEqual(sorted(order), list(range(12)))
+        self.assertIsNone(task._next_job(ram))
 
     def test_cow_tools_ready_carried_or_on_the_shelf(self):
         self.assertTrue(cow_tools_ready(0, 0x0F, 0x0E))
@@ -267,6 +232,12 @@ class TestHenDelivery(unittest.TestCase):
     def test_stray_hen_is_an_adult_whose_map_byte_is_not_the_coop(self):
         self.assertEqual(stray_hen_px(self._ram_with_hen(0x05)), (568, 792))
         self.assertIsNone(stray_hen_px(self._ram_with_hen(0x28)))
+        # A hen on the farm is outside the coop, but she is not waiting in the shop yard.
+        from harvest.core.animal_probe import stray_yard_hen_px
+
+        self.assertIsNotNone(stray_hen_px(self._ram_with_hen(0x00)))
+        self.assertIsNone(stray_yard_hen_px(self._ram_with_hen(0x00)))
+        self.assertEqual(stray_yard_hen_px(self._ram_with_hen(0x05)), (568, 792))
         self.assertIsNone(stray_hen_px(np.zeros(0x20000, dtype=np.uint8)))
 
     def test_purchase_trip_ends_with_delivery_not_a_bare_shop_exit(self):

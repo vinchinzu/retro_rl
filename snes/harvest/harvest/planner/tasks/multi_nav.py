@@ -7,6 +7,7 @@ the waypoint FSM and A/B-loop loader.
 
 from __future__ import annotations
 
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from typing import List, Optional, Set, Tuple
@@ -21,6 +22,7 @@ from harvest.tasks.nav import (
 )
 from harvest.core.ram_catalog import ram_index, read_ram_u16
 from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.core.task_progress import NAV_PROGRESS_PX, NAV_WAYPOINT_NO_PROGRESS_FRAMES, NAV_WEDGE_FRAMES, MotionBox
 from harvest.tasks.farm_ops import TileScanner
 
 from harvest.maps.map_config import (
@@ -34,6 +36,10 @@ from harvest.tasks.primitives import (
     press_button_sequence,
 )
 from harvest.planner.day_plan_status import MOUNTAIN_TILEMAP_IDS, tilemaps_match
+
+# Off by default: the walk-out of the fishing camp changes Year-1 frames from Spring D4 (the fish berry trip), which re-rolls the
+# whole campaign (kdet_20261117: 4 power berries at Winter D1 instead of 6, summit gate shut, wedged). Opt in with HARVEST_CAMP_ESCAPE=1.
+CAMP_ESCAPE = os.environ.get("HARVEST_CAMP_ESCAPE", "0") == "1"
 from harvest.planner.tasks.nav_corridor import (
     ENTITY_SYNC_PERIOD,
     CloseRangeLatch,
@@ -79,6 +85,25 @@ _SETTLE_COORD_HOLDS = (
     (MOUNTAIN_TILEMAP_IDS, "y", 200, "settle: mountain coords stale"),
 )
 
+def _log_exit_timeout_context(ram) -> None:
+    """One diagnostic line for a door that never opened: the clock, the farmer and every sprite within 6 tiles."""
+    try:
+        from harvest.core.npc_catalog import nearest_game_objects
+        from harvest.core.ram_catalog import read_ram_value
+
+        near = [
+            f"{row['label']}@{tuple(row['tile'])}"
+            for row in nearest_game_objects(ram, limit=12)
+            if row["distance_tiles"] <= 6
+        ]
+        print(
+            f"[MULTI_NAV] exit timeout context hour={read_ram_value(ram, 'hour')} minute={read_ram_value(ram, 'minute')} "
+            f"item={read_ram_value(ram, 'item_on_hand')} near={near}"
+        )
+    except Exception as exc:  # diagnostics must never change the failure they report
+        print(f"[MULTI_NAV] exit timeout context unavailable: {exc}")
+
+
 @dataclass
 class MultiMapNavTask(NavCorridor, Task):
     """Navigate a sequence of waypoints across multiple maps using BFS.
@@ -100,6 +125,13 @@ class MultiMapNavTask(NavCorridor, Task):
     auto_slice: bool = False
     # Static no-go tiles this route has measured as walkable (``Pathfinder.allow_tiles``).
     allow_tiles: frozenset = frozenset()
+    # Opt-in: a centring step that leaves the farmer on one pixel this many live-pad frames gives way to the path
+    # (``Navigator.center_stall_limit``). Off by default so every other walk keeps its exact timeline.
+    center_stall_frames: Optional[int] = None
+    # Opt-in: running out of time ends the walk as a success where the farmer stands, instead of failing the phase.
+    # Whole-field cover: a first stand the route cannot reach (Y3 Summer: x=48 north of the 0xA8 bank, 12 evenings
+    # in a row) must not forfeit the evening's sowing; the planter takes the next stand it can walk to.
+    soft_timeout: bool = False
 
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _initial_waypoints: Optional[List[Waypoint]] = field(default=None, init=False)
@@ -143,12 +175,20 @@ class MultiMapNavTask(NavCorridor, Task):
     _pin_recoveries: int = field(default=0, init=False)
     # The walk started on the bin lane or stand: the lane is its way out.
     _lane_exit: bool = field(default=False, init=False)
+    # Wedge watch (see NavTask): the pixel-stuck replans reset on any 4 px of wiggle, so a pocket
+    # could run the whole timeout. 24 px box for 6 s: one clean repath, then FAILURE.
+    _motion: MotionBox = field(default_factory=MotionBox, init=False)
+    _unwedges: int = field(default=0, init=False)
+    _camp_frames: int = field(default=0, init=False)
+    _best_wp_dist: int = field(default=10**9, init=False)
+    _best_wp_at: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._scanner = TileScanner()
         self._pathfinder = Pathfinder(self._scanner)
         self._pathfinder.allow_tiles = set(self.allow_tiles)
         self._navigator = Navigator(self._pathfinder)
+        self._navigator.center_stall_limit = self.center_stall_frames
 
     def _effective_allow_tiles(self) -> Set[Tuple[int, int]]:
         allowed = set(self.allow_tiles)
@@ -186,6 +226,10 @@ class MultiMapNavTask(NavCorridor, Task):
         self._close_bail_wp = -1
         self._yield_frames = 0
         self._pin_recoveries = 0
+        self._motion.clear()
+        self._unwedges = 0
+        self._camp_frames = 0
+        self._reset_wp_progress()
         self._navigator.update(world.ram)
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -246,6 +290,7 @@ class MultiMapNavTask(NavCorridor, Task):
         self._pathfinder = Pathfinder(self._scanner, walkable_tiles=set(walkable))
         self._pathfinder.allow_tiles = self._effective_allow_tiles()
         self._navigator = Navigator(self._pathfinder)
+        self._navigator.center_stall_limit = self.center_stall_frames
         self._navigator.stasis = 0
         self._farm_soft_blocks.clear()
         self._entity_blocks.clear()
@@ -370,6 +415,8 @@ class MultiMapNavTask(NavCorridor, Task):
         """Move to next waypoint."""
         self._wp_index += 1
         self._phase = "nav"
+        self._motion.clear()
+        self._reset_wp_progress()
         self._action_queue.clear()
         self._navigator.path = []
         self._navigator.stasis = 0
@@ -384,18 +431,89 @@ class MultiMapNavTask(NavCorridor, Task):
         self._pixel_replans = 0
         self._close_latch.reset()
         self._yield_frames = 0
+        self._pad_parked = False
         wp = self._current_wp()
         if wp:
             print(f"[MULTI_NAV] Waypoint {self._wp_index + 1}/{len(self.waypoints)}"
                   f" tilemap=0x{wp.tilemap:02X} target={wp.target_px}")
 
+    def _camp_escape(self, world: WorldState) -> Optional[TaskResult]:
+        """A mountain walk that ends up inside the fishing camp leaves by its west gap before anything else.
+
+        The camp is a dead end whose fence opens only west (x=585, y 390+); the route BFS from the cave exit drifted in
+        and wedged at (614,374) through eight rescues (hsdet_20261115, Y1 Winter D8). Walks aimed inside the camp are left alone.
+        """
+        if not CAMP_ESCAPE or self._camp_frames >= 900 or int(world.ram[ADDR_TILEMAP]) != 0x10:
+            return None
+        from harvest.tasks.power_berry import CAMP_BOX, camp_exit_pad
+
+        wp = self._current_wp()
+        target = getattr(wp, "target_px", None)
+        x0, x1, y0, y1 = CAMP_BOX
+        if target is None or (x0 < target[0] < x1 and y0 <= target[1] < y1):
+            return None
+        pos = self._navigator.current_pos
+        pad = camp_exit_pad(0x10, int(pos.x), int(pos.y), through_gap=False)
+        if pad is None:
+            return None
+        self._camp_frames += 1
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(pad), reason="leave the fishing camp by its west gap")
+
+    def _reset_wp_progress(self) -> None:
+        self._best_wp_dist, self._best_wp_at = 10**9, self._step_count
+
+    def _wedge_check(self, world: WorldState) -> Optional[TaskResult]:
+        """One clean repath after NAV_WEDGE_FRAMES inside a 24 px box, then FAILURE; also fail a leg that goes nowhere."""
+        if self._phase != "nav" or self._initial_settle < self.initial_settle_frames or self._navigator.busy:
+            self._motion.clear()
+            return None
+        pos = self._navigator.current_pos
+        still = self._motion.observe(self._step_count, int(world.ram[ADDR_TILEMAP]), int(pos.x), int(pos.y))
+        if still == 0:
+            self._unwedges = 0  # it moved: each new stall earns its own clean repath
+        wp = self._current_wp()
+        target = getattr(wp, "target_px", None)
+        if target is not None and self._waypoint_tilemap_matches(int(world.ram[ADDR_TILEMAP]), wp):
+            dist = max(abs(int(pos.x) - int(target[0])), abs(int(pos.y) - int(target[1])))
+            if dist < self._best_wp_dist - NAV_PROGRESS_PX:
+                self._best_wp_dist, self._best_wp_at = dist, self._step_count
+            elif self._step_count - self._best_wp_at >= NAV_WAYPOINT_NO_PROGRESS_FRAMES:
+                return TaskResult(
+                    status=TaskStatus.FAILURE,
+                    reason=(f"nav no progress {self._step_count - self._best_wp_at}f {self.name} wp={self._wp_index + 1}/"
+                            f"{len(self.waypoints)} pos=({pos.x},{pos.y}) target={tuple(target)} best={self._best_wp_dist}"),
+                )
+        if still < NAV_WEDGE_FRAMES:
+            return None
+        where = (f"{self.name} wp={self._wp_index + 1}/{len(self.waypoints)} pos=({pos.x},{pos.y}) "
+                 f"tile={self._navigator.current_tile} target={getattr(wp, 'target_px', None)} "
+                 f"path={len(self._navigator.path)} blocked={len(self._pathfinder.temp_blocked)}")
+        print(f"[NAV_WEDGE] {where} still={still}f unwedges={self._unwedges}", flush=True)
+        if self._unwedges >= 1:
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"nav wedged {still}f {where}")
+        self._unwedges += 1
+        self._motion.restart(self._step_count)
+        self._pathfinder.temp_blocked.clear()
+        self._navigator.path = []
+        self._navigator.stasis = 0
+        return None
+
     def step(self, world: WorldState) -> TaskResult:
         self._navigator.update(world.ram)
         self._step_count += 1
         self._update_pixel_stuck()
+        wedged = self._wedge_check(world)
+        if wedged is not None:
+            return wedged
 
         if self._step_count > self.timeout:
+            if self.soft_timeout:
+                return TaskResult(status=TaskStatus.SUCCESS, reason="multi_nav timeout (soft)")
             return TaskResult(status=TaskStatus.FAILURE, reason="multi_nav timeout")
+
+        escape = self._camp_escape(world)
+        if escape is not None:
+            return escape
 
         # Initial settle: walk toward first waypoint to trigger tile loading.
         # After map transition, SNES tile RAM reads stale 0x72 until the
@@ -473,6 +591,7 @@ class MultiMapNavTask(NavCorridor, Task):
                           f" to {idx + 1} on tilemap=0x{tilemap:02X}")
                     self._wp_index = idx
                     self._phase = "nav"
+                    self._reset_wp_progress()
                     self._navigator.path = []
                     self._navigator.stasis = 0
                     self._pathfinder.temp_blocked.clear()
@@ -566,6 +685,7 @@ class MultiMapNavTask(NavCorridor, Task):
             # Timeout: give up after 500 frames of walking toward exit
             if self._exit_walk_frames > 500:
                 print(f"[MULTI_NAV] Exit walk timeout (500 frames) on 0x{tilemap:02X} -> 0x{wp.tilemap:02X}")
+                _log_exit_timeout_context(world.ram)
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason=f"exit_walk timeout on tilemap 0x{tilemap:02X} towards 0x{wp.tilemap:02X}",

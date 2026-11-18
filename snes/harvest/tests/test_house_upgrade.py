@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.layout_markers import legacy_rings_only
 from harvest.core.ram_catalog import read_ram_value
 from harvest.planner.tasks.home import GatherHouseWoodTask, HouseUpgradeTask
 from harvest.tasks.nav import make_action
@@ -18,7 +19,7 @@ def save_native_state(env, name):
     path.write_bytes(gzip.compress(env.unwrapped.em.get_state(), mtime=0))
 
 
-def house_ram(**fields):
+def house_ram(*, clock_armed=True, **fields):
     import numpy as np
     from harvest.core.ram_catalog import field_spec
     ram = np.zeros(0x24000, dtype=np.uint8)
@@ -31,7 +32,60 @@ def house_ram(**fields):
         ram[address] = raw & 255
         if key not in ("season", "day", "hour", "weekday", "stamina", "tilemap", "input_lock"):
             ram[address + 1] = (raw >> 8) & 255
+    # Existing house tests isolate the paid order after the clock prerequisite.
+    if clock_armed:
+        ram[0x11F70 + 0x4000] = 0x04
     return ram
+
+
+def test_clock_quote_does_not_wait_for_hearts_lumber_money_or_cows():
+    from harvest.planner.tasks.home import apply_house_phases
+    ram = house_ram(clock_armed=False, day=4, eve_hearts=112, stored_wood=0, money=300)
+    phases = apply_house_phases([], ram)
+    assert [(p.phase, p.params) for p in phases] == [("HOUSE_UPGRADE", {"goal": "clock_arm"})]
+
+
+def test_clock_carpenter_visit_arms_even_without_payment_resources():
+    from harvest.planner.tasks.home import apply_house_phases
+    ram = house_ram(clock_armed=False, marriage_flags=0x40, eve_hearts=112, stored_wood=0, money=300)
+    phases = apply_house_phases([], ram)
+    assert phases[0].params == {"goal": "clock_arm"}
+
+
+@pytest.mark.parametrize("fields", [dict(day=30), dict(day=4, weekday=0),
+                                   dict(day=4, weekday=6), dict(day=4, marriage_flags=0x20)])
+def test_clock_request_waits_for_a_weekday_and_a_remaining_visit_morning(fields):
+    from harvest.planner.tasks.home import apply_house_phases
+    ram = house_ram(clock_armed=False, eve_hearts=112, stored_wood=0, money=300, **fields)
+    assert apply_house_phases([], ram) == []
+
+
+def test_clock_final_day_still_handles_a_carpenter_already_due():
+    from harvest.planner.tasks.home import apply_house_phases
+    ram = house_ram(clock_armed=False, day=30, weekday=0, marriage_flags=0x40, eve_hearts=112)
+    assert apply_house_phases([], ram)[0].params == {"goal": "clock_arm"}
+
+
+def test_clock_arm_task_requires_native_arm_before_success():
+    ram = house_ram(clock_armed=False, marriage_flags=0x40, stored_wood=0, money=300)
+    task = HouseUpgradeTask(goal="clock_arm")
+    task.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+    ram[0x11F70 + 0x4000] = 0x04
+    result = task.step(WorldState(frame=1, ram=ram, info={}, obs=None))
+    assert result.status == TaskStatus.SUCCESS
+    assert result.reason == "clock gift armed by carpenter visit"
+
+
+def test_score_family_gathers_first_house_lumber_before_the_second_cow(monkeypatch):
+    """det1_20261114: 228 lumber on Y1 Summer D6, one cow short of the herd gate, so no errand and a wedding a year late."""
+    from harvest.planner.tasks.home import apply_house_phases
+    ram = house_ram(season=1, day=6, stored_wood=228, money=11590, num_cows=0)
+    monkeypatch.setenv("HARVEST_STRATEGY", "cash")
+    assert apply_house_phases([], ram) == []
+    monkeypatch.setenv("HARVEST_STRATEGY", "score_herd")
+    assert [p.phase for p in apply_house_phases([], ram)] == ["HOUSE_WOOD"]
+    # Enough lumber but no cow yet: the payment still waits for the first cow.
+    assert apply_house_phases([], house_ram(season=1, day=6, stored_wood=250, money=11590, num_cows=0)) == []
 
 
 def test_funded_quote_waits_until_a_cow_exists():
@@ -58,6 +112,37 @@ def test_missing_wood_builds_a_native_lumber_task():
     phase = apply_house_phases([], ram)[0]
     world = WorldState(frame=0, ram=ram, info={}, obs=None)
     assert isinstance(build_phase_task(TaskBuildContext(), phase, world), GatherHouseWoodTask)
+
+
+def test_fall_lumber_goes_after_the_deadline_bound_errands():
+    """The Fall mushroom loop must bank before 17:00; lumber has no deadline."""
+    from harvest.planner.tasks.home import apply_house_phases
+    from harvest.planner.day_phase_types import PhaseSpec
+    plan = [PhaseSpec("EXIT_TO_FARM", "farm_building_exit"),
+            PhaseSpec("DYNAMIC_OUTDOOR_PLAN", "dynamic_outdoor_plan")]
+    fall = [p.phase for p in apply_house_phases(plan, house_ram(season=2, stored_wood=0, num_cows=2))]
+    assert fall == ["EXIT_TO_FARM", "DYNAMIC_OUTDOOR_PLAN", "HOUSE_WOOD"]
+    summer = [p.phase for p in apply_house_phases(plan, house_ram(season=1, stored_wood=0, num_cows=2))]
+    assert summer == ["EXIT_TO_FARM", "HOUSE_WOOD", "DYNAMIC_OUTDOOR_PLAN"]
+    sleepy = plan + [PhaseSpec("RETURN_HOME", "return_home"), PhaseSpec("GO_TO_SLEEP", "go_to_sleep")]
+    late = [p.phase for p in apply_house_phases(sleepy, house_ram(season=2, stored_wood=0, num_cows=2))]
+    assert late[-3:] == ["HOUSE_WOOD", "RETURN_HOME", "GO_TO_SLEEP"]
+
+
+def test_lumber_walks_back_to_the_farm_before_a_shop_or_barn_phase():
+    """HOUSE_WOOD ends on the mountain: NAV_TO_ANIMAL_SHOP then failed `expected tilemap 0x00, got 0x10` and deferred the barn chores."""
+    from harvest.planner.tasks.home import apply_house_phases
+    from harvest.planner.day_phase_types import PhaseSpec
+    plan = [PhaseSpec("EXIT_TO_FARM", "farm_building_exit"), PhaseSpec("NAV_TO_ANIMAL_SHOP", "multi_nav"),
+            PhaseSpec("BUY_COW_VENDOR", "shop_buy"), PhaseSpec("NAV_TO_BARN", "multi_nav")]
+    ram = house_ram(season=1, stored_wood=0, num_cows=2)
+    names = [p.phase for p in apply_house_phases(plan, ram)]
+    assert names == ["EXIT_TO_FARM", "HOUSE_WOOD", "EXIT_TO_FARM", "NAV_TO_ANIMAL_SHOP", "BUY_COW_VENDOR", "NAV_TO_BARN"]
+    # Phases that walk from wherever the farmer stands, or exit first themselves, need no extra exit.
+    for tolerant, exits in (("ENSURE_ANIMAL_TOOLS", 1), ("DYNAMIC_OUTDOOR_PLAN", 1), ("EXIT_TO_FARM", 2)):
+        tail = [PhaseSpec("EXIT_TO_FARM", "farm_building_exit"), PhaseSpec(tolerant, "x")]
+        got = [p.phase for p in apply_house_phases(tail, ram)]
+        assert got.count("EXIT_TO_FARM") == exits, got
 
 
 @pytest.mark.parametrize("fields", [dict(money=5990), dict(upgrade_flags=0x40),
@@ -257,6 +342,7 @@ def test_first_order_still_requires_the_5000_debit():
     assert result.meta["wood_spent"] == 250
 
 
+@legacy_rings_only
 def test_empty_ranch_plants_pasture_and_keeps_the_seed_and_hen_funds():
     from harvest.planner.day_phase_catalog import pasture_day_phases
     phases = pasture_day_phases(house_ram(day=8, stored_wood=0, grass_seeds=1))
@@ -272,6 +358,22 @@ def test_saturday_fetches_shelved_feather_and_proposes_before_crop_tools_replace
     ram[0x15F02] = 0x80
     phases = build_day_phases_from_ram(ram)
     assert [phase.phase for phase in phases] == ["EXIT_TO_FARM", "FETCH_FEATHER", "PROPOSE_EVE"]
+
+
+def test_wedding_day_feeds_the_animals_before_the_proposal():
+    """The wedding rolls the day: an unfed night sickens adults and a sick cow dies."""
+    from harvest.planner.day_phase_types import PhaseSpec
+    from harvest.tasks.proposal import apply_eve_phases
+    names = ["EXIT_TO_FARM", "HOUSE_WOOD", "ENSURE_ANIMAL_TOOLS", "EXIT_TO_FARM", "NAV_TO_BARN",
+             "ENTER_BARN", "COW_CHORES", "EXIT_BARN", "NAV_TO_COOP", "ENTER_COOP", "COOP_CHORES",
+             "EXIT_COOP", "CUT_FODDER", "DYNAMIC_OUTDOOR_PLAN"]
+    ram = house_ram(tilemap=0x15, weekday=6, upgrade_flags=0x40)
+    ram[0x15F02] = 0x80
+    phases = apply_eve_phases([PhaseSpec(name, name.lower()) for name in names], ram)
+    assert [phase.phase for phase in phases] == [
+        "EXIT_TO_FARM", "ENSURE_ANIMAL_TOOLS", "EXIT_TO_FARM", "NAV_TO_BARN", "ENTER_BARN",
+        "COW_CHORES", "EXIT_BARN", "NAV_TO_COOP", "ENTER_COOP", "COOP_CHORES", "EXIT_COOP",
+        "FETCH_FEATHER", "PROPOSE_EVE"]
 
 
 def test_wedding_keeps_the_date_roll_until_its_house_transition_finishes():
@@ -323,6 +425,26 @@ def drive(env, task, budget):
             return frame, result
         env.step(result.action.action if result.action else make_action())
     pytest.fail(f"{task.name} exceeded {budget} frames")
+
+
+@pytest.mark.rom
+def test_winter_lumber_trip_returns_to_the_farm():
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.planner.tasks.inventory import ExitToFarmTask
+    from harvest.planner.day_plan_status import is_farm_tilemap
+
+    env = make_harvest_env("LN_y23_winter_source", lean_step=True)
+    try:
+        env.reset()
+        start = read_ram_value(env.get_ram(), "stored_wood")
+        assert read_ram_value(env.get_ram(), "season") == 3
+        assert read_ram_value(env.get_ram(), "marriage_flags") & 0x10
+        drive(env, GatherHouseWoodTask(target=500), 22000)
+        assert read_ram_value(env.get_ram(), "stored_wood") > start
+        drive(env, ExitToFarmTask(), 6000)
+        assert is_farm_tilemap(read_ram_value(env.get_ram(), "tilemap"))
+    finally:
+        env.close()
 
 
 @pytest.mark.rom
@@ -559,5 +681,89 @@ def test_married_pin_gains_lumber_for_house_two():
         out = PROJECT_DIR / "recordings" / "house2_wood.json"
         out.write_text(json.dumps(report, indent=2) + "\n")
         save_native_state(env, "LN_house2_wood_natural")
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
+def test_tenberry_predecessor_arms_clock_before_payment_or_second_cow():
+    """A native early quote and next-morning visit preserve the clock deadline."""
+    import hashlib
+    from harvest.core.ram_catalog import read_ram_u16
+    from harvest.paths import GAME_DIR, PROJECT_DIR
+    from harvest.planner.day_plan_orchestrator import DayPlanTask
+    from harvest.planner.day_plan_phases import build_day_phases_from_ram
+    from harvest.planner.day_phase_types import DayPlannerPolicy
+    from harvest.runtime.retro_setup import make_harvest_env
+    from retro_harness import AuditedEnv, AuditCapabilities
+
+    from harvest.planner.tasks.home import GoToSleepTask
+
+    pin = "PR_tenberries_guarded_20261111_Y1_Summer_D6"
+    source = GAME_DIR / f"{pin}.state"
+    if not source.exists():
+        pytest.skip("local ten-berry Summer predecessor is absent")
+    env = AuditedEnv(make_harvest_env(pin, lean_step=True), capabilities=AuditCapabilities.all("harvest.clock_recovery"))
+    fields = ("year", "season", "day", "money", "stored_wood", "num_cows", "marriage_flags", "upgrade_flags", "power_berry_count")
+    def snapshot():
+        ram = env.get_ram()
+        return {**{k: read_ram_value(ram, k) for k in fields}, "clock_arm": read_ram_u16(ram, 0x11F70)}
+    def run_clock_prefix():
+        phases = build_day_phases_from_ram(env.get_ram(), policy=DayPlannerPolicy(), state_name=pin)
+        at = next(i for i, p in enumerate(phases) if p.phase == "HOUSE_UPGRADE")
+        assert phases[at].params["goal"] == "clock_arm"
+        return drive(env, DayPlanTask(phase_sequence=phases[:at + 1], state_name=pin), 45000)[0]
+    try:
+        env.reset()
+        before = snapshot()
+        assert before["num_cows"] == 0 and before["stored_wood"] < 250
+        assert not before["clock_arm"] & 4
+        request_frames = run_clock_prefix()
+        requested = snapshot()
+        assert requested["marriage_flags"] & 0x20
+        sleep_frames, _ = drive(env, GoToSleepTask(earliest_sleep_hour=0), 18000)
+        visit_frames = run_clock_prefix()
+        after = snapshot()
+        assert after["day"] == 7 and after["clock_arm"] & 4
+        assert after["money"] >= before["money"] and after["stored_wood"] == before["stored_wood"]
+        assert after["power_berry_count"] == before["power_berry_count"] == 4
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+        name = "LN_clock_quote_native_20261112_Summer7"
+        save_native_state(env, name)
+        out = PROJECT_DIR / "recordings/clock_recovery_20261112"
+        out.mkdir(parents=True, exist_ok=True)
+        report = {"source_state": pin, "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                  "before": before, "requested": requested, "after": after,
+                  "frames": {"request": request_frames, "sleep": sleep_frames, "visit": visit_frames},
+                  "saved_state": name, "saved_sha256": hashlib.sha256((GAME_DIR / f"{name}.state").read_bytes()).hexdigest(),
+                  "ram_writes": env.audit().ram_writes, "mid_run_loads": env.audit().mid_run_loads}
+        (out / "receipt.json").write_text(json.dumps(report, indent=2) + "\n")
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
+def test_recovered_clock_arm_pays_out_at_native_first_house_completion():
+    from harvest.core.ram_catalog import read_ram_u16
+    from harvest.paths import GAME_DIR
+    from harvest.planner.tasks.inventory import ExitToFarmTask
+    from harvest.runtime.retro_setup import make_harvest_env
+    from retro_harness import AuditedEnv, AuditCapabilities
+
+    pin = "PR_clock_gift_20261112_Y1_Summer_D11"
+    if not (GAME_DIR / f"{pin}.state").exists():
+        pytest.skip("local recovered-clock construction continuation is absent")
+    env = AuditedEnv(make_harvest_env(pin, lean_step=True), capabilities=AuditCapabilities.all("harvest.clock_gift"))
+    try:
+        env.reset()
+        ram = env.get_ram()
+        assert read_ram_value(ram, "upgrade_flags") & 0x40
+        assert read_ram_u16(ram, 0x11F70) & 4
+        assert not read_ram_u16(ram, 0x11F6E) & 0x4000
+        berries = read_ram_value(ram, "power_berry_count")
+        drive(env, ExitToFarmTask(), 12000)
+        assert read_ram_u16(env.get_ram(), 0x11F6E) & 0x4000
+        assert read_ram_value(env.get_ram(), "power_berry_count") == berries
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
     finally:
         env.close()

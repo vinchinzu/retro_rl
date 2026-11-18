@@ -441,6 +441,73 @@ def dog_adjacent(ram: np.ndarray, radius: int = DOG_A_RADIUS_PX) -> bool:
     return abs(px - dog.x) <= radius and abs(py - dog.y) <= radius
 
 
+# The farm's two holes, (50,55) tile 0xC7 and (37,48) tile 0xC8, lead to the Harvest
+# Sprites' cave, map 0x2A. They are not BFS-walkable, but blind charges end under
+# them and walk in (the far-east escape "left 90, up 80"; a walk down the east side
+# and west along y=857); the cave has no exit the bot can find, and the scene reader
+# calls it a dialogue (stale text 0x031A/0x032A), so return_home mashed A/B for 8
+# rescues twice (Y2 Summer D4, D16). A step that would enter one is held.
+# (0xC0-0xC6 are the doors of the house, barn, coop, shed and west gate.)
+FARM_PIT_TILES = frozenset({0xC7, 0xC8})
+FARM_PIT_TILE = 0xC7
+_PIT_LOOKAHEAD_PX = 12
+_UP, _DOWN, _LEFT, _RIGHT = (int(np.argmax(make_action(**{k: True}))) for k in ("up", "down", "left", "right"))
+
+
+def hold_back_from_pit(action, ram: np.ndarray):
+    """Neutral pad instead of a farm step whose next ~12px lands on the pit tile."""
+    from harvest.core.tile_catalog import ADDR_TILEMAP, get_tile_at
+    from harvest.tasks.nav import get_pos_from_ram
+
+    if action is None or len(action) <= _RIGHT or int(ram[ADDR_TILEMAP]) not in (0, 1, 2, 3):
+        return action
+    dx, dy = int(bool(action[_RIGHT])) - int(bool(action[_LEFT])), int(bool(action[_DOWN])) - int(bool(action[_UP]))
+    if not (dx or dy):
+        return action
+    pos = get_pos_from_ram(ram)
+    ahead = get_tile_at(ram, (pos.x + dx * _PIT_LOOKAHEAD_PX) // 16, (pos.y + dy * _PIT_LOOKAHEAD_PX) // 16)
+    return make_action() if ahead in FARM_PIT_TILES else action
+
+
+PLAYER_STATE_RIDING = 0x11  # player_state 1 is walking; probe: one A press dismounts
+# Riding is harmless anywhere but the house door, which refuses a rider; walking mounted
+# works. The press is limited to the door stand's neighbourhood (stand (136,424), walkway
+# above it) because a held A anywhere else froze the walk (Y2 Fall D23, pixel_stuck at
+# (259,376)) and starved the 17:00 shipping scene of its A edge (Y3 Spring D20, 1.6M frames).
+_DOOR_ZONE_X = (104, 168)
+_DOOR_ZONE_Y = (340, 470)
+
+
+def dismount_horse(action, ram: np.ndarray):
+    """A press while the farmer rides the horse at the house door stand.
+
+    An A pulse beside the parked horse mounts it, and the house door refuses a rider:
+    the enter push timed out 3 x 11k frames and cost eight rescues (Y2 Spring D19,
+    jitter run p150b, farmer on sprite 0x0097 at the stand (8,26)). The bot never
+    rides on purpose. Only when input is free and the farmer is idle, so the press
+    is an edge (the dismount animation then runs on neutral frames).
+    """
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.core.tile_catalog import ADDR_TILEMAP
+    from harvest.tasks.nav import get_pos_from_ram
+
+    if int(ram[ADDR_TILEMAP]) not in (0, 1, 2, 3) or int(read_ram_value(ram, "player_state")) != PLAYER_STATE_RIDING:
+        return action
+    pos = get_pos_from_ram(ram)
+    if not (_DOOR_ZONE_X[0] <= pos.x <= _DOOR_ZONE_X[1] and _DOOR_ZONE_Y[0] <= pos.y <= _DOOR_ZONE_Y[1]):
+        return action
+    if int(read_ram_value(ram, "input_lock")) != 1:
+        return action
+    return make_action() if int(read_ram_value(ram, "player_action")) != 0 else make_action(a=True)
+
+
+def sanitize_action(action, ram: np.ndarray):
+    """Pad filters applied to every planner action: the pit, the dog hug, then a dismount."""
+    if action is None:
+        return action
+    return dismount_horse(strip_dog_hug_press(hold_back_from_pit(action, ram), ram), ram)
+
+
 def strip_dog_hug_press(action, ram: np.ndarray):
     """Swap A for B while the dog is beside the farmer with empty hands.
 
@@ -513,27 +580,31 @@ class DogReleaseTask(Task):
                 status=TaskStatus.RUNNING, action=ActionResult(self._queue.pop(0))
             )
         tilemap = int(read_ram_value(world.ram, "tilemap"))
-        if not is_farm_tilemap(tilemap):
-            if not is_house_tilemap(tilemap):
-                # Warp frames read as another tilemap; wait them out.
-                self._off_farm += 1
-                if self._off_farm > 600:
-                    return TaskResult(status=TaskStatus.FAILURE, reason="dog release: off farm")
-                return TaskResult(
-                    status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action()),
-                    reason="dog release: waiting out a warp",
-                )
+        # Farm id arrives before the doorway warp finishes. Dropping the exit
+        # child here stranded the remodeled-house farmer at (136,344), where
+        # the stale door tiles seal every path toward the dog.
+        if isinstance(self._child, ExitToFarmTask) or is_house_tilemap(tilemap):
             if not isinstance(self._child, ExitToFarmTask):
                 self._child = ExitToFarmTask()
                 self._child.reset(world)
             res = self._child.step(world)
             if res.status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
                 return res
+            if res.status == TaskStatus.SUCCESS:
+                self._child = None
             return TaskResult(
                 status=TaskStatus.RUNNING,
                 action=res.action or ActionResult(make_action()),
                 reason="dog release: leaving building",
+            )
+        if not is_farm_tilemap(tilemap):
+            self._off_farm += 1
+            if self._off_farm > 600:
+                return TaskResult(status=TaskStatus.FAILURE, reason="dog release: off farm")
+            return TaskResult(
+                status=TaskStatus.RUNNING,
+                action=ActionResult(make_action()),
+                reason="dog release: waiting out a warp",
             )
         dog = dog_position(world.ram)
         if dog is None:
@@ -560,6 +631,173 @@ class DogReleaseTask(Task):
             + [make_action()] * 20
         )
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+
+# One bounded barn retry before bed when a barn adult is still unfed: the
+# night pass then takes happiness -8 and a sick roll, and a sick cow dies seven
+# nights later. Every cow death in the y23_final run followed such a day (a
+# deferred ENTER_BARN, a chores stall, hay at 0). Hours past 18:00 are free, so
+# the retry costs no field work. Feed, talk and brush; milking is skipped, it is
+# the step the Y2 Summer D23 chores stalled after.
+BARN_FEED_CHECK_FRAMES = 9000
+_FEED_CHECK_MAPS = frozenset({0x27, 0x28})
+
+
+def barn_feed_check_needed(ram: np.ndarray) -> bool:
+    from harvest.core.animal_status import read_hay_count, unfed_adult_cow_slots
+    from harvest.core.tile_catalog import ADDR_TILEMAP
+    from harvest.planner.day_plan_status import is_farm_tilemap, is_house_tilemap
+
+    tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+    nearby = is_farm_tilemap(tilemap) or is_house_tilemap(tilemap) or tilemap in _FEED_CHECK_MAPS
+    return nearby and read_hay_count(ram) > 0 and bool(unfed_adult_cow_slots(ram))
+
+
+def barn_feed_check_phases() -> list:
+    from dataclasses import replace
+
+    from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE
+    from harvest.planner.day_phase_cow import (
+        COW_CHORES_PHASE,
+        ENTER_BARN_PHASE,
+        EXIT_BARN_PHASE,
+        NAV_TO_BARN_PHASE,
+    )
+
+    chores = replace(COW_CHORES_PHASE, params={
+        **COW_CHORES_PHASE.params, "milk": False, "timeout": BARN_FEED_CHECK_FRAMES})
+    return [EXIT_TO_FARM_PHASE, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE, chores, EXIT_BARN_PHASE]
+
+
+class BarnFeedCheckTask(Task):
+    """The barn phases once more, inside ``BARN_FEED_CHECK_FRAMES``."""
+
+    name = "barn_feed_check"
+
+    def __init__(self, tasks_dir: str, budget: int = BARN_FEED_CHECK_FRAMES) -> None:
+        self.tasks_dir = tasks_dir
+        self.budget = budget
+        self._step = 0
+        self._plan: Optional[Task] = None
+
+    def reset(self, world: WorldState) -> None:
+        from dataclasses import replace
+
+        from harvest.planner.day_phase_types import DayPlannerPolicy
+        from harvest.planner.day_plan_orchestrator import DayPlanTask
+
+        self._step = 0
+        self._plan = DayPlanTask(
+            tasks_dir=self.tasks_dir,
+            phase_sequence=barn_feed_check_phases(),
+            policy=replace(DayPlannerPolicy(), include_end_day=False),
+        )
+        self._plan.reset(world)
+
+    def step(self, world: WorldState) -> TaskResult:
+        self._step += 1
+        if self._step > self.budget:
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"feed check over {self.budget}f")
+        return self._plan.step(world)
+
+
+def pond_toss_px() -> Point:
+    """Pixel of the main pond's south-lip toss stand."""
+    from harvest.tasks.nav import TILE_SIZE
+    from harvest.tasks.pond_policy import PRIMARY_POND_STAND
+
+    return Point(PRIMARY_POND_STAND[0] * TILE_SIZE + 8, PRIMARY_POND_STAND[1] * TILE_SIZE + 8)
+
+
+def pond_is_nearer(pos: Point, drop: Point) -> bool:
+    """The pond lip is a shorter walk than the house drop spot."""
+    pond = pond_toss_px()
+    return abs(pos.x - pond.x) + abs(pos.y - pond.y) < abs(pos.x - drop.x) + abs(pos.y - drop.y)
+
+
+class PondTossTask(Task):
+    """Carry held debris to the main pond's south lip and toss it into the water.
+
+    The ground drops near the house can all refuse a stone (Summer D27: one
+    lifted by the far-east escape, every face and the wander refused it, 8
+    rescues). The pond always takes debris: the Day 2 clear dumps every stone
+    there. Debris and unrecognised items (``pond_takes``); a hen, a crop, an egg or milk is never thrown in.
+    """
+
+    name = "pond_toss"
+
+    def __init__(self, timeout: int = 4000) -> None:
+        self.timeout = timeout
+        self._step = 0
+        self._nav: Optional[Task] = None
+        self._carry = None
+
+    def reset(self, world: WorldState) -> None:
+        from harvest.maps.map_types import Waypoint
+        from harvest.planner.tasks.navigation import MultiMapNavTask
+        from harvest.tasks.carry_toss import CarryToPondStand
+        from harvest.tasks.nav import get_pos_from_ram
+
+        self._step = 0
+        self._carry = CarryToPondStand()
+        # The carry skill owns the north-yard highway and east spur. A single
+        # far-away F0 waypoint drives into the barns before that skill can run.
+        if get_pos_from_ram(world.ram).y < 26 * 16:
+            self._nav = None
+            self._carry.reset(world)
+            return
+        stand = (pond_toss_px().x, pond_toss_px().y)
+        self._nav = MultiMapNavTask(
+            name="nav_pond_lip",
+            waypoints=[Waypoint(tilemap=0x00, target_px=stand, radius=40)],
+            timeout=max(600, self.timeout - 900),
+            initial_settle_frames=0,
+            allow_opportunistic_clear=False,
+        )
+        self._nav.reset(world)
+
+    def can_start(self, world: WorldState) -> bool:
+        from harvest.core.animal_status import read_held_item
+        from harvest.tasks.farm_toss import pond_takes
+
+        return pond_takes(read_held_item(world.ram))
+
+    def step(self, world: WorldState) -> TaskResult:
+        from harvest.core.animal_status import read_held_item
+        from harvest.tasks.farm_toss import pond_takes
+
+        self._step += 1
+        held = int(read_held_item(world.ram))
+        if held == 0 and self._nav is None:
+            return self._carry.step(world)
+        if held == 0:
+            return TaskResult(status=TaskStatus.SUCCESS, reason="pond toss: hands clear")
+        if not pond_takes(held):
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"pond toss: held 0x{held:02X} is not for the pond")
+        if self._step > self.timeout:
+            return TaskResult(status=TaskStatus.FAILURE, reason="pond toss: timeout")
+        if self._nav is not None:
+            result = self._nav.step(world)
+            if result.status == TaskStatus.RUNNING:
+                return result
+            # Arrived, or the walk gave up close by: the stand path is BFS from here.
+            self._nav = None
+            self._carry.reset(world)
+        return self._carry.step(world)
+
+
+def _tile_ring(ram: np.ndarray, pos: Point) -> str:
+    """Tile ids of the 3x3 around the farmer, rows north to south, for failure logs."""
+    from harvest.tasks.nav import TILE_SIZE, get_tile_at
+
+    tx, ty = int(pos.x) // TILE_SIZE, int(pos.y) // TILE_SIZE
+    rows = []
+    for dy in (-1, 0, 1):
+        try:
+            rows.append(" ".join(f"{int(get_tile_at(ram, tx + dx, ty + dy)):02X}" for dx in (-1, 0, 1)))
+        except Exception:
+            rows.append("?? ?? ??")
+    return f"at ({tx},{ty}) [{' / '.join(rows)}]"
 
 
 class WanderDropTask(Task):
@@ -602,9 +840,12 @@ class WanderDropTask(Task):
         self._step += 1
         if read_held_item(world.ram) == 0:
             return TaskResult(status=TaskStatus.SUCCESS, reason="wander drop: hands clear")
-        if self._step > self.timeout or self._leg >= 8:
-            return TaskResult(status=TaskStatus.FAILURE, reason="wander drop: no open ground")
         pos = get_pos_from_ram(world.ram)
+        if self._step > self.timeout or self._leg >= 8:
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"wander drop: no open ground {_tile_ring(world.ram, pos)}",
+            )
         if self._origin is None:
             self._origin = pos
         direction = self._DIRS[(self.start_dir + self._leg) % 4]
@@ -637,3 +878,20 @@ class WanderDropTask(Task):
                 reason="wander drop: A",
             )
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+
+def toss_held_first(water, world):
+    """Dump debris still in hand into the pond before a tool phase (hands full means no tool).
+
+    gdet_20261115 Y1 Summer D11: a stone lifted by a skipped `clear_plant_stands` stayed in hand, every can use idled on
+    "drop held" (its pad was empty) and CROP_WATER hit its 24,000 f watchdog 14 times.
+    """
+    from harvest.core.animal_status import read_held_item
+    from harvest.tasks.farm_toss import pond_takes
+    from harvest.tasks.primitives import TaskSequence
+
+    held = int(read_held_item(world.ram))
+    if not held or not pond_takes(held):
+        return water
+    print(f"[DAY_PLAN] {getattr(water, 'name', 'water')} starts with held=0x{held:02X}: pond toss first")
+    return TaskSequence(name="pond_toss_then_tool", tasks=(PondTossTask(), water), keep_last_reason=True)

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 214,
+  "roomHex": "0xD6",
+  "name": "Turtle Rock entrance",
+  "measured": "2026-10-18",
+  "sourceState": "TurtleRockEntry",
+  "points": [],
+  "doors": [
+    {
+      "label": "north_invisible",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "alternate",
+      "path": [],
+      "notes": "Slot 0 type 0x1A invisible pos $021C, anchor tile (14,4). Door-only skeleton. find_path from the pin spawn returned no steps. Not crossed."
+    },
+    {
+      "label": "south_entrance",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "backtrack",
+      "path": [],
+      "notes": "Slot 1 type 0x0A entrance pos $1D5C, anchor tile (46,58). Door-only skeleton. DOWN from TurtleRockEntry left indoors, module 0x09, screen 71. Backtrack, not the forward hop."
+    },
+    {
+      "label": "north_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "path": [],
+      "notes": "Slot 2 type 0x00 regular pos $025C, anchor tile (46,4). Door-only skeleton. Column 47 layer 0 has 0x70 pots at rows 43-44 and a 0xB6/0xB1 rail at rows 16-32. Not crossed."
+    }
+  ],
+  "notes": [
+    "Isolated poke pin TurtleRockEntry, room 0xD6, dungeon 0x18, module 0x07. Scan_turtle_rock_0xd6 is the same room, kind scan, keys 0.",
+    "Entrance table $02C813 index 0x35. Quake byte on the pin is 0.",
+    "Geometry for this room stays in this file."
+  ]
+}

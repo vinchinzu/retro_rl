@@ -1,14 +1,14 @@
-"""Development-only Tourian escape chain scaffold.
-
-This module deliberately contains no emulator ownership, movement policy, or
-progression writes.  It records the room order and timeout budget that a later
-natural-entry escape controller must implement.
-"""
+"""Tourian escape room scaffold and the post-launch credits sequence."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+
+import numpy as np
+
+from retro_harness.actions import idle_action
+from super_metroid.ram import ADDR_GAME_STATE, credits_complete, read_wram_u16
 
 
 ROOM_ESCAPE_1 = 0xDE4D
@@ -24,6 +24,19 @@ ESCAPE_ROOM_IDS = (
     ROOM_ESCAPE_4,
 )
 ESCAPE_CHAIN_ROOM_IDS = ESCAPE_ROOM_IDS + (ROOM_LANDING_SITE,)
+
+
+def play_credits_tail(env: Any, *, timeout_frames: int = 24_000) -> np.ndarray:
+    """Play neutral inputs from the ending until the final screen is displayed."""
+    idle = idle_action(dtype=np.int8)
+    for elapsed in range(timeout_frames + 1):
+        if credits_complete(env):
+            return np.repeat(idle[np.newaxis, :], elapsed, axis=0)
+        if read_wram_u16(env, ADDR_GAME_STATE) not in (38, 39):
+            raise RuntimeError("game left the ending before the final credits screen")
+        if elapsed < timeout_frames:
+            env.step(idle)
+    raise RuntimeError(f"final credits screen did not appear within {timeout_frames} frames")
 
 # These are planning bounds only. They do not drive emulator frames yet.
 DEFAULT_ESCAPE_TIMEOUTS: dict[int, int] = {

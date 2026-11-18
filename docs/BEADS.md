@@ -12,7 +12,7 @@ bd update <id> --status in_progress
 bd close <id> --reason "…"
 bd create "Title" -t task -p 0 -l super_metroid --json
 bd dep add <blocked> <blocker>   # blocker must finish first
-bd export -o .beads/issues.jsonl  # then commit with the code
+bd export -o .beads/issues.jsonl  # local only; do not commit
 ```
 
 ## Rules
@@ -24,12 +24,13 @@ bd export -o .beads/issues.jsonl  # then commit with the code
 3. Discovered work → `bd create … --deps discovered-from:<parent>`.
 4. Product evidence still lives under `<console>/<game>/docs/` (STATUS,
    pure-first, natural-entry). Closing a bead is not a STATUS promote.
-5. Commit `.beads/issues.jsonl` with the code that matches it.
-   Never commit the Dolt database (`.beads/embeddeddolt/`), `.beads/backup/`,
-   or daemon/runtime files — those are local-only and grow to ~100MB.
-6. Session end: close/update issues → `bd export -o .beads/issues.jsonl` →
-   commit. Push only when the human asked for a push (do not force-push
-   beads/history). Do not `git add .beads/`.
+5. Do not commit `.beads/`, `issues.jsonl`, the Dolt database, or `.beads/backup/`.
+   The board and those backups were archived outside this repo on 2026-10-15
+   at `/home/v/01_projects/11_games/archive/retro_rl-beads-2026-10-15`. Git history in this clone no
+   longer contains them. GitHub still has the old history until a force-push,
+   which has not been done.
+6. Session end: close or update issues. Push only when the human asked for a
+   push. Do not `git add .beads/`.
 
 Prefix: `rr-`. Labels: game name (`super_metroid`, `smb`, …), kind
 (`pure`, `graph`, `compose`, `stabilize`, `status`, `meta`). Super Metroid,
@@ -46,6 +47,6 @@ Game process still applies (e.g. Super Metroid pure-first in
 1. File or update beads for remaining work
 2. Run ROM eval for files you changed (`docs/TEST_TIERS.md`)
 3. Close finished issues; leave in_progress honest
-4. `bd export -o .beads/issues.jsonl` and commit code + that file together
+4. Do not commit `.beads/` or backups
 5. Push only if the user requested it
 6. Hand off: `bd ready` + one-line next action

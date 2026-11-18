@@ -1,0 +1,7 @@
+{
+  "source_run": "poke:Whatif_EasternPalaceEntry_bow:room=0xC8:warp_sub=0x15:xy=(4448,6560)",
+  "frame": 8,
+  "git_sha": "a4770ff46e83cb394efdd554cfcfdd5834b8b0f5",
+  "dirty": true,
+  "kind": "poke"
+}

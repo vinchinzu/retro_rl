@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Deque, List, Optional, Tuple
@@ -12,7 +13,8 @@ import numpy as np
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
 from harvest.tasks.crop_planter import DEFAULT_CROP_BOUNDS, is_crop_tile, is_mature_crop_tile
-from harvest.core.tile_catalog import ADDR_INPUT_LOCK
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK, mature_tile_crop
+from harvest.planner import run_strategy
 from harvest.maps.farm_pond import SHIP_BIN_LANE_TILES
 from harvest.tasks.nav import (
     MAP_WIDTH,
@@ -28,6 +30,7 @@ from harvest.tasks.nav import (
 from harvest.tasks.farm_ops import TileScanner
 
 from harvest.core.animal_status import read_held_item
+from harvest.tasks import horse as saddle
 from harvest.core.harvest_state import HarvestStateDocument
 from harvest.core.ram_catalog import field_spec, live_wram_base, read_ram_u24
 
@@ -37,10 +40,26 @@ ADDR_SHIPPING_MONEY = field_spec("shipping_money").address
 READY_VISIBLE_MIN = 0xA0
 SHIP_STAND_TILE = (11, 30)
 SHIP_FACE = "left"
+# The bin's F2 tiles are (8-9, 29-30) and the throw reads two tiles ahead, so four stands ship: east
+# (11,29)/(11,30) facing left and south (8,32)/(9,32) facing up (ROM probe on
+# ``LN_saddle_whatif_harvest_y2d22``: each paid 120G a corn). The south pair is one tile from the y=33
+# lane of the ring lattice.
 SHIP_FALLBACKS: Tuple[Tuple[Tuple[int, int], str], ...] = (
     ((11, 30), "left"),
     ((8, 32), "up"),
+    ((9, 32), "up"),
+    ((11, 29), "left"),
 )
+BIN_STANDS: Tuple[Tuple[int, int], ...] = tuple(stand for stand, _face in SHIP_FALLBACKS)
+
+
+def bin_distance(tile: Tuple[int, int]) -> int:
+    """Manhattan tiles from ``tile`` to the nearest bin stand."""
+    return min(abs(tile[0] - sx) + abs(tile[1] - sy) for sx, sy in BIN_STANDS)
+
+
+def nearest_bin_stand(tile: Tuple[int, int]) -> Tuple[int, int]:
+    return min(BIN_STANDS, key=lambda st: abs(tile[0] - st[0]) + abs(tile[1] - st[1]))
 # CLEAR_FIELD / lift debris IDs (not shippable). Shipping bin rejects these and
 # HARVEST_ROUTE used to thrash ship_verify until timeout (rr-9xyy D15/D16).
 # 0x03 weed (tile id often mirrors held), 0x04 small stone, 0x09 stump or large
@@ -64,6 +83,67 @@ SHIP_NAV_TOTAL_LIMIT = 4000
 # the season. A tile that failed ``HARVEST_TILE_FAIL_LIMIT`` routes is left
 # out of the target list until it stops being a ripe tile (picked, changed).
 HARVEST_TILE_FAIL_LIMIT = 2
+
+# ROM ``Dropedonsaleplace`` (bank_81 $8193BF): a crop dropped in the bin at
+# 17:00 or later is consumed and never added to shipping_money; 27 Summer corn
+# (3,240G) went that way from the Spring-timer pin. A ripe crop keeps on the
+# plant, so a pick whose walk cannot reach the bin before 17:00 waits for the
+# next morning. The ROM clock (``UpdateTime``, bank_82) counts 60 ticks a minute
+# byte and 15 minute bytes an hour, one tick a frame outdoors, so 17:00 is tick
+# 15,300 and the window is in frames. The old check read the minute byte as
+# 0-59: near the end of an hour it let a far crop start a walk that landed after
+# 17:00 (five west-strip crops in v2_d3) and at the top of one it gave up early.
+# Running is 2 px a frame (8 a tile) with or without a crop; turns and lane
+# detours make ~9.5 a Manhattan tile (ship_bench). Lift ~23 + throw ~36 frames.
+SHIP_CLOSE_HOUR = 17
+SHIP_CLOSE_TICK = SHIP_CLOSE_HOUR * 15 * 60
+SHIP_FRAMES_PER_TILE = 9.5
+SHIP_PICK_THROW_FRAMES = 60
+SHIP_MARGIN_FRAMES = 90
+
+
+SHIP_LOG_SCHEMA = "harvest.ship_log/1"
+
+# Fast press. The pick reads the tile one ahead of the farmer's raw pixel and the bin throw the tile two
+# ahead (ROM ``CalculateTileinFront``, bank_81 $81D14E: pixel +/- 16 per tile on the facing axis, the
+# other axis untouched), so a press is valid on the first frame the pixel is inside the stand tile.
+# The centred press walked the last 7-9 px at 1 px a frame (no B) on both ends of every crop and padded
+# each A with a face/idle prefix: ~25 of a crop's frames, measured on ``LN_saddle_whatif_harvest_y2d22``
+# (``harvest.scripts.ship_bench``). The lift runs ~23 frames from the A edge (``player_action`` 4) and the
+# throw ~36 (5) whatever the pad does, so the verify waits on the animation. ``HARVEST_FAST_PRESS=0``
+# restores the centred press for an A/B.
+FAST_PRESS = os.environ.get("HARVEST_FAST_PRESS", "1") != "0"
+# Off the facing axis the farmer runs (2 px a frame) until this close to the tile centre: a turn pressed at
+# a tile edge beside an open lane can slide him one pixel into the lane, and the pick then reads the lane.
+PRESS_PERP_TOLERANCE = 4
+FAST_IDLE_FRAMES = 1
+PRESS_TURN_LIMIT = 8
+LIFT_WAIT_FRAMES = 40
+THROW_WAIT_FRAMES = 60
+FACE_CODE = {"down": 0, "up": 1, "right": 2, "left": 3}
+
+
+def clock_tick(ram: np.ndarray) -> int:
+    """ROM clock in its own ticks: 60 a minute unit, 15 units an hour (``UpdateTime``, bank_82)."""
+    from harvest.core.ram_catalog import read_ram_value
+
+    hour = int(read_ram_value(ram, "hour") or 0)
+    minute = int(read_ram_value(ram, "minute") or 0)
+    second = int(read_ram_value(ram, "second") or 0)
+    return (hour * 15 + minute) * 60 + second
+
+
+def ship_eta_frames(here: Tuple[int, int], stand: Tuple[int, int], ship_stand: Tuple[int, int]) -> float:
+    """Frames (= clock ticks outdoors) from ``here`` to a pick at ``stand`` and the throw at the bin."""
+    walk = abs(here[0] - stand[0]) + abs(here[1] - stand[1])
+    walk += abs(stand[0] - ship_stand[0]) + abs(stand[1] - ship_stand[1])
+    return walk * SHIP_FRAMES_PER_TILE + SHIP_PICK_THROW_FRAMES + SHIP_MARGIN_FRAMES
+
+
+def ship_window_fits(ram: np.ndarray, here: Tuple[int, int], stand: Tuple[int, int],
+                     ship_stand: Tuple[int, int] = SHIP_STAND_TILE) -> bool:
+    """True when a crop picked from ``stand`` reaches the bin before 17:00."""
+    return clock_tick(ram) + ship_eta_frames(here, stand, ship_stand) < SHIP_CLOSE_TICK
 _TILE_FAILURES: dict[Tuple[int, int], int] = {}
 
 
@@ -92,9 +172,30 @@ def drop_failed_harvest_tiles(
     return kept, parked
 
 
+def unparked_harvest_tiles(tiles: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    """``tiles`` less those the failure memory has parked (read only).
+
+    The day plan asks this before it schedules a harvest: a Fall ring-centre
+    tile no stand can reach reads ripe every morning, and ``NAV_CROP`` plus
+    ``HARVEST_ROUTE`` for it ate hours (5,000+ frames on Fall D5) before the
+    mushroom trip, which then started at 15:00 and failed the 16:00 gate.
+    """
+    return [t for t in tiles if _TILE_FAILURES.get(t, 0) < HARVEST_TILE_FAIL_LIMIT]
+
+
 def is_carrying(ram: np.ndarray) -> bool:
     idx = ADDR_PLAYER_STATE + live_wram_base(ram)
     return bool(int(ram[idx]) & ACTION_CARRYING_BIT) if idx < len(ram) else False
+
+
+LIFT_ACTIONS = frozenset({4, 5})   # player_action: lift, throw
+
+
+def lift_in_progress(ram: np.ndarray) -> bool:
+    """True while the lift or throw animation runs (the pad is ignored and the carry bit lags)."""
+    from harvest.core.ram_catalog import read_ram_value
+
+    return int(read_ram_value(ram, "player_action") or 0) in LIFT_ACTIONS
 
 
 def is_debris_held(ram: np.ndarray) -> bool:
@@ -261,7 +362,8 @@ def build_harvest_steps(
                 continue
             score = (
                 0,
-                abs(ship_stand[0] - sx) + abs(ship_stand[1] - sy),
+                bin_distance(stand) if ship_stand == SHIP_STAND_TILE
+                else abs(ship_stand[0] - sx) + abs(ship_stand[1] - sy),
                 abs(target[1] - ship_stand[1]),
                 abs(target[0] - ship_stand[0]),
             )
@@ -293,7 +395,8 @@ def build_harvest_steps(
 
     steps.sort(
         key=lambda step: (
-            abs(step.stand[0] - ship_stand[0]) + abs(step.stand[1] - ship_stand[1]),
+            bin_distance(step.stand) if ship_stand == SHIP_STAND_TILE
+            else abs(step.stand[0] - ship_stand[0]) + abs(step.stand[1] - ship_stand[1]),
             step.group,
             step.stand[1],
             step.stand[0],
@@ -409,6 +512,35 @@ class HarvestTask(Task):
     harvested_count: int = field(default=0, init=False)
     shipped_count: int = field(default=0, init=False)
     skipped_count: int = field(default=0, init=False)
+    # Saddle shipping (``harvest.tasks.horse``): the adult horse takes a thrown crop into the
+    # bin total. ``_park`` leaves it beside far ripe crops; ``_horse_stands`` are the open
+    # tiles around it that ``_reset_ship_options`` offered; ``_saddle_off`` is set when a
+    # horse throw did not pay, so the rest of the route ships at the bin.
+    _park: Optional[saddle.ParkHorse] = field(default=None, init=False)
+    _saddle_off: bool = field(default=False, init=False)
+    _horse_stands: dict = field(default_factory=dict, init=False)
+    _horse_at: Optional[Tuple[int, int]] = field(default=None, init=False)
+    _horse_hold: int = field(default=0, init=False)
+    _on_horse_stand: int = field(default=0, init=False)
+    _ship_at_horse: bool = field(default=False, init=False)
+    horse_shipped: int = field(default=0, init=False)
+    park_outcome: str = field(default="", init=False)
+    _park_tried: bool = field(default=False, init=False)
+    # Per-crop pickup-to-ship records (schema ``SHIP_LOG_SCHEMA``), one per bin drop, in drop order.
+    # Frames are ``world.frame`` (the emulator frame the planner runs at); ``tick`` is the ROM clock in
+    # 1/60 game-minute units ((hour*15 + minute)*60 + second), which runs every outdoor frame before 18:00.
+    ship_log: List[dict] = field(default_factory=list, init=False)
+    _rec: Optional[dict] = field(default=None, init=False)
+    _frame: int = field(default=0, init=False)
+    _ram: Optional[np.ndarray] = field(default=None, init=False)
+    # A fast press that did not lift the crop is retried once from the centred stand.
+    _recentre: bool = field(default=False, init=False)
+    _push_from: Optional[Tuple[int, int]] = field(default=None, init=False)
+    _press_face: str = field(default="down", init=False)
+    _press_turns: int = field(default=0, init=False)
+    _press_then: str = field(default="select", init=False)
+    _press_legacy: dict = field(default_factory=dict, init=False)
+    fast_misses: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         self._pathfinder = Pathfinder(self._scanner)
@@ -444,6 +576,10 @@ class HarvestTask(Task):
         target_tiles, parked = drop_failed_harvest_tiles(target_tiles)
         if parked:
             print(f"[HARVEST] Parked {len(parked)} tile(s) that failed {HARVEST_TILE_FAIL_LIMIT} routes: {parked}")
+        target_tiles, held = run_strategy.within_ship_cap(world.ram, target_tiles)
+        if held:
+            print(f"[HARVEST] Left {len(held)} ripe {'/'.join(run_strategy.crop_kinds(world.ram, held))} "
+                  f"tile(s) on the plant at the {run_strategy.active().name} ship cap: {held}")
         self._steps = build_harvest_steps(world.ram, target_tiles, ship_stand=self.ship_stand)
         reachable_targets = {step.target for step in self._steps}
         self._unreachable_targets = [t for t in target_tiles if t not in reachable_targets]
@@ -468,6 +604,103 @@ class HarvestTask(Task):
             + (f", unreachable={self._unreachable_targets}" if self._unreachable_targets else "")
             + ")"
         )
+        self._park, self._saddle_off, self._horse_stands = None, False, {}
+        self._horse_at, self._ship_at_horse, self.horse_shipped, self.park_outcome = None, False, 0, ""
+        self._park_tried = False
+        self.ship_log, self._rec = [], None
+        self._recentre, self.fast_misses = False, 0
+
+    def _park_due(self, ram: np.ndarray) -> bool:
+        """True once only far crops are left, with enough day to ride out and ship them."""
+        if self._park_tried or self._saddle_off or not self._steps or saddle.saddle_usable(ram) is None:
+            return False
+        if saddle.clock_minute(ram) > saddle.PARK_LATEST_MINUTE:
+            return False
+        return all(
+            tile_dist(step.stand, self.ship_stand) >= saddle.PARK_FAR_FROM_BIN for step in self._steps
+        )
+
+    def _plan_park(self, ram: np.ndarray) -> bool:
+        """Leave the horse beside the far ripe crops when the walking saved clearly pays."""
+        self._park_tried = True
+        horse = saddle.saddle_usable(ram)
+        if horse is None or is_carrying(ram):
+            return False
+        self._navigator.update(ram)
+        plan = saddle.plan_park(
+            [step.stand for step in self._steps],
+            bin_stand=self.ship_stand,
+            here=self._navigator.current_tile,
+            horse=horse,
+            open_tile=saddle.default_open_tile(ram),
+            crop_adjacent=saddle.crop_adjacent(ram),
+            minutes_left=saddle.SHIP_CLOSE_MINUTE - saddle.clock_minute(ram),
+        )
+        if plan is None:
+            return False
+        self._park = saddle.ParkHorse(plan)
+        self._phase = "park"
+        print(
+            f"[HARVEST] PARK_HORSE plan: horse at {horse} -> {plan.park} saves ~{plan.saving_tiles} tiles "
+            f"for ~{plan.cost_tiles} (bin {self.ship_stand})"
+        )
+        return True
+
+    def _step_park(self, world: WorldState) -> TaskResult:
+        action, outcome = self._park.step(world.ram, self._navigate_to_tile)
+        if outcome is None:
+            return self._running(action)
+        self.park_outcome = outcome
+        print(f"[HARVEST] PARK_HORSE {outcome}")
+        self._park = None
+        self._clear_navigation_state()
+        self._phase = "select"
+        return self._running(make_action())
+
+    def _horse_unusable(self, ram: np.ndarray, why: str) -> TaskResult:
+        """Ship the rest of the route at the bin."""
+        print(f"[HARVEST] saddle shipping off: {why}")
+        self._saddle_off, self._ship_at_horse = True, False
+        self._ship_options, self._ship_option_index, self._horse_stands = [], 0, {}
+        self._clear_navigation_state()
+        self._phase = "ship_nav"
+        return self._running()
+
+    def _step_horse_face(self, world: WorldState) -> TaskResult:
+        """Face the horse until its saddle bit is up, then throw: a throw before it pays nothing."""
+        ram = world.ram
+        stand, face = self._current_ship_option(ram)
+        if not is_carrying(ram):
+            self._phase = "ship_verify"
+            return self._running()
+        if saddle.farm_horse(ram) != self._horse_at:
+            self._ship_options, self._phase = [], "ship_nav"
+            self._clear_navigation_state()
+            return self._running()
+        if saddle.saddle_ready(ram):
+            self._ship_money_before = read_shipping_money(ram)
+            self._action_queue.extend(saddle.throw_actions())
+            self._verify_count, self._phase = 0, "ship_verify"
+            print(f"[HARVEST] SHIP at the horse {self._horse_at} from stand={stand} money={self._ship_money_before}")
+            return self._running()
+        self._horse_hold += 1
+        if self._horse_hold > saddle.FACE_FRAMES:
+            return self._horse_unusable(ram, "the horse never raised its saddle bit")
+        return self._running(make_action(**{face: True}))
+
+    def _window_ship_stand(self, ram: np.ndarray, pick_stand: Tuple[int, int]) -> Tuple[int, int]:
+        """The ship stand a pick at ``pick_stand`` will use: the nearer of the bin and the horse."""
+        bin_stand = min((stand for stand, _face in self.ship_fallbacks),
+                        key=lambda st: abs(st[0] - pick_stand[0]) + abs(st[1] - pick_stand[1]),
+                        default=self.ship_stand)
+        horse = None if self._saddle_off else saddle.saddle_usable(ram)
+        if horse is None:
+            return bin_stand
+        stands = [stand for stand, _face in saddle.horse_stands(ram, horse)]
+        if not stands:
+            return bin_stand
+        near = min(stands, key=lambda stand: abs(stand[0] - pick_stand[0]) + abs(stand[1] - pick_stand[1]))
+        return near if tile_dist(near, pick_stand) < tile_dist(bin_stand, pick_stand) else bin_stand
 
     def _crop_ship_pending(self) -> bool:
         """True after a successful pick that still needs a bin drop."""
@@ -561,6 +794,35 @@ class HarvestTask(Task):
         self._action_queue.extend(make_action(a=True) for _ in range(hold_frames))
         self._action_queue.extend(make_action() for _ in range(settle_frames))
 
+    def _queue_press(self, ram: np.ndarray, face: str, **legacy) -> None:
+        """Face ``face`` and tap A (``FAST_PRESS``): the ``press`` phase turns until the ROM faces it.
+
+        A one-frame turn after a run sometimes does not register (``LN_blocks_whatif_spring_d8``: the
+        farmer stayed facing down at the bin, threw the potato on the ground in 17 frames, paid 0), so
+        A waits for ``player_direction``.
+        """
+        if not FAST_PRESS or self._recentre:
+            self._queue_press_a(face, **legacy)
+            return
+        self._press_face, self._press_turns, self._press_legacy = face, 0, legacy
+        self._press_then, self._phase = self._phase, "press"
+
+    def _step_press(self, world: WorldState) -> TaskResult:
+        from harvest.core.ram_catalog import read_ram_value
+
+        face = self._press_face
+        if int(read_ram_value(world.ram, "player_direction") or 0) == FACE_CODE[face]:
+            self._action_queue.extend(make_action() for _ in range(FAST_IDLE_FRAMES))
+            self._action_queue.extend(make_action(a=True) for _ in range(2))
+            self._phase = self._press_then
+            return self._running(self._pop_action())
+        self._press_turns += 1
+        if self._press_turns > PRESS_TURN_LIMIT:
+            self._queue_press_a(face, **self._press_legacy)       # the centred press, as before
+            self._phase = self._press_then
+            return self._running(self._pop_action())
+        return self._running(make_action(**{face: True}))
+
     def _dialog_pulse_action(self) -> np.ndarray:
         return make_action(a=True) if self._step_count % 2 == 0 else make_action()
 
@@ -579,11 +841,23 @@ class HarvestTask(Task):
         return self._running(self._pop_action())
 
     def _back_to_select(self) -> None:
+        self._recentre = False
         self._current = None
         self._clear_navigation_state()
         self._phase = "select"
 
+    def _note(self, key: str) -> None:
+        """Stamp ``f_<key>``/``tick_<key>`` on the open ship record."""
+        if self._rec is not None:
+            self._rec[f"f_{key}"] = self._frame
+            self._rec[f"tick_{key}"] = clock_tick(self._ram) if self._ram is not None else None
+
     def _picked(self, phase: str, how: str) -> TaskResult:
+        self._recentre = False
+        self._note("pick")
+        if self._rec is not None:
+            self._rec.update(stand=list(self._current_stand), face=self._current_face,
+                             stand_tries=self._stand_choice_index + 1)
         self.harvested_count += 1
         self._deferred_since_pick.clear()
         self._clear_navigation_state()
@@ -591,7 +865,22 @@ class HarvestTask(Task):
         print(f"[HARVEST] PICK OK target={self._current.target} {how}")
         return self._running()
 
+    def _close_ship_record(self, ram: np.ndarray, paid_g: int) -> None:
+        """File the open pickup-to-ship record at the bin drop."""
+        rec, self._rec = self._rec, None
+        if rec is None:
+            return
+        self._note_into(rec, "ship", ram)
+        rec["paid_g"] = int(max(0, paid_g))
+        rec["at_horse"] = bool(self._ship_at_horse)
+        self.ship_log.append(rec)
+
+    def _note_into(self, rec: dict, key: str, ram: np.ndarray) -> None:
+        rec[f"f_{key}"] = self._frame
+        rec[f"tick_{key}"] = clock_tick(ram)
+
     def _clear_navigation_state(self) -> None:
+        self._push_from = None
         self._navigator.path = []
         self._navigator.stasis = 0
         self._pathfinder.temp_blocked.clear()
@@ -653,6 +942,14 @@ class HarvestTask(Task):
         if self.ship_stand not in [item[0] for item in options]:
             options.append((self.ship_stand, self.ship_face))
 
+        self._horse_stands, self._horse_at = {}, None
+        horse = None if self._saddle_off else saddle.saddle_usable(ram)
+        if horse is not None:
+            self._horse_at = horse
+            for stand, face in saddle.horse_stands(ram, horse):
+                self._horse_stands[stand] = face
+                options.append((stand, face))
+
         current = self._navigator.current_tile
         scored: List[Tuple[Tuple[int, int, int, int], Tuple[Tuple[int, int], str]]] = []
         for index, (stand, face) in enumerate(options):
@@ -710,10 +1007,39 @@ class HarvestTask(Task):
             direction = opposites[secondary]
         return make_action(**{direction: True, "b": True})
 
+    def _fast_arrival(self, goal: Tuple[int, int], face: Optional[str], *, contact: bool) -> Optional[np.ndarray]:
+        """In the stand tile: None when a press is valid now, else a run step (B held).
+
+        The axis across ``face`` is trimmed to ``PRESS_PERP_TOLERANCE``. A pick (``contact``) also needs the
+        farmer pressed against the crop: the lift ignores A one pixel short of the block (ROM probe, branch
+        of ``LN_saddle_whatif_harvest_y2d22``: facing down from y=568 never lifts, y=569 lifts on the A
+        edge). So run at it until a frame moves nothing. The throw reads two tiles ahead and needs no contact.
+        """
+        pos = self._navigator.current_pos
+        cx, cy = goal[0] * TILE_SIZE + 8, goal[1] * TILE_SIZE + 8
+        if face in ("up", "down") and abs(pos.x - cx) > PRESS_PERP_TOLERANCE:
+            self._push_from = None
+            return make_action(**{"right" if pos.x < cx else "left": True, "b": True})
+        if face in ("left", "right") and abs(pos.y - cy) > PRESS_PERP_TOLERANCE:
+            self._push_from = None
+            return make_action(**{"down" if pos.y < cy else "up": True, "b": True})
+        if not contact:
+            return None
+        here = (pos.x, pos.y)
+        if self._push_from == here:
+            return None
+        self._push_from = here
+        return make_action(**{face: True, "b": True})
+
     def _navigate_to_tile(
-        self, ram: np.ndarray, goal: Tuple[int, int]
+        self, ram: np.ndarray, goal: Tuple[int, int], *, press_face: Optional[str] = None, contact: bool = False,
     ) -> Tuple[Optional[np.ndarray], bool]:
-        """Action, or None when centered. True means this frame used fallback."""
+        """Action, or None when centered. True means this frame used fallback.
+
+        ``press_face`` asks for a fast arrival (``FAST_PRESS``): inside the tile is enough.
+        """
+        if press_face is not None and FAST_PRESS and self._navigator.current_tile == goal:
+            return self._fast_arrival(goal, press_face, contact=contact), False
         if self._navigator.current_tile == goal or self._navigator.at_tile(goal):
             return self._navigator.center_on_tile(goal, tolerance=1), False
 
@@ -735,7 +1061,23 @@ class HarvestTask(Task):
         action = self._navigator.follow_path(ram)
         if action is None:
             return self._fallback_action(goal), True
-        return action, False
+        return self._run_centring(action), False
+
+    def _run_centring(self, action: np.ndarray) -> np.ndarray:
+        """Hold B on a path-centring step that is 4+ px off the tile centre (2 px a frame, no overshoot).
+
+        ``Navigator.follow_path`` centres across the walk at 1 px a frame before each turn: ~11 of a
+        near-block crop's ~124 frames on the Spring D8 pin.
+        """
+        if not FAST_PRESS or action[0]:
+            return action
+        pos, tile = self._navigator.current_pos, self._navigator.current_tile
+        off_x, off_y = abs(pos.x - (tile[0] * TILE_SIZE + 8)), abs(pos.y - (tile[1] * TILE_SIZE + 8))
+        horizontal, vertical = bool(action[6] or action[7]), bool(action[4] or action[5])
+        if (horizontal and not vertical and off_x >= 4) or (vertical and not horizontal and off_y >= 4):
+            action = action.copy()
+            action[0] = 1
+        return action
 
     def _stand_provably_unreachable(self, ram: np.ndarray) -> bool:
         """True when BFS over the loaded viewport cannot reach the stand.
@@ -764,7 +1106,8 @@ class HarvestTask(Task):
         if sealed:
             action, blocked = self._fallback_action(self._current_stand), True
         else:
-            action, blocked = self._navigate_to_tile(world.ram, self._current_stand)
+            fast = None if self._recentre else self._current_face
+            action, blocked = self._navigate_to_tile(world.ram, self._current_stand, press_face=fast, contact=True)
         self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
         # Re-check a sealed stand while blocked instead of idling out the stall.
         if (
@@ -804,9 +1147,9 @@ class HarvestTask(Task):
         if action is not None:
             return self._running(action)
         self._target_live_before = get_tile_at(world.ram, *self._current.target)
-        self._queue_press_a(self._current_face)
         self._verify_count = 0
         self._phase = "target_verify"
+        self._queue_press(world.ram, self._current_face)
         return self._running()
 
     def _advance_stand_choice(self) -> bool:
@@ -830,6 +1173,8 @@ class HarvestTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        self._frame = int(getattr(world, "frame", 0) or 0)
+        self._ram = world.ram
         self._navigator.update(world.ram)
         if self._step_count > self.timeout:
             remaining = [step.target for step in self._steps]
@@ -848,6 +1193,17 @@ class HarvestTask(Task):
         action = self._pop_action()
         if action is not None:
             return self._running(action)
+
+        if self._phase == "press":
+            return self._step_press(world)
+        if self._phase == "park":
+            return self._step_park(world)
+        if self._phase == "horse_face":
+            return self._step_horse_face(world)
+        if saddle.is_riding(world.ram):
+            # An A beside the horse mounts it; a rider cannot pick, so get off (a pulse, never a hold).
+            self._clear_navigation_state()
+            return self._running(make_action(a=True) if self._step_count % 60 < 3 else make_action())
 
         if self._phase == "clear_hands":
             if not carrying and int(read_held_item(world.ram)) == 0:
@@ -878,9 +1234,25 @@ class HarvestTask(Task):
                     # Carry animation in progress — wait one frame.
                     return self._running(make_action())
             else:
+                if lift_in_progress(world.ram):
+                    return self._running(make_action())     # a crop is still rising into the hands
+                if self._park_due(world.ram) and self._plan_park(world.ram):
+                    return self._running()
                 self._current = self._choose_next_step(world.ram)
                 if self._current is None:
                     return self._completion_result()
+                if self.state_name is None and not ship_window_fits(
+                    world.ram, self._navigator.current_tile, self._current.stand,
+                    self._window_ship_stand(world.ram, self._current.stand),
+                ):
+                    left = len(self._steps) + 1
+                    self._steps, self._current = [], None
+                    reason = (
+                        f"ship window closed: {left} ripe left for tomorrow "
+                        f"harvested={self.harvested_count} shipped={self.shipped_count}"
+                    )
+                    print(f"[HARVEST] {reason}")
+                    return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
                 self._clear_navigation_state()
                 self._phase = "target_nav"
                 self._ship_options = []
@@ -892,6 +1264,12 @@ class HarvestTask(Task):
                 self._stand_choice_index = 0
                 self._current_stand, self._current_face = self._stand_choices[0]
                 self._target_nav_steps = 0
+                tile = int(get_tile_at(world.ram, *self._current.target))
+                self._rec = {
+                    "target": list(self._current.target), "crop": mature_tile_crop(tile) or "?",
+                    "from": list(self._navigator.current_tile),
+                    "f_select": self._frame, "tick_select": clock_tick(world.ram),
+                }
                 print(
                     f"[HARVEST] Target {self._current.target} "
                     f"stand={self._current_stand} face={self._current_face}"
@@ -913,9 +1291,23 @@ class HarvestTask(Task):
                 (self.state_name is not None and tile_changed_after_pick)
                 or (self.state_name is None and not is_crop_tile(target_tile_id))
             ):
+                # A potato's tile turns to soil on the A edge, ~23 frames before the lift sets the carry
+                # bit. Leaving now walks off with the crop rising and the next A drops it.
+                if lift_in_progress(world.ram) and self._verify_count < LIFT_WAIT_FRAMES:
+                    self._verify_count += 1
+                    return self._running(make_action())
                 return self._picked("ship_nav" if is_carrying(world.ram) else "select", "tile changed")
             self._verify_count += 1
-            if self._verify_count > 12:
+            fast = FAST_PRESS and not self._recentre
+            if fast and self._verify_count > LIFT_WAIT_FRAMES:
+                # Missed from the tile edge: retry once centred, as the old press did.
+                self.fast_misses += 1
+                self._recentre = True
+                self._clear_navigation_state()
+                self._phase = "target_nav"
+                print(f"[HARVEST] fast pick missed target={self._current.target}; retry centred")
+                return self._running(make_action())
+            if not fast and self._verify_count > 12:
                 self.skipped_count += 1
                 note_harvest_tile_failure(self._current.target)
                 print(f"[HARVEST] SKIP target={self._current.target} (not ready or no pickup)")
@@ -928,19 +1320,39 @@ class HarvestTask(Task):
                 self._phase = "select"
                 return self._running()
             ship_stand, ship_face = self._current_ship_option(world.ram)
-            action, blocked = self._navigate_to_tile(world.ram, ship_stand)
+            if ship_stand in self._horse_stands and self._step_count % 15 == 0 and saddle.farm_horse(world.ram) != self._horse_at:
+                self._ship_options = []  # it wandered: choose again against where it is now
+                ship_stand, ship_face = self._current_ship_option(world.ram)
+            bin_face = None if ship_stand in self._horse_stands else ship_face
+            action, blocked = self._navigate_to_tile(world.ram, ship_stand, press_face=bin_face)
+            if ship_stand in self._horse_stands:
+                # Centring beside the horse never finishes (its body is in the way): the tile is enough.
+                self._on_horse_stand = self._on_horse_stand + 1 if self._navigator.current_tile == ship_stand else 0
+                if self._on_horse_stand >= saddle.ON_STAND_FRAMES:
+                    action = None
             self._nav_stall_steps = self._nav_stall_steps + 1 if blocked else 0
             self._ship_nav_steps += 1
+            if ship_stand in self._horse_stands and (
+                self._nav_stall_steps > saddle.HORSE_STALL_STEPS or self._ship_nav_steps > saddle.HORSE_NAV_STEPS
+            ):
+                return self._horse_unusable(world.ram, "the horse is out of reach")
             if action is not None:
                 if self._nav_stall_steps > SHIP_NAV_STALL_LIMIT and self._try_next_ship_option(world.ram):
                     return self._running()
                 if self._nav_stall_steps > SHIP_NAV_STALL_LIMIT or self._ship_nav_steps > SHIP_NAV_TOTAL_LIMIT:
                     return self._abandon_carry(world.ram, reason="bin unreachable")
                 return self._running(action)
+            if ship_stand in self._horse_stands:
+                self._ship_at_horse, self._horse_hold, self._phase = True, 0, "horse_face"
+                return self._running()
+            self._ship_at_horse = False
             self._ship_money_before = read_shipping_money(world.ram)
-            self._queue_press_a(ship_face, hold_frames=14, settle_frames=12)
+            self._note("throw")
+            if self._rec is not None:
+                self._rec.update(ship_stand=list(ship_stand), ship_face=ship_face)
             self._verify_count = 0
             self._phase = "ship_verify"
+            self._queue_press(world.ram, ship_face, hold_frames=14, settle_frames=12)
             print(f"[HARVEST] SHIP from stand={ship_stand} face={ship_face} money={self._ship_money_before}")
             return self._running()
 
@@ -961,21 +1373,30 @@ class HarvestTask(Task):
                 # Bin drop succeeds immediately; shipping_money often settles at 5pm.
                 if ship_money > self._ship_money_before:
                     self.shipped_count += max(1, (ship_money - self._ship_money_before) // 80)
+                    self.horse_shipped += 1 if self._ship_at_horse else 0
                     print(
                         f"[HARVEST] SHIP OK money={ship_money} "
                         f"(+{ship_money - self._ship_money_before}) shipped={self.shipped_count}"
                     )
                 else:
                     self.shipped_count += 1
+                    if self._ship_at_horse:
+                        self._saddle_off = True  # the crop went in unpaid: no more horse throws
+                    from harvest.core.ram_catalog import read_ram_value
+
+                    late = ("at 17:00+ the ROM pays nothing"
+                            if int(read_ram_value(world.ram, "hour") or 0) >= SHIP_CLOSE_HOUR
+                            else "no bin increase")
                     print(
-                        f"[HARVEST] SHIP OK (bin drop; money settles 5pm) "
+                        f"[HARVEST] SHIP UNPAID (bin drop; {late}) "
                         f"money={ship_money} shipped={self.shipped_count}"
                     )
+                self._close_ship_record(world.ram, ship_money - self._ship_money_before)
                 self._ship_nav_steps = 0
                 self._back_to_select()
                 return self._running()
             self._verify_count += 1
-            if self._verify_count > 20:
+            if self._verify_count > (THROW_WAIT_FRAMES if FAST_PRESS else 20):
                 if self._try_next_ship_option(world.ram):
                     return self._running()
                 # Defense in depth: debris misrouted into ship_verify → toss, not fail.

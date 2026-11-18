@@ -30,18 +30,23 @@ from harvest.core.ram_catalog import field_spec, read_ram_u16
 from harvest.planner.day_plan_status import (
     TASKS_DIR,
     is_farm_tilemap,
+    is_path_tilemap,
     is_house_tilemap,
 )
 from harvest.planner.tasks.home_approach import (
     EAST_AROUND_FENCE_X,
     build_house_approach_waypoints,
     deep_south_of_house,
+    door_sidestep,
     drop_spot_px,
     far_east_of_pond_lane,
     house_enter_task,
+    in_house_walkway,
     south_of_fence_wall,
 )
 from harvest.planner.tasks.home_recover import (
+    PondTossTask,
+    pond_is_nearer,
     RecoverDecision,
     RecoverKind,
     WanderDropTask,
@@ -52,10 +57,16 @@ from harvest.planner.tasks.home_recover import (
     short_east_north_actions,
     south_escape_actions,
 )
+from harvest.maps.farm_pond import SHIP_BIN_LANE_TILES
 from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask, NavTask
 from harvest.core.animal_status import read_held_item
 from harvest.planner.tasks.transitions import hands_are_clear
+from harvest.tasks.coop_task import in_animal_yard
+
+ANIMAL_SHOP_TILEMAP = 0x24
+# Town plaza in front of the animal shop door (601,904): the south-west of the town map.
+ANIMAL_SHOP_PLAZA_Y, ANIMAL_SHOP_PLAZA_MAX_X = 800, 760
 
 # Return-home routes live in map_config and are selected by upgrade state; these
 # constants are fallbacks for any missing route data.
@@ -80,8 +91,10 @@ class ReturnHomeTask(Task):
     _drop_attempts: int = field(default=0, init=False)
     _drop_spot_visited: bool = field(default=False, init=False)
     _drop_wandered: bool = field(default=False, init=False)
+    _pond_tossed: bool = field(default=False, init=False)
     _enter_retries: int = field(default=0, init=False)
     _exit_to_farm_retries: int = field(default=0, init=False)
+    _spa_pond_exits: int = field(default=0, init=False)
     _mountain_return_attempts: int = field(default=0, init=False)
     _total_steps: int = field(default=0, init=False)
     # Soft-success off-stand re-navs can thrash forever without terminal
@@ -122,7 +135,8 @@ class ReturnHomeTask(Task):
     @classmethod
     def _house_enter_task(cls, world: WorldState):
         """Build the outdoor→house doorway push (geometry in home_approach)."""
-        return house_enter_task(cls._house_front_px(world.ram))
+        front = cls._house_front_px(world.ram)
+        return house_enter_task(front, get_pos_from_ram(world.ram), door_sidestep(world.ram, front))
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
@@ -131,8 +145,10 @@ class ReturnHomeTask(Task):
         self._drop_attempts = 0
         self._drop_spot_visited = False
         self._drop_wandered = False
+        self._pond_tossed = False
         self._enter_retries = 0
         self._exit_to_farm_retries = 0
+        self._spa_pond_exits = 0
         self._mountain_return_attempts = 0
         self._total_steps = 0
         self._offstand_corrections = 0
@@ -202,6 +218,19 @@ class ReturnHomeTask(Task):
             ),
             world,
         )
+        return self._task.step(world)
+
+    def _start_pond_toss(self, world: WorldState, pos: Point, held: int) -> Optional[TaskResult]:
+        """Carry held debris to the pond lip once; None when the item is not debris."""
+        self._pond_tossed = True
+        pond = PondTossTask()
+        if not pond.can_start(world):
+            return None
+        print(
+            f"[RETURN_HOME] Carrying held=0x{held:02X} to the pond "
+            f"pos=({pos.x},{pos.y})"
+        )
+        self._activate("nav_drop_spot", pond, world)
         return self._task.step(world)
 
     def _nav_to_drop_spot(self, world: WorldState, front: Point) -> TaskResult:
@@ -358,6 +387,11 @@ class ReturnHomeTask(Task):
                 waypoints=waypoints,
                 timeout=route_timeout,
                 initial_settle_frames=0,
+                # A grown west ring and the Summer fence seal the strip east of
+                # the ring (Summer D17/D24: "no_path sealed" at (222,454), two
+                # rescues each); the x=11 lane is its way home. Return home uses
+                # no hoe stands, which is what the lane's no-go protects.
+                allow_tiles=SHIP_BIN_LANE_TILES,
             ),
             world,
         )
@@ -369,10 +403,38 @@ class ReturnHomeTask(Task):
         if arrived is not None:
             return arrived
         if not is_farm_tilemap(tilemap):
+            pos = get_pos_from_ram(world.ram)
+            if in_animal_yard(tilemap, int(pos.x), int(pos.y)) and self._mountain_return_attempts < 2:
+                # The fenced yard opens only through the shop's back door.
+                self._mountain_return_attempts += 1
+                print(f"[RETURN_HOME] Stranded in the animal-shop yard at ({pos.x},{pos.y}); animal_yard_to_farm")
+                self._activate("exit_to_farm", MultiMapNavTask(name="yard_return", waypoints=list(ROUTES["animal_yard_to_farm"]),
+                                                               timeout=9000, initial_settle_frames=0), world)
+                return self._task.step(world)
             # Stranded outdoors on the mountain/path (a failed grape run leaves
             # the farmer at 0x10). ExitToFarmTask only exits *buildings*; it
             # times out here. Walk the mountain_to_farm route back first.
-            if tilemap in (0x10, 0x0C) and self._mountain_return_attempts < 2:
+            from harvest.tasks.hot_spring import in_spa_pond, spa_pond_exit_actions
+
+            if tilemap == 0x10 and self._spa_pond_exits < 3 and in_spa_pond(world.ram):
+                # A day floor that fires mid-soak leaves the farmer in the water:
+                # the mountain route's first waypoint is west of it and a plain
+                # walk shuffles on the 0xF7 edge (Y2 Spring D19, 11k frames).
+                self._spa_pond_exits += 1
+                pos = get_pos_from_ram(world.ram)
+                print(
+                    f"[RETURN_HOME] In the spa pond at ({pos.x},{pos.y}); "
+                    f"jump out west ({self._spa_pond_exits}/3)"
+                )
+                self._task = None
+                self._phase = "spa_pond_exit"
+                self._action_queue.extend(spa_pond_exit_actions())
+                return TaskResult(
+                    status=TaskStatus.RUNNING,
+                    action=ActionResult(self._action_queue.popleft()),
+                    reason="leave the spa pond",
+                )
+            if (tilemap == 0x10 or is_path_tilemap(tilemap)) and self._mountain_return_attempts < 2:
                 pos = get_pos_from_ram(world.ram)
                 if tilemap == 0x10 and int(pos.y) >= 380:
                     # Grape/carpenter band. Spa reverse rewinds to the ridge
@@ -383,7 +445,7 @@ class ReturnHomeTask(Task):
                             int(pos.x), int(pos.y), tilemap=tilemap
                         )
                     )
-                elif tilemap == 0x0C:
+                elif is_path_tilemap(tilemap):
                     route = path_return_to_farm(
                         int(pos.x), int(pos.y), tilemap=tilemap
                     )
@@ -411,6 +473,20 @@ class ReturnHomeTask(Task):
                         world,
                     )
                     return self._task.step(world)
+            if self._mountain_return_attempts < 2 and (
+                tilemap == ANIMAL_SHOP_TILEMAP
+                or (tilemap == 0x04 and int(pos.y) >= ANIMAL_SHOP_PLAZA_Y and int(pos.x) < ANIMAL_SHOP_PLAZA_MAX_X)
+            ):
+                # ExitToFarmTask only exits farm buildings. A walk home from the animal shop that failed (a villager
+                # parked at its door) re-entered the shop and wedged the run after 8 rescues (Y2 Spring D16).
+                self._mountain_return_attempts += 1
+                route = (list(ROUTES["animal_shop_to_town"]) if tilemap == ANIMAL_SHOP_TILEMAP else []) \
+                    + list(ROUTES["animal_shop_town_to_farm"])
+                print(f"[RETURN_HOME] Stranded at the animal shop (tilemap=0x{tilemap:02X} at ({pos.x},{pos.y})); "
+                      f"shop exit and town route ({self._mountain_return_attempts}/2)")
+                self._activate("exit_to_farm", MultiMapNavTask(name="shop_return", waypoints=route, timeout=9000,
+                                                               initial_settle_frames=0), world)
+                return self._task.step(world)
             self._activate("exit_to_farm", ExitToFarmTask(tasks_dir=self.tasks_dir), world)
             return self._task.step(world)
 
@@ -418,9 +494,11 @@ class ReturnHomeTask(Task):
         front = self._house_front_px(world.ram)
 
         if not hands_are_clear(world.ram):
-            # One sequence: the drop spot, then one open-ground wander.
-            # Fixed spots ringed by debris refuse held 0x0F; do not add a
-            # third relocate. WanderDropTask drops on ground that accepts it.
+            # One sequence: the drop spot, the pond lip (debris only), then one
+            # open-ground wander; the pond comes first when it is the nearer.
+            # Fixed spots ringed by debris refuse held 0x0F, and the yard ground
+            # (0xA8) south of the door refuses every toss; the pond always takes
+            # a stone. WanderDropTask drops on ground that accepts it.
             held = int(read_held_item(world.ram))
             at_drop = self._at_drop_spot(pos, front)
             if self._drop_wandered:
@@ -431,6 +509,14 @@ class ReturnHomeTask(Task):
                         f"(held=0x{held:02X} attempts={self._drop_attempts})"
                     ),
                 )
+            if (
+                not self._pond_tossed
+                and not self._drop_spot_visited
+                and pond_is_nearer(pos, drop_spot_px(front))
+            ):
+                pond_first = self._start_pond_toss(world, pos, held)
+                if pond_first is not None:
+                    return pond_first
             if not at_drop and not self._drop_spot_visited:
                 self._drop_spot_visited = True
                 print(
@@ -452,12 +538,24 @@ class ReturnHomeTask(Task):
                     action=ActionResult(self._action_queue.popleft()),
                     reason="drop carried before house",
                 )
+            if not self._pond_tossed:
+                pond_next = self._start_pond_toss(world, pos, held)
+                if pond_next is not None:
+                    return pond_next
             self._drop_wandered = True
             print(
                 f"[RETURN_HOME] Wander drop held=0x{held:02X} "
                 f"pos=({pos.x},{pos.y})"
             )
             self._activate("nav_drop_spot", WanderDropTask(start_dir=1), world)
+            return self._task.step(world)
+
+        if in_house_walkway(pos, front):
+            print(
+                f"[RETURN_HOME] On the door walkway pos=({pos.x},{pos.y}); "
+                f"pushing up from here"
+            )
+            self._activate("enter_house", self._house_enter_task(world), world)
             return self._task.step(world)
 
         # Too far north of the outdoor stand: walk south before pushing up.
@@ -532,6 +630,7 @@ class ReturnHomeTask(Task):
                 self._drop_attempts = 0
                 self._drop_spot_visited = False
                 self._drop_wandered = False
+                self._pond_tossed = False
             print(
                 f"[RETURN_HOME] Retry house enter "
                 f"({self._enter_retries}/4): {reason}"
@@ -650,7 +749,7 @@ class ReturnHomeTask(Task):
         if self._phase == "drop_carried":
             self._task = None
             return self._start_next_phase(world)
-        if self._phase == "exit_to_farm_recover":
+        if self._phase in {"exit_to_farm_recover", "spa_pond_exit"}:
             # Mash queue drained; re-run exit_to_farm / farm approach.
             self._task = None
             self._phase = "start"

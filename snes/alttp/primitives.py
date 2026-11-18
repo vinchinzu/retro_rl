@@ -15,6 +15,7 @@ import numpy as np
 
 from retro_harness.adventure.nav import Waypoint as SharedWaypoint
 from retro_harness.adventure.nav import direction_to_waypoint, reached_waypoint
+from alttp.dungeon.tilemap import read_room_tiles
 from alttp.ram import ABILITY_DASH, MODULE, PEG_STATE, AlttpSnapshot, read_inventory, wram_index
 from alttp.sprite_ids import vulnerability
 from alttp.startup import action_for, no_action, snapshot_env, step_frames
@@ -1144,6 +1145,483 @@ def shoot_arrow(env: object) -> PrimitiveResult:
         (
             f"arrow 0x{born.ancilla_type:02X} ({born.x},{born.y}) "
             f"count {count}->{after}"
+        ),
+        frames[0],
+        snapshot_env(env),
+    )
+
+
+_HAMMER_ITEM = 0xF34B
+_STUN_TIMER = 0x0B58
+_PEG_WORD = 0x4040
+_HAMMER_WAIT = 16
+_OBJ_SLOTS = 16
+
+
+def _obj_tile(pos: int) -> tuple[int, int]:
+    tile = (int(pos) & 0x3FFF) >> 1
+    return tile & 63, (tile >> 6) & 63
+
+
+def _attr_at(env: object, col: int, row: int) -> int:
+    layer = _ram_u8(env, 0x00EE)
+    if layer not in (0, 1):
+        layer = 0
+    grid = read_room_tiles(np.asarray(env.get_ram(), dtype=np.uint8), layer)  # type: ignore[attr-defined]
+    if not (0 <= row < 64 and 0 <= col < 64):
+        return 0
+    return int(grid[row, col])
+
+
+def _hammer_pegs(env: object) -> list[tuple[int, int, int, int]]:
+    found: list[tuple[int, int, int, int]] = []
+    for slot in range(_OBJ_SLOTS):
+        if _obj_word(env, _OBJ_STATE + slot * 2) != _PEG_WORD:
+            continue
+        col, row = _obj_tile(_obj_word(env, _OBJ_POS + slot * 2))
+        found.append((slot, col, row, _attr_at(env, col, row)))
+    return found
+
+
+def hammer(env: object) -> PrimitiveResult:
+    """Select the hammer and swing once.
+
+    Refuses in a doorway (``$006C`` != 0) and when ``$F34B`` is 0. A peg is
+    an object whose replacement word is 0x4040. Success is that tile's
+    attribute leaving 0x7N, or a stun timer ``$0B58`` rising from 0.
+    """
+    frames = [0]
+    if not _in_play(env):
+        return _fail("not in play", frames, env)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return _fail("doorway", frames, env)
+    if _ram_u8(env, _HAMMER_ITEM) == 0:
+        return _fail("hammer is not owned", frames, env)
+    picked = select_y_item(env, "hammer")
+    frames[0] += int(picked.frames)
+    if not picked.ok:
+        return PrimitiveResult(False, picked.reason, frames[0], picked.snapshot)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return _fail("doorway", frames, env)
+    before = _hammer_pegs(env)
+    stun0 = tuple(_ram_u8(env, _STUN_TIMER + slot) for slot in range(SPRITE_SLOTS))
+    _hold(env, "NONE", 1, frames)
+    _hold(env, "Y", 1, frames)
+    hit: tuple[int, int, int, int, int] | None = None
+    stunned: tuple[int, int] | None = None
+    for _ in range(_HAMMER_WAIT):
+        for slot, col, row, attr in before:
+            now = _attr_at(env, col, row)
+            if (attr & 0xF0) == 0x70 and (now & 0xF0) != 0x70:
+                hit = (slot, col, row, attr, now)
+                break
+        if hit is None:
+            for slot, old in enumerate(stun0):
+                new = _ram_u8(env, _STUN_TIMER + slot)
+                if old == 0 and new != 0:
+                    stunned = (slot, new)
+                    break
+        if hit is not None or stunned is not None:
+            break
+        _hold(env, "NONE", 1, frames)
+    if hit is not None:
+        slot, col, row, attr, now = hit
+        return PrimitiveResult(
+            True,
+            f"peg slot {slot} tile ({col},{row}) attr 0x{attr:02X}->0x{now:02X}",
+            frames[0],
+            snapshot_env(env),
+        )
+    if stunned is not None:
+        slot, value = stunned
+        return PrimitiveResult(
+            True,
+            f"stun slot {slot} $0B58=0x{value:02X}",
+            frames[0],
+            snapshot_env(env),
+        )
+    return _fail("hammer missed", frames, env)
+
+
+_HOOK_ITEM = 0xF342
+_HOOK_DRAG = 0x037E
+_HOOK_TYPE = 0x1F
+_HOOK_STATE = 0x13
+_HOOK_WAIT = 48
+
+
+def hookshot(env: object) -> PrimitiveResult:
+    """Select the hookshot and fire once.
+
+    Refuses in a doorway (``$006C`` != 0) and when ``$F342`` is 0.
+    Reach is a new ancilla 0x1F. A pull is ``$037E`` bit 0 while Link's
+    xy changes in state ``$5D`` 0x13. A retract with no drag misses.
+    """
+    frames = [0]
+    if not _in_play(env):
+        return _fail("not in play", frames, env)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return _fail("doorway", frames, env)
+    if _ram_u8(env, _HOOK_ITEM) == 0:
+        return _fail("hookshot is not owned", frames, env)
+    picked = select_y_item(env, "hookshot")
+    frames[0] += int(picked.frames)
+    if not picked.ok:
+        return PrimitiveResult(False, picked.reason, frames[0], picked.snapshot)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return _fail("doorway", frames, env)
+    origin = snapshot_env(env)
+    x0, y0 = int(origin.link_x), int(origin.link_y)
+    had = {row.slot for row in active_ancillae(env) if row.ancilla_type == _HOOK_TYPE}
+    _hold(env, "NONE", 1, frames)
+    _hold(env, "Y", 1, frames)
+    born = None
+    dragged = False
+    moved = None
+    for _ in range(_HOOK_WAIT):
+        for row in active_ancillae(env):
+            if row.ancilla_type == _HOOK_TYPE and row.slot not in had:
+                born = row
+        if _ram_u8(env, _HOOK_DRAG) & 1:
+            dragged = True
+        now = snapshot_env(env)
+        if (int(now.link_x), int(now.link_y)) != (x0, y0) and int(now.link_action) == _HOOK_STATE:
+            moved = (int(now.link_x), int(now.link_y))
+        if born is not None and dragged and moved is not None:
+            break
+        _hold(env, "NONE", 1, frames)
+    if born is None:
+        return _fail("no hookshot ancilla", frames, env)
+    if not dragged or moved is None:
+        return _fail(f"hookshot retract ({born.x},{born.y}) xy ({x0},{y0})", frames, env)
+    x1, y1 = moved
+    return PrimitiveResult(
+        True,
+        f"hookshot ({born.x},{born.y}) drag xy ({x0},{y0})->({x1},{y1}) $037E",
+        frames[0],
+        snapshot_env(env),
+    )
+
+
+_ROD_ITEM = 0xF345
+_ROD_TYPE = 0x02
+_MAGIC = 0xF36E
+# AP-072: $F36E drops 16 on Y. $F37B was 0, so this is the normal column.
+_ROD_COST = 16
+_ROD_WAIT = 32
+
+
+def fire_rod(env: object) -> PrimitiveResult:
+    """Select the fire rod and fire once.
+
+    Refuses in a doorway (``$006C`` != 0), when ``$F345`` is 0, or when
+    ``$F36E`` is below 16. Success is a new ancilla 0x02 and magic lower
+    by 16 (AP-072).
+    """
+    frames = [0]
+    if not _in_play(env):
+        return _fail("not in play", frames, env)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return _fail("doorway", frames, env)
+    if _ram_u8(env, _ROD_ITEM) == 0:
+        return _fail("fire rod is not owned", frames, env)
+    if _ram_u8(env, _MAGIC) < _ROD_COST:
+        return _fail(f"magic {_ram_u8(env, _MAGIC)} < {_ROD_COST}", frames, env)
+    picked = select_y_item(env, "fire_rod")
+    frames[0] += int(picked.frames)
+    if not picked.ok:
+        return PrimitiveResult(False, picked.reason, frames[0], picked.snapshot)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return _fail("doorway", frames, env)
+    magic0 = _ram_u8(env, _MAGIC)
+    had = {row.slot for row in active_ancillae(env) if row.ancilla_type == _ROD_TYPE}
+    _hold(env, "NONE", 1, frames)
+    _hold(env, "Y", 1, frames)
+    born = None
+    magic1 = magic0
+    for _ in range(_ROD_WAIT):
+        magic1 = _ram_u8(env, _MAGIC)
+        for row in active_ancillae(env):
+            if row.ancilla_type == _ROD_TYPE and row.slot not in had:
+                born = row
+        if born is not None and magic0 - magic1 == _ROD_COST:
+            break
+        _hold(env, "NONE", 1, frames)
+    if born is None:
+        return _fail(f"no fire rod ancilla magic {magic0}->{magic1}", frames, env)
+    if magic0 - magic1 != _ROD_COST:
+        return _fail(
+            f"fire rod ({born.x},{born.y}) magic {magic0}->{magic1} not {_ROD_COST}",
+            frames,
+            env,
+        )
+    return PrimitiveResult(
+        True,
+        f"fire rod ({born.x},{born.y}) magic {magic0}->{magic1}",
+        frames[0],
+        snapshot_env(env),
+    )
+
+
+# AP-072 measured $F36E dropping 8 on Y. Ancilla 0x2C is the block. $0646
+# rises only when that block covers 0x23, 0x24, 0x25, or 0x3B. A 0xB6 or
+# 0xBC under it becomes sprite 0xED; $02F5 is Link standing on the platform.
+# Facing $2F is 0, 2, 4, 6. sprite $0DE0 0..3 leaves a 0xB6 on the reverse press.
+_SOMARIA_ITEM = 0xF350
+_SOMARIA_COST = 8
+_BLOCK_ANCILLA = 0x2C
+_SWITCH_FLAG = 0x0646
+_ON_PLATFORM = 0x02F5
+_TILE_MASK = 0x00EC
+_PIPE_START = frozenset({0xB6, 0xBC})
+_SWITCH_ATTR = frozenset({0x23, 0x24, 0x25, 0x3B})
+_PLATFORM_SPRITES = frozenset({0xED, 0xEF, 0xF0, 0xF1})
+_FACING_PRESS = {0: "UP", 2: "DOWN", 4: "LEFT", 6: "RIGHT"}
+_TRANSIT_PRESS = ("DOWN", "UP", "RIGHT", "LEFT")
+_SOMARIA_WAIT = 32
+_PUSH_SWITCH = 120
+_RIDE_STAND = 90
+
+
+def _tile_xy(env: object, x: int, y: int) -> tuple[int, int, int]:
+    mask = _ram_u8(env, _TILE_MASK) | (_ram_u8(env, _TILE_MASK + 1) << 8)
+    col = (int(x) & mask) >> 3
+    row = (int(y) & mask) >> 3
+    return col & 63, row & 63, _attr_at(env, col & 63, row & 63)
+
+
+def _ahead_attr(env: object, button: str) -> int:
+    snap = snapshot_env(env)
+    col, row, _attr = _tile_xy(env, int(snap.link_x), int(snap.link_y))
+    if button == "UP":
+        row -= 1
+    elif button == "DOWN":
+        row += 1
+    elif button == "LEFT":
+        col -= 1
+    else:
+        col += 1
+    return _attr_at(env, col, row)
+
+
+def _pit_track(attr: int) -> bool:
+    if attr == 0x20:
+        return True
+    return (attr & 0xF0) == 0xB0 and attr not in _PIPE_START
+
+
+def _px_before_edge(x: int, y: int, button: str) -> int:
+    """Pixels of the current 8px tile left before ``button`` leaves it."""
+    if button == "UP":
+        return int(y) & 7
+    if button == "DOWN":
+        return 7 - (int(y) & 7)
+    if button == "LEFT":
+        return int(x) & 7
+    return 7 - (int(x) & 7)
+
+
+def _arm_somaria(env: object, frames: list[int]) -> tuple[int, PrimitiveResult | None]:
+    """Select the cane. Does not press Y and does not write the item byte."""
+    if not _in_play(env):
+        return 0, _fail("not in play", frames, env)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return 0, _fail("doorway", frames, env)
+    if _ram_u8(env, _SOMARIA_ITEM) == 0:
+        return 0, _fail("somaria is not owned", frames, env)
+    magic0 = _ram_u8(env, _MAGIC)
+    if magic0 < _SOMARIA_COST:
+        return 0, _fail(f"magic {magic0} < {_SOMARIA_COST}", frames, env)
+    picked = select_y_item(env, "somaria")
+    frames[0] += int(picked.frames)
+    if not picked.ok:
+        return 0, PrimitiveResult(False, picked.reason, frames[0], picked.snapshot)
+    if _ram_u8(env, _DOORWAY) != 0:
+        return 0, _fail("doorway", frames, env)
+    return _ram_u8(env, _MAGIC), None
+
+
+def _somaria_blocks(env: object) -> list[tuple[int, int, int]]:
+    found: list[tuple[int, int, int]] = []
+    for slot in range(ANCILLA_SLOTS):
+        if _ram_u8(env, ANCILLA_TYPE + slot) != _BLOCK_ANCILLA:
+            continue
+        x = _ram_u8(env, ANCILLA_X_LOW + slot) | (_ram_u8(env, ANCILLA_X_HIGH + slot) << 8)
+        y = _ram_u8(env, ANCILLA_Y_LOW + slot) | (_ram_u8(env, ANCILLA_Y_HIGH + slot) << 8)
+        found.append((slot, x, y))
+    return found
+
+
+def _platform_sprites(env: object) -> list[SpriteSnapshot]:
+    return [row for row in active_sprites(env) if row.sprite_type in _PLATFORM_SPRITES]
+
+
+def somaria_block(env: object) -> PrimitiveResult:
+    """Select the cane, make one block, and push it onto a switch.
+
+    Refuses in a doorway (``$006C`` != 0), when ``$F350`` is 0, or when
+    ``$F36E`` is below 8. Success is a new ancilla 0x2C, magic lower by 8,
+    and ``$0646`` rising or the block's tile in 0x23, 0x24, 0x25, or 0x3B.
+    The push is the facing already in ``$2F``. A pit or track stops the push.
+    """
+    frames = [0]
+    magic0, failed = _arm_somaria(env, frames)
+    if failed is not None:
+        return failed
+    had = {slot for slot, _x, _y in _somaria_blocks(env)}
+    _hold(env, "NONE", 1, frames)
+    _hold(env, "Y", 1, frames)
+    born: tuple[int, int, int] | None = None
+    magic1 = magic0
+    for _ in range(_SOMARIA_WAIT):
+        magic1 = _ram_u8(env, _MAGIC)
+        for slot, x, y in _somaria_blocks(env):
+            if slot not in had:
+                born = (slot, x, y)
+        if born is not None and magic0 - magic1 == _SOMARIA_COST:
+            break
+        _hold(env, "NONE", 1, frames)
+    if born is None or magic0 - magic1 != _SOMARIA_COST:
+        return _fail(f"no somaria block magic {magic0}->{magic1}", frames, env)
+    button = _FACING_PRESS.get(_ram_u8(env, 0x002F))
+    if button is None:
+        return _fail(f"bad facing 0x{_ram_u8(env, 0x002F):02X}", frames, env)
+    flag0 = _ram_u8(env, _SWITCH_FLAG)
+    hit: tuple[int, int, int, int] | None = None
+    for _ in range(_PUSH_SWITCH):
+        if snapshot_env(env).game_mode == 0x12:
+            return _fail("Link died", frames, env)
+        blocks = _somaria_blocks(env)
+        flag = _ram_u8(env, _SWITCH_FLAG)
+        if blocks:
+            col, row, attr = _tile_xy(env, blocks[0][1], blocks[0][2])
+            if flag != flag0 or attr in _SWITCH_ATTR:
+                hit = (col, row, attr, flag)
+                break
+        elif flag != flag0:
+            hit = (-1, -1, 0, flag)
+            break
+        if _pit_track(_ahead_attr(env, button)):
+            break
+        _hold(env, button, 1, frames)
+    if hit is None:
+        where = ""
+        blocks = _somaria_blocks(env)
+        if blocks:
+            col, row, attr = _tile_xy(env, blocks[0][1], blocks[0][2])
+            where = f" tile ({col},{row}) attr 0x{attr:02X}"
+        return _fail(f"block missed switch{where}", frames, env)
+    col, row, attr, flag = hit
+    return PrimitiveResult(
+        True,
+        (
+            f"block tile ({col},{row}) attr 0x{attr:02X} "
+            f"$0646={flag} magic {magic0}->{magic1}"
+        ),
+        frames[0],
+        snapshot_env(env),
+    )
+
+
+def ride_platform(env: object) -> PrimitiveResult:
+    """Place a somaria block on a 0xB6 or 0xBC pipe, stand, and press.
+
+    The pipe is the live attribute under the new platform sprite. ``$02F5``
+    is standing on it. At that junction the press is the reverse of ``$0DE0``.
+    Success is the 8-point drop plus Link or the platform moving while ``$02F5``
+    is set. This does not write the cane byte.
+    """
+    frames = [0]
+    magic0, failed = _arm_somaria(env, frames)
+    if failed is not None:
+        return failed
+    had = {row.slot for row in _platform_sprites(env)}
+    _hold(env, "NONE", 1, frames)
+    _hold(env, "Y", 1, frames)
+    born: SpriteSnapshot | None = None
+    magic1 = magic0
+    pipe: tuple[int, int, int] = (0, 0, 0)
+    for _ in range(_SOMARIA_WAIT):
+        magic1 = _ram_u8(env, _MAGIC)
+        for row in _platform_sprites(env):
+            if row.slot in had:
+                continue
+            col, tile_row, attr = _tile_xy(env, row.x, row.y)
+            live = attr if attr in _PIPE_START else _ram_u8(env, 0x0E90 + row.slot)
+            if live in _PIPE_START:
+                born = row
+                pipe = (col, tile_row, live)
+                break
+        if born is not None and magic0 - magic1 == _SOMARIA_COST:
+            break
+        _hold(env, "NONE", 1, frames)
+    if born is None or magic0 - magic1 != _SOMARIA_COST:
+        return _fail(f"no somaria platform magic {magic0}->{magic1}", frames, env)
+    for _ in range(_RIDE_STAND):
+        if _ram_u8(env, _ON_PLATFORM):
+            break
+        if snapshot_env(env).game_mode == 0x12:
+            return _fail("Link died", frames, env)
+        still = [row for row in _platform_sprites(env) if row.slot == born.slot]
+        if not still:
+            return _fail("platform vanished", frames, env)
+        plat = still[0]
+        snap = snapshot_env(env)
+        dx = int(plat.x) - int(snap.link_x)
+        dy = int(plat.y) - int(snap.link_y)
+        if abs(dx) + abs(dy) <= 8:
+            _hold(env, "NONE", 1, frames)
+            continue
+        button = "DOWN" if abs(dy) >= abs(dx) and dy > 0 else "UP"
+        if abs(dx) > abs(dy):
+            button = "RIGHT" if dx > 0 else "LEFT"
+        # The tile ahead can be pit while this tile still has floor.
+        # Stop on the edge instead of stepping into the pit.
+        if _pit_track(_ahead_attr(env, button)) and _px_before_edge(
+            int(snap.link_x), int(snap.link_y), button
+        ) < 2:
+            _hold(env, "NONE", 1, frames)
+            continue
+        _hold(env, button, 1, frames)
+        _col, _row, stepped = _tile_xy(
+            env, int(snapshot_env(env).link_x), int(snapshot_env(env).link_y)
+        )
+        if _pit_track(stepped):
+            return _fail("pit between Link and the platform", frames, env)
+    if _ram_u8(env, _ON_PLATFORM) == 0:
+        return _fail("not standing on platform", frames, env)
+    still = [row for row in _platform_sprites(env) if row.slot == born.slot]
+    if not still:
+        return _fail("platform vanished", frames, env)
+    plat = still[0]
+    press = _TRANSIT_PRESS[int(plat.direction) & 3]
+    x0, y0 = int(plat.x), int(plat.y)
+    link0 = snapshot_env(env)
+    moved = False
+    for _ in range(48):
+        _hold(env, press, 1, frames)
+        if snapshot_env(env).game_mode == 0x12:
+            return _fail("Link died", frames, env)
+        still = [row for row in _platform_sprites(env) if row.slot == born.slot]
+        link = snapshot_env(env)
+        plat_xy = (int(still[0].x), int(still[0].y)) if still else (x0, y0)
+        link_xy = (int(link.link_x), int(link.link_y))
+        if plat_xy != (x0, y0) or link_xy != (int(link0.link_x), int(link0.link_y)):
+            if _ram_u8(env, _ON_PLATFORM):
+                moved = True
+                break
+    col, tile_row, attr = pipe
+    if not moved:
+        return _fail(
+            f"junction {press} tile ({col},{tile_row}) attr 0x{attr:02X} did not move",
+            frames,
+            env,
+        )
+    return PrimitiveResult(
+        True,
+        (
+            f"platform 0x{born.sprite_type:02X} tile ({col},{tile_row}) "
+            f"attr 0x{attr:02X} press {press} $02F5 magic {magic0}->{magic1}"
         ),
         frames[0],
         snapshot_env(env),

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 53,
+  "roomHex": "0x35",
+  "name": "Swamp Palace water switch, big key chest",
+  "measured": "2026-10-18",
+  "sourceState": "Scan_swamp_0x35",
+  "points": [],
+  "doors": [
+    {
+      "label": "east_small_key",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x1C small key pos $07F4. Stopping lock. Not walked."
+    },
+    {
+      "label": "west_upper",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x00 pos $0784. Dest unknown. Not walked."
+    },
+    {
+      "label": "west_lower",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x00 pos $1784. Dest unknown. Not walked."
+    },
+    {
+      "label": "north_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x00 pos $125C. Dest unknown. Not walked."
+    },
+    {
+      "label": "east_regular",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 4 type 0x00 pos $17F4. Dest unknown. Not walked."
+    },
+    {
+      "label": "north_lower",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 5 type 0x02 pos $13BC. Dest unknown. Not walked."
+    },
+    {
+      "label": "south_regular",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 11 type 0x00 pos $0D5C, other layer of slot 3. Not walked."
+    },
+    {
+      "label": "south_lower",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 13 type 0x02 pos $0BBC, other layer of slot 5. Not walked."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x21", "xy": [2880, 1621], "notes": "water switch floor 0"},
+    {"type": "0x1E", "xy": [2912, 1632], "notes": "crystal switch"}
+  ],
+  "notes": [
+    "Scan_swamp_0x35 kind poke. Not a walk. Chest 0 tile (23,16) BigKeyD2 0xEAA6 opened=0.",
+    "Live tag was [0, 25] before the lever. Door-only; approach xy omitted.",
+    "Isolated development. Not natural."
+  ]
+}

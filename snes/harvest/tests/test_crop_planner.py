@@ -69,7 +69,7 @@ class CropPlannerTests(unittest.TestCase):
         self.assertEqual(len(access), 7)
         self.assertEqual({item.stand_tiles[0] for item in access}, {center})
 
-    def test_planner_avoids_shipping_stand_and_plants_potato_away_from_bin(self) -> None:
+    def test_planner_protects_shipping_stand_while_siting_potatoes(self) -> None:
         ram = _blank_ram()
         config = CropPlanningConfig(
             seed_type="potato",
@@ -96,7 +96,7 @@ class CropPlannerTests(unittest.TestCase):
             self.assertNotIn(DEFAULT_SHIPPING_TILE, plot.crop_tiles)
             self.assertNotIn(DEFAULT_SHIPPING_TILE, plot.water_stands)
 
-    def test_corn_prefers_plots_closer_to_the_bin_than_potato(self) -> None:
+    def test_corn_and_potato_both_choose_close_plots(self) -> None:
         ram = _blank_ram()
         bounds = (10, 28, 25, 40)
         potato = plan_crop_field(
@@ -124,7 +124,7 @@ class CropPlannerTests(unittest.TestCase):
             c = plan.plots[0].center
             return abs(c[0] - DEFAULT_SHIPPING_TILE[0]) + abs(c[1] - DEFAULT_SHIPPING_TILE[1])
 
-        self.assertGreater(_dist(potato), _dist(corn))
+        self.assertEqual(_dist(potato), _dist(corn))
 
     def test_summer_sprinkler_plan_uses_seven_tile_regrow_layout(self) -> None:
         ram = _blank_ram()
@@ -172,11 +172,13 @@ class CropPlannerTests(unittest.TestCase):
         self.assertFalse(should_buy_seeds_for_date("spring", SPRING_LAST_SOW_DAY + 1))
         self.assertFalse(should_buy_seeds_for_date("spring", 30))
 
-    def test_cutoff_leaves_a_ring_planted_on_d1_ripe_on_summer_d1(self) -> None:
+    def test_cutoff_frees_every_ring_for_a_six_harvest_corn_planting(self) -> None:
         from harvest.planner.crop_planner import SPRING_LAST_SOW_DAY, SEASON_LENGTH
+        from harvest.planner.livestock_econ import RING_FIRST_PLANT_DAYS
 
         potato = CROP_SPECS["potato"]
-        self.assertLessEqual(SPRING_LAST_SOW_DAY + potato.days_to_first_harvest, SEASON_LENGTH)
+        self.assertLessEqual(SPRING_LAST_SOW_DAY + potato.days_to_first_harvest,
+                             SEASON_LENGTH + RING_FIRST_PLANT_DAYS)
 
     def test_choose_crop_for_date_accounts_for_summer_regrow(self) -> None:
         crop = choose_crop_for_date("summer", 12, layout_tiles=7)
@@ -309,8 +311,8 @@ class SecondPlotPlacementTests(unittest.TestCase):
         chosen = plan.plots[0]
         self.assertFalse(set(chosen.crop_tiles) & set(protected))
         self.assertNotIn((13, 28), chosen.crop_tiles)
-        # Potato goes farther from the bin than the D2 ring so summer 3-day
-        # corn/tomato can occupy the close remainder.
+        # The established D2 plot is protected; new planting uses the nearest
+        # compatible site without consuming its access stands.
         d2 = (13, 28)
         chosen_dist = abs(chosen.center[0] - DEFAULT_SHIPPING_TILE[0]) + abs(
             chosen.center[1] - DEFAULT_SHIPPING_TILE[1]
@@ -370,7 +372,7 @@ class PlotSitingPolicyTests(unittest.TestCase):
             footprint = set(plot.crop_tiles) | {plot.center} | set(plot.access_tiles)
             self.assertFalse(footprint & POND_CORRIDOR_TILES)
 
-    def test_one_shot_crops_prefer_far_regrow_prefer_close(self) -> None:
+    def test_all_crops_prefer_shorter_shipping_trips(self) -> None:
         ram = _blank_ram()
         eight = CROP_LAYOUTS["eight_tile_ring"]
         near = (40, 20)
@@ -395,8 +397,8 @@ class PlotSitingPolicyTests(unittest.TestCase):
         self.assertIsNotNone(corn_far)
         assert potato_near is not None and potato_far is not None
         assert corn_near is not None and corn_far is not None
-        self.assertGreater(potato_far.score, potato_near.score)
-        self.assertLess(potato_far.route_cost, potato_near.route_cost)
+        self.assertGreater(potato_near.score, potato_far.score)
+        self.assertLess(potato_near.route_cost, potato_far.route_cost)
         self.assertGreater(corn_near.score, corn_far.score)
         self.assertLess(corn_near.route_cost, corn_far.route_cost)
 
@@ -437,3 +439,20 @@ class PlotSitingPolicyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_mirrored_notches_keep_eight_crops_and_the_working_space_open():
+    from harvest.tasks.crop_geometry import hoe_plan
+
+    center = (9, 35)
+    for name, opening in (("eight_east_notch", (1, 0)), ("eight_west_notch", (-1, 0))):
+        layout = CROP_LAYOUTS[name]
+        assert layout.crop_count == 8
+        assert (0, 0) in layout.crop_offsets
+        assert opening not in layout.crop_offsets
+        assert layout.access_offsets == (opening,)
+        assert len(watering_access_for_layout(_blank_ram(), center, layout, mode="manual")) == 8
+        hoe = hoe_plan(center, opening=opening)
+        assert {target for target, stand, face in hoe} == set(layout.crop_tiles(center))
+        assert hoe[-1][0] == center
+        assert hoe[-1][1] in layout.access_tiles(center)

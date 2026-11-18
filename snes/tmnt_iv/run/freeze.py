@@ -61,8 +61,11 @@ def progress_key(state: GameState) -> tuple[Any, ...]:
         return ("boss", state.stage, event, int(state.extras.get("boss_hp", 0)))
     living = state.living_enemies
     if living:
+        # 0x003A is a frame clock, so it cannot key a fight: a frozen fight
+        # (same enemy HP, turtle not moving) must look frozen. Technodrome
+        # hid a 20,000+ frame align deadlock behind it (2026-11-14).
         hp = sum(int(e.health) for e in living)
-        return ("fight", state.stage, progress, hp)
+        return ("fight", state.stage, hp, state.player_x, state.player_y)
     return ("scroll", state.stage, progress, state.player_x)
 
 

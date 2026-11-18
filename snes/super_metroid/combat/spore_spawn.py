@@ -9,11 +9,13 @@ so a short fight can clear on the natural 10-cap without resource writes.
 - :func:`play_spore_spawn_floor_bounce` — Survival continuous (assisted
   floor bounce + aim-up missiles). Approach/exit stay on the hop.
 - :func:`play_spore_spawn_fight` — Clean left-ledge ball + 2-missile windows.
+- :func:`play_spore_spawn_rollout` — ROM beam search with a hit-free first pass.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from collections.abc import Callable
 
 from super_metroid.combat.features import (
     boss_defeated_in_state,
@@ -98,19 +100,10 @@ class SporeSpawnStrategy:
     # around (142, 604), not the first-window (185, 586) — fire under the
     # live eye, not a hardcoded x=180–195 band.
     fire_enemy_x_min: int = 120
-    fire_enemy_x_max: int = 200
-    fire_enemy_y_min: int = 540
-    fire_enemy_y_max: int = 640
     fire_airborne_y: int = 660
-    fire_x_slop: int = 10
     fire_x_left: int = 4
     fire_x_right: int = 12
-    fire_y_max: int = 624
-    takeoff_behind: int = 16
     fire_x_bias: int = 6
-    fire_standoff: int = 32
-    fire_close_x: int = 64
-    fire_close_y: int = 70
 
 
 @dataclass(frozen=True)
@@ -214,13 +207,6 @@ def _fire_target_x(state: SuperMetroidState, bias: int) -> int:
     if _high_right_park(state):
         return 188
     return int(state.enemy0_x) + bias
-
-
-def _in_fire_band(state: SuperMetroidState, strategy: SporeSpawnStrategy) -> bool:
-    return (
-        strategy.fire_enemy_x_min <= state.enemy0_x <= strategy.fire_enemy_x_max
-        and strategy.fire_enemy_y_min <= state.enemy0_y <= strategy.fire_enemy_y_max
-    )
 
 
 def seated(state: SuperMetroidState, strategy: SporeSpawnStrategy | None = None) -> bool:
@@ -768,3 +754,252 @@ def play_spore_spawn_floor_bounce(
         brinstar_boss_bits_before=boss_bits_before,
         vulnerable_spritemaps=tuple(sorted(seen_spritemaps)),
     )
+
+
+# Development search only. The caller's session sees only the winning buttons;
+# its loadless replay, rather than this rollout, is the Clean evidence.
+_SPORE_SEARCH_ENV = None
+_SPORE_SEARCH_ACTIONS = (
+    (), ("LEFT", "B"), ("RIGHT", "B"),
+    ("LEFT", "A", "B"), ("RIGHT", "A", "B"),
+    ("UP", "A", "X"), ("UP", "X"), ("UP", "A"), ("UP",),
+    ("LEFT", "UP", "X"), ("RIGHT", "UP", "X"),
+    ("RIGHT", "UP", "A", "B"), ("LEFT", "UP", "A", "B"),
+    ("UP", "A", "B", "X"), ("DOWN",), ("LEFT", "DOWN"),
+    ("SELECT",),
+)
+
+
+def _init_spore_search(inherited_env) -> None:
+    """A fork gets its own emulator; close its inherited copy first."""
+    global _SPORE_SEARCH_ENV
+    from super_metroid.dev.common import make_dev_env
+
+    inherited_env.close()
+    _SPORE_SEARCH_ENV = make_dev_env()
+    _SPORE_SEARCH_ENV.reset()
+
+
+def _spore_search_fan(task):
+    """Try short presses from one saved frame within the current energy limit."""
+    from retro_harness.actions import buttons
+    from retro_harness.headed import fast_env_step
+    from super_metroid.ram import parse_env_state
+
+    blob, path, origin_hp, minimum_health, missiles, chunk, health_weight = task
+    env = _SPORE_SEARCH_ENV
+    children = []
+    trials = 0
+    frames = 0
+    for index, names in enumerate(_SPORE_SEARCH_ACTIONS):
+        env.em.set_state(blob)
+        trials += 1
+        action = buttons(*names)
+        for _ in range(chunk):
+            fast_env_step(env, action, update_obs=False)
+            frames += 1
+            ram = env.get_ram()
+            energy = int(ram[0x09C2]) | (int(ram[0x09C3]) << 8)
+            if energy < minimum_health:
+                break
+        else:
+            state = parse_env_state(env, mode="nav")
+            if state.room_id != ROOM_SPORE_SPAWN:
+                continue
+            # The target is a candidate ordering, not an enemy simulation.
+            # Only observed ROM damage gives a branch the large reward.
+            target = (
+                (max(21, state.enemy0_x - 50), state.enemy0_y + 30)
+                if mouth_open(state) else (SEAT_X, SEAT_Y)
+            )
+            score = (
+                (origin_hp - state.enemy0_hp) * 10_000
+                + health_weight * state.health
+                - (missiles - state.missiles) * 50
+                - abs(state.samus_x - target[0])
+                - abs(state.samus_y - target[1]) * 0.7
+                + (3 if state.selected_item == WEAPON_MISSILES else 0)
+            )
+            if is_morph(state.pose):
+                score += 20 if not mouth_open(state) and state.samus_x < 30 else -80
+            end_blob = env.em.get_state()
+            children.append((score, end_blob, path + ((index, chunk),), state))
+    return children, trials, frames
+
+
+def play_spore_spawn_rollout(
+    session: ControllerSession,
+    *,
+    workers: int = 8,
+    beam_width: int = 64,
+    max_frames: int = 12_000,
+    damage_budget: int = 0,
+    target_damage: int | None = None,
+    progress: Callable[[dict[str, object]], None] | None = None,
+    checkpoint: Callable[[bytes, list, dict[str, object]], None] | None = None,
+) -> dict[str, object]:
+    """Search buttons against the ROM, then commit only a winning path.
+
+    ``target_damage`` bounds a one-window bench. A full fight requires HP zero.
+    If the hit-free beam runs out of moves, ``damage_budget`` allows one retry
+    from the last ledge checkpoint with a lower energy floor.
+    """
+    import multiprocessing
+
+    from retro_harness.actions import buttons
+    from super_metroid.ram import parse_env_state
+
+    env = getattr(session, "env", None)
+    if env is None or session.state.room_id != ROOM_SPORE_SPAWN:
+        raise ValueError("Spore rollout requires a live session in 0x9DC7")
+    if workers < 1 or beam_width < 1 or max_frames < 8:
+        raise ValueError("positive workers/beam_width and at least eight frames required")
+    if damage_budget < 0:
+        raise ValueError("damage_budget must be nonnegative")
+    origin = parse_env_state(env, mode="nav")
+    if origin.enemy0_hp <= 0 or origin.health <= 0:
+        raise ValueError("Spore rollout requires a living, active boss and Samus")
+    saved = env.em.get_state()
+    # Start from the human ledge shortly before the next opening.
+    class Prepare:
+        def __init__(self):
+            self.env, self.frame, self.state, self.actions = env, 0, origin, []
+        def step(self, action, reason=""):
+            env.step(action)
+            self.frame += 1
+            self.state = parse_env_state(env, mode="nav")
+            self.actions.append(action)
+            if self.state.health < origin.health:
+                raise RuntimeError("Spore seat candidate took a hit")
+            return self.state
+    prepare = Prepare()
+    try:
+        if origin.missiles > 0:
+            ensure_weapon(prepare, WEAPON_MISSILES)
+        _go_to_seat(prepare, SporeSpawnStrategy())
+        seat = env.em.get_state()
+        idle = buttons()
+        for delay in range(2_000):
+            probe = parse_env_state(env, mode="nav")
+            if probe.health < origin.health or mouth_open(probe):
+                break
+            env.step(idle)
+        env.em.set_state(seat)
+        prepare.state = parse_env_state(env, mode="nav")
+        if probe.health >= origin.health:
+            hold(prepare, max(0, delay - 39), reason="spore_window_approach")
+    except Exception:
+        env.em.set_state(saved)
+        raise
+    prefix = prepare.actions
+    beam = [(0.0, env.em.get_state(), (), prepare.state)]
+    trials = trial_frames = 0
+    prep_restores = 1
+    winner = None
+    best = recovery_start = beam[0]
+    minimum_health = origin.health
+    recovery_floor = max(1, origin.health - damage_budget)
+    checkpoint_hp = origin.enemy0_hp
+    def tape(node):
+        return prefix + [buttons(*_SPORE_SEARCH_ACTIONS[index])
+                         for index, count in node[2] for _ in range(count)]
+    try:
+        with multiprocessing.get_context("fork").Pool(
+            workers, initializer=_init_spore_search, initargs=(env,)
+        ) as pool:
+            for _ in range(max_frames // 2):
+                if sum(count for _, count in best[2]) >= max_frames:
+                    break
+                rows = pool.map(_spore_search_fan, [
+                    (node[1], node[2], origin.enemy0_hp, minimum_health,
+                     origin.missiles, 8, 30 if minimum_health < origin.health else 0)
+                    for node in beam
+                ])
+                trials += sum(row[1] for row in rows)
+                trial_frames += sum(row[2] for row in rows)
+                children = sorted(
+                    (child for row in rows for child in row[0]),
+                    key=lambda node: node[0], reverse=True,
+                )
+                beam = []
+                seen = set()
+                for node in children:
+                    state = node[3]
+                    key = (state.samus_x // 5, state.samus_y // 5, state.pose,
+                           state.vertical_direction, state.velocity_y,
+                           state.selected_item, state.missiles, state.enemy0_hp)
+                    if key not in seen:
+                        seen.add(key)
+                        beam.append(node)
+                    if len(beam) >= beam_width:
+                        break
+                if not beam:
+                    if minimum_health == recovery_floor:
+                        break
+                    minimum_health = recovery_floor
+                    best = recovery_start
+                    beam = [best]
+                    checkpoint_hp = best[3].enemy0_hp
+                    continue
+                best = beam[0]
+                state = best[3]
+                damage = origin.enemy0_hp - state.enemy0_hp
+                if progress is not None:
+                    progress({"frames": sum(count for _, count in best[2]),
+                              "enemy_hp": state.enemy0_hp,
+                              "health": state.health, "missiles": state.missiles,
+                              "x": state.samus_x, "y": state.samus_y,
+                              "rollout_restores": trials})
+                if state.enemy0_hp == 0 or (target_damage is not None and damage >= target_damage):
+                    winner = best
+                    break
+                # Checkpoint the ledge and verify any idle wait against the ROM.
+                if seated(state) and not mouth_open(state):
+                    beam = [best]
+                    if state.enemy0_hp < checkpoint_hp:
+                        checkpoint_hp = state.enemy0_hp
+                        recovery_start = best
+                        if checkpoint is not None:
+                            checkpoint(best[1], tape(best), {"enemy_hp": checkpoint_hp,
+                                       "health": state.health, "safe_seat": True})
+                        delay = 0
+                        env.em.set_state(best[1])
+                        prep_restores += 1
+                        for step_idx in range(1, 2_000):
+                            env.step(idle)
+                            trial_frames += 1
+                            probe = parse_env_state(env, mode="nav")
+                            if probe.health < origin.health or mouth_open(probe):
+                                delay = step_idx if probe.health >= origin.health else 0
+                                break
+                        wait = max(0, delay - 39)
+                        if wait > 0:
+                            env.em.set_state(best[1])
+                            prep_restores += 1
+                            for _ in range(wait):
+                                env.step(idle)
+                            best = (best[0], env.em.get_state(), best[2] + ((0, wait),), parse_env_state(env, mode="nav"))
+                            beam = [best]
+    finally:
+        env.em.set_state(saved)
+
+    start = session.frame
+    if checkpoint is not None:
+        checkpoint(best[1], tape(best), {"enemy_hp": best[3].enemy0_hp,
+                   "health": best[3].health, "safe_seat": seated(best[3])})
+    if winner is not None:
+        for action in tape(winner):
+            session.step(action, "spore_rom_rollout")
+        if env.em.get_state() != winner[1]:
+            raise RuntimeError("Spore winning buttons did not replay exactly")
+    return {
+        "outcome": ("spore_spawn_defeated" if winner and winner[3].enemy0_hp == 0
+                    else "damage_window" if winner else "no_hit_free_path"),
+        "start_frame": start, "end_frame": session.frame,
+        "rollout_restores": trials + prep_restores + 1, "trial_frames": trial_frames,
+        "committed_frames": session.frame - start,
+        "health": session.state.health,
+        "initial_enemy_hp": origin.enemy0_hp,
+        "final_enemy_hp": session.state.enemy0_hp,
+        "best_search_enemy_hp": best[3].enemy0_hp,
+    }

@@ -1,8 +1,8 @@
 """Spring D2 work — one D2_FARM_CLEAR marker after BUY_SEEDS.
 
 Grape → shop → CLEAR_PLOT → plant 8 → water 8 → leftover smash.
-Lift is section-first: weeds then fences then stones in one quadrant
-before walking to the next. Hammer/rocks then axe/stumps still chain
+Weeds open every quadrant before posts and stones are hauled to water.
+Hammer/rocks then axe/stumps still chain
 by chunk after hands work. ``next_d2_spec`` is the live order.
 ``DayPlanTask`` splices one child at a time; counts change after each child.
 """
@@ -39,6 +39,7 @@ from harvest.planner.day_phase_types import PhaseSpec
 D2_TARGETS = {
     "plant": 8,
     "water": 8,
+    "grass": 9,
 }
 D2_SEASON = 0  # Spring in the Harvest Moon RAM calendar.
 D2_DAY = 2
@@ -105,6 +106,8 @@ class D2FarmStatus:
     stones_by_chunk: tuple[int, ...] = ()
     rocks_by_chunk: tuple[int, ...] = ()
     stumps_by_chunk: tuple[int, ...] = ()
+    planted_grass: int = 0
+    grass_seeds: int = 0
 
     @property
     def is_complete(self) -> bool:
@@ -449,6 +452,8 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
     planted = count_ring_planted(ram, WEST_POCKET_PLANT_CENTER) if loaded else 0
     wet = count_ring_wet(ram, WEST_POCKET_PLANT_CENTER) if loaded else 0
     potato_seeds = int(read_ram_value(ram, "potato_seeds") or 0)
+    planted_grass = int(read_ram_value(ram, "planted_grass") or 0)
+    grass_seeds = int(read_ram_value(ram, "grass_seeds") or 0)
     hands = hands_are_clear(ram)
     shipped = _shipped_before_17(ram, journal)
 
@@ -501,6 +506,7 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
         and day == D2_DAY
         and planted >= D2_TARGETS["plant"]
         and wet >= D2_TARGETS["water"]
+        and planted_grass >= D2_TARGETS["grass"]
         and weeds == fences == stones == small_rocks == large_rocks == stumps == 0
         and not damaged
         and hands
@@ -543,6 +549,8 @@ def observe_d2_farm(ram, journal=None) -> D2FarmStatus:
         stones_by_chunk=tuple(by_s),
         rocks_by_chunk=tuple(by_r),
         stumps_by_chunk=tuple(by_u),
+        planted_grass=planted_grass,
+        grass_seeds=grass_seeds,
     )
 
 
@@ -568,7 +576,7 @@ def _count_in(counts: Sequence[int], name: str) -> int:
 
 
 def _lift_next(status: D2FarmStatus, smash: Sequence[str], section: str):
-    """Hands work stays in one quadrant: weeds, then fences, then stones."""
+    """Open the whole walking surface before hauling posts and stones to water."""
     want_w = section in {"all", "bushes"}
     want_f = section in {"all", "fences"}
     want_s = section in {"all", "stones"}
@@ -577,6 +585,7 @@ def _lift_next(status: D2FarmStatus, smash: Sequence[str], section: str):
     for name in smash:
         if want_w and _count_in(status.weeds_by_chunk, name) > 0:
             return bush_clear_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
+    for name in smash:
         if want_f and _count_in(status.fences_by_chunk, name) > 0:
             return fence_dump_phase(farm_bounds=FARM_CHUNK_BOUNDS[name], chunk=name)
         if want_s and _count_in(status.stones_by_chunk, name) > 0:
@@ -645,11 +654,24 @@ def next_d2_spec(
         if spec is not None:
             return spec
     if section in {"all", "stumps"}:
-        return _smash_next(
+        spec = _smash_next(
             status, _live_chunks(smash, status.stumps_by_chunk), last_phase,
             include_spa, "ENSURE_AXE", ensure_axe_phase, "CLEAR_STUMPS",
             stump_clear_phase,
         )
+        if spec is not None:
+            return spec
+    if section == "all" and status.planted_grass < D2_TARGETS["grass"]:
+        if include_spa and status.stamina.current < 20 and last_phase != "HOT_SPRING_STAMINA":
+            return full_restore_spa_phase()
+        if status.grass_seeds > 0:
+            return PhaseSpec(
+                "PLANT_PASTURE", "grass",
+                {"target_tiles": D2_TARGETS["grass"], "bag_limit": 1},
+                failure_policy="required", required_maps=(0x00,),
+                estimated_frames=12000,
+                failure_modes=("stamina_low", "seed_missing", "pasture_short"),
+            )
     return None
 
 

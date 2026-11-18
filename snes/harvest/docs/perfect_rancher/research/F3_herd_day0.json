@@ -1,0 +1,1530 @@
+{
+  "bead": "PR-012",
+  "kind": "day0_replay",
+  "pin": "LN_mgr-f3_whatif_day0boot",
+  "pin_note": "unmodified copy of trashed latest_backup_buy_cow_20260424_135648; not route evidence",
+  "tape": "/home/v/01_projects/11_games/retro_rl/snes/harvest/tasks/buy_cow.json",
+  "frame_count": 6260,
+  "boot": {
+    "frame": 0,
+    "clock": {
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "weekday": 2,
+      "hour": 6,
+      "minute": 0,
+      "tilemap": 21,
+      "x": 136,
+      "y": 120,
+      "weather": 0,
+      "num_cows": 0,
+      "fed_cows_flags": 0,
+      "hay": 180
+    },
+    "cows": []
+  },
+  "first_slot": {
+    "frame": 4803,
+    "prev_frame_cows": [],
+    "clock": {
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "weekday": 2,
+      "hour": 9,
+      "minute": 1,
+      "tilemap": 0,
+      "x": 0,
+      "y": 0,
+      "weather": 49377,
+      "num_cows": 1,
+      "fed_cows_flags": 0,
+      "hay": 180
+    },
+    "cows": [
+      {
+        "slot": 0,
+        "status": 5,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 0,
+        "name_hex": "1c2830b3",
+        "raw_hex": "0500270000000000a80016011c2830b3"
+      }
+    ]
+  },
+  "slot_changes": [
+    {
+      "frame": 4803,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 1,
+        "tilemap": 0,
+        "x": 0,
+        "y": 0,
+        "weather": 49377,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a80016011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5578,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 176,
+        "y": 327,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a80017011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5579,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 176,
+        "y": 326,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a80018011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5580,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 176,
+        "y": 325,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a80019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5625,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 290,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a70019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5626,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 289,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a60019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5627,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 288,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a50019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5628,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 287,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a40019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5629,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 286,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a30019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5630,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 285,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a20019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5631,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 284,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a10019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5632,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 283,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000a00019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5633,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 282,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "05002700000000009f0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5634,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 186,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "05002700000000009e0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5635,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 185,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "05002700000000009d0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5636,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 184,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "05002700000000009c0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5637,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 183,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "05002700000000009b0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5638,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 182,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "05002700000000009a0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5639,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 181,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000990019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5640,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 180,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000980019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5641,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 179,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 0,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0500270000000000970019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5657,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 164,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 8,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0508270000000000970019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5675,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 163,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 8,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0508270000000000960019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5689,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 163,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000960019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5917,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000970019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5918,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000980019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5919,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000990019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5920,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c2700010000009a0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5921,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c2700010000009b0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5922,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c2700010000009c0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5923,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c2700010000009d0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5924,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c2700010000009e0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5925,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c2700010000009f0019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5926,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a00019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5927,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a10019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5928,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a20019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5929,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a30019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5930,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a40019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5931,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a50019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5932,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 217,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a60019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5933,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 216,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a70019011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5952,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 191,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a70018011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5953,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 189,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a70017011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 5954,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 187,
+        "y": 181,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 12,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "050c270001000000a70016011c2830b3"
+        }
+      ]
+    },
+    {
+      "frame": 6061,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 4,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0504270001000000a70016011c2830b3"
+        }
+      ]
+    }
+  ],
+  "markers": {
+    "2229": {
+      "frame": 2229,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 7,
+        "minute": 8,
+        "tilemap": 36,
+        "x": 201,
+        "y": 158,
+        "weather": 192,
+        "num_cows": 0,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": []
+    },
+    "3922": {
+      "frame": 3922,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 1,
+        "tilemap": 0,
+        "x": 56,
+        "y": 448,
+        "weather": 41185,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": []
+    },
+    "4802": {
+      "frame": 4802,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 1,
+        "tilemap": 95,
+        "x": 0,
+        "y": 0,
+        "weather": 32993,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": []
+    },
+    "5688": {
+      "frame": 5688,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 163,
+        "y": 281,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 180
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 8,
+          "map": 39,
+          "age": 0,
+          "happiness": 0,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0508270000000000960019011c2830b3"
+        }
+      ]
+    },
+    "6087": {
+      "frame": 6087,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 9,
+        "minute": 5,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "weather": 192,
+        "num_cows": 1,
+        "fed_cows_flags": 0,
+        "hay": 179
+      },
+      "cows": [
+        {
+          "slot": 0,
+          "status": 5,
+          "flags": 4,
+          "map": 39,
+          "age": 0,
+          "happiness": 1,
+          "name_hex": "1c2830b3",
+          "raw_hex": "0504270001000000a70016011c2830b3"
+        }
+      ]
+    }
+  },
+  "result": "PROBE_DAY0_OK"
+}

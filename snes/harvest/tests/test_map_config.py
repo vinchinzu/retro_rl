@@ -43,6 +43,19 @@ from harvest.core.tile_catalog import (
 )
 
 
+class WinterPathTests(unittest.TestCase):
+    """The path is tilemap 0x0F in Winter (pin probe, Winter D5)."""
+
+    def test_winter_path_uses_the_path_map(self) -> None:
+        from harvest.planner.day_plan_status import tilemaps_match
+
+        self.assertEqual(get_walkable_tiles(0x0F), PATH_WALKABLE)
+        self.assertEqual(walkable_tiles_for_tilemap(0x0F), PATH_WALKABLE)
+        self.assertTrue(tilemaps_match(0x0F, 0x0C))
+        self.assertTrue(tilemaps_match(0x0C, 0x0F))
+        self.assertFalse(tilemaps_match(0x0F, 0x04))
+
+
 class FarmWalkableTests(unittest.TestCase):
     def test_farm_walkables_include_a1_path_tile(self) -> None:
         self.assertIn(0xA1, FARM_WALKABLE)
@@ -290,8 +303,11 @@ class FarmWalkableTests(unittest.TestCase):
         self.assertIn("farm_to_church", ROUTES)
         self.assertIn("church_sunday_talk_loop", ROUTES)
         self.assertIn("church_to_farm", ROUTES)
-        self.assertEqual(ROUTES["farm_to_church"][-1].target_px, (375, 139))
+        # The D1 Maria road to the church lip (the old (232,128) hop pixel-stuck at (278,128) on a Fall Sunday).
+        self.assertEqual(ROUTES["farm_to_church"][-1].target_px, (358, 150))
         self.assertTrue(ROUTES["farm_to_church"][-1].is_exit)
+        self.assertEqual(ROUTES["farm_to_church"][-1].exit_direction, "up")
+        self.assertEqual(ROUTES["church_to_farm"][-1].tilemap, 0x00)
         self.assertEqual(ROUTES["church_sunday_talk_loop"][1].target_px, (203, 409))
         self.assertEqual(ROUTES["church_sunday_talk_loop"][-1].target_px, (141, 139))
         self.assertEqual(ROUTES["church_to_farm"][0].tilemap, 0x1B)

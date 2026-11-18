@@ -1,8 +1,11 @@
 """Seasonal spending, pasture progress, and mushroom menu contracts."""
 
 import numpy as np
+import pytest
 from retro_harness import TaskStatus, WorldState
 
+from tests.layout_markers import south_pasture_only
+from harvest.core.animal_status import CHICKEN_SLOT_BASE, CHICKEN_SLOT_SIZE
 from harvest.core.ram_catalog import field_spec
 from harvest.core.tile_catalog import ADDR_MAP, MATURE_GRASS_TILES
 from harvest.maps.farm_pond import POCKET_PLANT_CENTERS, pocket_plant_targets
@@ -140,10 +143,11 @@ def test_pasture_cuts_hay_for_a_short_herd_and_grows_with_the_flock():
     assert econ.pasture_target_tiles(ram(num_chickens=12, num_cows=2)) == econ.PASTURE_MAX_TILES
     assert econ.pasture_feeds_more(ram(planted_grass=18, num_chickens=1), reserve_first_cow=False)
     assert not econ.pasture_feeds_more(ram(planted_grass=17, num_chickens=1), reserve_first_cow=False)
-    assert with_mature(0, planted_grass=33, num_chickens=6, num_cows=1, money=3000)[:1] == ["BUY_GRASS_SEEDS"]
-    # Fall stocks the rest of Fall plus Winter for each animal: D10 with 2 animals.
+    assert with_mature(0, planted_grass=33, num_chickens=6, num_cows=1, money=3000,
+                       corn_seeds=len(POCKET_PLANT_CENTERS))[:1] == ["BUY_GRASS_SEEDS"]
+    # Fall stocks the rest of Fall, Winter and Spring's regrowth for each animal: D10 with 2.
     fall = dict(season=2, day=10, stored_grass=100, num_chickens=2, planted_grass=48)
-    assert econ.hay_cut_target(ram(**fall)) == 2 * (20 + 31)
+    assert econ.hay_cut_target(ram(**fall)) == 2 * (20 + 31 + econ.SPRING_HAY_DAYS)
     assert with_mature(8, **fall) == ["CUT_FODDER"]
     assert with_mature(3, **fall) == []
 
@@ -172,6 +176,30 @@ def test_hatching_preserves_grass_required_for_first_cow():
     assert not econ.pasture_feeds_more(ram(planted_grass=36, num_chickens=1))
     assert not econ.pasture_feeds_more(ram(planted_grass=47, num_chickens=1))
     assert econ.pasture_feeds_more(ram(planted_grass=48, num_chickens=1))
+
+
+def test_hatch_gate_counts_chicks_and_incubating_eggs_toward_two_hens():
+    base = dict(season=1, day=10, num_cows=1, planted_grass=40)
+
+    def flock(adults=0, chicks=0, eggs=0, **fields):
+        data = ram(**(base | fields | dict(num_chickens=adults + chicks)))
+        for slot, status in enumerate([0x09] * adults + [0x05] * chicks + [0x03] * eggs):
+            data[CHICKEN_SLOT_BASE + slot * CHICKEN_SLOT_SIZE] = status
+        return data
+
+    assert econ.hatch_allowed(flock(adults=1))
+    assert not econ.hatch_allowed(flock(adults=1, planted_grass=26))
+    assert not econ.hatch_allowed(flock(adults=1, chicks=1))
+    assert not econ.hatch_allowed(flock(adults=1, eggs=1))
+    # Breeding surplus hens creates recurring care and sale trips.
+    for year in (0, 1, 2):
+        for season in range(4):
+            assert not econ.hatch_allowed(flock(adults=2, year=year, season=season))
+            assert econ.kept_adults(flock(adults=11, year=year, season=season)) == 2
+    assert econ.FLOCK_CAP == econ.HENS_KEPT == 2
+    # The second hen still reserves the first cow's shop pasture gate.
+    assert not econ.hatch_allowed(flock(adults=1, num_cows=0, planted_grass=47))
+    assert econ.hatch_allowed(flock(adults=1, num_cows=0, planted_grass=48))
 
 
 # Summer D1 of a natural run (PR_Y1_Summer_D1), x=12..25, y=32..45: weeds 03,
@@ -219,6 +247,7 @@ def test_bag_ready_skips_unseedable_squares_instead_of_rejecting_the_chunk():
     assert not chunk(3, 5, 7, 3, 1, 9, 3, 1, 11)     # the (16,36) chunk from the failing log
 
 
+@south_pasture_only
 def test_plan_stands_lifts_debris_but_skips_stumps_and_boulders():
     data = natural_farm()
     task = GrassPlantTask(bounds=PASTURE_BOUNDS, no_go_rects=[], bag_limit=4)
@@ -254,6 +283,7 @@ def test_reach_walks_through_weed_walls_but_not_past_the_step_limit():
     assert (10, 45) not in reach or abs(10 - 16) + abs(45 - 33) <= 30
 
 
+@south_pasture_only
 def test_scan_hoes_the_stand_centre_before_the_ring_and_never_under_his_feet():
     data = ram(tilemap=0, player_x=17 * 16 + 8, player_y=34 * 16 + 8, grass_seeds=1, input_lock=1)
     for y in range(32, 37):
@@ -272,6 +302,50 @@ def test_scan_hoes_the_stand_centre_before_the_ring_and_never_under_his_feet():
     tile(data, 16, 34, 0x07)
     task._handle_scan(data)
     assert task._target_tile != (17, 34)              # (17,34) is under his feet
+
+
+def _plant_task(data, *, centre_tile, ring_tile=0x07):
+    """A grass task one square south of a ready 3x3 stand, in the plant phase."""
+    for y in range(33, 36):
+        for x in range(13, 16):
+            tile(data, x, y, ring_tile)
+    tile(data, 14, 34, centre_tile)
+    task = GrassPlantTask(bounds=PASTURE_BOUNDS, no_go_rects=[], bag_limit=1)
+    task.reset(WorldState(frame=0, ram=data, info={}))
+    task._phase = "plant"
+    task._chunk_order, task._chunk_index = [(13, 33), (40, 40)], 0
+    task._navigator.update(data)
+    return task
+
+
+@south_pasture_only
+def test_rained_on_centre_is_a_plantable_stand_not_a_scan_loop():
+    """Rain turns a hoed 0x07 into 0x08. e2e t2/t3 spun 6M frames on Summer D20-21 because only
+    0x07 counted as a plantable target, so the walk to a rained-on centre was always 'finished'."""
+    data = ram(tilemap=0, player_x=14 * 16 + 8, player_y=36 * 16 + 8, grass_seeds=1, input_lock=1)
+    task = _plant_task(data, centre_tile=0x08)
+    assert 0x08 in task._target_ids()
+    world = WorldState(frame=0, ram=data, info={})
+    task.step(world)                                   # scan: walk to the centre
+    assert task._state == "navigate" and task._target_tile == (14, 34)
+    task.step(world)                                   # navigate keeps the target (still plantable)
+    assert task._state == "navigate" and task._bounces == 0
+
+
+@south_pasture_only
+def test_scan_bounces_without_a_tool_use_fail_the_chunk_instead_of_spinning():
+    """Whatever makes a target invalid, a dozen scan round trips with no swing give the chunk up."""
+    data = ram(tilemap=0, player_x=14 * 16 + 8, player_y=36 * 16 + 8, grass_seeds=1, input_lock=1)
+    task = _plant_task(data, centre_tile=0x08)
+    task._chunk_bag_ready = lambda _ram, _origin: True       # force scan to keep choosing this stand
+    tile(data, 14, 34, 0x01)                                  # ...though the centre is plain grass ground
+    world = WorldState(frame=0, ram=data, info={})
+    for _ in range(80):
+        task.step(world)
+        if task._chunk_index:
+            break
+    assert task._chunk_index == 1                             # gave up on (13,33) and moved on
+    assert task._failures == 1 and (14, 34) in task._failed_tiles
 
 
 def test_plant_verify_waits_for_the_ninth_square_then_moves_on():
@@ -352,12 +426,96 @@ def test_pasture_plan_is_one_nav_and_no_farm_clearer():
     assert isinstance(task.tasks[-1], GrassPlantTask)
 
 
-def test_exit_coop_waits_out_the_farm_fade_in():
-    """The farmer ignores buttons ~85 frames after the coop door (ROM-measured)."""
-    from harvest.planner.day_phase_chicken import COOP_EXIT_INPUT_LOCK_FRAMES, EXIT_COOP_PHASE
+@pytest.mark.parametrize("planted_grass", [0, 64])
+def test_till_field_limits_verified_hoeing_independently_of_pasture(planted_grass):
+    from harvest.planner.day_phase_catalog import TILL_FIELD_PHASE
+    from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+    from harvest.tasks.grass_planter import Phase
 
-    assert COOP_EXIT_INPUT_LOCK_FRAMES >= 85
-    assert EXIT_COOP_PHASE.params["settle_frames"] >= 85
+    data = ram(planted_grass=planted_grass, input_lock=1, player_x=264, player_y=552)
+    x0, y0, x1, y1 = PASTURE_BOUNDS
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            tile(data, x, y, 0x01)
+    world = WorldState(frame=0, ram=data, info={})
+    task = build_phase_task(TaskBuildContext(), TILL_FIELD_PHASE, world).tasks[-1]
+    task.reset(world)
+    assert len(task._chunk_order) * 9 >= 32  # no grass seed bags are required
+    assert task.step(world).status == TaskStatus.RUNNING
+    task.reset(world)
+    for index in range(32):
+        target = (x0 + index % 10, y0 + index // 10)
+        tile(data, *target, 0x07)
+        task._phase = Phase.TILL
+        task._target_tile = target
+        task._handle_verify(data)
+    result = task.step(world)
+    assert result.status == TaskStatus.SUCCESS
+    assert "tilled=32" in result.reason
+
+
+def test_till_field_reports_short_hoeing_even_with_an_existing_pasture():
+    from harvest.planner.day_phase_catalog import TILL_FIELD_PHASE
+    from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+
+    world = WorldState(frame=0, ram=ram(planted_grass=64, input_lock=1), info={})
+    task = build_phase_task(TaskBuildContext(), TILL_FIELD_PHASE, world).tasks[-1]
+    task.reset(world)
+    result = task.step(world)
+    assert result.status == TaskStatus.FAILURE
+    assert "tilling short" in result.reason
+
+
+@pytest.mark.rom
+def test_till_field_rom_stops_after_32_hoed_tiles_with_an_existing_pasture():
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.day_phase_catalog import TILL_FIELD_PHASE
+    from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+    from harvest.planner.tasks.inventory import ExitToFarmTask
+    from harvest.runtime.retro_setup import make_harvest_env
+    from retro_harness import AuditedEnv, AuditCapabilities
+
+    env = AuditedEnv(make_harvest_env("LN_cowfix_pin_fall_d21", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.till_field_test"))
+    try:
+        env.reset()
+        before = {key: int(read_ram_value(env.get_ram(), key))
+                  for key in ("planted_grass", "grass_seeds")}
+        assert before["planted_grass"] >= 32
+        world = WorldState(frame=0, ram=env.get_ram(), info={})
+        work = build_phase_task(TaskBuildContext(), TILL_FIELD_PHASE, world)
+        for task in (ExitToFarmTask(), work):
+            task.reset(WorldState(frame=0, ram=env.get_ram(), info={}))
+            for frame in range(16000):
+                result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}))
+                if result.status != TaskStatus.RUNNING:
+                    break
+                env.step(result.action.action if result.action else make_action())
+            assert result.status == TaskStatus.SUCCESS, result.reason
+        assert work.tasks[-1].tilled_count == 32
+        assert {key: int(read_ram_value(env.get_ram(), key)) for key in before} == before
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
+def test_exit_coop_waits_out_the_farm_fade_in():
+    """The pad is dead until $0025 reaches 15; the settle counts after that.
+
+    A count from the tilemap flip (85 frames) expired ~70 frames before the
+    farmer even landed: test_coop_exit_waits_for_the_farm_fade_in.
+    """
+    import numpy as np
+
+    from harvest.planner.day_phase_chicken import COOP_EXIT_INPUT_LOCK_FRAMES, EXIT_COOP_PHASE
+    from harvest.planner.tasks.transitions import screen_faded_in
+
+    assert EXIT_COOP_PHASE.params["settle_frames"] == COOP_EXIT_INPUT_LOCK_FRAMES <= 10
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    ram[0x0025] = 14
+    assert not screen_faded_in(ram)
+    ram[0x0025] = 15
+    assert screen_faded_in(ram)
 
 
 def test_grass_waypoint_lands_inside_pasture_bounds():
@@ -375,6 +533,7 @@ def test_grass_waypoint_lands_inside_pasture_bounds():
     assert (px, py) != (312, 536)
 
 
+@south_pasture_only
 def test_pasture_approach_pin_is_not_arrival_on_the_way_to_264_520():
     """(249, 526) is the weed-row stall. Radius 8 must not call it (264, 520)."""
     from harvest.maps.map_config import Waypoint
@@ -409,9 +568,10 @@ def test_held_seeds_plant_on_summer_d25_without_a_shop_trip():
 def test_cut_fodder_targets_the_roms_sickle_tile():
     assert MATURE_GRASS_TILES == {0x79}
     data = ram(season=1, day=14, stored_grass=0, planted_grass=32)
-    tile(data, 13, 33, 0x78)
+    x0, y0, _x1, _y1 = PASTURE_BOUNDS
+    tile(data, x0, y0, 0x78)
     assert pasture_day_phases(data) == []
-    tile(data, 13, 33, 0x79)
+    tile(data, x0, y0, 0x79)
     assert [p.phase for p in pasture_day_phases(data)] == ["CUT_FODDER"]
 
 
@@ -425,6 +585,11 @@ def test_summer_keeps_regrowing_plots_without_buying_a_bag_for_one_hole():
     tile(data, cx - 1, cy - 1, 0x01)
     assert pocket_plant_targets(data) == ()
     data[field_spec("season").address] = 0
+    # One corner hole walls the sowing stand in, and the bag would spend
+    # seven uses on growing cells: the ring waits in Spring too.
+    assert pocket_plant_targets(data) == ()
+    tile(data, cx, cy - 1, 0x01)
+    tile(data, cx + 1, cy - 1, 0x01)
     assert pocket_plant_targets(data) == (POCKET_PLANT_CENTERS[0],)
 
 
@@ -504,8 +669,8 @@ def test_cow_tools_trip_does_not_share_a_morning_with_an_animal_purchase():
 def test_coop_ships_eggs_while_the_pasture_cannot_feed_another_animal():
     from harvest.planner.day_plan_phases import build_day_phases_from_ram
 
-    def coop_mode(planted):
-        data = ram(season=1, day=14, weekday=2, hour=6, tilemap=0, money=500, num_chickens=3,
+    def coop_mode(planted, *, num_chickens=1):
+        data = ram(season=1, day=14, weekday=2, hour=6, tilemap=0, money=500, num_chickens=num_chickens,
                    planted_grass=planted, stored_grass=20, stamina=100, input_lock=1)
         # fed_chickens_n 0 with hens owned makes the chores due.
         for phase in build_day_phases_from_ram(data):
@@ -513,7 +678,22 @@ def test_coop_ships_eggs_while_the_pasture_cannot_feed_another_animal():
                 return phase.params.get("egg_mode")
         return "missing"
 
-    # Reserve the vendor's grass for a hatch and the first cow as well.
-    assert coop_mode(80) == "auto"
-    assert coop_mode(79) == "ship"
+    # Below the two-bird cap, reserve the vendor's grass for a hatch and the first cow.
+    assert coop_mode(48) == "auto"
+    assert coop_mode(47) == "ship"
     assert coop_mode(20) == "ship"
+    # At or above the two-bird cap, always ship.
+    assert coop_mode(80, num_chickens=2) == "ship"
+    assert coop_mode(80, num_chickens=3) == "ship"
+
+
+def test_grass_stands_preserve_crop_footprints_and_working_lanes():
+    from harvest.maps.farm_pond import crop_working_tiles
+
+    data = ram()
+    data[ADDR_MAP:ADDR_MAP + 64 * 64] = 1
+    reserved = crop_working_tiles()
+    stands = plan_stands(data, (2, 25, 28, 48), 20, reach=None)
+    assert stands
+    assert all((cx + dx, cy + dy) not in reserved
+               for cx, cy in stands for dx in (-1, 0, 1) for dy in (-1, 0, 1))

@@ -146,6 +146,17 @@ def _door_approach_window(
     return PositionWindow(ax, ay, tolerance, label=label)
 
 
+def _door_landing_window(
+    map_id: str, door_label: str, *, tolerance: int, label: str,
+) -> PositionWindow:
+    """Position window from a mapped door landing. Geometry stays in the map."""
+    door = load_room_map(map_id).door(door_label)
+    if door is None or door.landing_xy is None:
+        raise KeyError(f"door {door_label!r} landing not in map {map_id!r}")
+    x, y = door.landing_xy
+    return PositionWindow(x, y, tolerance, label=label)
+
+
 @dataclass(frozen=True)
 class MultiTruthAnchor:
     """Named semantic anchor with RAM + optional map + visual evidence.
@@ -632,6 +643,20 @@ def opening_anchors() -> tuple[MultiTruthAnchor, ...]:
             graph_node_id="kakariko",
             notes=("Outdoors in Kakariko Village for gear gathering.",),
         ),
+        MultiTruthAnchor(
+            anchor_id="EasternPalace_Lobby",
+            name="Eastern Palace lobby (room 0xC9)",
+            tier="route",
+            room_base_id=0xC9,
+            require_indoors=True,
+            require_fighter_sword=True,
+            position=_door_landing_window(
+                "screen_1e_eastern", "eastern_door_to_0xc9",
+                tolerance=4, label="eastern_lobby",
+            ),
+            graph_node_id="room_c9",
+            notes=("Mapped eastern_door_to_0xc9 landing. Heart is a separate max-HP check.",),
+        ),
     )
 
 
@@ -644,6 +669,7 @@ TIP_ANCHOR_ORDER: tuple[str, ...] = (
     "HyruleCastle_B1_0x72",
     "HyruleCastle_NorthConnector_0x01",
     "HyruleCastle_NW_0x50",
+    "EasternPalace_Lobby",
     "HyruleCastle_MainWest_0x60",
     "HyruleCastle_MainHall",  # earlier continuous spine checkpoint
     "HyruleCastle_ZeldaCell",  # planned

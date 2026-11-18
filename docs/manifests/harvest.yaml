@@ -12,7 +12,7 @@ intervention_class: clean
 popularity: high
 engineering_effort: very_high
 transfer_value: high
-ending_definition: published multi-year / marriage / farm objective (contract TBD)
+ending_definition: "Perfect: RAM ranch_mastery 999 at ending 0x25 from one Clean continuous power-on run"
 start_contract: power_on_new_game
 completion_contract: campaign_objective
 best_manifest: snes/harvest/recordings/full_year/power_on_to_ending_farm.json
@@ -22,10 +22,13 @@ status_doc: snes/harvest/docs/STATUS.md
 plan_doc: snes/harvest/docs/plan.md
 last_verified: 2026-09-29
 blocker: >
-  Ending contract TBD (maturity not promoted). Power-on farm economy is weak
-  ($5,730 at the ending, rr-bu62.25); Gate B (rr-5in) not re-scored.
+  Perfect is the ending contract (ADR 0007); the 999 run is not verified, so
+  maturity stays M3. Power-on farm economy is weak ($5,730 at the ending,
+  rr-bu62.25); Gate B (rr-5in) not re-scored.
 notes: >
   2026-09-29 rr-bu62: Clean continuous power-on to the ROM ending (Y3 Summer
   D30 credits) with a working farm, 2,175,350 frames, 0 loads, 0 RAM writes,
   $5,730 (924e3f11). Pin chain Y1 Fall D1 to the ending reached $29,650.
   Pioneer planning trunk; gates live in STATUS/plan; tracker is beads.
+  Ending contract is Perfect (ADR 0007): ranch_mastery 999 at 0x25 from one
+  Clean continuous power-on run. The owner asked for this campaign.

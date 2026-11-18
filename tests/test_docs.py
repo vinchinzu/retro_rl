@@ -144,6 +144,7 @@ def test_backticked_workspace_directories_exist() -> None:
     known_top = {p.name for p in ROOT.iterdir() if p.is_dir()}
     known_games = _known_game_slugs()
     retired = {
+        ".beads",  # board and backups deliberately archived outside the repo
         "super_metroid_rl",
         "super_mario_bros",
         "snes_oneshot",  # folded into retro_harness/

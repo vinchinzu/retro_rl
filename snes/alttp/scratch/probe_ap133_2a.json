@@ -1,0 +1,636 @@
+{
+  "entered": {
+    "ok": true,
+    "walked": {
+      "ok": true,
+      "left": false,
+      "at": [
+        5234,
+        1728
+      ]
+    },
+    "pushed": {
+      "room": "0x2A",
+      "room_id": 42,
+      "xy": [
+        5240,
+        1496
+      ],
+      "module": 7,
+      "sub": 0,
+      "indoors": true,
+      "control": true,
+      "dark_world": true,
+      "layer": 0,
+      "floor": 0,
+      "hp": 44,
+      "keys": 0,
+      "big_key": 512,
+      "magic": 128,
+      "hammer": 0,
+      "bombs": 0,
+      "follower": 5,
+      "sprites": [
+        {
+          "slot": 0,
+          "type": "0x1E",
+          "name": "crystal switch",
+          "xy": [
+            5376,
+            1392
+          ],
+          "hp": 0
+        },
+        {
+          "slot": 1,
+          "type": "0x93",
+          "name": "bumper",
+          "xy": [
+            5368,
+            1272
+          ],
+          "hp": 255
+        },
+        {
+          "slot": 2,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5328,
+            1152
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 3,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5232,
+            1216
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 4,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5376,
+            1216
+          ],
+          "hp": 32
+        },
+        {
+          "slot": 5,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5327,
+            1263
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 6,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5424,
+            1296
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 7,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5359,
+            1327
+          ],
+          "hp": 6
+        }
+      ],
+      "push_frames": 124
+    }
+  },
+  "after_fight": {
+    "room": "0x2A",
+    "room_id": 42,
+    "xy": [
+      5240,
+      1496
+    ],
+    "module": 7,
+    "sub": 0,
+    "indoors": true,
+    "control": true,
+    "dark_world": true,
+    "layer": 0,
+    "floor": 0,
+    "hp": 44,
+    "keys": 0,
+    "big_key": 512,
+    "magic": 128,
+    "hammer": 0,
+    "bombs": 0,
+    "follower": 5,
+    "sprites": [
+      {
+        "slot": 0,
+        "type": "0x1E",
+        "name": "crystal switch",
+        "xy": [
+          5376,
+          1392
+        ],
+        "hp": 0
+      },
+      {
+        "slot": 1,
+        "type": "0x93",
+        "name": "bumper",
+        "xy": [
+          5368,
+          1272
+        ],
+        "hp": 255
+      },
+      {
+        "slot": 2,
+        "type": "0x26",
+        "name": "hardhat beetle",
+        "xy": [
+          5328,
+          1152
+        ],
+        "hp": 6
+      },
+      {
+        "slot": 3,
+        "type": "0x26",
+        "name": "hardhat beetle",
+        "xy": [
+          5232,
+          1216
+        ],
+        "hp": 6
+      },
+      {
+        "slot": 4,
+        "type": "0x26",
+        "name": "hardhat beetle",
+        "xy": [
+          5376,
+          1216
+        ],
+        "hp": 32
+      },
+      {
+        "slot": 5,
+        "type": "0x26",
+        "name": "hardhat beetle",
+        "xy": [
+          5327,
+          1263
+        ],
+        "hp": 6
+      },
+      {
+        "slot": 6,
+        "type": "0x26",
+        "name": "hardhat beetle",
+        "xy": [
+          5424,
+          1296
+        ],
+        "hp": 6
+      },
+      {
+        "slot": 7,
+        "type": "0x26",
+        "name": "hardhat beetle",
+        "xy": [
+          5359,
+          1327
+        ],
+        "hp": 6
+      }
+    ]
+  },
+  "doors": [
+    {
+      "slot": 0,
+      "type": "0x18",
+      "dir": "UP",
+      "pos": "$025C",
+      "tile": [
+        46,
+        4
+      ]
+    },
+    {
+      "slot": 1,
+      "type": "0x1C",
+      "dir": "UP",
+      "pos": "$021C",
+      "tile": [
+        14,
+        4
+      ]
+    },
+    {
+      "slot": 2,
+      "type": "0x2E",
+      "dir": "RIGHT",
+      "pos": "$17F4",
+      "tile": [
+        58,
+        47
+      ]
+    },
+    {
+      "slot": 3,
+      "type": "0x02",
+      "dir": "RIGHT",
+      "pos": "$0FEE",
+      "tile": [
+        55,
+        31
+      ]
+    },
+    {
+      "slot": 4,
+      "type": "0x00",
+      "dir": "DOWN",
+      "pos": "$1D1C",
+      "tile": [
+        14,
+        58
+      ]
+    },
+    {
+      "slot": 5,
+      "type": "0x00",
+      "dir": "DOWN",
+      "pos": "$1D5C",
+      "tile": [
+        46,
+        58
+      ]
+    }
+  ],
+  "chests": [
+    "chests room=0x002A n=2 live=$0000",
+    "  chest 0 tile=(56,45) layer=0 loc=$16F0 opened=0 live=0x0100 save=0x0010:0 item=KeyD1 z3=0xEA3A",
+    "  chest 1 tile=(46,44) layer=0 loc=$165C opened=0 live=0x0200 save=0x0020:0 item=KeyD1 z3=0xEA3D"
+  ],
+  "peg": 0,
+  "door_tries": [
+    {
+      "slot": {
+        "slot": 0,
+        "type": "0x18",
+        "dir": "UP",
+        "pos": "$025C",
+        "tile": [
+          46,
+          4
+        ]
+      },
+      "walked": {
+        "ok": false,
+        "reason": "no path to local 368,56"
+      },
+      "pushed": null
+    },
+    {
+      "slot": {
+        "slot": 1,
+        "type": "0x1C",
+        "dir": "UP",
+        "pos": "$021C",
+        "tile": [
+          14,
+          4
+        ]
+      },
+      "walked": {
+        "ok": false,
+        "reason": "no path to local 112,56"
+      },
+      "pushed": null
+    },
+    {
+      "slot": {
+        "slot": 2,
+        "type": "0x2E",
+        "dir": "RIGHT",
+        "pos": "$17F4",
+        "tile": [
+          58,
+          47
+        ]
+      },
+      "walked": {
+        "ok": false,
+        "reason": "no path to local 456,376"
+      },
+      "pushed": null
+    },
+    {
+      "slot": {
+        "slot": 3,
+        "type": "0x02",
+        "dir": "RIGHT",
+        "pos": "$0FEE",
+        "tile": [
+          55,
+          31
+        ]
+      },
+      "walked": {
+        "ok": false,
+        "reason": "no path to local 432,248"
+      },
+      "pushed": null
+    },
+    {
+      "slot": {
+        "slot": 4,
+        "type": "0x00",
+        "dir": "DOWN",
+        "pos": "$1D1C",
+        "tile": [
+          14,
+          58
+        ]
+      },
+      "walked": {
+        "ok": false,
+        "reason": "no path to local 112,456"
+      },
+      "pushed": null
+    },
+    {
+      "slot": {
+        "slot": 5,
+        "type": "0x00",
+        "dir": "DOWN",
+        "pos": "$1D5C",
+        "tile": [
+          46,
+          58
+        ]
+      },
+      "walked": {
+        "ok": false,
+        "reason": "no path to local 368,456"
+      },
+      "pushed": null
+    }
+  ],
+  "chest_play": {
+    "ok": true,
+    "reason": "skip chest 0 no path; chest 1 no path",
+    "frames": 0
+  },
+  "after_chest": {
+    "glance": {
+      "room": "0x2A",
+      "room_id": 42,
+      "xy": [
+        5240,
+        1496
+      ],
+      "module": 7,
+      "sub": 0,
+      "indoors": true,
+      "control": true,
+      "dark_world": true,
+      "layer": 0,
+      "floor": 0,
+      "hp": 44,
+      "keys": 0,
+      "big_key": 512,
+      "magic": 128,
+      "hammer": 0,
+      "bombs": 0,
+      "follower": 5,
+      "sprites": [
+        {
+          "slot": 0,
+          "type": "0x1E",
+          "name": "crystal switch",
+          "xy": [
+            5376,
+            1392
+          ],
+          "hp": 0
+        },
+        {
+          "slot": 1,
+          "type": "0x93",
+          "name": "bumper",
+          "xy": [
+            5368,
+            1272
+          ],
+          "hp": 255
+        },
+        {
+          "slot": 2,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5328,
+            1152
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 3,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5232,
+            1216
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 4,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5376,
+            1216
+          ],
+          "hp": 32
+        },
+        {
+          "slot": 5,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5327,
+            1263
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 6,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5424,
+            1296
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 7,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5359,
+            1327
+          ],
+          "hp": 6
+        }
+      ]
+    },
+    "chests": [
+      "chests room=0x002A n=2 live=$0000",
+      "  chest 0 tile=(56,45) layer=0 loc=$16F0 opened=0 live=0x0100 save=0x0010:0 item=KeyD1 z3=0xEA3A",
+      "  chest 1 tile=(46,44) layer=0 loc=$165C opened=0 live=0x0200 save=0x0020:0 item=KeyD1 z3=0xEA3D"
+    ],
+    "big_key": 512,
+    "keys": 0
+  },
+  "switch": {
+    "ok": false,
+    "reason": "peg stayed $00 at (5376, 1392)",
+    "frames": 934
+  },
+  "peg_after": 0,
+  "chest_after_switch": {
+    "ok": true,
+    "reason": "skip chest 0 no path; chest 1 no path",
+    "frames": 0
+  },
+  "end": {
+    "glance": {
+      "room": "0x2A",
+      "room_id": 42,
+      "xy": [
+        5248,
+        1437
+      ],
+      "module": 7,
+      "sub": 0,
+      "indoors": true,
+      "control": true,
+      "dark_world": true,
+      "layer": 0,
+      "floor": 0,
+      "hp": 12,
+      "keys": 0,
+      "big_key": 512,
+      "magic": 128,
+      "hammer": 0,
+      "bombs": 0,
+      "follower": 5,
+      "sprites": [
+        {
+          "slot": 0,
+          "type": "0x1E",
+          "name": "crystal switch",
+          "xy": [
+            5376,
+            1392
+          ],
+          "hp": 0
+        },
+        {
+          "slot": 1,
+          "type": "0x93",
+          "name": "bumper",
+          "xy": [
+            5368,
+            1272
+          ],
+          "hp": 255
+        },
+        {
+          "slot": 2,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5328,
+            1152
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 3,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5232,
+            1216
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 4,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5376,
+            1216
+          ],
+          "hp": 32
+        },
+        {
+          "slot": 5,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5294,
+            1323
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 6,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5294,
+            1323
+          ],
+          "hp": 6
+        },
+        {
+          "slot": 7,
+          "type": "0x26",
+          "name": "hardhat beetle",
+          "xy": [
+            5294,
+            1323
+          ],
+          "hp": 6
+        }
+      ]
+    },
+    "chests": [
+      "chests room=0x002A n=2 live=$0000",
+      "  chest 0 tile=(56,45) layer=0 loc=$16F0 opened=0 live=0x0100 save=0x0010:0 item=KeyD1 z3=0xEA3A",
+      "  chest 1 tile=(46,44) layer=0 loc=$165C opened=0 live=0x0200 save=0x0020:0 item=KeyD1 z3=0xEA3D"
+    ],
+    "big_key": 512,
+    "keys": 0
+  }
+}

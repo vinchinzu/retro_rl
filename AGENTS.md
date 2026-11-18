@@ -44,19 +44,11 @@ Short import names (`import alttp`, `import smb`). Pytest path includes
 - Natural-entry: segment not route-ready until it clears from the real
   predecessor state.
 
-## Issue tracking (bd)
-
-**[bd](https://github.com/steveyegge/beads)** — commands, labels (`rr-`,
-game/kind), STATUS-vs-beads split in [`docs/BEADS.md`](docs/BEADS.md).
-Start with `bd ready`; claim one issue; `bd export -o .beads/issues.jsonl` + commit
-`.beads/issues.jsonl` with matching code.
-
 ## Landing the plane
 
-1. Update beads for remaining work; close finished issues honestly
+1. Record remaining work in the owning game's plan or living residual
 2. Run ROM eval for files you changed (`docs/TEST_TIERS.md`)
-3. `bd export -o .beads/issues.jsonl` and commit code + that file together
-4. Push only if requested; hand off with `bd ready` + one-line next action
+3. Push only if requested; hand off with one-line next action
 
 ## Cursor Cloud specific instructions
 

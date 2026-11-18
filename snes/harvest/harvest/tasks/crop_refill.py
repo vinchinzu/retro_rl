@@ -573,7 +573,8 @@ def _commit_multihop_main_pond(
         candidates = south
 
     candidates.sort(
-        key=lambda sf: abs(sf[0][0] - player[0]) + abs(sf[0][1] - player[1])
+        key=lambda sf: (abs(sf[0][0] - player[0]) + abs(sf[0][1] - player[1])
+                        + (2 if sf[0] == (32, 34) else 0))
     )
     stand, face = candidates[0]
     wid = edge_water_tile_id(ram, stand, face)

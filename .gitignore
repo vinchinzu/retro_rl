@@ -74,6 +74,8 @@ roms/
 **/saves/
 *.state
 *.state.*
+# Harvest day-pin planner lineage, written beside every PR_*.state by --save-day-pins
+snes/harvest/custom_integrations/*/*.lineage.json
 !snes/super_metroid/routes/kpdr/ceres/data/*.state
 *.sav
 *.save
@@ -128,12 +130,8 @@ snes/alttp/tas/slices/
 *.smv
 *.replay.jsonl
 *.jsonl
-# Beads exports must be trackable (override blanket *.jsonl)
-!.beads/
-!.beads/*.jsonl
-!.beads/config.yaml
-!.beads/metadata.json
-!.beads/README.md
+# Beads tracker, issue exports, and backups stay out of this repo.
+.beads/
 *.mp4
 *.mkv
 *.avi
@@ -265,14 +263,10 @@ harvest/tasks/
 **/CLAUDE.md
 **/.agents.md
 **/.bv/
-# Beads: track issues.jsonl + config.yaml + metadata; runtime DB/daemon
-# ignored via .beads/.gitignore (do not blanket-ignore the directory).
+# Beads database, backups, and exports are archived outside this repo.
 .dolt/
 .beads-credential-key
-.beads/embeddeddolt/
-.beads/backup/
-.beads/dolt/
-.beads/proxieddb/
+.beads/
 
 # Third-party/reference source trees are cloned separately.
 harvest/HM-Decomp/
@@ -391,6 +385,7 @@ snes/super_metroid/scratch/**/*_v[0-9]*.json
 snes/super_metroid/scratch/**/*_shots/
 snes/super_metroid/scratch/**/*.png
 snes/super_metroid/scratch/**/*_probe.py
+snes/alttp/scratch/probe_ap*.py
 snes/super_metroid/docs/tasks/logs/
 # Zelda I scratch/window dumps (named pins in custom_integrations stay tracked)
 nes/zelda_i/scratch/**/*_window*.json

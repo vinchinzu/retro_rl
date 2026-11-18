@@ -1,0 +1,205 @@
+{
+  "enter": {
+    "room": "0x3A",
+    "room_id": 58,
+    "xy": [
+      5368,
+      2008
+    ],
+    "module": 7,
+    "sub": 0,
+    "indoors": true,
+    "control": true,
+    "dark_world": true,
+    "layer": 0,
+    "floor": 0,
+    "hp": 56,
+    "keys": 0,
+    "big_key": 512,
+    "magic": 128,
+    "hammer": 0,
+    "bombs": 0,
+    "follower": 5,
+    "sprites": [
+      {
+        "slot": 0,
+        "type": "0x8E",
+        "name": "terrorpin",
+        "xy": [
+          5344,
+          1808
+        ],
+        "hp": 8
+      },
+      {
+        "slot": 1,
+        "type": "0x8E",
+        "name": "terrorpin",
+        "xy": [
+          5392,
+          1808
+        ],
+        "hp": 8
+      },
+      {
+        "slot": 2,
+        "type": "0xC5",
+        "name": "medusa",
+        "xy": [
+          5184,
+          1856
+        ],
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": "0x24",
+        "name": "blue bari",
+        "xy": [
+          5280,
+          1856
+        ],
+        "hp": 2
+      },
+      {
+        "slot": 4,
+        "type": "0x24",
+        "name": "blue bari",
+        "xy": [
+          5456,
+          1856
+        ],
+        "hp": 2
+      },
+      {
+        "slot": 5,
+        "type": "0xC5",
+        "name": "medusa",
+        "xy": [
+          5552,
+          1856
+        ],
+        "hp": 0
+      }
+    ],
+    "push_frames": 56
+  },
+  "walked": {
+    "ok": true,
+    "left": false,
+    "at": [
+      5359,
+      2108
+    ]
+  },
+  "north": {
+    "room": "0x3A",
+    "room_id": 58,
+    "xy": [
+      5368,
+      1800
+    ],
+    "module": 7,
+    "sub": 0,
+    "indoors": true,
+    "control": true,
+    "dark_world": true,
+    "layer": 0,
+    "floor": 0,
+    "hp": 56,
+    "keys": 0,
+    "big_key": 512,
+    "magic": 128,
+    "hammer": 0,
+    "bombs": 0,
+    "follower": 5,
+    "sprites": [
+      {
+        "slot": 0,
+        "type": "0x8E",
+        "name": "terrorpin",
+        "xy": [
+          5344,
+          1898
+        ],
+        "hp": 8
+      },
+      {
+        "slot": 1,
+        "type": "0x8E",
+        "name": "terrorpin",
+        "xy": [
+          5392,
+          1847
+        ],
+        "hp": 8
+      },
+      {
+        "slot": 2,
+        "type": "0xC5",
+        "name": "medusa",
+        "xy": [
+          5184,
+          1856
+        ],
+        "hp": 0
+      },
+      {
+        "slot": 3,
+        "type": "0x24",
+        "name": "blue bari",
+        "xy": [
+          5314,
+          1835
+        ],
+        "hp": 2
+      },
+      {
+        "slot": 4,
+        "type": "0x24",
+        "name": "blue bari",
+        "xy": [
+          5484,
+          1840
+        ],
+        "hp": 2
+      },
+      {
+        "slot": 5,
+        "type": "0xC5",
+        "name": "medusa",
+        "xy": [
+          5552,
+          1856
+        ],
+        "hp": 0
+      }
+    ],
+    "push_frames": 180
+  },
+  "link_tile": [
+    31,
+    33
+  ],
+  "around_link": [
+    "01 01 01 01 01",
+    "01 01 01 01 01",
+    "04 04 04 04 04",
+    "00 00 00 00 00",
+    "00 00 00 00 00"
+  ],
+  "around_chest": [
+    "00 00 00 00 00",
+    "00 00 00 00 00",
+    "00 00 58 58 00",
+    "00 00 58 58 00",
+    "00 00 00 00 00"
+  ],
+  "chest": [
+    "chests room=0x003A n=1 live=$0000",
+    "  chest 0 tile=(31,18) layer=0 loc=$093E opened=0 live=0x0100 save=0x0010:0 item=BigKeyD1 z3=0xEA37"
+  ],
+  "big_key": 512,
+  "keys": 0,
+  "tile_north": "0x01"
+}

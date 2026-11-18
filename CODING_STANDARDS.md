@@ -18,7 +18,7 @@ of rows. New behavior is a **row** or a **Tactic** behind that tick.
 |------|----------|
 | Super Metroid | `tips.play_hops` / `TipSpec` |
 | Harvest | `DayPlanTask` / skill table |
-| TMNT IV | `Stage1Policy` / `StageSpec` |
+| TMNT IV | `Stage1Policy` under `GuardedPolicy` (ROM lookahead) |
 | Zelda I | `SpineHop` rows |
 | Super Mario Bros. | `tas.stages.StageSpec` |
 

@@ -182,7 +182,8 @@ def _begin_hoe_phase(self, ram: np.ndarray) -> None:
     self._plot_phase = PlotPhase.HOE
     self._water_steps = []
     self._water_index = 0
-    for target, stand, face in hoe_plan(center):
+    opening = {"eight_east_notch": (1, 0), "eight_west_notch": (-1, 0)}.get(self.layout_name)
+    for target, stand, face in hoe_plan(center, opening=opening):
         tid = get_tile_at(ram, target[0], target[1])
         if tid in TILLABLE_TILES or tid == DRIED_TILLED or tid == UNTILLED:
             self._water_steps.append((target, stand, face))

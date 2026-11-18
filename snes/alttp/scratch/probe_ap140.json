@@ -1,0 +1,2344 @@
+{
+  "pin": "Whatif_SwampPalaceEntry_parallel",
+  "rooms": [
+    {
+      "want": 40,
+      "frames": 4,
+      "loaded": true,
+      "room": 40,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        4344,
+        1496
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        50,
+        27
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 14,
+        "L0_09": 304,
+        "L1_08": 464,
+        "L1_09": 0
+      },
+      "room_flags": 271,
+      "doors": [
+        "doors room=0x0028",
+        "  slot 0 north type=0x22 stairs pos=$021C dest=0x38",
+        "  slot 1 south type=0x0A entrance pos=$1D3C dest=screen=0x7B"
+      ],
+      "chests": [
+        "chests room=0x0028 n=1 live=$1000",
+        "  chest 0 tile=(22,12) layer=0 loc=$062C opened=0 live=0x0100 save=0x0010:0 item=KeyD2 z3=0xEA9D"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4256,
+          "y": 1120,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4224,
+          "y": 1152,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4272,
+          "y": 1184,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 4208,
+          "y": 1232,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 138,
+          "name": "spike block",
+          "state": 9,
+          "hp": 32,
+          "ai": 0,
+          "x": 4234,
+          "y": 1279,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0028 room_28 dungeon=0x0A floor=0x00",
+        "link=(4344,1496) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 kyameron             state=0x09 hp=4 (4256,1120)",
+        "  slot  1 water tektite        state=0x09 hp=4 (4224,1152)",
+        "  slot  2 water tektite        state=0x09 hp=4 (4272,1184)",
+        "  slot  3 water tektite        state=0x09 hp=4 (4208,1232)",
+        "  slot  4 spike block          state=0x09 hp=32 (4234,1279)"
+      ],
+      "saved": "Scan_swamp_0x28",
+      "kind": "scan"
+    },
+    {
+      "want": 56,
+      "frames": 156,
+      "loaded": true,
+      "room": 56,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        4344,
+        2008
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 792,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 10,
+      "doors": [
+        "doors room=0x0038",
+        "  slot 0 west type=0x2E pos=$0784 dest=unknown",
+        "  slot 1 west type=0x1C small_key pos=$1784 dest=unknown"
+      ],
+      "chests": [
+        "chests room=0x0038 (none)"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4288,
+          "y": 1632,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4208,
+          "y": 1696,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4288,
+          "y": 1728,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 197,
+          "name": "medusa",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 4288,
+          "y": 1792,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 4192,
+          "y": 1856,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 4288,
+          "y": 1920,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 4208,
+          "y": 1952,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0038 room_38 dungeon=0x0A floor=0x00",
+        "link=(4344,2008) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water tektite        state=0x09 hp=4 (4288,1632)",
+        "  slot  1 water tektite        state=0x09 hp=4 (4208,1696)",
+        "  slot  2 kyameron             state=0x09 hp=4 (4288,1728)",
+        "  slot  3 medusa               state=0x09 hp=0 (4288,1792)",
+        "  slot  4 kyameron             state=0x09 hp=4 (4192,1856)"
+      ],
+      "saved": "Scan_swamp_0x38",
+      "kind": "poke"
+    },
+    {
+      "want": 55,
+      "frames": 156,
+      "loaded": true,
+      "room": 55,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3832,
+        2008
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        25
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 2,
+        "L0_09": 0,
+        "L1_08": 380,
+        "L1_09": 0
+      },
+      "room_flags": 3,
+      "doors": [
+        "doors room=0x0037",
+        "  slot 0 west type=0x2E pos=$0784 dest=unknown",
+        "  slot 1 east type=0x2E pos=$07F4 dest=unknown",
+        "  slot 2 north type=0x1C small_key pos=$121C dest=unknown",
+        "  slot 3 east type=0x1C small_key pos=$17F4 dest=unknown",
+        "  slot 4 west type=0x00 regular pos=$1784 dest=unknown",
+        "  slot 5 north type=0x02 regular pos=$13BC dest=unknown",
+        "  slot 10 south type=0x1C small_key pos=$0D1C layer of slot 2",
+        "  slot 13 south type=0x02 regular pos=$0BBC layer of slot 5"
+      ],
+      "chests": [
+        "chests room=0x0037 n=1 live=$0000",
+        "  chest 0 tile=(39,16) layer=0 loc=$084E opened=0 live=0x0100 save=0x0010:0 item=MapD2 z3=0xE986"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 33,
+          "name": "water switch",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 3760,
+          "y": 1605,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3664,
+          "y": 1632,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3952,
+          "y": 1664,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 4000,
+          "y": 1664,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3776,
+          "y": 1680,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 128,
+          "name": "firesnake",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 3920,
+          "y": 1856,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3952,
+          "y": 1904,
+          "floor": 0
+        },
+        {
+          "slot": 7,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3888,
+          "y": 1936,
+          "floor": 0
+        },
+        {
+          "slot": 8,
+          "type": 198,
+          "name": "four way shooter",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3952,
+          "y": 1952,
+          "floor": 0
+        },
+        {
+          "slot": 9,
+          "type": 35,
+          "name": "red bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3920,
+          "y": 1983,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0037 room_37 dungeon=0x0A floor=0x00",
+        "link=(3832,2008) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water switch         state=0x09 hp=3 (3760,1605)",
+        "  slot  1 stalfos              state=0x09 hp=4 (3664,1632)",
+        "  slot  2 zol                  state=0x09 hp=4 (3952,1664)",
+        "  slot  3 zol                  state=0x09 hp=4 (4000,1664)",
+        "  slot  4 stalfos              state=0x09 hp=4 (3776,1680)"
+      ],
+      "saved": "Scan_swamp_0x37",
+      "kind": "poke",
+      "push": {
+        "sprite": {
+          "slot": 0,
+          "type": 33,
+          "name": "water switch",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 3760,
+          "y": 1605,
+          "floor": 0
+        },
+        "walk_ok": false,
+        "walk_reason": "stuck before switch_south",
+        "walk_frames": 87,
+        "xy_poke": true,
+        "hold": {
+          "frames": 200,
+          "settle": 0,
+          "subs": []
+        },
+        "hold_after_poke": {
+          "frames": 240,
+          "settle": 0,
+          "subs": []
+        },
+        "before": {
+          "flag": 0,
+          "tag": [
+            0,
+            25
+          ],
+          "overlay": 0,
+          "flip": 0,
+          "counts": {
+            "L0_08": 2,
+            "L0_09": 0,
+            "L1_08": 380,
+            "L1_09": 0
+          },
+          "flags": {
+            "0x28": 271,
+            "0x38": 0,
+            "0x37": 3,
+            "0x36": 0,
+            "0x35": 0,
+            "0x34": 0,
+            "0x54": 0,
+            "0x46": 0,
+            "0x26": 0,
+            "0x76": 0,
+            "0x66": 0,
+            "0x16": 0,
+            "0x06": 0
+          }
+        },
+        "after": {
+          "room": 55,
+          "sub": 0,
+          "mode": 7,
+          "control": true,
+          "hp": 24,
+          "xy": [
+            3760,
+            1584
+          ],
+          "flag": 0,
+          "tag": [
+            0,
+            25
+          ],
+          "overlay": 0,
+          "flip": 0,
+          "counts": {
+            "L0_08": 2,
+            "L0_09": 0,
+            "L1_08": 380,
+            "L1_09": 0
+          },
+          "flags": {
+            "0x28": 271,
+            "0x38": 0,
+            "0x37": 3,
+            "0x36": 0,
+            "0x35": 0,
+            "0x34": 0,
+            "0x54": 0,
+            "0x46": 0,
+            "0x26": 0,
+            "0x76": 0,
+            "0x66": 0,
+            "0x16": 0,
+            "0x06": 0
+          },
+          "follower": 0
+        },
+        "attr_changed": {
+          "L0": {
+            "n": 0,
+            "sample": []
+          },
+          "L1": {
+            "n": 0,
+            "sample": []
+          }
+        }
+      }
+    },
+    {
+      "want": 54,
+      "frames": 160,
+      "loaded": true,
+      "room": 54,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        2008
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 900,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 15,
+      "doors": [
+        "doors room=0x0036",
+        "  slot 0 east type=0x2E pos=$07F4 dest=unknown",
+        "  slot 1 north type=0x1C small_key pos=$023C dest=unknown",
+        "  slot 2 west type=0x1C small_key pos=$0784 dest=unknown",
+        "  slot 3 west type=0x00 regular pos=$1784 dest=unknown",
+        "  slot 4 east type=0x00 regular pos=$17F4 dest=unknown",
+        "  slot 5 south type=0x02 regular pos=$1BBC dest=unknown"
+      ],
+      "chests": [
+        "chests room=0x0036 n=1 live=$0000",
+        "  chest 0 big tile=(29,27) layer=0 loc=$0DBA opened=0 live=0x0100 save=0x0010:0 item=Hookshot z3=0xE989"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3248,
+          "y": 1696,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3392,
+          "y": 1696,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 197,
+          "name": "medusa",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3408,
+          "y": 1712,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3392,
+          "y": 1840,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3216,
+          "y": 1856,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3359,
+          "y": 1903,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0036 room_36 dungeon=0x0A floor=0x00",
+        "link=(3320,2008) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water tektite        state=0x09 hp=4 (3248,1696)",
+        "  slot  1 water tektite        state=0x09 hp=4 (3392,1696)",
+        "  slot  2 medusa               state=0x09 hp=0 (3408,1712)",
+        "  slot  3 kyameron             state=0x09 hp=4 (3392,1840)",
+        "  slot  4 water tektite        state=0x09 hp=4 (3216,1856)"
+      ],
+      "saved": "Scan_swamp_0x36",
+      "kind": "poke"
+    },
+    {
+      "want": 53,
+      "frames": 160,
+      "loaded": true,
+      "room": 53,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        2808,
+        2008
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        25
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 0,
+        "L1_08": 416,
+        "L1_09": 0
+      },
+      "room_flags": 3,
+      "doors": [
+        "doors room=0x0035",
+        "  slot 0 east type=0x1C small_key pos=$07F4 dest=unknown",
+        "  slot 1 west type=0x00 regular pos=$0784 dest=unknown",
+        "  slot 2 west type=0x00 regular pos=$1784 dest=unknown",
+        "  slot 3 north type=0x00 regular pos=$125C dest=unknown",
+        "  slot 4 east type=0x00 regular pos=$17F4 dest=unknown",
+        "  slot 5 north type=0x02 regular pos=$13BC dest=unknown",
+        "  slot 11 south type=0x00 regular pos=$0D5C layer of slot 3",
+        "  slot 13 south type=0x02 regular pos=$0BBC layer of slot 5"
+      ],
+      "chests": [
+        "chests room=0x0035 n=1 live=$0000",
+        "  chest 0 tile=(23,16) layer=0 loc=$082E opened=0 live=0x0100 save=0x0010:0 item=BigKeyD2 z3=0xEAA6"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 30,
+          "name": "crystal switch",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 2912,
+          "y": 1632,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 33,
+          "name": "water switch",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 2880,
+          "y": 1621,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 35,
+          "name": "red bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 2944,
+          "y": 1616,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 138,
+          "name": "spike block",
+          "state": 9,
+          "hp": 32,
+          "ai": 0,
+          "x": 2864,
+          "y": 1679,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2880,
+          "y": 1712,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2672,
+          "y": 1856,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2883,
+          "y": 1920,
+          "floor": 0
+        },
+        {
+          "slot": 7,
+          "type": 128,
+          "name": "firesnake",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 2916,
+          "y": 1936,
+          "floor": 0
+        },
+        {
+          "slot": 8,
+          "type": 198,
+          "name": "four way shooter",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 2928,
+          "y": 1952,
+          "floor": 0
+        },
+        {
+          "slot": 9,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 2880,
+          "y": 1967,
+          "floor": 0
+        },
+        {
+          "slot": 10,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2992,
+          "y": 1984,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0035 room_35 dungeon=0x0A floor=0x00",
+        "link=(2808,2008) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 crystal switch       state=0x09 hp=0 (2912,1632)",
+        "  slot  1 water switch         state=0x09 hp=3 (2880,1621)",
+        "  slot  2 red bari             state=0x09 hp=2 (2944,1616)",
+        "  slot  3 spike block          state=0x09 hp=32 (2864,1679)",
+        "  slot  4 stalfos              state=0x09 hp=4 (2880,1712)"
+      ],
+      "saved": "Scan_swamp_0x35",
+      "kind": "poke",
+      "push": {
+        "sprite": {
+          "slot": 1,
+          "type": 33,
+          "name": "water switch",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 2880,
+          "y": 1621,
+          "floor": 0
+        },
+        "walk_ok": false,
+        "walk_reason": "stuck before switch_south",
+        "walk_frames": 87,
+        "xy_poke": true,
+        "hold": {
+          "frames": 200,
+          "settle": 0,
+          "subs": []
+        },
+        "hold_after_poke": {
+          "frames": 240,
+          "settle": 0,
+          "subs": []
+        },
+        "before": {
+          "flag": 0,
+          "tag": [
+            0,
+            25
+          ],
+          "overlay": 0,
+          "flip": 0,
+          "counts": {
+            "L0_08": 0,
+            "L0_09": 0,
+            "L1_08": 416,
+            "L1_09": 0
+          },
+          "flags": {
+            "0x28": 271,
+            "0x38": 0,
+            "0x37": 0,
+            "0x36": 0,
+            "0x35": 3,
+            "0x34": 0,
+            "0x54": 0,
+            "0x46": 0,
+            "0x26": 0,
+            "0x76": 0,
+            "0x66": 0,
+            "0x16": 0,
+            "0x06": 0
+          }
+        },
+        "after": {
+          "room": 53,
+          "sub": 0,
+          "mode": 7,
+          "control": true,
+          "hp": 24,
+          "xy": [
+            2880,
+            1584
+          ],
+          "flag": 0,
+          "tag": [
+            0,
+            25
+          ],
+          "overlay": 0,
+          "flip": 0,
+          "counts": {
+            "L0_08": 0,
+            "L0_09": 0,
+            "L1_08": 416,
+            "L1_09": 0
+          },
+          "flags": {
+            "0x28": 271,
+            "0x38": 0,
+            "0x37": 0,
+            "0x36": 0,
+            "0x35": 3,
+            "0x34": 0,
+            "0x54": 0,
+            "0x46": 0,
+            "0x26": 0,
+            "0x76": 0,
+            "0x66": 0,
+            "0x16": 0,
+            "0x06": 0
+          },
+          "follower": 0
+        },
+        "attr_changed": {
+          "L0": {
+            "n": 0,
+            "sample": []
+          },
+          "L1": {
+            "n": 0,
+            "sample": []
+          }
+        }
+      }
+    },
+    {
+      "want": 52,
+      "frames": 160,
+      "loaded": true,
+      "room": 52,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        2296,
+        2008
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 252,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 15,
+      "doors": [
+        "doors room=0x0034",
+        "  slot 0 east type=0x00 regular pos=$07F4 dest=unknown",
+        "  slot 1 east type=0x00 regular pos=$17F4 dest=unknown"
+      ],
+      "chests": [
+        "chests room=0x0034 n=1 live=$0000",
+        "  chest 0 tile=(23,16) layer=0 loc=$082E opened=0 live=0x0100 save=0x0010:0 item=TwentyRupees z3=0xEAA3"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2288,
+          "y": 1712,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2303,
+          "y": 1824,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2288,
+          "y": 1872,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 128,
+          "name": "firesnake",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 2451,
+          "y": 1904,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2096,
+          "y": 1920,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 2368,
+          "y": 1919,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2402,
+          "y": 1952,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0034 room_34 dungeon=0x0A floor=0x00",
+        "link=(2296,2008) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water tektite        state=0x09 hp=4 (2288,1712)",
+        "  slot  1 water tektite        state=0x09 hp=4 (2303,1824)",
+        "  slot  2 kyameron             state=0x09 hp=4 (2288,1872)",
+        "  slot  3 firesnake            state=0x09 hp=3 (2451,1904)",
+        "  slot  4 zol                  state=0x09 hp=4 (2096,1920)"
+      ],
+      "saved": "Scan_swamp_0x34",
+      "kind": "poke"
+    },
+    {
+      "want": 84,
+      "frames": 156,
+      "loaded": true,
+      "room": 84,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        2296,
+        3032
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 828,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 15,
+      "doors": [
+        "doors room=0x0054",
+        "  (no door slots)"
+      ],
+      "chests": [
+        "chests room=0x0054 (none)"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2272,
+          "y": 2640,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 2240,
+          "y": 2736,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 197,
+          "name": "medusa",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 2224,
+          "y": 2784,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 126,
+          "name": "firebar clockwise",
+          "state": 9,
+          "hp": 255,
+          "ai": 0,
+          "x": 2288,
+          "y": 2784,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2304,
+          "y": 2800,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2336,
+          "y": 2880,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2288,
+          "y": 2896,
+          "floor": 0
+        },
+        {
+          "slot": 7,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 2240,
+          "y": 2928,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0054 room_54 dungeon=0x0A floor=0x00",
+        "link=(2296,3032) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 kyameron             state=0x09 hp=4 (2272,2640)",
+        "  slot  1 water tektite        state=0x09 hp=4 (2240,2736)",
+        "  slot  2 medusa               state=0x09 hp=0 (2224,2784)",
+        "  slot  3 firebar clockwise    state=0x09 hp=255 (2288,2784)",
+        "  slot  4 water tektite        state=0x09 hp=4 (2304,2800)"
+      ],
+      "saved": "Scan_swamp_0x54",
+      "kind": "poke"
+    },
+    {
+      "want": 70,
+      "frames": 156,
+      "loaded": true,
+      "room": 70,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        2520
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        60,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 432,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 3,
+      "doors": [
+        "doors room=0x0046",
+        "  slot 0 north type=0x02 regular pos=$03BC dest=unknown",
+        "  slot 1 north type=0x02 regular pos=$139C dest=unknown",
+        "  slot 2 north type=0x02 regular pos=$13DC dest=unknown",
+        "  slot 9 south type=0x02 regular pos=$0B9C layer of slot 1",
+        "  slot 10 south type=0x02 regular pos=$0BDC layer of slot 2"
+      ],
+      "chests": [
+        "chests room=0x0046 n=1 live=$0000",
+        "  chest 0 tile=(14,10) layer=0 loc=$051C opened=0 live=0x0100 save=0x0010:0 item=CompassD2 z3=0xEAA0"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3424,
+          "y": 2128,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3216,
+          "y": 2464,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3344,
+          "y": 2480,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0046 room_46 dungeon=0x0A floor=0x00",
+        "link=(3320,2520) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water tektite        state=0x09 hp=4 (3424,2128)",
+        "  slot  1 water tektite        state=0x09 hp=4 (3216,2464)",
+        "  slot  2 water tektite        state=0x09 hp=4 (3344,2480)"
+      ],
+      "saved": "Scan_swamp_0x46",
+      "kind": "poke"
+    },
+    {
+      "want": 38,
+      "frames": 160,
+      "loaded": true,
+      "room": 38,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        1496
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        22,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 208,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 3,
+      "doors": [
+        "doors room=0x0026",
+        "  slot 0 south type=0x1C small_key pos=$1D3C dest=unknown",
+        "  slot 1 north type=0x18 shutter pos=$121C dest=unknown",
+        "  slot 2 north type=0x18 shutter pos=$125C dest=unknown",
+        "  slot 3 west type=0x00 regular pos=$07C4 dest=unknown",
+        "  slot 9 south type=0x00 regular pos=$0D1C layer of slot 1",
+        "  slot 10 south type=0x00 regular pos=$0D5C layer of slot 2",
+        "  slot 11 east type=0x00 regular pos=$07B4 layer of slot 3"
+      ],
+      "chests": [
+        "chests room=0x0026 (none)"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 197,
+          "name": "medusa",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3120,
+          "y": 1088,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 35,
+          "name": "red bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3488,
+          "y": 1104,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 35,
+          "name": "red bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3152,
+          "y": 1120,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3216,
+          "y": 1120,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 167,
+          "name": "stalfos",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3136,
+          "y": 1168,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 197,
+          "name": "medusa",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3264,
+          "y": 1216,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 28,
+          "name": "statue",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3168,
+          "y": 1399,
+          "floor": 0
+        },
+        {
+          "slot": 7,
+          "type": 198,
+          "name": "four way shooter",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3472,
+          "y": 1392,
+          "floor": 0
+        },
+        {
+          "slot": 8,
+          "type": 35,
+          "name": "red bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3184,
+          "y": 1407,
+          "floor": 0
+        },
+        {
+          "slot": 9,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3408,
+          "y": 1408,
+          "floor": 0
+        },
+        {
+          "slot": 10,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3456,
+          "y": 1423,
+          "floor": 0
+        },
+        {
+          "slot": 11,
+          "type": 128,
+          "name": "firesnake",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 3520,
+          "y": 1440,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0026 room_26 dungeon=0x0A floor=0x00",
+        "link=(3320,1496) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 medusa               state=0x09 hp=0 (3120,1088)",
+        "  slot  1 red bari             state=0x09 hp=2 (3488,1104)",
+        "  slot  2 red bari             state=0x09 hp=2 (3152,1120)",
+        "  slot  3 stalfos              state=0x09 hp=4 (3216,1120)",
+        "  slot  4 stalfos              state=0x09 hp=4 (3136,1168)"
+      ],
+      "saved": "Scan_swamp_0x26",
+      "kind": "poke"
+    },
+    {
+      "want": 118,
+      "frames": 160,
+      "loaded": true,
+      "room": 118,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        4056
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        24
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 12,
+        "L0_09": 240,
+        "L1_08": 388,
+        "L1_09": 0
+      },
+      "room_flags": 10,
+      "doors": [
+        "doors room=0x0076",
+        "  slot 0 west type=0x02 regular pos=$07CA dest=unknown",
+        "  slot 1 west type=0x02 regular pos=$17CA dest=unknown",
+        "  slot 2 north type=0x02 regular pos=$039C dest=unknown",
+        "  slot 8 east type=0x02 regular pos=$07AE layer of slot 0",
+        "  slot 9 east type=0x02 regular pos=$17AE layer of slot 1"
+      ],
+      "chests": [
+        "chests room=0x0076 n=2 live=$0000",
+        "  chest 0 tile=(42,42) layer=0 loc=$1554 opened=0 live=0x0100 save=0x0010:0 item=TwentyRupees z3=0xEAA9",
+        "  chest 1 tile=(48,42) layer=0 loc=$1560 opened=0 live=0x0200 save=0x0020:0 item=TwentyRupees z3=0xEAAC"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 33,
+          "name": "water switch",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 3472,
+          "y": 3637,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3184,
+          "y": 3744,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3184,
+          "y": 3824,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3200,
+          "y": 3856,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3504,
+          "y": 3984,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3504,
+          "y": 4032,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0076 room_76 dungeon=0x0A floor=0x00",
+        "link=(3320,4056) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water switch         state=0x09 hp=3 (3472,3637)",
+        "  slot  1 water tektite        state=0x09 hp=4 (3184,3744)",
+        "  slot  2 kyameron             state=0x09 hp=4 (3184,3824)",
+        "  slot  3 water tektite        state=0x09 hp=4 (3200,3856)",
+        "  slot  4 zol                  state=0x09 hp=4 (3504,3984)"
+      ],
+      "saved": "Scan_swamp_0x76",
+      "kind": "poke",
+      "push": {
+        "sprite": {
+          "slot": 0,
+          "type": 33,
+          "name": "water switch",
+          "state": 9,
+          "hp": 3,
+          "ai": 0,
+          "x": 3472,
+          "y": 3637,
+          "floor": 0
+        },
+        "walk_ok": false,
+        "walk_reason": "stuck before switch_south",
+        "walk_frames": 87,
+        "xy_poke": true,
+        "hold": {
+          "frames": 200,
+          "settle": 0,
+          "subs": []
+        },
+        "hold_after_poke": {
+          "frames": 240,
+          "settle": 0,
+          "subs": []
+        },
+        "before": {
+          "flag": 0,
+          "tag": [
+            0,
+            24
+          ],
+          "overlay": 0,
+          "flip": 0,
+          "counts": {
+            "L0_08": 12,
+            "L0_09": 240,
+            "L1_08": 388,
+            "L1_09": 0
+          },
+          "flags": {
+            "0x28": 271,
+            "0x38": 0,
+            "0x37": 0,
+            "0x36": 0,
+            "0x35": 0,
+            "0x34": 0,
+            "0x54": 0,
+            "0x46": 0,
+            "0x26": 0,
+            "0x76": 10,
+            "0x66": 0,
+            "0x16": 0,
+            "0x06": 0
+          }
+        },
+        "after": {
+          "room": 118,
+          "sub": 0,
+          "mode": 7,
+          "control": true,
+          "hp": 24,
+          "xy": [
+            3472,
+            3632
+          ],
+          "flag": 0,
+          "tag": [
+            0,
+            24
+          ],
+          "overlay": 0,
+          "flip": 0,
+          "counts": {
+            "L0_08": 12,
+            "L0_09": 240,
+            "L1_08": 388,
+            "L1_09": 0
+          },
+          "flags": {
+            "0x28": 271,
+            "0x38": 0,
+            "0x37": 0,
+            "0x36": 0,
+            "0x35": 0,
+            "0x34": 0,
+            "0x54": 0,
+            "0x46": 0,
+            "0x26": 0,
+            "0x76": 10,
+            "0x66": 0,
+            "0x16": 0,
+            "0x06": 0
+          },
+          "follower": 0
+        },
+        "attr_changed": {
+          "L0": {
+            "n": 0,
+            "sample": []
+          },
+          "L1": {
+            "n": 0,
+            "sample": []
+          }
+        }
+      }
+    },
+    {
+      "want": 102,
+      "frames": 160,
+      "loaded": true,
+      "room": 102,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        3544
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        60,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 0,
+        "L1_08": 0,
+        "L1_09": 696
+      },
+      "room_flags": 3,
+      "doors": [
+        "doors room=0x0066",
+        "  slot 0 north type=0x08 waterfall pos=$33DC dest=unknown",
+        "  slot 1 south type=0x40 regular pos=$3B9C dest=unknown",
+        "  slot 2 north type=0x40 regular pos=$339C dest=unknown",
+        "  slot 8 south type=0x08 waterfall pos=$2BDC layer of slot 0",
+        "  slot 10 south type=0x40 regular pos=$2B9C layer of slot 2"
+      ],
+      "chests": [
+        "chests room=0x0066 n=1 live=$0000",
+        "  chest 0 tile=(34,48) layer=1 loc=$3844 opened=0 live=0x0100 save=0x0010:0 item=TwentyRupees z3=0xEAAF"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3248,
+          "y": 3152,
+          "floor": 1
+        },
+        {
+          "slot": 1,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3424,
+          "y": 3168,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3488,
+          "y": 3184,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 55,
+          "name": "waterfall",
+          "state": 9,
+          "hp": 0,
+          "ai": 0,
+          "x": 3440,
+          "y": 3392,
+          "floor": 1
+        },
+        {
+          "slot": 4,
+          "type": 154,
+          "name": "kyameron",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3312,
+          "y": 3424,
+          "floor": 1
+        },
+        {
+          "slot": 5,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3375,
+          "y": 3424,
+          "floor": 1
+        },
+        {
+          "slot": 6,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3248,
+          "y": 3456,
+          "floor": 1
+        },
+        {
+          "slot": 7,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3280,
+          "y": 3472,
+          "floor": 1
+        },
+        {
+          "slot": 8,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3439,
+          "y": 3503,
+          "floor": 1
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0066 room_66 dungeon=0x0A floor=0x00",
+        "link=(3320,3544) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 water tektite        state=0x09 hp=4 (3248,3152)",
+        "  slot  1 blue bari            state=0x09 hp=2 (3424,3168)",
+        "  slot  2 blue bari            state=0x09 hp=2 (3488,3184)",
+        "  slot  3 waterfall            state=0x09 hp=0 (3440,3392)",
+        "  slot  4 kyameron             state=0x09 hp=4 (3312,3424)"
+      ],
+      "saved": "Scan_swamp_0x66",
+      "kind": "poke"
+    },
+    {
+      "want": 22,
+      "frames": 160,
+      "loaded": true,
+      "room": 22,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        984
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        0,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 8,
+        "L0_09": 0,
+        "L1_08": 728,
+        "L1_09": 0
+      },
+      "room_flags": 3,
+      "doors": [
+        "doors room=0x0016",
+        "  slot 0 north type=0x2E pos=$123C dest=unknown",
+        "  slot 1 north type=0x1C small_key pos=$121C dest=unknown",
+        "  slot 2 north type=0x00 regular pos=$125C dest=unknown",
+        "  slot 3 north type=0x00 regular pos=$021C dest=unknown",
+        "  slot 8 south type=0x2E pos=$0D3C layer of slot 0",
+        "  slot 9 south type=0x1C small_key pos=$0D1C layer of slot 1",
+        "  slot 10 south type=0x00 regular pos=$0D5C layer of slot 2"
+      ],
+      "chests": [
+        "chests room=0x0016 (none)"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3408,
+          "y": 624,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3408,
+          "y": 640,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 36,
+          "name": "blue bari",
+          "state": 9,
+          "hp": 2,
+          "ai": 0,
+          "x": 3408,
+          "y": 656,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 143,
+          "name": "zol",
+          "state": 9,
+          "hp": 4,
+          "ai": 0,
+          "x": 3328,
+          "y": 672,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3264,
+          "y": 896,
+          "floor": 1
+        },
+        {
+          "slot": 5,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3184,
+          "y": 944,
+          "floor": 1
+        },
+        {
+          "slot": 6,
+          "type": 129,
+          "name": "water tektite",
+          "state": 9,
+          "hp": 4,
+          "ai": 1,
+          "x": 3391,
+          "y": 944,
+          "floor": 1
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0016 room_16 dungeon=0x0A floor=0x00",
+        "link=(3320,984) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 zol                  state=0x09 hp=4 (3408,624)",
+        "  slot  1 zol                  state=0x09 hp=4 (3408,640)",
+        "  slot  2 blue bari            state=0x09 hp=2 (3408,656)",
+        "  slot  3 zol                  state=0x09 hp=4 (3328,672)",
+        "  slot  4 water tektite        state=0x09 hp=4 (3264,896)"
+      ],
+      "saved": "Scan_swamp_0x16",
+      "kind": "poke"
+    },
+    {
+      "want": 6,
+      "frames": 164,
+      "loaded": true,
+      "room": 6,
+      "dungeon": 10,
+      "mode": 7,
+      "sub": 0,
+      "control": true,
+      "hp": [
+        24,
+        24
+      ],
+      "xy": [
+        3320,
+        472
+      ],
+      "layer": 0,
+      "keys": 1,
+      "big_key": 1024,
+      "flippers": 0,
+      "hookshot": 0,
+      "hammer": 1,
+      "follower": 0,
+      "follower_ok": true,
+      "flag": 0,
+      "tag": [
+        37,
+        0
+      ],
+      "overlay": 0,
+      "counts": {
+        "L0_08": 0,
+        "L0_09": 432,
+        "L1_08": 0,
+        "L1_09": 0
+      },
+      "room_flags": 2,
+      "doors": [
+        "doors room=0x0006",
+        "  slot 0 south type=0x18 shutter pos=$1D1C dest=unknown"
+      ],
+      "chests": [
+        "chests room=0x0006 (none)"
+      ],
+      "sprites": [
+        {
+          "slot": 0,
+          "type": 140,
+          "name": "arrghus",
+          "state": 9,
+          "hp": 32,
+          "ai": 1,
+          "x": 3184,
+          "y": 368,
+          "floor": 0
+        },
+        {
+          "slot": 1,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3184,
+          "y": 372,
+          "floor": 0
+        },
+        {
+          "slot": 2,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3070,
+          "y": 363,
+          "floor": 0
+        },
+        {
+          "slot": 3,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3130,
+          "y": 352,
+          "floor": 0
+        },
+        {
+          "slot": 4,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3196,
+          "y": 340,
+          "floor": 0
+        },
+        {
+          "slot": 5,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3184,
+          "y": 336,
+          "floor": 0
+        },
+        {
+          "slot": 6,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3173,
+          "y": 341,
+          "floor": 0
+        },
+        {
+          "slot": 7,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3170,
+          "y": 352,
+          "floor": 0
+        },
+        {
+          "slot": 8,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3174,
+          "y": 362,
+          "floor": 0
+        },
+        {
+          "slot": 9,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3184,
+          "y": 359,
+          "floor": 0
+        },
+        {
+          "slot": 10,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3076,
+          "y": 355,
+          "floor": 0
+        },
+        {
+          "slot": 11,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3179,
+          "y": 345,
+          "floor": 0
+        },
+        {
+          "slot": 12,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3190,
+          "y": 344,
+          "floor": 0
+        },
+        {
+          "slot": 13,
+          "type": 141,
+          "name": "arrghus puff",
+          "state": 9,
+          "hp": 8,
+          "ai": 0,
+          "x": 3097,
+          "y": 355,
+          "floor": 0
+        }
+      ],
+      "describe": [
+        "module=0x07 submodule=0x00 room=0x0006 room_06 dungeon=0x0A floor=0x00",
+        "link=(3320,472) layer=0 dir=0x00 state=0 hp=0x18",
+        "inventory bombs=10 hammer=1 mirror=1 gloves=1 boots=1 pearl=1 sword=2 shield=2 rupees=0 big_key=1024 max_hp=24 hp=24 magic=128 keys=1 ability=248",
+        "  slot  0 arrghus              state=0x09 hp=32 (3184,368)",
+        "  slot  1 arrghus puff         state=0x09 hp=8 (3184,372)",
+        "  slot  2 arrghus puff         state=0x09 hp=8 (3070,363)",
+        "  slot  3 arrghus puff         state=0x09 hp=8 (3130,352)",
+        "  slot  4 arrghus puff         state=0x09 hp=8 (3196,340)"
+      ],
+      "saved": "Scan_swamp_0x06",
+      "kind": "poke"
+    }
+  ],
+  "start": {
+    "room": 40,
+    "dungeon": 10,
+    "mode": 7,
+    "xy": [
+      4344,
+      1496
+    ],
+    "keys": 1,
+    "big_key": 1024,
+    "flippers": 0,
+    "hammer": 1,
+    "hookshot": 0,
+    "follower": 0,
+    "flags": {
+      "0x28": 271,
+      "0x38": 0,
+      "0x37": 0,
+      "0x36": 0,
+      "0x35": 0,
+      "0x34": 0,
+      "0x54": 0,
+      "0x46": 0,
+      "0x26": 0,
+      "0x76": 0,
+      "0x66": 0,
+      "0x16": 0,
+      "0x06": 0
+    }
+  }
+}

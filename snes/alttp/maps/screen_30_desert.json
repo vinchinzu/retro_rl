@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_30_desert",
+  "outdoors": true,
+  "screenId": 48,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Desert Palace south entrance (screen 0x30)",
+  "measured": "2026-09-30",
+  "sourceState": "DesertPalaceEntry",
+  "z3Label": "Desert Palace Entrance (South)",
+  "points": [
+    {
+      "label": "desert_door",
+      "xy": [296, 3259],
+      "role": "approach",
+      "notes": "Outdoor control after DOWN out of room 0x84."
+    }
+  ],
+  "doors": [
+    {
+      "label": "desert_door_to_0x84",
+      "direction": "UP",
+      "toRoom": 132,
+      "outdoors": false,
+      "approachXy": [296, 3259],
+      "landingXy": [2296, 4568],
+      "role": "entrance",
+      "path": ["desert_door"],
+      "pushFrames": 40,
+      "notes": "Isolated walk-in UP to room 0x84 (2296,4568) control frame 157, hp 0x18. Not continuous."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 40,
+    "maxCycles": 50,
+    "skirmishMaxDistance": 60,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [280, 3243, 312, 3275],
+  "hostilesAtEntry": [],
+  "notes": [
+    "Big area origin (0,3072). Screen id 0x30.",
+    "Buttons only. Not continuous."
+  ]
+}

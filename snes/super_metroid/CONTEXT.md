@@ -1,24 +1,24 @@
 # Super Metroid
 
-Scriptable vanilla Super Metroid (SNES): a skill API that plays any% KPDR from
-power-on through the end of credits. First credits is Survival, noob loadout,
-and a two-hour class is fine. **Gut** the tree until a **Skill** can be A/B’d
-without rewriting the harness; **Speed** (RTA / button-press) runs through that
-loop and is not a fail line until then. Both may run in the same week. 100% is
-a later year. Solver/SMZ3 is downstream.
+Scriptable vanilla Super Metroid (SNES): autoplay of any% KPDR from power-on
+through the end of credits, **Clean**, on the human tapes' route. A two-hour
+class is fine. Rooms are cleared by machine **Search** against the ROM, not by
+hand tuning; see `AGENTS.md`. **Speed** and 100% come after the first Clean
+credits. Solver/SMZ3 is downstream.
 
 ## Language
 
 **Finish**:
 A natural power-on playthrough that sits through the **end** of credits and
-shows an **RTA**. Any% KPDR, noob loadout, Survival. A two-hour class is fine.
-Not 100%. Not WR. Not hop-replay from a late pin.
+shows an **RTA**. Any% KPDR, noob loadout, **Clean**. A two-hour class is fine.
+Not 100%. Not WR. Not hop-replay from a late pin. Proof is the **Master tape**
+replayed from power-on.
 _Avoid_: STATUS JSON as the completion artifact, 100% as the fail line, TAS
 movie playback as the run, credits from a Gravity/G4 pin, sub-hour as this
 year’s fail line
 
 **First run**:
-Power-on through credits with an RTA, noob loadout, Survival. A two-hour class
+Power-on through credits with an RTA, noob loadout, **Clean**. A two-hour class
 is fine. **Gut** may run before or beside it. It is not **Speed**.
 _Avoid_: sub-hour as the first-credits fail line, WR, starting credits from a
 late pin
@@ -51,15 +51,41 @@ _Avoid_: WR as a fail line, requiring sub-hour before first credits, requiring
 sub-hour before **Gut**
 
 **Survival**:
-First-pass intervention: refill current energy (after Ceres) and currently
+The older assisted intervention, verified to Phantoon. No longer the first-
+credits target. Refill current energy (after Ceres) and currently
 unlocked ammo, up to natural capacity. No item, capacity, boss, door, pose, or
 timer writes. Harder than Harvest is why this stays; it is not a skip.
 _Avoid_: item poke, boss flags, door warp as arrival, Gravity bit, G4 flags
 
 **Clean**:
-Zero energy and ammo writes. Parallel track. Not the first-credits fail line.
-_Avoid_: claiming Clean greens as the program tip, disabling Survival on the
-default continuous CLI, dual clean, “no cheats” as a third class
+Zero RAM writes and, in the claimed run, zero state loads. The goal. Building
+may use **Rollout**; the claim is the loadless replay. Contract:
+`docs/CLEAN_TRACK.md`.
+_Avoid_: quoting a run that restored as Clean, quoting the human tape as Clean
+(it was recorded with refills), overwriting assisted artifacts
+
+**Search**:
+The machine trying button sequences from a saved frame and restoring, until
+one reaches the next room settled. Tape first, retimed tape second, branching
+third. The agent supplies the goal and the candidates, not the constants.
+_Avoid_: one knob per run by hand, a physics model in place of the ROM
+
+**Rollout**:
+Saving the core, playing candidates a short horizon ahead, restoring the same
+frame. How a fight picks its next action. The ROM is the enemy model.
+_Avoid_: hand-fit fire bands and park coordinates, counting a restore as a
+mid-run state load in a development report (report `rollout_restores`)
+
+**Master tape**:
+The buttons of every cleared room, in order from power-on. Each room is
+appended only when it clears from the previous room's real leave. Replaying
+it with no loads and no writes is the proof.
+_Avoid_: appending a room cleared from a human save state, TAS movie concat
+
+**Census**:
+`scripts/tools/tape_census.py`: which human-tape rooms the machine clears
+as recorded, retimed, or not at all. Run it before tuning a room.
+_Avoid_: a hand-kept board of proven rooms
 
 **Tip**:
 The one living power-on product. Today that is **Phantoon**. Ice, Wave, Speed,
@@ -81,9 +107,10 @@ _Avoid_: open-loop script as the Skill, multi-minute movie as the route, TAS
 concat, timing stitch as playback, dual-exact as robustness proof
 
 **Tape**:
-A human or TAS recording used as a guideline to build a **Skill**. Once
-processed, it is not source of truth and may be trashed. The TAS clock names
-a Speed gap; it is not playback.
+A human or TAS recording. A human tape's room slice is the first **Search**
+candidate for that room and may be the room's buttons on the **Master tape**.
+TAS movies do not sync on snes9x; they are route and technique reference. The
+TAS clock names a Speed gap.
 _Avoid_: keeping the mega-tape as gold, full-tape open-loop as pin recovery,
 TAS concat onto the tip, sitting second run of the TAS, treating the TAS
 clock as a green gate

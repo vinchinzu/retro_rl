@@ -43,6 +43,7 @@ EAST_AROUND_FENCE_X = 576  # tile x=36, east of pond + past fence wall
 EAST_LANE_X_MAX = 640  # cap northbound lane; farther east is shipping scrub
 WEST_AROUND_FENCE_X = 96  # tile x=6, west of wall
 WEST_FREE_X_MAX = 176  # west of fence wall body (tile x<11)
+BARN_YARD_ROW_PX_Y = 376  # open east-west row north of the well and the west ring
 
 
 class ApproachZone(str, Enum):
@@ -233,17 +234,22 @@ def build_house_approach_waypoints(
                         run_direction="up",
                     )
                 )
-        # After clearing fence latitude at east x, slide west above the
-        # wall (y≈440) before the final door approach — avoids pond y.
+        # After clearing fence latitude at east x, slide west along the barn
+        # yard row (y≈376, the barn route's (244,375)) and come down the door
+        # walkway. The old y=440 slide crossed the well (15-17,26-27) and the
+        # west ring's top row: with corn grown it ended boxed at (15,28)
+        # (Summer D17/D24 power-on, two rescues each).
         if corridor_x > front.x + 40:
             stages.append(
                 Waypoint(
                     tilemap=0x00,
-                    target_px=(min(corridor_x, front.x + 80), 440),
+                    target_px=(min(corridor_x, front.x + 80), BARN_YARD_ROW_PX_Y),
                     radius=20,
                     run_direction="left",
                 )
             )
+            stages.append(Waypoint(tilemap=0x00, target_px=(front.x, front.y), radius=12))
+            return stages
     else:
         # North of fence but still deep south of door — mid-field open.
         # Far-east (post-water/CLEAR): slide west first above the wall.
@@ -295,11 +301,64 @@ def drop_spot_px(front: Point, *, deep: bool = False) -> Point:
     return Point(front.x, min(520, front.y + 56))
 
 
-def house_enter_task(front: Point) -> DirectionalTransitionTask:
-    """Build the outdoor→house doorway push from a door-front stand."""
+# The base house's door (8,20) sits at the top of an open walkway (8,22)-(8,26);
+# a push up from any walkway tile enters. Measured on Y1 Summer D27 and Y2
+# Spring D8 pins (same tiles both years).
+HOUSE_WALKWAY_TOP_Y = 22 * 16
+
+
+def in_house_walkway(pos: Point, front: Point) -> bool:
+    """On the base house's walkway column, north of the stand and below the door."""
+    return front.y >= 424 and abs(pos.x - front.x) <= 8 and HOUSE_WALKWAY_TOP_Y <= pos.y < front.y - 10
+
+
+# The farm animals that stand at the door (``GameObject`` sprite ids: the dog 0x1D9-0x1F7 and the
+# horse family 0x1F8-0x203). One parked at (126,358), tile (7,22) beside the walkway, blocks the
+# push up with its body: e2e ``s2`` Y3 Summer D27 (object 0x1FB) and ``s3`` Y2 Summer D22 (0x1E3, a
+# dog frame) both held a farmer at (136,371) for 1,200+ frames in a ROM replay and cost 3-7
+# rescues, while a push from x=141 entered in 44-45 frames.
+HORSE_SPRITES = range(0x01D9, 0x0204)
+HORSE_CORRIDOR_HALF_WIDTH = 20
+HORSE_CORRIDOR_ABOVE = 70
+HORSE_CORRIDOR_BELOW = 4
+DOOR_SIDESTEP_PX = 5
+
+
+def door_sidestep(ram: np.ndarray, front: Point) -> int:
+    """Pixels to shift the door push (+ right, - left) away from a dog or horse in its corridor, else 0.
+
+    The doorway tile is 16 wide and the push may sit anywhere in it, so a few pixels away from
+    the animal's body clears it without leaving the tile.
+    """
+    from harvest.core.npc_catalog import game_objects
+
+    for obj in game_objects(ram):
+        if obj.is_player or obj.sprite_table_idx not in HORSE_SPRITES:
+            continue
+        x, y = obj.pixel
+        if abs(x - front.x) <= HORSE_CORRIDOR_HALF_WIDTH and (
+            front.y - HORSE_CORRIDOR_ABOVE <= y <= front.y + HORSE_CORRIDOR_BELOW
+        ):
+            return DOOR_SIDESTEP_PX if x <= front.x else -DOOR_SIDESTEP_PX
+    return 0
+
+
+def house_enter_task(
+    front: Point, pos: Point | None = None, sidestep: int = 0,
+) -> DirectionalTransitionTask:
+    """Build the outdoor→house doorway push from a door-front stand.
+
+    ``pos`` on the walkway (``in_house_walkway``) pushes up from where the
+    farmer stands: a sprite parked on the stand (Y2 Spring D8, object 0xC7 on
+    (8,26)) kept the walk south to it failing for four rescues. ``sidestep``
+    (see ``door_sidestep``) aligns a few pixels off the door line to clear a horse.
+    """
     if front.y < 424:
         stand_tile = (front.x // 16, front.y // 16)
         overshoot_y = min(HOUSE_ENTER_OVERSHOOT_Y, front.y - 12)
+    elif pos is not None and in_house_walkway(pos, front):
+        stand_tile = (front.x // 16, pos.y // 16)
+        overshoot_y = HOUSE_ENTER_OVERSHOOT_Y
     else:
         stand_tile = HOUSE_ENTER_STAND_TILE
         overshoot_y = HOUSE_ENTER_OVERSHOOT_Y
@@ -314,7 +373,8 @@ def house_enter_task(front: Point) -> DirectionalTransitionTask:
         settle_frames=20,
         stand_tile=stand_tile,
         stand_tolerance=0,
-        door_align_px=front.x if front.x else HOUSE_ENTER_DOOR_X,
+        door_align_px=(front.x if front.x else HOUSE_ENTER_DOOR_X) + sidestep,
+        door_align_tolerance=1 if sidestep else 4,
         overshoot_limit_px=overshoot_y,
         require_empty_hands=True,
         clear_hands_limit=6,
@@ -331,10 +391,13 @@ __all__ = [
     "WEST_FREE_X_MAX",
     "build_house_approach_waypoints",
     "classify_approach_zone",
+    "HORSE_SPRITES",
     "deep_south_of_house",
+    "door_sidestep",
     "drop_spot_px",
     "far_east_of_pond_lane",
     "house_enter_task",
+    "in_house_walkway",
     "open_fence_gap_tiles",
     "south_of_fence_wall",
 ]

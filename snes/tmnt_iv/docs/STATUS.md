@@ -5,49 +5,75 @@
 | Field | Value |
 |-------|-------|
 | Current maturity | M8 |
-| Best verified result | Low-assist hard credits from power-on |
-| Last verification | 2026-07-25 |
+| Best verified result | Clean Hard credits from power-on, Leonardo |
+| Last verification | 2026-11-14 |
 | Runtime class | Bronze |
-| Intervention class | Resource-assisted + Protection-assisted |
+| Intervention class | Clean |
 
-One emulator session from power-on through hard-mode staff and cast credits.
-Zero life losses, zero state loads, zero stage or lives writes, no A-special.
-The assist contract is emergency HP (HP at or below 16 restored to 80) plus a
-form-2 Super Shredder iframe hold at 1. Both are counted. See
-`docs/ASSIST_CONTRACT.md`.
+One continuous emulator session from power-on through Super Shredder,
+Hard staff/cast credits, and the final Splinter scene. Completion requires
+1,200 final-scene settle frames followed by a further 600-frame capture
+hold. The published video is a normal input-tape replay with no policy,
+lookahead, recovery, or state loads.
 
-Published baseline on this date: 00:57:19.635, 4,667 damage, 65 emergency HP
-restores, 4,635 iframe frames, zero life losses. Video
-`recordings/tmnt_iv_full_hard_credits.mp4`. Dry-run manifest
-`recordings/tmnt_iv_full_hard_dry_run.json`. Later scratch reports are not
-this gate. Maturity stays M8 until a program decision. Clean would be the
-same clear with both assists at zero. That clear is not verified.
+## Verified Clean capture
 
-Production boot selects Raphael. Stage byte `0x0082` value 0 is Big Apple
-(human stage 1).
+| Evidence | Result |
+|----------|--------|
+| Power-on to completed credits | **01:13:47.558** (266,091 frames) |
+| Complete tape/video | 266,691 frames, including the capture hold |
+| Damage / minimum gameplay HP | 74 / 60 |
+| Life losses / lives | **0** / 2 → 7 |
+| Health assists / iframe assists | **0 / 0**, both disabled |
+| RAM writes / state loads | **0 / 0** |
+| A-special / post-boot START | **0 / 0** |
+| Replay CRC checks / desyncs | **445 / 0** |
+| Lookahead restores in published replay | **0** |
+| In-game pizza pickups | 4 |
+| Video | 768×720, 60 fps, stereo game audio |
 
-## Clean track (not the gate)
+Artifacts (local, gitignored):
 
-Stage 1 pizza-only suite is green (`probe_clean --stage 1 --suite`,
-`recordings/stage1_clean_track/clean_suite.json`):
+- [Video](../recordings/tmnt_iv_full_hard_clean.mp4)
+- [Published replay report](../recordings/tmnt_iv_full_hard_clean.json)
+- [Complete tape](../recordings/tmnt_iv_full_hard_clean.tape.npz)
+- [Dry verification](../recordings/tmnt_iv_full_hard_clean_dry_run.json)
+- [Machine-readable integrity checks](../recordings/tmnt_iv_full_hard_clean_verification.json)
+- [Final Splinter scene](../recordings/clean_final_splinter.png)
+- [Completion card](../recordings/clean_complete_card.png)
 
-| Entry | Frames | Damage | Min HP |
-|-------|--------|--------|--------|
-| `Stage1` | 15,237 | 108 | 30 |
-| power-on | 15,046 | 138 | 10 |
-| Baxter | 5,323 | 40 | 44 |
+## Provenance and verifier repair
 
-Alleycat suite is 2/4. Boss and late pre-boss entries cleared. The full
-`Stage2` checkpoint lost a life. The stage-1-clear bridge timed out. That is
-not a Clean stage clear.
+Leo J was killed before saving its final tape. The preserved Leo I tape
+contained all gameplay and the start of the ending, but its old verifier
+failed when the cast roll reset stage byte 10 to 0. Recovery replayed all
+253,714 original inputs from power-on, verified all 423 source CRCs, and
+added **12,977 neutral-input frames only during the ending**. The complete
+tape then passed the independent normal replay and video capture above.
+The tape and reports retain the source path and SHA-256.
 
-Sewer `LiveHardStage3` with heal=none lost a life. `Stage3` and `Boss3` are
-last-life checkpoints and can die on the post-kill fade. Not green.
+Input generation used the disclosed ROM lookahead contract. The original
+search reported 290,318 rollout restores; the published replay uses none.
+No source gameplay inputs were edited, no stage pins were stitched, and
+no health or protection writes were used.
 
-No Clean claim for Technodrome through Starbase, and no Clean power-on credits.
+The cast demonstrations reuse stages 0–9, player HP, and lives. The
+verifier now ends gameplay damage/healing/life accounting at the ending
+transition while preserving write, state-load, input, and CRC audits
+through the full roll. Recovery cannot fill in missing gameplay. Replay
+also rejects A-special and post-boot START before committing them.
 
-## Not done
+Validation: **81 unit tests**, **3 ROM tests**, full power-on dry replay,
+and the separate full video replay. The final Splinter scene and
+completion card were visually inspected; video frame count, audio
+streams, tape hash, and video hash passed the artifact checks.
 
-- Power-on hard credits with zero emergency HP writes, zero form-2 iframe
-  writes, and zero life losses.
-- A sticky camera word. Progress still uses `0x003A`.
+## Previous assisted baseline
+
+The earlier M8 Raphael result remains available under
+`recordings/tmnt_iv_full_hard_credits*` and
+`recordings/tmnt_iv_full_hard_dry_run.json`: 00:57:19.635, 65 emergency HP
+restores, and 4,635 iframe-guard frames. It is not the Clean result.
+Its old damage meter included stage-clear entity resets as damage.
+
+No completion blocker remains. Future speed work is in [plan.md](plan.md).

@@ -98,6 +98,23 @@ def replay_goal_accepted(meta: dict[str, Any], final: dict[str, Any], story: dic
             and story["follower"] == 0 and story["progress"] == 2
             and story["progress_flags"] & 4 and story["max_hp"] == 32
         )
+    if through == "eastern_entry":
+        from alttp.room_map import load_room_map
+
+        door = load_room_map("screen_1e_eastern").door("eastern_door_to_0xc9")
+        if (door is None or door.landing_xy is None or door.to_room != 0xC9
+                or story.get("max_hp") != 32 or story.get("map_indicator") != 3):
+            return False
+        if max(abs(int(final[key]) - value) for key, value in
+               zip(("link_x", "link_y"), door.landing_xy)) > 4:
+            return False
+        return bool(
+            final["has_control"] and final["indoors"] and not final["dark_world"]
+            and int(final["room_base_id"]) == 0xC9
+            and final["has_fighter_sword"] and final["has_lamp"] and int(final["hp"]) > 0
+            and story["follower"] == 0 and story["progress"] == 2
+            and story["progress_flags"] & 4
+        )
     if through == "zelda":
         return bool(final["has_control"] and final["in_zelda_cell"] and final["has_zelda_follower"])
     hop = hop_for(through)

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_13_sanctuary",
+  "outdoors": true,
+  "screenId": 19,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Sanctuary exit (screen 0x13)",
+  "measured": "2026-09-30",
+  "sourceState": "SanctuaryExit",
+  "z3Label": "Sanctuary",
+  "points": [
+    {
+      "label": "sanctuary_door",
+      "xy": [1880, 1083],
+      "role": "approach",
+      "notes": "Outdoor control on SanctuaryExit. UP enters room 0x12."
+    }
+  ],
+  "doors": [
+    {
+      "label": "sanctuary_door_to_0x12",
+      "direction": "UP",
+      "toRoom": 18,
+      "outdoors": false,
+      "approachXy": [1880, 1083],
+      "landingXy": [1272, 960],
+      "role": "entrance",
+      "path": ["sanctuary_door"],
+      "pushFrames": 40,
+      "notes": "Isolated from SanctuaryExit, a resumed pin. Control indoors room 0x12 (1272,960) frame 155, hp 0x28. Not continuous."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 40,
+    "maxCycles": 50,
+    "skirmishMaxDistance": 60,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [1864, 1067, 1896, 1099],
+  "hostilesAtEntry": [],
+  "notes": [
+    "SanctuaryExit.state is resumed, not a continuous claim.",
+    "Approach is the live outdoor stand. Buttons only."
+  ]
+}

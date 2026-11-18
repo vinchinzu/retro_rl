@@ -253,16 +253,20 @@ def entity_tiles(ram: np.ndarray, player_tile: Tile, *, radius: int = 10) -> Set
 
 
 def pad_entity_blocks(
-    ram: np.ndarray, tiles: Set[Tile], player_tile: Tile
+    ram: np.ndarray, tiles: Set[Tile], player_tile: Tile, *, force: bool = False
 ) -> Set[Tile]:
     """Ring-pad mountain sprites so BFS does not thread a wandering NPC.
 
-    Mountain 0x10 only: an NPC BFS'd tight against is re-collided with on
-    its next step. Padding that would seal every exit from the farmer's own
-    tile is dropped — a boxed-in corridor stalls worse than one bumped NPC.
+    Mountain 0x10, or town once a sprite is judged parked (``force``): an
+    NPC BFS'd tight against is re-collided with on its next step, because its
+    hit box spills onto the neighbouring tile. Padding that would seal every
+    exit from the farmer's own tile is dropped — a boxed-in corridor stalls
+    worse than one bumped NPC.
     """
     tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
-    if tilemap != 0x10 or not tiles:
+    # The farm's D1 dog can stand beside the house approach waypoint. Padding
+    # its ring seals that waypoint and the starter-tool handoff fails.
+    if (tilemap != 0x10 and not (force and tilemap in {0x04, 0x05})) or not tiles:
         return set(tiles)
     padded = set(tiles)
     for bx, by in tiles:
@@ -436,7 +440,7 @@ class NavCorridor:
     def _sync_entity_blocks(self, ram: np.ndarray) -> None:
         tile = self._navigator.current_tile
         self._entity_tiles = entity_tiles(ram, tile)
-        nxt = pad_entity_blocks(ram, self._entity_tiles, tile)
+        nxt = pad_entity_blocks(ram, self._entity_tiles, tile, force=getattr(self, "_pad_parked", False))
         replace_no_go(self._pathfinder, self._entity_blocks, nxt)
         self._entity_blocks = nxt
 
@@ -462,7 +466,9 @@ class NavCorridor:
             return None
         self._yield_frames += 1
         if self._yield_frames > ENTITY_YIELD_FRAMES:
-            # Parked, not passing. Let BFS route around the no-go it sits on.
+            # Town villagers need room round their parked hit box (Y2 Spring
+            # D16 animal shop); farm dogs retain the ordinary body block.
+            self._pad_parked = True
             return None
         # A yield is not a pin: keep the stall guards off the wait.
         self._soft_solid_pin_frames = 0

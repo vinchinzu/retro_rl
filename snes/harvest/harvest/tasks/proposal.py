@@ -1,12 +1,13 @@
 """Native courting and Sunday feather purchase for the day composer."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from collections import deque
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus
 from harvest.core.carry import tool_in_carry_pair
 from harvest.core.ram_catalog import read_ram_u8, read_ram_u16, read_ram_value
 from harvest.core.npc_catalog import current_dialogue_registers, game_objects, text_record_for_id
+from harvest.core.tile_catalog import is_path_tilemap
 from harvest.maps.map_routes import ROUTES, segment_waypoints
 from harvest.maps.map_types import Waypoint
 from harvest.planner.tasks.multi_nav import MultiMapNavTask
@@ -98,15 +99,18 @@ def eve_festival_spec(ram):
     """Spring D23 dance, while the west-edge trigger is still before 15:00."""
     from harvest.planner.day_phase_calendar import attend_festival_phase
 
-    if _eve_married(ram):
+    from harvest.planner.power_berry_calendar import snow_seed_due
+    seed_due = snow_seed_due(ram)
+    if _eve_married(ram) and not seed_due:
         return None
     probe = WorldProbe(ram=ram)
     season, day = probe.calendar_date()
     if (season, day) != (0, 23) or probe.clock().hour >= 15 or probe.is_storm():
         return None
-    if read_ram_value(ram, "eve_hearts") >= _EVE_FLOOR:
+    if read_ram_value(ram, "eve_hearts") >= _EVE_FLOOR and not seed_due:
         return None
-    return attend_festival_phase(season, day, probe.year())
+    spec = attend_festival_phase(season, day, probe.year())
+    return replace(spec, params={**spec.params, "buy_snow_seed": True}) if seed_due else spec
 
 
 def eve_feather_buy_spec(ram):
@@ -163,6 +167,9 @@ def eve_propose_spec(ram):
 
 def eve_phases_for_ram(ram):
     """Eve work the ordinary day list should add. Empty on a farm morning."""
+    from harvest.planner.power_berry_calendar import snow_seed_due
+    if snow_seed_due(ram):
+        return [eve_festival_spec(ram)]
     propose = eve_propose_spec(ram)
     if propose is not None:
         return [propose]
@@ -190,11 +197,53 @@ def _festival_index(phases) -> int:
     return 0
 
 
+# The Flower Festival rolls the day (the dance puts the farmer to bed) and the
+# west-edge trigger needs town before 15:00, about 700 frames from the farm.
+# Watering that stops arming tiles at 12:00 leaves that walk an hour of slack.
+FESTIVAL_WATER_STOP_HOUR = 12
+
+
+def _festival_morning_water(festival, phases):
+    """Can and capped watering ahead of a day-ending festival on a farm morning."""
+    from harvest.planner.day_phase_catalog import CROP_WATER_PHASE, ENSURE_WATERING_CAN_PHASE
+
+    if not festival.params.get("ends_day") or any(p.phase == "CROP_WATER" for p in phases):
+        return []
+    if "DYNAMIC_OUTDOOR_PLAN" not in [p.phase for p in phases]:
+        return []
+    # Optional: a watering failure must never cost the festival (Eve's +42).
+    water = replace(CROP_WATER_PHASE, params={**CROP_WATER_PHASE.params, "stop_hour": FESTIVAL_WATER_STOP_HOUR},
+                    failure_policy="optional")
+    return [ENSURE_WATERING_CAN_PHASE, water]
+
+
 def _sleep_index(phases) -> int:
     for index, phase in enumerate(phases):
         if phase.phase in {"RETURN_HOME", "GO_TO_SLEEP"}:
             return index
     return len(phases)
+
+
+_CHORE_PHASES = frozenset({
+    "ENSURE_ANIMAL_TOOLS", "ENSURE_BRUSH", "EXIT_TO_FARM", "NAV_TO_BARN", "ENTER_BARN",
+    "COW_CHORES", "EXIT_BARN", "NAV_TO_COOP", "ENTER_COOP", "COOP_CHORES", "EXIT_COOP",
+})
+
+
+def _proposal_day_chores(phases):
+    """The day list's feed-and-milk phases, to run before the proposal.
+
+    The wedding rolls the day, so a list that jumped straight to it left every
+    adult unfed overnight: -8 happiness and a sickness roll each, and a sick cow
+    dies seven nights later (Fall D9 of the Fall-D1 replay: cow 0 sick, dead on
+    D17, and its removal scene ate D16, so the other cow went unfed as well).
+    The proposal window runs to 17:00, so the chores fit before the walk.
+    """
+    names = [phase.phase for phase in phases]
+    ends = [i for i, name in enumerate(names) if name in ("EXIT_COOP", "EXIT_BARN")]
+    if not ends:
+        return []
+    return [p for p in phases[: max(ends) + 1] if p.phase in _CHORE_PHASES]
 
 
 def apply_eve_phases(phases, ram):
@@ -211,15 +260,19 @@ def apply_eve_phases(phases, ram):
 
         tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
         # The wedding rolls the day, so the list ends on the proposal.
-        prefix = [] if tilemap in _PROPOSE_MAPS else [EXIT_TO_FARM_PHASE]
+        chores = _proposal_day_chores(phases)
+        prefix = chores or ([] if tilemap in _PROPOSE_MAPS else [EXIT_TO_FARM_PHASE])
         fetch = eve_fetch_spec(ram)
         if fetch is not None:
             prefix.append(fetch)
         return prefix + [by_name["PROPOSE_EVE"]]
     out = list(phases)
     if "ATTEND_FESTIVAL" in by_name and not any(phase.phase == "ATTEND_FESTIVAL" for phase in out):
-        out = _insert_at(out, _festival_index(out), [by_name["ATTEND_FESTIVAL"]])
-    errands = [by_name[name] for name in ("BUY_FEATHER", "FETCH_FEATHER") if name in by_name]
+        out = _insert_at(out, _festival_index(out), [*_festival_morning_water(by_name["ATTEND_FESTIVAL"], out),
+                                                     by_name["ATTEND_FESTIVAL"]])
+    dated_berry = any(p.kind == "harvest_happiness" or (p.kind == "power_berry" and p.params.get("source") in {"harvest_festival", "egg_festival"})
+                      for p in out)
+    errands = [] if dated_berry else [by_name[name] for name in ("BUY_FEATHER", "FETCH_FEATHER") if name in by_name]
     if errands:
         names = [phase.phase for phase in out]
         at = names.index("EXIT_TO_FARM") + 1 if "EXIT_TO_FARM" in names else 0
@@ -390,7 +443,7 @@ class AnnCourtTask(Task):
                 self._phase, self._press = "align", 0
             elif self._phase == "return":
                 if self._gifts >= 2 or read_ram_value(ram, "ann_hearts") >= 250 or read_ram_value(ram, "hour") >= 13:
-                    if read_ram_value(ram, "tilemap") == 0x0C:
+                    if is_path_tilemap(read_ram_value(ram, "tilemap")):
                         return self._start(world, "home", ExitToFarmTask())
                     return TaskResult(TaskStatus.SUCCESS, reason=f"Ann gifts={self._gifts} hearts={read_ram_value(ram, 'ann_hearts')}")
                 return self._pick(world)
@@ -763,7 +816,7 @@ class FeatherBuyTask(Task):
                 return result
             if result.status != TaskStatus.SUCCESS:
                 if (self._phase == "nav" and self._retries < 1
-                        and read_ram_value(ram, "tilemap") == 0x0C):
+                        and is_path_tilemap(read_ram_value(ram, "tilemap"))):
                     self._retries += 1
                     self._child = _nav(_peddler_hops_from_path(), timeout=12000)
                     self._child.reset(world)

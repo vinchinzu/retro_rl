@@ -18,7 +18,7 @@ import numpy as np
 
 from retro_harness.actions import buttons, idle_action
 from retro_harness.adventure.hashutil import sha256_file
-from retro_harness.artifacts import recording_artifacts
+from retro_harness.artifacts import clean_artifact_stem, recording_artifacts
 from retro_harness.env import make_env
 from retro_harness.video import probe_video_evidence
 from super_metroid.door_kinematics import DoorKinematics

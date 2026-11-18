@@ -73,6 +73,19 @@ class PocketPlantTargetsTests(unittest.TestCase):
         self.assertEqual(pocket_plant_targets(self.ram), ())
 
 
+    def test_ring_open_only_at_its_corners_waits(self) -> None:
+        """rings_d3 Spring D19-D24: a corner-only opening walls the sowing stand in."""
+        center = POCKET_PLANT_CENTERS[0]
+        cx, cy = center
+        for x, y in plot_tiles(center, include_center=False):
+            _set_tile(self.ram, x, y, 0x5C)  # solid growing potato
+        for corner in ((cx - 1, cy - 1), (cx + 1, cy - 1), (cx - 1, cy + 1), (cx + 1, cy + 1)):
+            _set_tile(self.ram, *corner, 0x08)  # harvested, watered soil
+        self.assertNotIn(center, pocket_plant_targets(self.ram))
+        _set_tile(self.ram, cx, cy + 1, 0x08)
+        self.assertIn(center, pocket_plant_targets(self.ram))
+
+
 class ShopBagCountTests(unittest.TestCase):
     def _world(self, stock: int = 0):
         world = make_world(0x00)
@@ -141,7 +154,7 @@ class ShopBagCountTests(unittest.TestCase):
         self.assertEqual(pocket_plant_targets(world.ram, replant_ripe=True), ())
 
     def test_never_returns_zero(self) -> None:
-        world = self._world(stock=5)
+        world = self._world(stock=len(POCKET_PLANT_CENTERS))
         self.assertEqual(_shop_bag_count(BUY_SEEDS_PHASE, world, "potato_seeds"), 1)
 
 
@@ -182,6 +195,7 @@ class SecondBagFallbackTests(unittest.TestCase):
         task._money_before = 400
         task._stock_before = 0
         task._phase = "buy"
+        task._buy_attempts = 1
         return task
 
     def test_one_bag_of_two_is_not_yet_done(self) -> None:

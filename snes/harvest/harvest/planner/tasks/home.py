@@ -55,9 +55,13 @@ def _open_house_order(ram):
     return _FIRST_HOUSE
 
 
+# Phases that start correctly from the mountain wood stand (they walk from where the farmer is, or exit first themselves).
+_FROM_ANYWHERE = frozenset({"EXIT_TO_FARM", "ENSURE_ANIMAL_TOOLS", "DYNAMIC_OUTDOOR_PLAN", "RETURN_HOME", "GO_TO_SLEEP"})
+
+
 def apply_house_phases(phases, ram):
     """Insert the open carpenter errand, or leave the day list unchanged."""
-    from harvest.core.ram_catalog import read_ram_value as value
+    from harvest.core.ram_catalog import read_ram_u16, read_ram_value as value
     from harvest.planner.day_phase_types import PhaseSpec
     from harvest.planner.livestock_econ import house_payment_allowed
     from harvest.planner.world_probe import WorldProbe
@@ -68,16 +72,36 @@ def apply_house_phases(phases, ram):
     order = _open_house_order(ram)
     if order is None:
         return phases
+    # The first carpenter *visit*, even an unfunded quote, arms the clock.
+    # Payment can wait for the herd; the arm cannot wait past Y1 Summer D30.
+    # Leave the opening corn bags their first three mornings, then request on
+    # the first weekday. A request needs the following morning to arm the gift.
+    clock_due = (order is _FIRST_HOUSE and value(ram, "year") == 0
+                 and value(ram, "season") == 1 and value(ram, "day") >= 4
+                 and not read_ram_u16(ram, 0x11F70) & 0x0004)
+    flags = value(ram, "marriage_flags")
+    if clock_due and not flags & (0x20 | 0x80):
+        if flags & 0x40 or (value(ram, "day") < 30 and probe.weekday() not in (0, 6)
+                            and probe.clock().hour < 12):
+            arm = PhaseSpec("HOUSE_UPGRADE", "home_upgrade", {"goal": "clock_arm"}, failure_policy="optional")
+            at = 1 if phases and phases[0].phase == "EXIT_TO_FARM" else 0
+            return list(phases[:at]) + [arm] + list(phases[at:])
     # Y1 Spring stays on crops. After that the quote can be paid in
     # Summer, Fall, or Winter, including a later year. Fall has no seed,
     # so the 10000G quote can still be open in Year 2. A Fall or Winter
     # first-house order does not arm the clock. Under two cows the first
     # house inserts neither HOUSE_WOOD nor HOUSE_UPGRADE; house-two lumber
     # is a different order and still gathers.
+    # The score family courts Eve, and the wedding waits on this house (feather, then a sunny Saturday): gather the
+    # lumber before the second cow too. det1_20261114 stood 22 lumber short on Y1 Summer D6 with 11,590G, no HOUSE_WOOD
+    # (one cow) and married a year late: Eve hearts 8 and one child short, 942. Payment still waits for a first cow.
+    from harvest.planner import run_strategy
+
+    herd_gate = value(ram, "num_cows") < 2 and not run_strategy.active().court_girls
     if order is _FIRST_HOUSE and (
         value(ram, "eve_hearts") < 250
         or (value(ram, "year") == 0 and value(ram, "season") == 0)
-        or value(ram, "num_cows") < 2
+        or herd_gate
     ):
         return phases
     flags = value(ram, "marriage_flags")
@@ -99,9 +123,26 @@ def apply_house_phases(phases, ram):
         extra = upgrade
     else:
         return phases
+    if extra.phase == "HOUSE_WOOD" and value(ram, "season") == 2:
+        # Fall's mushroom loop is the deadline-bound errand: the bin eats
+        # anything dropped at 17:00 and a loop is ~3,300 frames. Lumber has no
+        # deadline (the clock stops at 18:00), so the chop goes last. First
+        # it ate the morning: +6 lumber for 3 hours and the loop started at
+        # 13:00 or later on 12 of 22 Fall days.
+        out = list(phases)
+        end = next((i for i, p in enumerate(out)
+                    if p.phase in ("RETURN_HOME", "GO_TO_SLEEP")), len(out))
+        return out[:end] + [extra] + out[end:]
     # Dynamic crop planning follows the errand and sees the live inventory.
     at = 1 if phases and phases[0].phase == "EXIT_TO_FARM" else 0
-    return list(phases[:at]) + [extra] + list(phases[at:])
+    out = list(phases[:at]) + [extra] + list(phases[at:])
+    nxt = at + 1
+    if extra.phase == "HOUSE_WOOD" and nxt < len(out) and out[nxt].phase not in _FROM_ANYWHERE:
+        # The chop ends on the mountain at (704,726), and the shop and barn phases assume the farm: `NAV_TO_ANIMAL_SHOP` failed
+        # `expected tilemap 0x00, got 0x10` and deferred the whole chain behind it. Cow buys, the medicine buy and the barn chores were
+        # lost on every wood day with a gift chain (hc4 Y2 Spring D2: unfed night, sick roll, two cows dead on D9).
+        out.insert(nxt, PhaseSpec("EXIT_TO_FARM", "farm_building_exit"))
+    return out
 
 
 class GatherHouseWoodTask(Task):
@@ -233,7 +274,7 @@ class HouseUpgradeTask(Task):
         return True
 
     def step(self, world: WorldState) -> TaskResult:
-        from harvest.core.ram_catalog import read_ram_value as value
+        from harvest.core.ram_catalog import read_ram_u16, read_ram_value as value
         from harvest.core.npc_catalog import current_dialogue_registers
         from harvest.maps.map_config import Waypoint
         from harvest.maps.map_routes import ROUTES, densify_waypoints
@@ -245,6 +286,8 @@ class HouseUpgradeTask(Task):
         self._steps += 1
         ram = world.ram
         flags, upgrades = value(ram, "marriage_flags"), value(ram, "upgrade_flags")
+        if self.goal == "clock_arm" and read_ram_u16(ram, 0x11F70) & 0x0004 and value(ram, "input_lock") == 1:
+            return TaskResult(TaskStatus.SUCCESS, reason="clock gift armed by carpenter visit")
         if self._phase == "return_wait":
             self._reentry_wait -= 1
             if self._reentry_wait <= 0:

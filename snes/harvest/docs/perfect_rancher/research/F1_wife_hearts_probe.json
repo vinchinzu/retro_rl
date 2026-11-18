@@ -1,0 +1,282 @@
+{
+  "bead": "PR-010",
+  "whatif": true,
+  "route_evidence": false,
+  "pin": "LN_mgr-f1_whatif_wife660",
+  "pin_path": "/home/v/01_projects/11_games/retro_rl/snes/harvest/custom_integrations/HarvestMoon-Snes/LN_mgr-f1_whatif_wife660.state",
+  "source_loaded_not_saved": "LN_mgr-hearts_whatif_maria_flower",
+  "recipe": {
+    "wife": "maria",
+    "marriage_bit": 1,
+    "script": "group 0x44 script 0",
+    "pc": "0xB59884",
+    "item": "0x02 poison mushroom",
+    "text": "0x03B0",
+    "delta": -6,
+    "offers": 25,
+    "start_hearts": 660,
+    "end_hearts": 510,
+    "window": [
+      496,
+      511
+    ],
+    "score_term": 31
+  },
+  "try1": {
+    "entry": "0xB597F1",
+    "pose_held": false,
+    "frames_observed": 888,
+    "drops": 1,
+    "hearts": "660->654 at frame 88",
+    "text_frame": 9,
+    "text": "0x03B0"
+  },
+  "try2": {
+    "pose_held": true,
+    "pointer_rearms": 0,
+    "frames": 1950,
+    "drops": 25,
+    "window": true,
+    "boot_ptr": "0xb5982b",
+    "end": {
+      "maria": 510,
+      "ann": 0,
+      "nina": 0,
+      "ellen": 0,
+      "eve": 0,
+      "happiness": 0,
+      "text": "0x3b0",
+      "item": 2,
+      "ptr": "0xb5983b"
+    },
+    "heart_steps": [
+      {
+        "f": 78,
+        "maria": 654,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 156,
+        "maria": 648,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 234,
+        "maria": 642,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 312,
+        "maria": 636,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 390,
+        "maria": 630,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 468,
+        "maria": 624,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 546,
+        "maria": 618,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 624,
+        "maria": 612,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 702,
+        "maria": 606,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 780,
+        "maria": 600,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 858,
+        "maria": 594,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 936,
+        "maria": 588,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1014,
+        "maria": 582,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1092,
+        "maria": 576,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1170,
+        "maria": 570,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1248,
+        "maria": 564,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1326,
+        "maria": 558,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1404,
+        "maria": 552,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1482,
+        "maria": 546,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1560,
+        "maria": 540,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1638,
+        "maria": 534,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1716,
+        "maria": 528,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1794,
+        "maria": 522,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1872,
+        "maria": 516,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      },
+      {
+        "f": 1950,
+        "maria": 510,
+        "text": 944,
+        "ptr": 11900987,
+        "item": 2,
+        "action": 5,
+        "c0c": 1
+      }
+    ]
+  },
+  "ram_writes": "On LN_mgr-f1_whatif_wife660 only: Maria hearts, marriage bit 0, hour 12, season 0, weather bit 1 cleared, item 0x02, action 5, CC index 1 script pointer. Try 2 also copied the player anchor onto that CC and held CC+$0C, action 5 and item 2 each frame. No LiveRamEditor. No --ram-set.",
+  "negative_site_count": 94
+}

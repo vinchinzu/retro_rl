@@ -30,7 +30,10 @@ from alttp.primitives import (
     active_ancillae,
     active_sprites,
     collect_nearby,
+    fire_rod,
     fight_nearby,
+    ride_platform,
+    somaria_block,
     move_path,
     move_to,
     run_script,
@@ -47,6 +50,7 @@ from alttp.ram import (
     MODULE,
     ROOM_ID,
     SUBMODULE,
+    wram_index,
 )
 from retro_harness.controls import SNES_BUTTON_NAME_TO_INDEX
 
@@ -264,19 +268,216 @@ def test_active_ancillae_keeps_link_shots_and_bombs() -> None:
     _set_ancilla(env.writes, 0, ancilla_type=0x00, x=1, y=1)
     _set_ancilla(env.writes, 1, ancilla_type=0x07, x=0x0210, y=0x0134, timer=0x30)
     _set_ancilla(env.writes, 2, ancilla_type=0x20, x=50, y=50)  # bedspread
+    _set_ancilla(env.writes, 3, ancilla_type=0x02, x=140, y=70)  # fire rod
     _set_ancilla(
         env.writes, 4, ancilla_type=0x09, x=120, y=90, floor=1, timer=8
     )
+    _set_ancilla(env.writes, 5, ancilla_type=0x1F, x=110, y=60)  # hookshot
     # Soldier arrow is a sprite, not an ancilla slot.
     _set_sprite(env.writes, 0, sprite_type=0x1B, x=130, y=90, hp=0)
 
     found = active_ancillae(env)
-    assert [(a.slot, a.ancilla_type) for a in found] == [(1, 0x07), (4, 0x09)]
-    bomb, arrow = found
+    assert [(a.slot, a.ancilla_type) for a in found] == [
+        (1, 0x07),
+        (3, 0x02),
+        (4, 0x09),
+        (5, 0x1F),
+    ]
+    bomb, rod, arrow, hook = found
+    assert rod.x == 140 and rod.y == 70
+    assert hook.ancilla_type == 0x1F and hook.x == 110
     assert bomb.x == 0x0210 and bomb.y == 0x0134 and bomb.timer == 0x30
     assert arrow.floor == 1 and arrow.timer == 8
     assert arrow.distance_to(snapshot_env(env)) == 30
     assert active_sprites(env)[0].sprite_type == 0x1B
+
+
+def _own_fire_rod(env: FakeEnv, magic: int) -> None:
+    env.writes[wram_index(0xF345)] = 1
+    env.writes[wram_index(0xF36E)] = magic & 0xFF
+    env.writes[0x0202] = 0x06
+
+
+def test_fire_rod_refuses_without_item_magic_or_doorway() -> None:
+    bare = FakeEnv()
+    missed = fire_rod(bare)
+    assert missed.ok is False
+    assert missed.reason == "fire rod is not owned"
+    assert missed.frames == 0
+
+    short = FakeEnv()
+    _own_fire_rod(short, 8)
+    poor = fire_rod(short)
+    assert poor.ok is False
+    assert poor.reason == "magic 8 < 16"
+    assert poor.frames == 0
+
+    blocked = FakeEnv()
+    _own_fire_rod(blocked, 0x80)
+    blocked.writes[0x006C] = 1
+    door = fire_rod(blocked)
+    assert door.ok is False
+    assert door.reason == "doorway"
+
+
+def test_fire_rod_spends_sixteen_on_a_new_shot() -> None:
+    """Menu and the 16-point drop are scripted. AP-072 measured 16 on Y."""
+    env = FakeEnv()
+    _own_fire_rod(env, 0x80)
+    start = SNES_BUTTON_NAME_TO_INDEX["START"]
+    use_y = SNES_BUTTON_NAME_TO_INDEX["Y"]
+
+    def menu(fake: FakeEnv, action: np.ndarray) -> None:
+        if int(action[start]):
+            if fake.writes.get(MODULE) == 0x0E:
+                fake.writes[MODULE] = 0x07
+            else:
+                fake.writes[MODULE] = 0x0E
+                fake.writes[0x0200] = 4
+        if int(action[use_y]) and fake.writes.get(MODULE) == 0x07:
+            fake.writes[0x0C4A] = 0x02
+            fake.writes[wram_index(0xF36E)] = 0x70
+
+    env._on_step.append(menu)
+    shot = fire_rod(env)
+    assert shot.ok is True
+    assert shot.reason == "fire rod (0,0) magic 128->112"
+
+
+def _own_somaria(env: FakeEnv, magic: int) -> None:
+    env.writes[wram_index(0xF350)] = 1
+    env.writes[wram_index(0xF36E)] = magic & 0xFF
+    env.writes[0x0202] = 0x11
+    env.writes[0x002F] = 0
+    env.writes[0x00EC] = 0xF8
+    env.writes[0x00ED] = 0x01
+
+
+def _menu_y(env: FakeEnv, on_y) -> None:
+    start = SNES_BUTTON_NAME_TO_INDEX["START"]
+    use_y = SNES_BUTTON_NAME_TO_INDEX["Y"]
+
+    def menu(fake: FakeEnv, action: np.ndarray) -> None:
+        if int(action[start]):
+            if fake.writes.get(MODULE) == 0x0E:
+                fake.writes[MODULE] = 0x07
+            else:
+                fake.writes[MODULE] = 0x0E
+                fake.writes[0x0200] = 4
+        if int(action[use_y]) and fake.writes.get(MODULE) == 0x07:
+            on_y(fake)
+
+    env._on_step.append(menu)
+
+
+def test_somaria_block_refuses_without_item_magic_or_doorway() -> None:
+    bare = FakeEnv()
+    missed = somaria_block(bare)
+    assert missed.ok is False
+    assert missed.reason == "somaria is not owned"
+    assert missed.frames == 0
+
+    short = FakeEnv()
+    _own_somaria(short, 4)
+    poor = somaria_block(short)
+    assert poor.ok is False
+    assert poor.reason == "magic 4 < 8"
+
+    blocked = FakeEnv()
+    _own_somaria(blocked, 0x80)
+    blocked.writes[0x006C] = 1
+    door = somaria_block(blocked)
+    assert door.ok is False
+    assert door.reason == "doorway"
+
+
+def test_somaria_block_pushes_onto_a_switch() -> None:
+    """Menu, ancilla 0x2C, and the 8-point drop are scripted. AP-072 measured 8."""
+    env = FakeEnv(link_x=100, link_y=100)
+    _own_somaria(env, 0x80)
+    # (100, 100) under mask $01F8 is tile (12, 12). The push writes the switch.
+    tile = wram_index(0x12000) + 12 * 64 + 12
+    up = SNES_BUTTON_NAME_TO_INDEX["UP"]
+
+    def on_y(fake: FakeEnv) -> None:
+        fake.writes[0x0C4A] = 0x2C
+        fake.writes[0x0C04] = 100
+        fake.writes[0x0BFA] = 100
+        fake.writes[wram_index(0xF36E)] = 0x78
+
+    def on_push(fake: FakeEnv, action: np.ndarray) -> None:
+        if int(action[up]) and fake.writes.get(0x0C4A) == 0x2C:
+            fake.writes[tile] = 0x23
+            fake.writes[0x0646] = 1
+
+    _menu_y(env, on_y)
+    env._on_step.append(on_push)
+    made = somaria_block(env)
+    assert made.ok is True
+    assert made.reason == "block tile (12,12) attr 0x23 $0646=1 magic 128->120"
+
+
+def test_ride_platform_stands_and_presses_the_junction() -> None:
+    env = FakeEnv(link_x=100, link_y=100)
+    _own_somaria(env, 0x80)
+    env.writes[wram_index(0x12000) + 12 * 64 + 12] = 0xB6
+    up = SNES_BUTTON_NAME_TO_INDEX["UP"]
+
+    def on_y(fake: FakeEnv) -> None:
+        _set_sprite(fake.writes, 0, sprite_type=0xED, x=100, y=100, state=9, hp=0, direction=1)
+        fake.writes[0x0E90] = 0xB6
+        fake.writes[0x02F5] = 1
+        fake.writes[wram_index(0xF36E)] = 0x78
+
+    def on_press(fake: FakeEnv, action: np.ndarray) -> None:
+        if fake.writes.get(SPRITE_TYPE) == 0xED:
+            fake.writes[0x02F5] = 1
+        if int(action[up]) and fake.writes.get(SPRITE_TYPE) == 0xED:
+            y = int(fake.writes.get(SPRITE_Y_LOW, 0))
+            fake.writes[SPRITE_Y_LOW] = (y - 4) & 0xFF
+            link_y = int(fake.writes.get(LINK_Y, 0))
+            fake.writes[LINK_Y] = (link_y - 4) & 0xFF
+
+    _menu_y(env, on_y)
+    env._on_step.append(on_press)
+    rode = ride_platform(env)
+    assert rode.ok is True
+    assert rode.reason == (
+        "platform 0xED tile (12,12) attr 0xB6 press UP $02F5 magic 128->120"
+    )
+
+
+def test_ride_platform_walks_to_the_edge_of_a_pit() -> None:
+    """A pit tile ahead does not cancel floor still left in this tile."""
+    env = FakeEnv(link_x=100, link_y=100, move_speed=1)
+    _own_somaria(env, 0x80)
+    base = wram_index(0x12000)
+    env.writes[base + 11 * 64 + 12] = 0x20
+    env.writes[base + 10 * 64 + 12] = 0xB6
+    up = SNES_BUTTON_NAME_TO_INDEX["UP"]
+
+    def on_y(fake: FakeEnv) -> None:
+        _set_sprite(fake.writes, 0, sprite_type=0xED, x=100, y=80, state=9, hp=0, direction=1)
+        fake.writes[0x0E90] = 0xB6
+        fake.writes[wram_index(0xF36E)] = 0x78
+
+    def on_step(fake: FakeEnv, action: np.ndarray) -> None:
+        if fake.writes.get(SPRITE_TYPE) != 0xED:
+            return
+        y = int(fake.writes.get(LINK_Y, 0)) | (int(fake.writes.get(LINK_Y + 1, 0)) << 8)
+        if (y & 7) <= 1:
+            fake.writes[0x02F5] = 1
+        if int(action[up]) and fake.writes.get(0x02F5):
+            sprite_y = int(fake.writes.get(SPRITE_Y_LOW, 0))
+            fake.writes[SPRITE_Y_LOW] = (sprite_y - 4) & 0xFF
+            fake.writes[LINK_Y] = (y - 4) & 0xFF
+
+    _menu_y(env, on_y)
+    env._on_step.append(on_step)
+    rode = ride_platform(env)
+    assert rode.ok is True
+    assert "tile (12,10) attr 0xB6 press UP" in rode.reason
+    assert "magic 128->120" in rode.reason
 
 
 def test_sprites_of_type_filters_and_max_distance() -> None:

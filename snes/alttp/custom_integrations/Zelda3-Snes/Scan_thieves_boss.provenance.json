@@ -1,0 +1,7 @@
+{
+  "source_run": "poke:Whatif_ThievesTownEntry_parallel:room=0xAC:warp_sub=0x15:light=save",
+  "frame": 196,
+  "git_sha": "6013e537b7b57fb1546792e84ee4e4c29f6f2a4a",
+  "dirty": true,
+  "kind": "poke"
+}

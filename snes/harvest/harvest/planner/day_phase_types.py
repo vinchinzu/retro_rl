@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from harvest.planner.livestock_econ import HENS_KEPT
+
 
 class PhaseKind(StrEnum):
     """Typed phase kinds for day-plan task construction."""
@@ -22,6 +24,7 @@ class PhaseKind(StrEnum):
     DIRECTIONAL_TRANSITION = "directional_transition"
     MULTI_NAV = "multi_nav"
     MOUNTAIN_BERRY = "mountain_berry"
+    POWER_BERRY = "power_berry"
     ENSURE_TOOL = "ensure_tool"
     ENSURE_ANIMAL_TOOLS = "ensure_animal_tools"
     ENSURE_SEED = "ensure_seed"
@@ -32,6 +35,7 @@ class PhaseKind(StrEnum):
     FENCE_CLEAR = "fence_clear"
     COOP_CHORES = "coop_chores"
     COW_CHORES = "cow_chores"
+    COW_ROUNDUP = "cow_roundup"
     COW_PURCHASE = "cow_purchase"
     HEN_DELIVERY = "hen_delivery"
     CROP = "crop"
@@ -42,7 +46,9 @@ class PhaseKind(StrEnum):
     READY_TO_GO_HOME = "ready_to_go_home"
     EVE_TALK_LOOP = "eve_talk_loop"
     FLOWER_FESTIVAL = "flower_festival"
+    HARVEST_HAPPINESS = "harvest_happiness"
     PROPOSE_EVE = "propose_eve"
+    GIVE_WIFE = "give_wife"
     PICKUP_CHICKEN = "pickup_chicken"
     DROP_CHICKEN = "drop_chicken"
     CHICKEN_SALE_FOLLOWUP = "chicken_sale_followup"
@@ -54,6 +60,23 @@ class PhaseKind(StrEnum):
     HOUSE_WOOD = "house_wood"
     HOME_UPGRADE = "home_upgrade"
     DYNAMIC_OUTDOOR_PLAN = "dynamic_outdoor_plan"
+    CHURCH_COURT = "church_court"
+    TOWN_COURT = "town_court"
+
+
+# Last-resort stall backstop for every phase without a watchdog of its own. The day floor is off by design (owner,
+# 2026-11-02: no per-day cap), so a phase that loops silently ran forever: Y2 Spring D8 of ``compose6`` sat in
+# ENSURE_ANIMAL_TOOLS for 2M frames. The longest ordinary phase in a finished Year 3 run is 31k frames (COVER_FIELD),
+# so 120k leaves ample room for real work; the phases below run long on purpose and keep no backstop.
+PHASE_BACKSTOP_FRAMES = 120_000
+BACKSTOP_EXEMPT_PHASES = frozenset({"COVER_FIELD", "COVER_TILL", "EVE_TALK_LOOP", "HARVEST_HAPPINESS"})
+
+
+def phase_backstop_frames(spec: "PhaseSpec") -> int:
+    """Frames after which a phase with no watchdog fails; 0 for the day-ending and deliberately long phases."""
+    if spec.phase in BACKSTOP_EXEMPT_PHASES or spec.params.get("ends_day"):
+        return 0
+    return max(PHASE_BACKSTOP_FRAMES, 2 * int(spec.params.get("timeout") or 0))
 
 
 # Phases whose job is to go and fetch the tool they declare. Their
@@ -75,6 +98,7 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.SHOP_BUY,
         PhaseKind.MULTI_NAV,
         PhaseKind.MOUNTAIN_BERRY,
+        PhaseKind.POWER_BERRY,
         PhaseKind.ENSURE_TOOL,
         PhaseKind.ENSURE_ANIMAL_TOOLS,
         PhaseKind.ENSURE_SEED,
@@ -90,6 +114,8 @@ SKIP_MAP_LOCK_KINDS = frozenset(
         PhaseKind.PROPOSE,
         PhaseKind.COURT,
         PhaseKind.FEATHER_BUY,
+        PhaseKind.CHURCH_COURT,
+        PhaseKind.TOWN_COURT,
     }
 )
 
@@ -354,6 +380,8 @@ class DayPlannerPolicy:
     include_animal_purchases: bool = True
     include_harvest: bool = True
     include_field_clear: bool = True
+    include_bush_clear: bool = True
+    include_spring_till: bool = True
     include_watering: bool = True
     include_planting: bool = True
     include_pasture: bool = True
@@ -365,10 +393,10 @@ class DayPlannerPolicy:
     include_end_day: bool = True
     include_spa: bool = True
     include_chicken_sales: bool = True
-    # The coop holds 12. Eggs the incubator cannot use are shipped, not culled.
-    # Ship eggs instead of incubating them while the pasture cannot feed one more.
+    # Ship eggs instead of incubating them while ``livestock_econ.hatch_allowed``
+    # is shut. Every adult past ``max_adult_chickens`` is sold and goes unfed.
     hold_flock_growth: bool = False
-    max_adult_chickens: int = 12
+    max_adult_chickens: int = HENS_KEPT
     chicken_sale_cutoff_hour: int = 10
     # Festival and Sunday event planning
     include_festivals: bool = True
@@ -381,6 +409,7 @@ class DayPlannerPolicy:
     include_sunday_church: bool = False
     include_sunday_mountain: bool = False
     # Seasonal default crop preferences
+    spring_crop: str = "potato"
     summer_crop: str = "corn"
     fall_crop: str = "eggplant"
     # None = derive from calendar season via crop_planner.
@@ -402,6 +431,7 @@ def day_planner_policy_for_season(
 
     ``year`` is the ROM year byte (0 = Year 1).
     """
+    from harvest.planner.forage_calendar import forage_for_season
     from harvest.planner.crop_planner import (
         SEASON_FALL,
         SEASON_WINTER,
@@ -437,23 +467,27 @@ def day_planner_policy_for_season(
         # Summer pockets clear their own planting area. A whole-field pass
         # spends stamina that the pasture and repeat-harvest corn need.
         include_field_clear=policy.include_field_clear and season_id == 0,
+        include_bush_clear=policy.include_bush_clear and season_id != SEASON_WINTER,
+        include_spring_till=policy.include_spring_till and season_id == 0,
         include_watering=policy.include_watering and not off_season,
         include_planting=planting and policy.include_planting,
         include_pasture=policy.include_pasture,
         include_mushroom_gather=policy.include_mushroom_gather and season_id == SEASON_FALL,
-        # The grape route is only proven in Year-1 spring: in Summer the picks
-        # come back "unverified after 3 picks" and strand the farmer on the
-        # mountain map (run summer5 D16), and from Year 2 the wallet no longer
-        # needs the grape money.
+        # Forage by season (``forage_calendar``): grapes in Spring, the green fruit
+        # in Summer; Fall mushrooms have their own phase and Winter has none. The
+        # Summer picks that came back "unverified after 3 picks" and stranded the
+        # farmer (run summer5 D16) went to the grape stand, which is empty then.
         include_berry_run=(
-            policy.include_berry_run and season_id == 0 and int(year) == 0
+            policy.include_berry_run
+            and forage_for_season(season_id) is not None
+            and season_id != SEASON_FALL
         ),
-        # The winter path/town maps fire a one-off horse event whose name-entry
-        # screen strands the bot (Winter D1, measured); nothing there is needed.
-        include_shop_run=policy.include_shop_run and not winter,
+        # Winter keeps town trips: the path is tilemap 0x0F and the one-off
+        # horse scene is met by ``MEET_HORSE`` (``day_phase_calendar``).
+        include_shop_run=policy.include_shop_run,
         include_end_day=policy.include_end_day,
         include_spa=policy.include_spa and not winter,
-        include_chicken_sales=policy.include_chicken_sales and not winter,
+        include_chicken_sales=policy.include_chicken_sales,
         hold_flock_growth=policy.hold_flock_growth,
         max_adult_chickens=policy.max_adult_chickens,
         chicken_sale_cutoff_hour=policy.chicken_sale_cutoff_hour,
@@ -461,6 +495,7 @@ def day_planner_policy_for_season(
         attend_festivals=policy.attend_festivals,
         include_sunday_church=policy.include_sunday_church,
         include_sunday_mountain=policy.include_sunday_mountain,
+        spring_crop=policy.spring_crop,
         summer_crop=policy.summer_crop,
         fall_crop=policy.fall_crop,
         seed_purchase_recording=recording if planting else None,

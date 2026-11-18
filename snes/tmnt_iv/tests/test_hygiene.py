@@ -2,31 +2,27 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 GAME_DIR = Path(__file__).resolve().parents[1]
-_CLONE_RUNNER = re.compile(
-    r"^(?:run_stage\d+_segment|probe_stage\d+_clean|run_stage\d+_bridge)\.py$"
-)
 
 
-def test_scripts_has_no_cloned_runners() -> None:
-    clones = sorted(
-        path.name for path in (GAME_DIR / "scripts").glob("*.py") if _CLONE_RUNNER.match(path.name)
-    )
-    assert clones == []
+def test_one_run_cli_and_no_second_loop() -> None:
+    """``scripts/run.py`` is the only runner; ``run_trial`` the only live loop.
 
-
-def test_lab_is_not_imported_by_production() -> None:
-    roots = [GAME_DIR / "policy.py", GAME_DIR / "assist.py"]
-    roots.extend(sorted((GAME_DIR / "tactics").glob("*.py")))
-    roots.extend(sorted((GAME_DIR / "run").glob("*.py")))
-    hits: list[str] = []
-    for path in roots:
-        if path.name == "__init__.py":
+    ``lookahead.py`` steps the raw core (``em.step``) inside rollouts only.
+    """
+    scripts = sorted(p.name for p in (GAME_DIR / "scripts").glob("*.py") if p.name != "__init__.py")
+    assert scripts == ["run.py", "setup_rom.py"]
+    loops = []
+    for path in GAME_DIR.rglob("*.py"):
+        if "tests" in path.parts or path.name == "trial.py":
             continue
-        text = path.read_text(encoding="utf-8")
-        if "tmnt_iv.lab" in text or "from tmnt_iv.lab" in text:
-            hits.append(path.relative_to(GAME_DIR).as_posix())
-    assert hits == []
+        if "env.step(" in path.read_text(encoding="utf-8"):
+            loops.append(path.relative_to(GAME_DIR).as_posix())
+    assert loops == []
+
+
+def test_deleted_trees_stay_deleted() -> None:
+    for name in ("lab", "local_grind", "grind_knobs.py"):
+        assert not (GAME_DIR / name).exists(), name

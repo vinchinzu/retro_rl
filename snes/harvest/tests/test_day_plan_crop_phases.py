@@ -60,10 +60,10 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         # NAV_CROP should appear once (harvest needs it, water reuses position)
         self.assertEqual(names.count("NAV_CROP"), 1)
 
-    def test_water_only_gets_nav_crop(self) -> None:
+    def test_water_only_routes_to_its_own_stands(self) -> None:
         phases = build_day_phases(None, hour=16, has_waterable=True)
         names = self._phase_names(phases)
-        self.assertIn("NAV_CROP", names)
+        self.assertNotIn("NAV_CROP", names)
         self.assertIn("ENSURE_WATERING_CAN", names)
         self.assertIn("CROP_WATER", names)
 
@@ -556,9 +556,46 @@ class BuildDayPhasesCropTests(DayPlanPhaseHelpers):
         self.assertLess(names.index("HARVEST_ROUTE"), names.index("CROP_WATER"))
 
 
+class ParkedRipeTileTests(DayPlanPhaseHelpers):
+    """A ripe tile the harvest parked must not buy a harvest trip in Fall."""
+
+    def setUp(self) -> None:
+        from harvest.tasks.harvest_task import reset_harvest_failure_memory
+
+        reset_harvest_failure_memory()
+        self.addCleanup(reset_harvest_failure_memory)
+
+    def _ripe_world(self, *, season: int, day: int):
+        world = make_date_world(0x00, season=season, day=day, hour=6)
+        world.ram[ADDR_WEEKDAY + 0x4000] = 3
+        world.ram[ADDR_MAP + 28 * 64 + 12] = 0x52  # the sealed west-ring centre
+        return world
+
+    def _park(self) -> None:
+        from harvest.tasks.harvest_task import HARVEST_TILE_FAIL_LIMIT, note_harvest_tile_failure
+
+        for _ in range(HARVEST_TILE_FAIL_LIMIT):
+            note_harvest_tile_failure((12, 28))
+
+    def test_fall_ripe_tile_plans_a_harvest_until_it_is_parked(self) -> None:
+        world = self._ripe_world(season=2, day=5)
+        names = self._phase_names(build_outdoor_day_phases_from_ram(world.ram))
+        self.assertIn("HARVEST_ROUTE", names)
+        self._park()
+        names = self._phase_names(build_outdoor_day_phases_from_ram(world.ram))
+        self.assertNotIn("HARVEST_ROUTE", names)
+        self.assertNotIn("NAV_CROP", names)
+
+    def test_summer_parked_tile_still_plans_the_harvest_walk(self) -> None:
+        # Summer rings regrow and replant, so the Summer plan is unchanged.
+        world = self._ripe_world(season=1, day=5)
+        self._park()
+        names = self._phase_names(build_outdoor_day_phases_from_ram(world.ram))
+        self.assertIn("HARVEST_ROUTE", names)
+
+
 class Day3SecondPlotTests(DayPlanPhaseHelpers):
-    """Spring D3+: ship 2 grapes, buy a bag before the shop shuts, then hoe a
-    fresh plot beside the D2 rows and water everything (rr-20w.3)."""
+    """Spring D3+: buy an affordable bag before forage, establish, then water."""
 
     def _d3_outdoor(self, *, hour=6, money=250, has_waterable=True, has_seeds=False):
         return build_outdoor_day_phases(
@@ -587,15 +624,14 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         for phase in ("MOUNTAIN_BERRY", "BUY_SEEDS", "ENSURE_CROP_SEEDS",
                       "CROP_ESTABLISH", "CROP_WATER"):
             self.assertIn(phase, names)
-        # berries -> shop -> pick the bag up -> hoe/sow -> water
-        self.assertLess(names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"))
+        # An affordable seed bag gets the shop window before forage.
+        self.assertLess(names.index("BUY_SEEDS"), names.index("MOUNTAIN_BERRY"))
         self.assertLess(names.index("BUY_SEEDS"), names.index("ENSURE_CROP_SEEDS"))
         self.assertLess(names.index("ENSURE_CROP_SEEDS"), names.index("CROP_ESTABLISH"))
         self.assertLess(names.index("CROP_ESTABLISH"), names.index("CROP_WATER"))
 
-    def test_spring_weekday_restock_always_two_grapes_then_shop(self) -> None:
-        """Robustness: D3-D30 shop-open mornings with no harvest keep 2 grapes
-        then potato, with a bail hour that still starts loop 2 after 10:00.
+    def test_spring_weekday_restock_buys_before_optional_grapes(self) -> None:
+        """D3-D30 shop-open mornings buy potato before the optional two grapes.
         Past ``SPRING_LAST_SOW_DAY`` the grapes stay but no potato bag is bought:
         the rings are left empty for Summer corn."""
         from harvest.planner.crop_planner import SPRING_LAST_SOW_DAY
@@ -627,8 +663,34 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
                 continue
             self.assertIn("BUY_SEEDS", names, f"D{day}")
             self.assertLess(
-                names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"), f"D{day}"
+                names.index("BUY_SEEDS"), names.index("MOUNTAIN_BERRY"), f"D{day}"
             )
+
+    def test_shop_first_is_opt_in_and_buys_crop_seeds_before_forage_in_later_years(self) -> None:
+        """The cover's grass trip eats ~3 game hours; a grape trip after it put the crop-seed trip at a shut 17:11 door
+        (Y3 Spring D6-D7: no crop sown all Spring). Under a cover strategy the seed trip goes first in any year."""
+        import os
+        from unittest.mock import patch
+
+        # Year 2 (index 1): Year 3 skips the forage for the shop altogether (SHOP_FIRST_FROM_YEAR, below).
+        kwargs = dict(weekday=2, hour=6, has_harvest=False, has_waterable=False, has_seeds=False, has_debris=False,
+                      season=0, day=6, year=1, money=150_000)
+        with patch.dict(os.environ, {"HARVEST_STRATEGY": "score", "HARVEST_SHOP_FIRST": "1"}):
+            names = self._phase_names(build_outdoor_day_phases(**kwargs))
+        self.assertIn("MOUNTAIN_BERRY", names)
+        self.assertLess(names.index("BUY_SEEDS"), names.index("MOUNTAIN_BERRY"))
+        with patch.dict(os.environ, {"HARVEST_STRATEGY": "score"}):      # off by default: it cost more cover than it sowed
+            os.environ.pop("HARVEST_SHOP_FIRST", None)
+            names = self._phase_names(build_outdoor_day_phases(**kwargs))
+        self.assertLess(names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"))
+        with patch.dict(os.environ, {"HARVEST_STRATEGY": "cash"}):
+            names = self._phase_names(build_outdoor_day_phases(**kwargs))
+        self.assertLess(names.index("MOUNTAIN_BERRY"), names.index("BUY_SEEDS"), "the cash path keeps its order")
+        with patch.dict(os.environ, {"HARVEST_STRATEGY": "score"}):      # Year 3: shop first, no forage, no opt-in needed
+            os.environ.pop("HARVEST_SHOP_FIRST", None)
+            names = self._phase_names(build_outdoor_day_phases(**{**kwargs, "year": 2}))
+        self.assertIn("BUY_SEEDS", names)
+        self.assertNotIn("MOUNTAIN_BERRY", names)
 
     def test_saturday_never_schedules_the_shop(self) -> None:
         """ROM: the seed shop door is shut Saturday (weekday 6) as well as
@@ -734,7 +796,7 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
         plant_first = next(t for t in first.tasks if t.name == "plant_until_plot")
         self.assertEqual(plant_first.center, (13, 28))
 
-        # Plant the west ring; establish now aims at the D3 second ring (19,28).
+        # Plant the west ring; establish now selects the closer west-strip site.
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
                 if (dx, dy) == (0, 0):
@@ -742,7 +804,9 @@ class Day3SecondPlotTests(DayPlanPhaseHelpers):
                 world.ram[ADDR_MAP + (28 + dy) * 64 + (13 + dx)] = 0x54
         second = _build_crop(ctx, CROP_ESTABLISH_PHASE, world)
         plant_second = next(t for t in second.tasks if t.name == "plant_until_plot")
-        self.assertEqual(plant_second.center, (19, 28))
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS
+
+        self.assertEqual(plant_second.center, POCKET_PLANT_CENTERS[1])
         hoe_targets = {t.target_tile for t in second.tasks if t.name == "hoe_until_tilled"}
         self.assertFalse(hoe_targets & {(13, 28)})
 

@@ -62,7 +62,6 @@ __all__ = [
     "find_unfailed_approach",
     "handle_navigating",
     "parse_priority_list",
-    "shed_door_step_off_actions",
     "sort_targets_cluster",
     "snap_debris_anchor",
     "start_progress_watch",
@@ -73,8 +72,8 @@ __all__ = [
 
 # Outdoor tool-shed door. Hammer fetch lands here on 0xFF and unloads the farm.
 SHED_DOOR_TILE = (26, 30)
-# a1 west-north of the door. Adjacent a8 still unloads distant metatiles.
-LOADED_FARM_STAND = (25, 28)
+# Open ground south of the shed. (25,28) is on its roof, behind the door.
+LOADED_FARM_STAND = (25, 32)
 
 
 # 2x2 damage-rock TL (0x11) matches intact LARGE_ROCK_TL (0x0D).
@@ -177,14 +176,6 @@ def sort_targets_cluster(targets: List[Target], player_pos: Point) -> List[Targe
     return ordered
 
 
-def shed_door_step_off_actions() -> List[np.ndarray]:
-    """Hold west then north-west onto (25,28) a1. Door pin eats 1-frame taps."""
-    run = dict(b=True)
-    actions = [make_action(left=True, **run) for _ in range(16)]
-    actions.extend(make_action(left=True, up=True, **run) for _ in range(16))
-    return actions
-
-
 def drop_unarmed_debris(
     priority: List[DebrisType], missing: List[int]
 ) -> List[DebrisType]:
@@ -198,6 +189,12 @@ def drop_unarmed_debris(
     if int(Tool.AXE) in missing:
         drop.add(DebrisType.STUMP)
     kept = [dt for dt in priority if dt not in drop]
+    if int(Tool.HAMMER) in missing:
+        # Without a hammer, weeds disintegrate instantly upon lift with 0 stamina,
+        # while stones must be carried and tossed. Prioritize weeds over stones.
+        if DebrisType.WEED in kept and DebrisType.STONE in kept:
+            kept.remove(DebrisType.STONE)
+            kept.append(DebrisType.STONE)
     return kept or [DebrisType.WEED, DebrisType.STONE]
 
 

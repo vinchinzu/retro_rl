@@ -5,7 +5,7 @@ Coordinate lists are hand-authored from recordings; do not "simplify" hops.
 
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from harvest.core.tile_catalog import TILE_SIZE
+from harvest.core.tile_catalog import PATH_TILEMAP_IDS, TILE_SIZE
 from harvest.maps.farm_gate import farm_to_west_gate_waypoints
 from harvest.maps.farm_pond import FARM_TILEMAP_IDS
 from harvest.maps.map_types import Waypoint
@@ -53,11 +53,11 @@ def slice_route_from_position(
     """
     if not waypoints:
         return []
-    if tilemap == PATH_TILEMAP_ID and path_coords_leaked(px, py):
+    if tilemap in PATH_TILEMAP_IDS and path_coords_leaked(px, py):
         # Farm-gate (232,128) is on-map but east toward the farm. A leaked
         # west-edge landing (10,422) cannot BFS there; start at plaza.
         for i, wp in enumerate(waypoints):
-            if wp.tilemap != PATH_TILEMAP_ID:
+            if wp.tilemap not in PATH_TILEMAP_IDS:
                 continue
             tx, ty = wp.target_px
             if path_coords_leaked(tx, ty) or farm_coords_look_like_path(tx, ty):
@@ -131,7 +131,7 @@ def path_stand_is_mountain_gate(
     Farm-west leak ~(10, 422) stays on the plaza road. Mountain pixels leak
     past PATH_ONMAP_MAX_* and must not start at the plaza.
     """
-    if tilemap not in (None, PATH_TILEMAP_ID, MOUNTAIN_TILEMAP_ID):
+    if tilemap is not None and tilemap not in PATH_TILEMAP_IDS and tilemap != MOUNTAIN_TILEMAP_ID:
         return False
     if path_coords_leaked(px, py):
         return px > PATH_ONMAP_MAX_X or px > 80
@@ -363,6 +363,21 @@ _FARM_SOUTH_FIELD_TO_WEST_GATE: List[Waypoint] = [
     # toward the farm and pins leaked (10,422) landings.
     _PATH_PLAZA_FROM_FARM,
 ]
+# South-west field (the west-strip rings) to the west gate by the steps at
+# (3-4,30-31), tile 0xE0. The x=13 climb above runs through the (13,28) ring,
+# and a grown ring stopped 18 of 44 spa trips at (223,425) (v2_d3). The hops
+# stay on the west strip's open lanes: x=6-7, y=37-38 and y=33.
+_FARM_SOUTH_WEST_TO_WEST_GATE: List[Waypoint] = [
+    Waypoint(tilemap=0x00, target_px=(104, 600), radius=8),  # (6,37) lane crossing
+    Waypoint(tilemap=0x00, target_px=(104, 536), radius=8),  # (6,33)
+    Waypoint(tilemap=0x00, target_px=(72, 488), radius=12),  # (4,30) steps
+    # Up x=4 onto the centre of the exit row y=26 before the left walk: arriving
+    # at y=430, the bottom of the row, the walk caught the 0xFF corner at (1,27)
+    # for its whole 500 frames (v5b64 Summer D2, LN_spa_whatif_exit_walk_FAIL).
+    Waypoint(tilemap=0x00, target_px=(72, 424), radius=3),  # (4,26)
+    _FARM_WEST_EXIT,
+    _PATH_PLAZA_FROM_FARM,
+]
 _PATH_TO_TOWN: List[Waypoint] = [_PATH_TOWN_EXIT]
 # Already on 0x0C: plaza center first, then the north exit. Do not
 # BFS-diagonal from the east landing / leaked farm y toward (132,30).
@@ -470,15 +485,56 @@ _MUSHROOM_EAST_LADDER_PX: Tuple[Tuple[int, int], ...] = (
     (648, 632),
     (662, 633),
 )
+# North pull after landing, as on the spa route: a pixel-stuck replan at the
+# (328,728) landing BFS'd off the south exit, 12 of 13 Fall mushroom trips.
+_MOUNTAIN_LANDING_NORTH_PULL = Waypoint(
+    tilemap=0x10, target_px=(328, 688), radius=16, run_direction="up", force_run=True
+)
+# The grape inbound with the same pull. Without it the first hop (328,728) pixel-stuck and the BFS
+# walked back off the south exit: Spring D3 of ``y1new`` failed three trips in a row, 2 of 11 in ``fa``.
+# The base list stays as is because the mushroom and spa routes slice it by index.
+_MOUNTAIN_ENTRY_TO_FIRST_BERRY_PULLED: List[Waypoint] = (
+    [_MOUNTAIN_ENTRY_TO_FIRST_BERRY[0], _MOUNTAIN_LANDING_NORTH_PULL] + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[1:])
+)
 _MOUNTAIN_ENTRY_TO_FIRST_MUSHROOM: List[Waypoint] = [
-    *_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:3],
+    _MOUNTAIN_ENTRY_TO_FIRST_BERRY[0],
+    _MOUNTAIN_LANDING_NORTH_PULL,
+    *_MOUNTAIN_ENTRY_TO_FIRST_BERRY[1:3],
     *[Waypoint(tilemap=0x10, target_px=px, radius=4) for px in _MUSHROOM_EAST_LADDER_PX],
 ]
+# Fall poison mushroom: ROM tile 0x34 at (43,39) gives item 2 (200G, 50G over the mushroom) in Fall.
+# Stand on (42,39), two tiles east of the mushroom stand's tile (41,39), and face right.
+_POISON_MUSHROOM_STAND_PX = (678, 633)
 _FIRST_MUSHROOM_TO_MOUNTAIN_EXIT: List[Waypoint] = [
     Waypoint(tilemap=0x10, target_px=px, radius=16 if px == (616, 712) else 10)
     for px in reversed(_MUSHROOM_EAST_LADDER_PX)
 ] + list(_FIRST_BERRY_TO_MOUNTAIN_EXIT[-4:])
 
+
+# Summer forage. ROM ``DATA8_82CFB4`` (item = table[tile*4 + season]) gives mountain tile
+# 0x32 at (28,10) item 4, the green fruit (200G, ``Items_Price_Table``), in Summer only; grapes
+# (tile 0x30) are Spring only and mushrooms (0x33/0x34) Fall only. The stand is the tile below,
+# (28,11), facing up. The climb reuses the second-grape hops from the grape dirt up to (408,200)
+# (tile 25,12), then two short hops east and north: about 330 px beyond the first grape.
+_GREEN_FRUIT_STAND_PX = (454, 187)
+_GREEN_FRUIT_CLIMB: List[Waypoint] = [
+    Waypoint(0x10, px, radius=4, run_direction=face, force_run=True)
+    for px, face in (((312, 328), "up"), ((408, 328), "right"),
+                     ((408, 264), "up"), ((408, 200), "up"),
+                     ((456, 200), "right"))
+] + [Waypoint(0x10, _GREEN_FRUIT_STAND_PX, radius=3, run_direction="up", force_run=True)]
+_MOUNTAIN_ENTRY_TO_GREEN_FRUIT: List[Waypoint] = (
+    list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY_PULLED[:-1]) + _GREEN_FRUIT_CLIMB
+)
+# Back down the same hops to the grape dirt at (312, 360), then the grape's own descent.
+_GREEN_FRUIT_TO_MOUNTAIN_EXIT: List[Waypoint] = [
+    Waypoint(0x10, px, radius=8)
+    for px in ((456, 200), (408, 200), (408, 264), (408, 328), (312, 328), (312, 360))
+] + list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
+
+_MOUNTAIN_ENTRY_TO_POISON_MUSHROOM: List[Waypoint] = list(_MOUNTAIN_ENTRY_TO_FIRST_MUSHROOM) + [
+    Waypoint(0x10, _POISON_MUSHROOM_STAND_PX, radius=3, run_direction="right", force_run=True)
+]
 
 # Farm/path land → carpenter-gap dirt → west climb → east mid → lip.
 # Same hops as first grape until (312, 360), plus a 40px north pull
@@ -487,13 +543,7 @@ _FIRST_MUSHROOM_TO_MOUNTAIN_EXIT: List[Waypoint] = [
 _MOUNTAIN_ENTRY_TO_OUTDOOR_SPA: List[Waypoint] = (
     [
         _MOUNTAIN_ENTRY_TO_FIRST_BERRY[0],
-        Waypoint(
-            tilemap=0x10,
-            target_px=(328, 688),
-            radius=16,
-            run_direction="up",
-            force_run=True,
-        ),
+        _MOUNTAIN_LANDING_NORTH_PULL,
     ]
     + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[1:-1])
     + list(_WEST_MID_TO_OUTDOOR_SPA)
@@ -537,11 +587,16 @@ _FARM_WEST_GATE_TO_SHIPPING_BIN: List[Waypoint] = [
     ),
 ]
 
-_TOWN_TO_ANIMAL_SHOP_DOOR: List[Waypoint] = [
-    # East-gate landing is ~(744, 424). (696, 430) push-faces blocked tile
-    # (45, 26) and walks back out to the path. Same open face as the seed shop.
-    Waypoint(tilemap=0x04, target_px=(728, 424), radius=18),
+# East-gate landing is ~(744, 424), already inside a (728, 424) radius 18, and
+# the column below x=744 is wall: a forced run down from there stood still and
+# its sidestep walked back out to the path (four Fall sale trips, a Winter tool
+# trip). Run west along y=424 to the x=696 column the cow's return climbs.
+_TOWN_EAST_GATE_TO_LOWER_ROAD: List[Waypoint] = [
+    Waypoint(tilemap=0x04, target_px=(696, 424), radius=6, run_direction="left", force_run=True),
     Waypoint(tilemap=0x04, target_px=(696, 890), radius=6, run_direction="down", force_run=True),
+]
+_TOWN_TO_ANIMAL_SHOP_DOOR: List[Waypoint] = [
+    *_TOWN_EAST_GATE_TO_LOWER_ROAD,
     Waypoint(tilemap=0x04, target_px=(601, 890), radius=8, run_direction="left"),
     Waypoint(tilemap=0x04, target_px=(601, 874), radius=10, is_exit=True, exit_direction="up"),
 ]
@@ -552,8 +607,7 @@ _ANIMAL_SHOP_STAGING = Waypoint(
 # (408,856); the two 0xFF tiles under it are the walkway). Same east road
 # and y=890 lower road as the animal shop, then west to x=408 and up.
 _TOWN_TO_TOOL_SHOP_DOOR: List[Waypoint] = [
-    Waypoint(tilemap=0x04, target_px=(728, 424), radius=18),
-    Waypoint(tilemap=0x04, target_px=(696, 890), radius=6, run_direction="down", force_run=True),
+    *_TOWN_EAST_GATE_TO_LOWER_ROAD,
     Waypoint(tilemap=0x04, target_px=(440, 890), radius=10, run_direction="left"),
     Waypoint(tilemap=0x04, target_px=(408, 880), radius=10, is_exit=True, exit_direction="up"),
 ]
@@ -637,6 +691,27 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
     "shop_to_town": list(_SHOP_TO_TOWN),
     "town_shop_to_path": list(_TOWN_SHOP_TO_PATH),
     "town_to_tool_door": list(_TOWN_TO_TOOL_SHOP_DOOR),
+    "town_to_animal_door": list(_TOWN_TO_ANIMAL_SHOP_DOOR),
+    "animal_shop_to_medicine": [
+        _ANIMAL_SHOP_STAGING,
+        Waypoint(0x24, (88, 144), radius=3),
+        Waypoint(0x24, (58, 144), radius=2),
+    ],
+    "animal_shelf_to_town": [
+        Waypoint(0x24, (137, 200), radius=8),
+        Waypoint(0x24, (137, 212), radius=8, is_exit=True, exit_direction="down"),
+        Waypoint(0x04, (601, 904), radius=2, run_direction="down"),
+    ],
+    "town_animal_shop_to_path": [
+        # Ellen stands on (648,904) on weekday mornings (sprite 0x023C-0x0241): a tight waypoint on her pixel never
+        # arrives, and the replan walks back into the shop door (Y2 Winter D19, BUY_MEDICINE: the day was lost, four
+        # sick cows died). Stop short, swing south of her, join the x=696 column from below, as animal_shop_town_to_farm.
+        Waypoint(0x04, (632, 904), radius=10, run_direction="right", force_run=True),
+        Waypoint(0x04, (656, 936), radius=10),
+        Waypoint(0x04, (696, 920), radius=8),
+        Waypoint(0x04, (696, 424), radius=6, run_direction="up", force_run=True),
+        Waypoint(0x04, (756, 424), radius=8, is_exit=True, exit_direction="right"),
+    ],
     "tool_shop_to_milker": list(_TOOL_SHOP_TO_MILKER),
     "tool_shop_to_brush": list(_TOOL_SHOP_TO_BRUSH),
     "tool_shop_to_town": list(_TOOL_SHOP_TO_TOWN),
@@ -647,7 +722,7 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
         Waypoint(0x04, (688, 424), radius=12, run_direction="up"),
         Waypoint(0x04, (728, 424), radius=12, is_exit=True, exit_direction="right"),
     ],
-    "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY_PULLED),
     # ROM MapMountain ($A7A600): spring grape (2,4). The upper west
     # plateau is reached around the cliff at column 3, not up its south lip.
     "mountain_entry_to_second_grape": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY[:-1]) + [
@@ -659,8 +734,11 @@ SEGMENTS: Dict[str, List[Waypoint]] = {
                          ((56,136), "left"), ((56,56), "up"))
     ] + [Waypoint(0x10, (40,57), radius=2, run_direction="left", force_run=True)],
     "mountain_entry_to_first_mushroom": list(_MOUNTAIN_ENTRY_TO_FIRST_MUSHROOM),
+    "mountain_entry_to_green_fruit": list(_MOUNTAIN_ENTRY_TO_GREEN_FRUIT),
+    "mountain_entry_to_poison_mushroom": list(_MOUNTAIN_ENTRY_TO_POISON_MUSHROOM),
     "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
     "first_mushroom_to_mountain_exit": list(_FIRST_MUSHROOM_TO_MOUNTAIN_EXIT),
+    "green_fruit_to_mountain_exit": list(_GREEN_FRUIT_TO_MOUNTAIN_EXIT),
     "farm_west_gate_to_shipping_bin": list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
 }
 
@@ -674,15 +752,18 @@ ROUTES: Dict[str, List[Waypoint]] = {
     "farm_to_path": list(_FARM_TO_PATH),
     "path_to_town": list(_PATH_TO_TOWN),
     "path_to_mountain": list(_PATH_TO_MOUNTAIN),
+    # The horse scene plays on entering the path (from Winter Y1) and leaves its
+    # actors west of the farmer at (184,120); the walk home east is clear.
+    "horse_event_loop": list(_FARM_TO_PATH[:-1]) + [_PATH_FARM_EXIT],
     "farm_to_town": list(_FARM_TO_TOWN),
     "go_to_town": list(_FARM_TO_TOWN),
     "farm_to_shop_door": list(_FARM_TO_PATH)
     + list(_PATH_TO_TOWN_SHOP)
     + list(_TOWN_TO_SHOP_DOOR),
-    "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    "mountain_entry_to_first_berry": list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY_PULLED),
     "mountain_entry_to_first_mushroom": list(SEGMENTS["mountain_entry_to_first_mushroom"]),
     "farm_to_first_mountain_berry": list(_FARM_TO_MOUNTAIN_GATE)
-    + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY),
+    + list(_MOUNTAIN_ENTRY_TO_FIRST_BERRY_PULLED),
     "first_berry_to_mountain_exit": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT),
     "first_mushroom_to_mountain_exit": list(SEGMENTS["first_mushroom_to_mountain_exit"]),
     "first_mountain_berry_to_shipping_bin": list(_FIRST_BERRY_TO_MOUNTAIN_EXIT)
@@ -690,6 +771,17 @@ ROUTES: Dict[str, List[Waypoint]] = {
     + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
     + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
     "first_mushroom_to_shipping_bin": list(_FIRST_MUSHROOM_TO_MOUNTAIN_EXIT)
+    + list(_PATH_MOUNTAIN_GATE_TO_FARM)
+    + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
+    + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
+    "mountain_entry_to_green_fruit": list(_MOUNTAIN_ENTRY_TO_GREEN_FRUIT),
+    "green_fruit_to_mountain_exit": list(_GREEN_FRUIT_TO_MOUNTAIN_EXIT),
+    "mountain_entry_to_poison_mushroom": list(_MOUNTAIN_ENTRY_TO_POISON_MUSHROOM),
+    "poison_mushroom_to_shipping_bin": list(_FIRST_MUSHROOM_TO_MOUNTAIN_EXIT)
+    + list(_PATH_MOUNTAIN_GATE_TO_FARM)
+    + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
+    + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
+    "green_fruit_to_shipping_bin": list(_GREEN_FRUIT_TO_MOUNTAIN_EXIT)
     + list(_PATH_MOUNTAIN_GATE_TO_FARM)
     + [Waypoint(tilemap=0x00, target_px=(80, 424), radius=12)]
     + list(_FARM_WEST_GATE_TO_SHIPPING_BIN),
@@ -704,10 +796,17 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x04, target_px=(756, 422), radius=16, is_exit=True, exit_direction="right"),
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
     ],
+    # The old (232,128) hop pixel-stuck at (278,128) for 18k frames (ROM, Fall D3 Sunday pin): the north
+    # town row is walled there. Same road as the D1 Maria route, then up into the church (07:10 from the house).
     "farm_to_church": list(_FARM_WEST_TO_TOWN)
     + [
-        Waypoint(tilemap=0x04, target_px=(232, 128), radius=16),
-        Waypoint(tilemap=0x04, target_px=(375, 139), radius=10, is_exit=True, exit_direction="up"),
+        Waypoint(tilemap=0x04, target_px=(696, 424), radius=8),
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(500, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(376, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(376, 200), radius=14),
+        Waypoint(tilemap=0x04, target_px=(358, 150), radius=8, is_exit=True, exit_direction="up"),
     ],
     "farm_to_animal_shop_staging": list(_FARM_WEST_TO_TOWN)
     + list(_TOWN_TO_ANIMAL_SHOP_DOOR)
@@ -731,12 +830,19 @@ ROUTES: Dict[str, List[Waypoint]] = {
     ],
     "animal_shop_town_to_farm": [
         # Leave the door column east before turning north. A diagonal from
-        # (600,888) to the town gate steps straight back into the shop.
-        Waypoint(tilemap=0x04, target_px=(648, 904), radius=4, run_direction="right", force_run=True),
-        Waypoint(tilemap=0x04, target_px=(696, 890), radius=6),
+        # (600,888) to the town gate steps straight back into the shop. Stop short of (648,904): Ellen
+        # stands there on weekday mornings (sprite 0x023C), and a tight waypoint on her tile never
+        # arrives (Y2 Spring D16: four pixel-stuck replans, then a wedged run).
+        Waypoint(tilemap=0x04, target_px=(632, 904), radius=10, run_direction="right", force_run=True),
+        # Swing south of her spot (rows 57-58 of the plaza are open) and join the x=696 column from below.
+        Waypoint(tilemap=0x04, target_px=(656, 936), radius=10),
+        Waypoint(tilemap=0x04, target_px=(696, 920), radius=8),
         Waypoint(tilemap=0x04, target_px=(696, 424), radius=6, run_direction="up", force_run=True),
         Waypoint(tilemap=0x04, target_px=(756, 424), radius=8, is_exit=True, exit_direction="right"),
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=8, is_exit=True, exit_direction="right"),
+        # Clear the west gate horizontally before descending: y=448 outside
+        # the farm is fenced. The hawker's berry lands south of this entrance.
+        Waypoint(tilemap=0x00, target_px=(80, 424), radius=4, run_direction="right", force_run=True),
         Waypoint(tilemap=0x00, target_px=(80, 448), radius=12),
     ],
     # Spring D1 town handoff (docs/town_day1_recon.md). Natural entry lands
@@ -916,23 +1022,38 @@ ROUTES: Dict[str, List[Waypoint]] = {
         Waypoint(tilemap=0x1B, target_px=(206, 134), radius=8, action_on_arrive="press_a", action_face="left"),
         Waypoint(tilemap=0x1B, target_px=(141, 139), radius=8, action_on_arrive="press_a", action_face="left"),
     ],
+    # Weekday courting (tasks/relationships.TownCourtTask): Ellen stands at (648,904) beside the animal shop's
+    # door, Nina at (520,264) beside the flower shop's; each walk stops below the door the loop reloads through.
+    "farm_to_ellen_weekday": list(_FARM_WEST_TO_TOWN) + list(_TOWN_TO_ANIMAL_SHOP_DOOR[:-1]),
+    "farm_to_nina_weekday": list(_FARM_WEST_TO_TOWN) + [
+        Waypoint(tilemap=0x04, target_px=(696, 424), radius=8),
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=10),
+    ],
+    "nina_weekday_to_farm": [
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=10),
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(696, 424), radius=8),
+        Waypoint(tilemap=0x04, target_px=(756, 424), radius=8, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x00, target_px=(80, 448), radius=12),
+    ],
+    # The church door lets out at ~(350,160) on the town map: the inbound road reversed.
     "church_to_farm": [
         Waypoint(tilemap=0x1B, target_px=(130, 468), radius=12, is_exit=True, exit_direction="down"),
-        Waypoint(tilemap=0x04, target_px=(360, 468), radius=16),
-        Waypoint(tilemap=0x04, target_px=(600, 430), radius=16),
-        Waypoint(tilemap=0x04, target_px=(756, 422), radius=16, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x04, target_px=(376, 200), radius=14),
+        Waypoint(tilemap=0x04, target_px=(376, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(500, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(600, 280), radius=14),
+        Waypoint(tilemap=0x04, target_px=(688, 280), radius=16),
+        Waypoint(tilemap=0x04, target_px=(696, 424), radius=8),
+        Waypoint(tilemap=0x04, target_px=(756, 424), radius=8, is_exit=True, exit_direction="right"),
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
+        Waypoint(tilemap=0x00, target_px=(80, 448), radius=12),
     ],
     "town_to_farm": [
         Waypoint(tilemap=0x04, target_px=(756, 422), radius=16, is_exit=True, exit_direction="right"),
         Waypoint(tilemap=0x0C, target_px=(244, 128), radius=12, is_exit=True, exit_direction="right"),
-    ],
-    "town_to_farm_west_gate_sale": [
-        Waypoint(tilemap=0x04, target_px=(756, 422), radius=16, is_exit=True, exit_direction="right"),
-        # sell_chicken.json re-enters at the farm west gate along y=448.
-        # Generic path-to-farm exit at y=128 lands on the upper path.
-        Waypoint(tilemap=0x0C, target_px=(230, 118), radius=6),
-        Waypoint(tilemap=0x0C, target_px=(244, 118), radius=4, is_exit=True, exit_direction="right"),
     ],
     "event_town_to_farm": [
         Waypoint(tilemap=0x05, target_px=(756, 422), radius=16, is_exit=True, exit_direction="right"),

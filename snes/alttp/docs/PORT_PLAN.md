@@ -18,8 +18,8 @@ split it here (`AP-045a`, `AP-045b`). Do not stretch the sitting.
 ## How to use this file
 
 1. Pick the **lowest-numbered** open task (`- [ ]`) whose `Needs` are all
-   `[x]`. Dungeon blocks (Phase H) can run in parallel once Phases A to E
-   are done. Use one worktree per parallel lane (see Rules).
+   `[x]`. The current serial execution sequence is in [plan.md](plan.md).
+   Use the sole `retro` checkout on `main`; do not start parallel dungeon lanes.
 2. Claim it: change `- [ ]` to `- [~] <agent> <date>` and save.
 3. Read only the files the task names, plus `snes/alttp/AGENTS.md`. Do not
    read the history of other tasks.
@@ -59,9 +59,9 @@ QT_QPA_PLATFORM=offscreen uv run pytest alttp/tests -q             # unit tier
   says so.
 - Stage only the files you touched. Never `git add -A`. The tree is shared
   with other game lanes.
-- Do not edit runtime modules while a long run is in flight. Freeze a
-  worktree and run from it with `PYTHONPATH=$W:$W/snes:$W/nes`. The venv
-  `.pth` imports the main tree otherwise.
+- Do not edit runtime modules while a run is in flight. Serialize runs and
+  source edits in the sole checkout on `main`. Record source hashes with the
+  run; a commit SHA with `dirty=true` does not identify the runtime source.
 - `z3-json-data` and a live scan are the authority on rooms, items and
   logic. The "hint" lines below are vanilla knowledge. If a hint is wrong,
   fix the hint in this file and note it in your task line.
@@ -837,6 +837,12 @@ the B1 cell from the power-on predecessor. The measured route continues via
   follower0, progress2, flags0x15. Controller search restores are disclosed
   and absent from the replay. Big-key fight and complete escort pass offset
   sweeps with CRC forward replay. Normal enemy heart drops are in-play loot.
+  Earlier failed development probes below are superseded by this proof:
+  Learned: Clean power-on, no refill, no search restore. Bush (2431,1704) entered 0x55 (2975,2710) HP 24. Room 0x80 from (81,4150) HP 20 staged (349,4263) off both closed lines; trace never stepped on (303,4232), (405,4286), or (410,4285). Guard walked from (416,4240) to (375,4258). South-wall contact then killed Link: (335,4288) 20 to 16, (342,4288) 16 to 12, (340,4285) 12 to 8, (339,4288) 8 to 4, death (313,4282) HP 0 mode 0x12. Ball centers seen at (396,4277) and (387,4251). Follower 0 progress 1 flags 0x11 writes=0 restores=0. AP-082 stays open.
+  Learned: Clean power-on, no refill, no search restore. Bush (2431,1704) dir 0 entered 0x55 (2975,2710) HP 24. Room 0x80 south-east corner (393,4280) HP 20, then the flail killed Link at (424,4287) HP 0 mode 0x12 (hits (405,4286) 20 to 12 and (410,4285) 12 to 4). Follower 0 progress 1 flags 0x11. Not the (303,4232) line. AP-082 stays open.
+  Learned: Facing-up A samples (link_x+7, link_y+6) via ROM $07:D365/$07:D36D when $2F=0. Clean approach stopped screen 0x1B (2435,1709) HP 24 sword 0 follower 5 progress 0 flags 0x10; attr under Link at (2442,1724) was 0x48 map16 0x4DE, and the A probe (2442,1715) was attr 0x00. The map16 0x36 bush is attr 0x50 at probe (2437,1710). Walked to (2431,1704), probe (2438,1710) attr 0x50 map16 0x36, then SECRET_HOLE_ENTRY_SCRIPT entered room 0x55 (2975,2710) HP 24 with no search set_state and no refill. Escort without refill died in room 0x80 at (303,4232) HP 0 mode 0x12 during room_81_to_zelda; progress 1 flags 0x11 follower 0. AP-082 stays open.
+  Learned: Clean power-on stopped at the secret-hole approach, outdoors screen 0x1B xy=(2435,1704), HP 24, control ready, sword 0, follower 5, progress 0 flags 0x10. Proven SECRET_HOLE_ENTRY_SCRIPT missed with writes=0 and no search set_state (only boot SRAM inject). Entering room 0x55 would need the candidate search restore. No HP refill. AP-082 left open.
+  Learned: Clean probe starts from power-on. Proven hole script only, no set_state search and no HP refill. Will stop at the first room that needs either.
   Older Survival controller/replay evidence remains in
   `recordings/sanctuary_20261001/`. The Clean replay above closes C1 and
   advances the next gate to C2 Eastern Palace.
@@ -1033,10 +1039,10 @@ arrows; check the z3 boss requirement.
   - **AP-105b (`rr-eog9.2`) · Sanctuary south exit:** Closed. Independent forward replay reached outdoors Screen `0x13`, control ready at `(1880, 1083)`; see `recordings/sanctuary_20261001/exit_replay.json`.
   - **AP-105c (`rr-eog9.3`) · Overworld traversal:** Closed on 2026-10-01. The direct east exits from the `0x1D` north lip remain inaccessible. The real predecessor walk instead follows `0x13 → 0x14 → 0x15 → 0x1D → 0x25 → 0x2D → 0x2E → 0x26 → 0x1E`, using outdoor stair attribute `0x22` and an internal quadrant goal. Segment 3848f, loaded/standing `0x1E` at `(3328, 2047)`, HP 32/32, no damage/writes, inventory unchanged. Forward power-on Survival replay: 41305f, zero desync/loads/deaths, seven disclosed prefix HP refills, progression/capacity writes zero. `Play_eog9_3` saved from this result; reports/tapes in `recordings/eog9_crossing_20261001/`. Roadside drops remain unproved and are now `rr-yx26`.
   - **AP-105d (`rr-eog9.4`) · Sahasrahla's hut:** Closed on 2026-10-01. Mapped entry from `Play_eog9_3` reaches full room `0x0105`; messages `0x32/0x33` set map indicator `$F3C7: 1→3`. Both accessible pots inspected; the left pot can restore a heart, but this full-HP route gains no inventory. Rear 50 rupees/3 bombs/50 rupees chests remain closed behind live type `0x28` bombable wall (bombs/boots absent). Mapped return to screen `0x1E`, `(3312,1851)`, HP 32/32, follower 0. Hut tail 2166f, no damage/writes; 491 disclosed rollout restores, zero non-rollout loads. Same-pin forward replay: zero desync/loads/writes. Full power-on Survival replay: 43471f, zero desync/loads/deaths, seven disclosed opening refills, no hut refill. `Play_eog9_4` saved from replay; evidence in `recordings/eog9_hut_20261001/`. Clean tip unchanged.
-  - **AP-105e (`rr-eog9.5`) · Eastern Palace hedge maze:** Next ready boundary from `Play_eog9_4`; no hedge or Armos claim yet.
-  - **AP-105f (`rr-eog9.6`) · Eastern Palace entrance transition:** Not run from the Sanctuary predecessor; the isolated `EasternPalaceEntry` lobby hop does not establish natural entry.
-  - **AP-105g (`rr-eog9.7`) · Assisted spine extension:** Not run; depends on a proved route through the entrance.
-  - **AP-105h (`rr-eog9.8`) · Route tests and map verification:** Whole entrance route remains unrun. Crossing and full hut predecessor ROM regressions pass in `tests/test_overworld.py`; hedge/lobby and whole-route gates remain open.
+  - **AP-105e (`rr-eog9.5`) · Eastern Palace hedge maze:** `Play_eog9_5` measured outdoors on loaded screen `0x1E` at `(3920, 1582)`, standing quadrant `0x1F`, module `0x09` submodule `0x00`, control ready, HP 28/32, sword 1, lamp 1, follower 0. No Armos claim.
+  - **AP-105f (`rr-eog9.6`) · Eastern Palace entrance transition:** From `Play_eog9_5`, UP on mapped `eastern_door_to_0xc9` entered room `0xC9`, indoors, module `0x07`, submodule `0x00`, control ready, spawn `(4856, 6616)`, sword 1, lamp 1, HP 28/32, follower 0, keys 0. Replay `recordings/eog9_door_20261023/replay.json` is 162f with zero desync, state loads, and RAM writes. `Play_eog9_6` saved from that replay. The same xy on `EasternPalaceEntry` does not close this step.
+  - **AP-105g (`rr-eog9.7`) · Assisted spine extension:** Replay `recordings/eog9_spine_20261023/eog9_spine_replay.json` is 46646 frames from blank SRAM, zero desync, zero state loads, zero RAM writes, and no Survival refills. Final glance is room `0xC9` at `(4856, 6616)`, module `0x07` / submodule `0x00`, control ready, sword 1, lamp 1, HP 28/32, follower 0, keys 0. Max HP rose in play in room `0x12` (replay gains at frames 36290, 36300, and 36310). The controller recorded `eastern_lobby` true and `inventory_preserved` false (hut keys 255, lobby keys 0), so its `ok` is false and the replay's `route_goal_ok` is false. `Play_eog9_6` is a dev checkpoint. AP-105 stays open.
+  - **AP-105h (`rr-eog9.8`) · Route tests and map verification:** Pytest `alttp/tests/test_opening_spine.py` and `alttp/tests/test_overworld.py` was 36 passed, 5 deselected. Live `Play_eog9_6` glance is room `0xC9`, indoors, module `0x07` / submodule `0x00`, control ready, `(4856, 6616)`, sword 1, lamp 1, HP 28/32, follower 0, keys 0. The door-hop and `eastern_entry` gates lock that landing and the heart taken in play; `route_goal_ok` stays false because `inventory_preserved` is false. AP-105 stays open.
 - [x] 2026-09-30 · evidence: Whatif_Eastern_armos isolated: $F374 0x00 to 0x04 source=play ledger frame 1835 writes=0 after heart $F36C 0x18 to 0x20. Ancilla 0x29 then receipt 0x22. $F3CC stayed 5. Not continuous and not the Sanctuary chain. **AP-106 · Eastern step 8: chain + rung C2.** Acceptance: pendant bit
   (candidate `$F374`) rises in play.
 
@@ -1070,6 +1076,7 @@ open the way to Lanmolas; Pendant of Power.
   Learned: Room 0x33 did not load. Entrance 0x0C is room 0x63; the north stair type 0x20 stays behind 0xF0 after the push-block shutter opens and then closes. Sprite 0x54 not on screen. Whatif_Desert_lanmolas not saved. 0 of 12 offsets. bosses/lanmolas.py not written. $F3CC stayed 0.
   Learned: Lanmolas was not on screen. 0 of 12 offsets. The rock at (704,3168) was not reached from Whatif_DesertPalaceEntry_glove, so the arena did not open.
 - [~] desert-tablet 2026-09-30 **AP-113 · Desert step 7: approach.** Needs AP-106, AP-089, AP-090.
+  Learned: Whatif_Desert_plaque kind=poke copies Scan_desert_ow_0x30; ability $F379 0xF8->0xFC book stayed 1. pin_probe ability=252 book=1 screen 0x30. A+LEFT from (312,3464) stayed (312,3464) state 0 $5E=0 $02ED=0 feet 0x00; state 17 never started. A+RIGHT from (280,3464) entered state 17 ($5E=16) then state 2 bonk and rested (229,3464) state 0 $02ED=0 feet 0x00; did not enter (296,3464). $02ED did not rise in play. Left [~]. Log recordings/probe_AP-113/dash_fc.json.
   Learned: copy screen 0x30 pin to Whatif_Desert_plaque, poke ability 0xFC, one dash each way; prove byte with pin_probe
   Learned: A+LEFT from (312,3464) book 1 mode 0x09 control, boots 1 ability $F379=0xF8 dash bit 0, stayed (312,3464) state 0 $5E=0 $02ED=0 feet attr 0x00 and did not enter (304,3464); state 17 never started. A+RIGHT from (280,3464) stayed (280,3464) state 0 $02ED=0 feet attr 0x00 and did not enter (296,3464). Both dashes stayed on the side cells. No book poke. Left [~]. Log recordings/probe_AP-113/dash_sides.json.
   Learned: From (312,3464) book 1 mode 0x09 control, LEFT stays (312,3464) $02ED=0 feet attr 0x00 and does not enter (304,3464). From (280,3464), RIGHT stays (280,3464) $02ED=0 feet attr 0x00 and does not enter (296,3464). Neither north 0x46 cell was entered. No book poke. Left [~].
@@ -1125,17 +1132,18 @@ no big chest; Agahnim reflects energy balls back with a sword swing (the
 spread lightning cannot be reflected); after him Link lands in the Dark World
 Pyramid.
 
-- [ ] **AP-123 · Tower step 1: `CastleTowerEntry` pin + first hop.** Kit =
+- [x] 2026-09-30 · evidence: CastleTowerEntry kind poke audit 0 issues room 0xE0 module 0x07 dungeon 0x08 hp 0x18/0x18 sword 2 lamp 1. room_engine room_e0 south_to_0x1b --no-clear green 2/2 both 220 frames screen 0x1B module 0x09. castle_tower_ROUTE.md Entry isolated not natural. **AP-123 · Tower step 1: `CastleTowerEntry` pin + first hop.** Kit =
   Master Sword + lamp. Cut the barrier in play from outside if the pin
   starts outside.
-- [ ] **AP-124 · Tower step 2: scan.** Dark rooms: RAM still works; ignore
+- [x] 2026-09-30 · evidence: keys 0; only indoor room reached is 0xE0, table has door types and KeyA1 chest 0xEAB5 opened=0; east shutter slot 8 type 0x18 named; lint ok 53 maps. Not natural. **AP-124 · Tower step 2: scan.** Dark rooms: RAM still works; ignore
   the screen.
-- [ ] **AP-125 · Tower step 3: lower floors and keys.**
-- [ ] **AP-126 · Tower step 4: upper floors to Agahnim's door.** No big
+- [!] BLOCKED 2026-09-30: Two tries. east.json door-row nudge died at (200,7299) mode 0x12 with door types unchanged. window.json delays 0..248 all end x=200 and both 0x6A stay hp 16. chain.json fight_nearby cycle limit, defeated empty, keys stayed 0, KeyA1 opened=0. No big-key bit rose. **AP-125 · Tower step 3: lower floors and keys.**
+- [!] BLOCKED 2026-09-30: Two tries. Warp sub 0x15 from CastleTowerEntry; arena 0x0D not loaded; lobby east not walked. 0xD0 KeyA1 0xEAB2 tile (6,26) opened=0 no path. Landings 0xD0 0xC0 0xB0 0x40 sit on tile (15,59) wall; doorway cleared; UP/LEFT/RIGHT/DOWN xy unchanged; reachable 0. 0x30 north 0x00 ended mode 0x0E room stayed 0x30. 0xB0 shutter fight 480 frames defeated none xy unchanged. Keys 0 big_key 0 magic 0. F3CC not written. Boss-door edges not isolated. **AP-126 · Tower step 4: upper floors to Agahnim's door.** No big
+  Learned: Do not retry the 0xD0/0xC0/0xB0/0x40 south-wall warp landing or the 0x30 cutscene text. Cardinals do not leave tile (15,59). Chest 0xEAB2 stayed shut.
   chest; this step is the rest of the key doors.
-- [ ] **AP-127 · Tower step 5: Agahnim probe.** Sweep swing frame vs ball
+- [x] 2026-09-30 · evidence: Scan_castle_tower_boss isolated poke room 0x0D sprite 0x7A $0E50=96 $0D80 cycles 4-5-2-3. audit 0 incoherent. Row 52 one-frame B at chebyshev 12-40 flips ball 0x7B vy 32 to -48 and drops HP 96 to 80 ($3C 3/4/5). D=8 and row 48 leave 96. Link HP also drops on the floor stand. castle_tower_ROUTE.md Boss filled. Not continuous, not STATUS. $F3CC not written. **AP-127 · Tower step 5: Agahnim probe.** Sweep swing frame vs ball
   distance with rollouts to find the reflect window.
-- [ ] **AP-128 · Tower step 6: `bosses/agahnim.py`.** Swing when the
+- [!] BLOCKED 2026-09-30: Two tries. Scan_castle_tower_boss isolated poke, row 55 one-frame B. Try 1 died frame 1684 boss $0E50 still 80, hits agahnim:1 agahnim ball:1 zora:2. Try 2 died frame 1744 boss still 80, hits agahnim ball:1 lightning:1 (sprite 0xBF). One reflect only, 96 to 80. Heart not taken. $F3CC not written. **AP-128 · Tower step 6: `bosses/agahnim.py`.** Swing when the
   rollout shows a reflect; dodge the spread. Read the Wizzrobe timing in
   `nes/zelda_i/dungeon/shot_guard.py`. GT (AP-192) reuses this module.
 - [ ] **AP-129 · Tower step 7: approach.** Needs AP-122, AP-092.
@@ -1150,15 +1158,16 @@ Hint: Kiki (a paid follower) opens the entrance; many small keys; a dark
 maze; big chest Hammer; Helmasaur King (break the mask with the hammer or
 bombs, then hit the gem); crystal 1.
 
-- [ ] **AP-131 · PoD step 1: entry pin + first hop.** Needs AP-097.
-- [ ] **AP-132 · PoD step 2: scan.** Count the small keys against the key
+- [x] 2026-09-30 · evidence: probe_ap131 Whatif_PalaceOfDarknessEntry_parallel east_stairs_to_0x09 isolated 2/2 both land room 0x09 (4985,55) module 0x07 push 140 hp 56 to 40 follower 5 hammer 0 keys 1 big_key 512 still pokes; room_engine frames 0 not in room because dark_world; audit both pins 0 incoherent; pod_ROUTE.md Entry isolated not natural **AP-131 · PoD step 1: entry pin + first hop.** Needs AP-097.
+- [x] 2026-09-30 · evidence: 6 KeyD1 chest-table nodes vs 1 live small-key passage: 0x4A slot2 0x1C to 0x3A spent poke keys 1 to 0, 0x3A slot0 0x1C returns; rooms 0x09 and 0x3A doors and chests in pod_ROUTE.md; 0x09 KeyD1 and 0x3A BigKeyD1 no path opened=0; shutters and north 0x00 named; lint ok 47 maps. Not natural. **AP-132 · PoD step 2: scan.** Count the small keys against the key
   doors on the route.
-- [ ] **AP-133 · PoD step 3: entry → big key.** Bombable walls use
+- [!] BLOCKED 2026-09-30: Two tries. 0x3A BigKeyD1 tile (31,18) stayed opened=0 behind wall 0x01 and $F366 stayed 512. West-north exit entered 0x2A; both KeyD1 chests no path; hit_switch left $C172 at 0. Poke is not a rise in play. **AP-133 · PoD step 3: entry → big key.** Bombable walls use
   `place_bomb` (AP-067).
-- [ ] **AP-134 · PoD step 4: Hammer.** Add a `hammer` primitive (pegs,
+- [x] 2026-09-30 · evidence: Scan_swamp_0x37 room 0x37 hammer() peg slot 0 tile (16,8) attr 0x70->0x00; $F34B already 1 inherited poke, not a chest rise; disclosed stand off wall tile (31,59); stun $0B58 stayed 0; $F3CC stayed 0. Boss-door edges stay unisolated (AP-133). **AP-134 · PoD step 4: Hammer.** Add a `hammer` primitive (pegs,
+  Learned: Hammer success is a 0x4040 slot whose attribute leaves 0x7N. Stars ancilla 0x16 is not the check. Doorway $006C refuses Y. Scan_swamp_0x37 spawn is wall 0x04, so the stand was a coordinate write.
   stun).
-- [ ] **AP-135 · PoD step 5: Helmasaur King probe.**
-- [ ] **AP-136 · PoD step 6: `bosses/helmasaur.py`.** Read
+- [x] 2026-09-30 · evidence: Scan_pod_boss poke room 0x5A sprite 0x92 $0E50=48. Audit hp 0x38/0x38 kind poke dungeon 0x0C module 0x07, 0 incoherent. boss_probe 1800: phase $0D80 cycles 1-2-3-0, hp stays 48, fireball 0x70 at f349. Bomb drops 48 to 44; hammer at chebyshev 12 in phase 3 drops 48 to 47. Sword and the standoff arrow do not. pod_ROUTE Boss filled. **AP-135 · PoD step 5: Helmasaur King probe.**
+- [!] BLOCKED 2026-09-30: Two tries. Bomb drops $0E50 by 4 (try 1: 48 to 28, Link hp 56 to 0, hits bomb:2 fireball:2 king:1). Try 2 flee died at boss 44, hits bomb:5 fireball:1. Arrows after the latch stayed 44. strike_if_safe sword hits 0. Heart not taken. **AP-136 · PoD step 6: `bosses/helmasaur.py`.** Read
   `nes/zelda_i/dungeon/gohma.py` (vulnerable-window timing).
 - [ ] **AP-137 · PoD step 7: approach.** Needs AP-130, AP-088. Pyramid →
   Kiki (pay in play) → entrance. Record Kiki's follower value.
@@ -1177,14 +1186,18 @@ core); crystal 2.
   Learned: A disclosed flippers=1 write keeps the north push in room 0x28 at (4344,1336) layer 1 $5D=4. Room 0x38 does not load. The write is not flippers rising in play.
   Learned: Deep water 0x08 at rows 46-47 cols 30-33 ejects Link while flippers are 0. A nav.py deep_water allow does not keep him north of y=1376. Do not poke flippers. Swim has to be real movement after AP-093.
   `north_to_0x38`.
-- [ ] **AP-140 · Swamp step 2: scan.** Record each water switch and the
+- [x] 2026-09-30 · evidence: keys=1 flippers=0 reachable room is 0x28 only, doors and KeyD2 chest in swamp_ROUTE.md. Stopping lock is deep water 0x08 rows 46-47 cols 30-33; north_to_0x38 did not load. Sprite 0x21: 0x37 (3760,1605) WaterOn L0 deep 2 to 10 and L1 380 to 400; 0x35 (2880,1621) WaterOn L0 0 to 8 and L1 416 to 436; 0x76 (3472,3637) WaterOff submodule 0x0B L0 deep 12 to 4. Each set live $0402=2048 and cleared its own tag. $F000 bit 0x800 did not rise. Scan_swamp rooms saved. lint ok 47 maps. Door-only room_35 room_37 room_76. Not natural. **AP-140 · Swamp step 2: scan.** Record each water switch and the
   rooms it changes.
-- [ ] **AP-141 · Swamp step 3: entry → big key.** Swim and deep-water
+- [!] BLOCKED 2026-09-30: Two tries. deep_water BFS 113 to 322 poses but KeyD2 stand has no path (chebyshev 104) and the walk hits 0x08 at $5D=6 then ejects to the south door y=1488; chest opened=0 big_key 0 ledger empty. hookshot() doorway at spawn, not owned off the door. hammer() on the overlap changed 0 cells. dash() refused ability 0xF8. No edge isolated. **AP-141 · Swamp step 3: entry → big key.** Swim and deep-water
+  Learned: deep_water allow is not swim. Flippers 0 ejects off 0x08 in $5D=6. Hookshot byte stays 0 on SwampPalaceEntry and the parallel pin. A $F366 poke does not rise in play.
+  Learned: Big key on the parallel pin is the $F366 poke. Chest 0x35 BigKeyD2 stayed opened=0. north_to_0x38 stays closed. A poke does not pass the in-play bit.
   tiles in the BFS (AP-093 physics).
-- [ ] **AP-142 · Swamp step 4: Hookshot.** Add a `hookshot` primitive
+- [x] 2026-09-30 · evidence: Whatif_Library room 0x3d hookshot(); disclosed $F342 0->1, not a chest; ancilla 0x1F (6960,10076); $037E=1 $5D=0x13; xy (6960,10176) tile (38,56) floor 0x00 across pit rows 44-55 attr 0x20 to (6960,10072) tile (38,43) attr 0xC0; $F3CC stayed 5. Swamp scan pins have no floor/pit/grabbable line in 16 tiles. **AP-142 · Swamp step 4: Hookshot.** Add a `hookshot` primitive
+  Learned: Pull is $037E bit 0 while xy changes in $5D 0x13. A retract with no drag is a miss. Tile 0x27, chests, and torches 0xC0 latch; pit 0x20 and deep water do not stop the chain.
   (reach, pull, targets across gaps).
-- [ ] **AP-143 · Swamp step 5: Arrghus probe.**
-- [ ] **AP-144 · Swamp step 6: `bosses/arrghus.py`.** Read
+- [x] 2026-09-30 · evidence: Scan_swamp_boss kind poke room 0x06 (3320,472) hookshot 0 follower 0. Audit hp 0x18/0x18 module 0x07 dungeon 0x0A 0 incoherent. Core 0x8C hp 32 phase 1 then 3 at frame 38 then 4 at frame 65; thirteen 0x8D hp 8 phase 0. Idle 1800: boss hp unchanged, Link hp 24 to 8 at frame 69 and 0 at frame 129. LEFT/UP/B 500 frames stayed (3320,472) and did not drop boss hp. Boss section in swamp_ROUTE.md. Not a walked door. **AP-143 · Swamp step 5: Arrghus probe.**
+- [!] BLOCKED 2026-09-30: offset 0 kills at most 7 of 13 puffs then Link dies; core hp 32 and no heart (recordings/probe_AP-144/lip_fight3.log). Not 10/12. **AP-144 · Swamp step 6: `bosses/arrghus.py`.** Read
+  Learned: Orbiting puffs stayed phase 0 hp 8. Sword from the 0x06 landing did not drop core hp 32. Pulling them needs a hookshot primitive in primitives.py, which this lane does not edit.
   `nes/zelda_i/level9/patra.py`: satellites around a core, same shape.
 - [ ] **AP-145 · Swamp step 7: approach.** Needs AP-138, AP-093. Dam lever
   in the Light World, then mirror.
@@ -1198,16 +1211,18 @@ next. Detail: `alttp/docs/tasks/SkullWoodsEntry-residual.md`. Scratch:
 Rod; the last section needs the Fire Rod to burn an outdoor skull; Mothula
 (moving floor, spike blocks); crystal 3.
 
-- [ ] **AP-147 · Skull step 1: `SkullWoodsEntry` pin + first hop.** Follow
+- [x] 2026-09-30 · evidence: room_engine room_58 south_to_0x40 green 2/2 from SkullWoodsEntry both frames=198 land screen 0x40 (744,603) module 0x09 hp 24 follower 5; settled UP back to room 0x58 (4216,3032) module 0x07 dungeon 0x10 both trials f=161; audit 0 incoherent kind poke; skull_ROUTE.md Entry isolated not natural. Quoted entrance 0x29 is not this door. **AP-147 · Skull step 1: `SkullWoodsEntry` pin + first hop.** Follow
   the residual; the first hop is `0x29 → 0x58`.
-- [ ] **AP-148 · Skull step 2: scan.** Map which drop hole leads to which
+- [x] 2026-09-30 · evidence: keys=0 only indoors room 0x58 is in skull_ROUTE.md with live door types and both chests. pin_probe SkullWoodsEntry room 0x58 module 0x07 dungeon 0x10: chest 0 FireRod z3 0xE998 tile (14,43) opened=0, chest 1 MapD3 z3 0xE99B tile (56,40) opened=0. Stopping locks named: west slot1 0x1C, south slot2 0x1C, north slot0 0x30, west slot3 0x2E. Door-only skeletons in maps/room_58.json have no approach. lint ok 50 maps. z3 connections map Hole East to First Section (Right), Hole West to (Left), Hole North to (Top), Second Section Hole to Second Section (Drop), and that Drop into Second Section. No room hex on those nodes. None entered. Dump recordings/probe_AP-147/pin_probe_0x58.txt. No Scan state. **AP-148 · Skull step 2: scan.** Map which drop hole leads to which
   room (z3 connections).
-- [ ] **AP-149 · Skull step 3: drop-in entrances → big key.** Drops are
+- [!] BLOCKED 2026-09-30: Outdoor screen 0x40 (744,603) module 0x09. Attr 0x52 map16 0x020F at (720,632) stayed outdoors. Stood on attr 0x20 map16 0x0817 at (798,688) for 90 DOWN frames: module stayed 0x09, fall false, big_key 0, follower 5. Path to stand (808,680) was none with and without liftable tiles. Indoor UP/RIGHT/UP from room 0x58 stayed 0x58, no fall, big_key 0, hp 24 to 8. BigKeyD3 0xE99E in Second Section was not entered. No edge isolated 2/2. No poke. ap149_try.json ap149_try2.json ap149_pit.json **AP-149 · Skull step 3: drop-in entrances → big key.** Drops are
   `fall` transitions.
-- [ ] **AP-150 · Skull step 4: Fire Rod.** Add a `fire_rod` primitive
+- [!] BLOCKED 2026-09-30: IcePalaceEntry kind poke rod already 1 not written; fire_rod() ancilla (7544,424) magic 128->112 follower 5. SkullWoodsEntry chest 0 FireRod (14,43) opened=0 no path and chest 1 no path; floor beside attr 0x81 also no path; $F345 stayed 0 big_key 0. Screen 0x40 (744,603) shot refused, rod not owned, AP-149 pits not stood. Boss door not isolated. Rod did not rise in play. recordings/probe_AP-150/probe.json try2.json **AP-150 · Skull step 4: Fire Rod.** Add a `fire_rod` primitive
+  Learned: A disclosed $F345 write does not open the unopened FireRod chest. Nav does not treat attr 0x81 as floor, so the east mouth is not a path. Magic cost on the poke pin was 16.
   (magic cost from AP-072). Burn the outdoor skull to reach the last
   section.
-- [ ] **AP-151 · Skull step 5: Mothula probe.** Log floor movement per
+- [!] BLOCKED 2026-09-30: Mothula room 0x29 is ROM $09:D62E sprite list first id 0x88. Entrance 0x2B loaded room 0x59 north slot0 type 0x1C keys 0; UP toward that door died hp 0 still 0x59. Entrance 0x28 loaded room 0x56. Room 0x29 not entered. No floor log. $A0 not poked. Not a Scan pin. recordings/probe_AP-150/probe.json try2.json **AP-151 · Skull step 5: Mothula probe.** Log floor movement per
+  Learned: Do not poke $A0. Entrance 0x2B is room 0x59 and its north door is small-key. ROM room 0x29 is the mothula sprite list and was not loaded.
   frame.
 - [ ] **AP-152 · Skull step 6: `bosses/mothula.py`.** The rollout already
   includes the moving floor, so there is no separate floor model.
@@ -1222,14 +1237,17 @@ conveyors; a maiden follower goes from her cell to the boss room; a bombable
 attic floor lets light in; big chest Titan's Mitt; Blind; crystal 4.
 
 - [!] BLOCKED 2026-09-30: Whatif_ThievesTownEntry_lift ability $F379=0x52 (0x12|0x40). Facing-right lift at (6064,6720) cleared NE 0x71 to 0x00. RIGHT stuck (6088,6903) dir 6 hp 56 still 0xDB. Dev pin only. **AP-155 · Thieves step 1: entry pin + first hop.**
-- [ ] **AP-156 · Thieves step 2: scan + conveyor physics.** Measure px/frame
+- [!] BLOCKED 2026-09-30: No 0x68-0x6B on either layer of reachable 0xDB (belts 0/0/0/0 both layers). East shutter stayed 0x18. Layer-1 stair drop (5760,7013) then no path; stairs stayed in 0xDB. One zazak kill did not open the shutter. walk_physics.py not edited. probe_AP-155/ap156_scan.json ap156_try2.json ap156_edge.json **AP-156 · Thieves step 2: scan + conveyor physics.** Measure px/frame
+  Learned: 0x1C is not 0x68-0x6B. Layer-1 0x3E drop lands ~(5760,7013) still 0xDB. BigKeyD4 chest layer 1 tile (49,44) loc $3662 stayed opened=0. Moving-floor apply was not measured.
   per conveyor direction into `walk_physics.py`.
-- [ ] **AP-157 · Thieves step 3: entry → big key.** Conveyor cost in the BFS;
+- [!] BLOCKED 2026-09-30: ThievesTownEntry big_key stayed 0. Pathable 0x1C tile (19,48) dropped to layer 1 (5788,7024) still 0xDB, chest opened=0. Bomb on layer-1 floor left 0x00 and both chests had no path. East shutter stayed 0x18. ap157_overlay.json ap157_try.json **AP-157 · Thieves step 3: entry → big key.** Conveyor cost in the BFS;
+  Learned: Layer-1 BigKeyD4 alcove cols 46-62 rows 38-48 does not connect to the west stair landing. Conveyor cost in nav.find_path was not added. Big key did not rise from 0.
   this fixes the `east_to_0xDC` red.
-- [ ] **AP-158 · Thieves step 4: Titan's Mitt, maiden and attic.** Record the
+- [!] BLOCKED 2026-09-30: Whatif_ThievesTownEntry_parallel room 0xDB writes 0. North flood stops local y=48; UP at (5704,6704) tile (9,6) attr 0x04 stayed 0xDB door 0x18. No local y<=16 or x>=480. Zol slot 4 hp 4 to 0, shutter stayed 0x18. Bunny 0xD1 sword hp stayed 64. Firesnake 0x80 kept ~100px lead and was not hit. 0x70 A at (5683,6731) lifted nothing. 0x72 stand had no drop-avoiding path. Gloves stayed 1 follower 5. Attic 0x65 and cell 0x45 not entered. F3CC not written. **AP-158 · Thieves step 4: Titan's Mitt, maiden and attic.** Record the
+  Learned: Layer-0 flood does not reach the north or east screen edge. Easternmost cell is local (432,48), west of the 0x71 pots. Do not push RIGHT at (6088,6903) or retry the layer-1 big-key chest.
   maiden's follower value. Bomb the attic floor.
-- [ ] **AP-159 · Thieves step 5: Blind probe.**
-- [ ] **AP-160 · Thieves step 6: `bosses/blind.py`.** Read
+- [x] 2026-09-30 · evidence: Scan_thieves_boss kind=poke room 0xAC audit 0 incoherent hp 0x38/0x38 dungeon 0x16 module 0x07. Sprite 0xCE $0E50=90. Save word $F158 bit 0x0200 loads live $0402=0x2000; follower stayed 5. Sword 32px south facing UP: $0EA0=14 at f10, $0E50 90 to 128 and $0F90 0 to 1 at f14. Hammer 24px north left $0F90 at 1. Bomb 200 frames left $0F90 at 0. Three swords: $0F90 1, 2, then 0 with head slot 15 $0D90=2. Idle 1800: $0DB0 1-2-3-4, hp stays 90, type 0x41 at f75 f83 f547. thieves_ROUTE.md Boss filled. Isolated poke, not continuous, not STATUS. $F3CC not written. **AP-159 · Thieves step 5: Blind probe.**
+- [!] BLOCKED 2026-09-30: 0/12 twice hp_lost 0 hits -. Try1 2100 frames soldiers 8. Try2 3600 frames swings 0 hammers 0 end xy (6392,5592) door 0x18 body hp 90 $0F90 0 phase 2 no head max HP 0x38. Closest 0xCE slot 15 dx 62 dy 33, outside the 32px south sword. Head probes keep hp 90 and $0F70 23 with no heart. F3CC not written. **AP-160 · Thieves step 6: `bosses/blind.py`.** Read
   `nes/zelda_i/dungeon/gleeok.py` for detached-head tracking.
 - [ ] **AP-161 · Thieves step 7: approach.** Needs AP-154.
 - [ ] **AP-162 · Thieves step 8: chain + rung C10.**
@@ -1249,7 +1267,7 @@ Mail; Kholdstare; crystal 5.
 - [!] BLOCKED 2026-09-30: Whatif_Ice_0x1f_open ability $F379=0x3E (0x1E|0x20). pin_probe ability=62 tile (45,54) chest opened=0. One A: opened=1 big_key 0x0000->0x0040 ledger source=play frame 2 follower 5. Done line does not accept this isolated pin: edges are not isolated 2/2. Not natural. **AP-165 · Ice step 3: entry → big key.** Ice-aware walker (commit
   distances, no micro-corrections).
   Learned: Ice LEFT 72 coasts 18 px after the 1.5 px/frame cap. Step 3 needs an ice coast constant in walk_physics.py; this lane cannot edit that file or nav.py. Big key $F366=0x0040 on the parallel pin is a poke. No chest in rooms 0x0E or 0x1E. East and west 0x18 and south 0x00 stayed shut.
-- [ ] **AP-166 · Ice step 4: Blue Mail, drops and block pushes.** Use
+- [!] BLOCKED 2026-09-30: Armor $F35B stayed 0. ROM big chest 0xE9AA is room 0x9E and was not entered. Room 0x0E has no state-0 block. Scan_ice_0x1e slot 5 state 0 tile (47,48) attr 0x75 is outside the 136-pose landing flood, so push_block was not in range. West ice hold toward the 0x34 stair stopped (7249,336); bari cycles defeated none. No boss-door edge. F3CC stayed 5. **AP-166 · Ice step 4: Blue Mail, drops and block pushes.** Use
   `push_block` (AP-067).
 - [x] 2026-09-30 · evidence: Whatif_Ice_kholdstare kind=poke room 0xDE audit 0 incoherent hp 0x40/0x40 dungeon 0x12 module 0x07. pin_probe shell 0xA3 hp 64 ai 0 and kholdstare 0xA2 hp 64 ai 3 at (7544,6744). boss_probe idle 1800: those HP and phase unchanged; falling ice 0xA4 slot 15 at f=125 then shards f=191; Link HP 64 to 0 at frames 192,320,448,576. Unsaved north floor: fire magic 80 to 64, shell 64 to 56 at frame 11; master sword 16px south left shell 64. ice_ROUTE.md Boss filled. Isolated poke, not continuous, not STATUS. F3CC stayed 5. No Scan pin. Wall rows 27-38 not walked. **AP-167 · Ice step 5: Kholdstare probe.**
 - [~] kholdstare-fight 2026-09-30 **AP-168 · Ice step 6: `bosses/kholdstare.py`.** Fire on the shell,
@@ -1262,7 +1280,9 @@ Mail; Kholdstare; crystal 5.
   Learned: stage_replay Whatif_Ice_kholdstare alttp.bosses.kholdstare:fight idle 0 pass 0 frames 201 hp_lost 0 hits -. Five fire shots shell 64 56 48 40 32 24, magic 80 to 0, sword_hits 0, eye ai 3 hp 64, max HP 64. End xy (7507,6748) off the south ice column. North poke leaves BG2 E2=1D00 E8=1B01 and attack ice z=224. Wall rows 27-38 unwalked. F3CC stayed 5. Shell floor 24, heart check still open.
   then the sword on the pieces.
 - [ ] **AP-169 · Ice step 7: approach.** Needs AP-162, AP-093.
+  Learned: AP-162 and AP-093 are not [x]. Did not walk the overworld approach.
 - [ ] **AP-170 · Ice step 8: chain + rung C11.**
+  Learned: Needs step 6 and step 7. AP-168 is [~] and AP-169 is open, so the power-on chain was not run.
 
 ### Misery Mire (AP-171..178) → rung C12
 
@@ -1270,17 +1290,20 @@ No pin yet. Hint: flute to the desert, a portal behind heavy rocks
 (Titan's Mitt), Ether at the entrance; hookshot or boots across gaps;
 torches; Wizzrobes; big chest Cane of Somaria; Vitreous; crystal 6.
 
-- [ ] **AP-171 · Mire step 1: `MiseryMireEntry` pin + first hop.** Kit
+- [!] BLOCKED 2026-09-30: Two tries stayed in room 0x98 module 0x07 dungeon 0x0E. Dash on y=4920 bonks on zols that stay at spawn (sword reach cells left HP 4). Hookshot latched (4344,4935) and dragged 4px, still west of the pit; a later shot made no ancilla. First edge not green 2/2. **AP-171 · Mire step 1: `MiseryMireEntry` pin + first hop.** Kit
   Learned: Neither Whatif_MiseryMireEntry_parallel nor MiseryMireEntry exists. make_entry_pin.py ENTRIES is only eastern 0x08 and ice 0x2D. z3 mire region and mire.yaml have no $010E, and hasProperMedallion has no kit write. Did not boot. Needed change is in docs/routes/mire_ROUTE.md.
   includes Ether. Opening the entrance with Ether is part of AP-177, not
   the pin.
-- [ ] **AP-172 · Mire step 2: scan.**
-- [ ] **AP-173 · Mire step 3: entry → big key.** Gaps via hookshot or dash.
+- [x] 2026-09-30 · evidence: Scan_mire_0x98 kind scan room 0x98 module 0x07 dungeon 0x0E keys 0 big_key 0. pin_probe doors chests tiles in recordings/probe_AP-171/pin_probe_0x98.txt. Room table has 0x98 south slot 0 type 0x0A and no chests. Stopping lock is the pit columns 36-41 rows 39-42. maps/room_98.json door-only. lint ok 55 maps. Audit 0 incoherent. **AP-172 · Mire step 2: scan.**
+- [!] BLOCKED 2026-09-30: Scan_mire_0x98 keys 0 reaches only room 0x98. hop.json crossed false: sword left zol HP at 4, hookshot made no ancilla, end room 0x98 module 0x07. Big key $F366 stayed 0. Edges are not isolated 2/2. **AP-173 · Mire step 3: entry → big key.** Gaps via hookshot or dash.
   Wizzrobes: reuse the timing idea from `nes/zelda_i/dungeon/shot_guard.py`.
-- [ ] **AP-174 · Mire step 4: Cane of Somaria.** Add a `somaria_block`
+- [!] BLOCKED 2026-09-30: Two pushes on Whatif_Scan_mire_0x98_somaria (poke $F350, not a chest): ancilla 0x2C magic 128->120, $0646 stayed 0, tiles (22,57) and (13,52) attr 0x00. Room 0x98 both layers have no 0x23/0x24/0x25/0x3B. Scan cane byte stayed 0. Boss door not isolated. Pit not walked. recordings/probe_AP-174/somaria_block.json somaria_up.json **AP-174 · Mire step 4: Cane of Somaria.** Add a `somaria_block`
   primitive (make a block, push it onto a switch).
-- [ ] **AP-175 · Mire step 5: Vitreous probe.**
-- [ ] **AP-176 · Mire step 6: `bosses/vitreous.py`.**
+- [x] 2026-09-30 · evidence: Scan_mire_boss kind poke room 0x90 audit 0 incoherent hp 0x18/0x18 dungeon 0x0E module 0x07 follower 5. Body 0xBD $0E50=128 $0D80=0; 13 eyes 0xBE hp 48. Idle eye slot 6 chebyshev 7 at f164 Link 24 to 0. Fighter B leaves eye 48. Spin release 16-24px south flash 15 then 48 to 44. Body offsets 0-32 flash 0 hp 128. Disclosed eye clear left body 128. No 0xBF. Landing door 0xF0 does not walk. mire_ROUTE.md Boss filled. Isolated poke, not continuous, not STATUS. $F3CC not written. **AP-175 · Mire step 5: Vitreous probe.**
+  Learned: Body was not hurt, so AP-176 was not started. The Boss section is filled; the earlier note was from before that edit.
+  Learned: Scan_mire_boss kind poke isolated. Room 0x90 is the only palace 0x0E $09:D62E hit for z3 id 189 sprite 0xBD; mire.yaml Vitreous node has no room word. Audit 0 incoherent hp 0x18/0x18 module 0x07 dungeon 0x0E follower 5. Body slot 0 $0E50 128 $0D80 0; 13 eyes 0xBE hp 48. Idle f=164 eye slot 6 contact empties Link 24 to 0. Fighter B leaves eye hp 48. Spin f=1 flash 15, f=7 eye 48 to 44. Body 16px north flash 0 hp 128 and Link 24 to 16. No 0xBF. $F3CC stayed 5. mire_ROUTE.md Boss not edited.
+- [!] BLOCKED 2026-09-30: Two Scan_mire_boss idle-0 fights died to a vitreous eye before the heart: frame 817 swings 3, frame 750 swings 3, body HP 128. Not 10/12. **AP-176 · Mire step 6: `bosses/vitreous.py`.**
+  Learned: Charge 64 at dy 24 drops eye sum 624 to 620; charges 40 and 56 leave 624. One 0xBF at recharge frame 418, Link HP still 24 at frame 520. Body HP stayed 128. Heart did not rise.
 - [ ] **AP-177 · Mire step 7: approach.** Needs AP-170, AP-094, AP-095.
   Flute, portal, Ether in play.
 - [ ] **AP-178 · Mire step 8: chain + rung C12.** Then AP-098 (silver arrows).
@@ -1292,14 +1315,16 @@ laser eye statues (Mirror Shield blocks them); dark rooms; big chest Mirror
 Shield; Trinexx (ice and fire rods on the side heads, then the centre);
 crystal 7.
 
-- [ ] **AP-179 · TR step 1: `TurtleRockEntry` pin + first hop.**
-- [ ] **AP-180 · TR step 2: scan.** Note side entrances from mountain ledges.
-- [ ] **AP-181 · TR step 3: entry → big key.** Add a `ride_platform`
+- [!] BLOCKED 2026-09-30: Two tries stayed in room 0xD6: UP (3448,7128)->(3448,7016); lift, throw, and somaria Y magic 128->120 still (3448,7016). find_path to the north doors is empty. Audit 0 incoherent. ride_platform is absent from primitives.py. Isolated pin only. **AP-179 · TR step 1: `TurtleRockEntry` pin + first hop.**
+  Learned: Column 47 layer 0 on Scan_turtle_rock_0xd6 is 0x70 at rows 43-44, 0xB6 at rows 16 and 32, 0xB1 at rows 17-31, and 0x80 at rows 0-6. ride_platform has to place somaria on 0xB6, stand, and press at a junction. primitives.py was left unchanged.
+- [x] 2026-09-30 · evidence: Scan_turtle_rock_0xd6 kind scan room 0xD6 module 0x07 dungeon 0x18 keys 0. pin_probe doors chests tiles in recordings/probe_AP-179/pin_probe_0xd6.txt. Room table has 0xD6 with door types and the compass chest. Stopping locks are the 0x70 pots plus the 0xB6/0xB1 rail, and the compass wing. Side indices 0x15 0x18 0x19 noted. maps/room_d6.json door-only. lint ok 52 maps. **AP-180 · TR step 2: scan.** Note side entrances from mountain ledges.
+- [!] BLOCKED 2026-09-30: Two ride_platform calls on Scan_turtle_rock_0xd6 after a column-46 pot lift (not the closed column-47 UP): sprite 0xED at (3452,6924) tile (47,33), magic 128->120, dir 1 ai 1, $03F4=2, $02F5 stayed 0 at (3440,6945) and (3449,6944). Big key stayed 0. Edges not 2/2. Follower stayed 5. recordings/probe_AP-174/ride_platform.json **AP-181 · TR step 3: entry → big key.** Add a `ride_platform`
   primitive (make it on a pipe start, stand, press at junctions).
 - [ ] **AP-182 · TR step 4: Mirror Shield and lasers.** Measure which lasers
+  Learned: turtle_rock.yaml and z3 trock/main.json name Eye Bridge and canBlockLasers but have no underworld room word. z3 ids 149-152 are Laser Eye facings with no room. Logic id 192 is the whole Turtle Rock (Entrance) file, not a laser-eye supertile. Did not boot.
   the shield blocks when facing them (extends AP-064).
-- [ ] **AP-183 · TR step 5: Trinexx probe.**
-- [ ] **AP-184 · TR step 6: `bosses/trinexx.py`.** Read
+- [x] 2026-09-30 · evidence: Scan_turtle_rock_boss kind poke room 0xA4 module 0x07 dungeon 0x18 audit 0 incoherent hp 0x18/0x18. Warp sub 0x15 from Scan_turtle_rock_0xd6 kept $A2=0xD6. $F3CC stayed 5. boss_probe 1800: 0xCB/0xCC/0xCD HP 40 AI 0, no born. Unsaved camera: ice head AI 3 takes poked fire rod 40 to 36 ($0EA0=15, magic 128 to 112, ancilla 0x02); ice rod flashes the fire head at AI 3 and leaves 40. turtle_rock_ROUTE.md Boss filled. Isolated poke, not an entry, not continuous, not STATUS. **AP-183 · TR step 5: Trinexx probe.**
+- [!] BLOCKED 2026-09-30: Two tries on Scan_turtle_rock_boss offset 0. Disclosed unsaved $F345 and $F346. Unsaved camera $E2/$E8. $F3CC and $0D80 were not written. Fire rod takes ice $0E50 40 to 8 and magic 128 to 0; fire stays 40; $F36C stays. Hammer 24px north facing down during ice AI 4 drops 8; ice then 40 to 0 by frame 1738; fire stays 40; body $0E50 unchanged; magic 0; Link HP 24 at (2424,5592); $F36C does not rise by frame 9000. Heart line needs 10 of 12. Isolated poke, not continuous, not STATUS. **AP-184 · TR step 6: `bosses/trinexx.py`.** Read
   `nes/zelda_i/dungeon/gleeok.py` for per-head state.
 - [ ] **AP-185 · TR step 7: approach.** Needs AP-178, AP-095 (Quake).
 - [ ] **AP-186 · TR step 8: chain + rung C13.**
@@ -1311,14 +1336,15 @@ needs hookshot, hammer, fire rod, somaria and boots; mini-bosses on the way
 (Armos, Lanmolas, Moldorm); big chest Red Mail; Agahnim again with clones;
 then a drop to the Pyramid for Ganon.
 
-- [ ] **AP-187 · GT step 1: `GanonsTowerEntry` pin + first hop.**
-- [ ] **AP-188 · GT step 2: scan.** Pick the shortest branch that z3 logic
+- [x] 2026-09-30 · evidence: room_engine room_0c north_stair_to_0x6b green 2/2 from GanonsTowerEntry, both land room 0x6B xy=(5880,3123) frames=613; audit 0 incoherent; pin_probe indoors module 0x07 room 0x000C dungeon 0x1A; gt_ROUTE.md Entry isolated, not natural **AP-187 · GT step 1: `GanonsTowerEntry` pin + first hop.**
+- [x] 2026-09-30 · evidence: keys 0 big_key 0; rooms reached 0x0C and 0x6B only; pin_probe both module 0x07 dungeon 0x1A chests none; 0x0C south 0x0A and side walks stop on wall 0x04 at (21,9) and (41,9); 0x6B slot 0 big_key 0x1E and shutters 0x18 not entered; lint ok 54 maps; gt_ROUTE.md room table filled. Isolated scan, not natural. **AP-188 · GT step 2: scan.** Pick the shortest branch that z3 logic
   allows.
-- [ ] **AP-189 · GT step 3: entry → big key.** Mini-bosses reuse AP-104 and
+- [!] BLOCKED 2026-09-30: big key stayed 0; zero-key walks, hit_switch $C172 00 to 01, and fight_nearby eyegores (died 132 frames, slots unchanged) never entered room 0x1C **AP-189 · GT step 3: entry → big key.** Mini-bosses reuse AP-104 and
   AP-112 controllers.
 - [ ] **AP-190 · GT step 4: Red Mail and the top floors.** Moldorm reuses
+  Learned: Red Mail is z3 Ganons Tower - Big Chest item RedMail address 0xEAD6, region Bottom; chest table joins it to room 0x008C with the big bit. Done line is edges to the boss door. The only connection into Top is Ganons Tower Big Key Door, then Torch Rooms, Before Moldorm, Moldorm Door, Moldorm Gap, Agahnim 2. Live door is room 0x6B slot 0 type 0x1E, not entered, big key stayed 0. Left open. No walk.
   AP-120.
-- [ ] **AP-191 · GT step 5: Agahnim 2 probe.** Tell the real one from the
+- [!] BLOCKED 2026-09-30: gt.yaml Agahnim 2 has no room word. Sprite-list rooms 0x0D and 0x20 share one object pointer. Warp sub 0x15 from GanonsTowerEntry, dungeon stayed 0x1A, follower 5. Two settled A taps left text 0x013F. Idle and sword, 1800 frames, both rooms: one 0x7A HP 96, balls 0x7B, $0D80 cycled 2-5, no second body, no lightning. No clone field. Isolated poke. bosses/agahnim.py not edited. **AP-191 · GT step 5: Agahnim 2 probe.** Tell the real one from the
   clones by sprite fields.
 - [ ] **AP-192 · GT step 6: extend `bosses/agahnim.py` for clones.**
 - [ ] **AP-193 · GT step 7: approach.** Needs AP-186. Seven-crystal opening

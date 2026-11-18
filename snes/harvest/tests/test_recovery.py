@@ -20,6 +20,14 @@ def _write_u16(ram: np.ndarray, addr: int, value: int) -> None:
     ram[addr + 1] = (value >> 8) & 0xFF
 
 
+class _IdleRoute:
+    def reset(self, world) -> None:
+        pass
+
+    def step(self, world) -> TaskResult:
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+
 def _world(tilemap: int = 0x00):
     ram = np.zeros(0x24000, dtype=np.uint8)
     ram[field_spec("tilemap").address] = tilemap
@@ -30,6 +38,22 @@ def _world(tilemap: int = 0x00):
 
 
 class RecoveryTaskTests(unittest.TestCase):
+    def test_a_walk_home_from_the_mountain_gets_a_longer_budget(self) -> None:
+        # Y1 Summer D14: the 900-frame recovery reached the path map and timed out
+        # one map short of the farm.
+        def timeout_step(tilemap: int) -> int:
+            world = _world(tilemap)
+            task = RecoveryTask(route_to_target_factory=lambda: _IdleRoute())
+            task.reset(world)
+            for n in range(1, 7000):
+                if task.step(world).status == TaskStatus.FAILURE:
+                    return n
+            return 0
+
+        self.assertEqual(timeout_step(0x15), 901)  # a house stays on the short budget
+        self.assertEqual(timeout_step(0x10), 6001)
+        self.assertEqual(timeout_step(0x0C), 6001)
+
     def test_succeeds_after_stable_target_scene(self) -> None:
         world = _world(0x00)
         task = RecoveryTask(stable_frames=2)

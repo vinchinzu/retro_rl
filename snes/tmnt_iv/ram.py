@@ -23,9 +23,15 @@ OFF_ANIM = 0x28
 OFF_HP = 0x4A
 OFF_IFRAMES = 0x6E
 
-# Enemy entity bases: HP PAR codes at base+OFF_HP (stride 0x70).
+# Enemy entity bases (stride 0x70). The PAR cheat codes this map was seeded
+# from list 7 slots, but the table has 9: slots 7-8 (0x0BE0, 0x0C50) carry
+# real Foot (0x60/0x68/0x6A/0x6C/0x76), and a Starbase hover Foot left
+# alone in slot 8 froze a Clean run for 12,000 frames because nothing could
+# see it. Slots 9+ hold props and projectiles (census of a full power-on
+# tape, 2026-11-14).
+ENEMY_SLOTS = 9
 ENEMY_BASES: tuple[int, ...] = tuple(
-    0x08D0 + i * 0x70 for i in range(7)
+    0x08D0 + i * 0x70 for i in range(ENEMY_SLOTS)
 )
 ENEMY_HP_BASES: tuple[int, ...] = tuple(b + OFF_HP for b in ENEMY_BASES)
 ENEMY_STRIDE = 0x70
@@ -78,8 +84,16 @@ PIZZA_CHAR_IDS: frozenset[int] = frozenset({0x30})
 # Stage 3 (Sewer) hanging spike props: char 0x1C (and occasional 0x2C)
 # deal −16 with HP 0; not living enemies. Dodge with jump-right when near.
 HAZARD_CHAR_IDS: frozenset[int] = frozenset({0x32, 0x36, 0x1C, 0x2C})
-# Leo's full health bar (used for pizza-seek gating).
+# Leo's full health bar.
 LEO_MAX_HP = 80
+# Full bar by turtle char id (power-on probe 2026-11-14). Hit sizes match
+# across turtles, so the bar is the whole difference.
+TURTLE_MAX_HP: dict[int, int] = {2: 80, 4: 96, 6: 64, 8: 48}
+
+
+def max_hp(state: "GameState") -> int:
+    """Full HP for the turtle in play (Leo's 80 when the char is unknown)."""
+    return TURTLE_MAX_HP.get(int(state.extras.get("char_id", 2)), LEO_MAX_HP)
 # Mode-7 Neon Night Riders (stage byte 7): boards / shots / debris that
 # reuse combat-looking chars (incl. 0xAC Rocksteady id at HP 2).
 NEON_PROP_CHAR_IDS: frozenset[int] = frozenset(
@@ -119,6 +133,19 @@ def write_u16le(ram: np.ndarray, address: int, value: int) -> None:
 _TRANSITION_EVENTS: frozenset[int] = frozenset(
     {0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0D, 0x0E, 0x0F, 0x19}
 )
+
+
+# Stage-clear fade, intermission, and ending events plus the post-kill boss
+# fade 0x0B. A stage clear zeroes the player entity (HP 0, X 0) during these;
+# that is not damage.
+FADE_EVENTS: frozenset[int] = _TRANSITION_EVENTS | {0x0B}
+
+
+def is_stage_clear_zero(state: "GameState") -> bool:
+    """HP 0 written by a stage clear, not a KO."""
+    return state.health == 0 and (
+        state.player_x == 0 or int(state.extras.get("event", -1)) in FADE_EVENTS
+    )
 
 
 def _mode_from_ram(

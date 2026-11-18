@@ -9,7 +9,9 @@
     {"label": "entry_spawn", "xy": [4856, 6616], "role": "spawn", "notes": "EasternPalaceEntry load; south alcove, facing the overworld door"},
     {"label": "south_door_approach", "xy": [4856, 6616], "role": "approach", "notes": "Hold DOWN → overworld screen 0x1E"},
     {"label": "railing_gap", "xy": [4872, 6504], "role": "waypoint", "notes": "16px east of spawn x slips north of the south-alcove railing"},
-    {"label": "north_wall_nook", "xy": [4864, 6448], "role": "waypoint", "notes": "Center-x against the south-alcove north wall; hall is visible, not crossed this sitting"}
+    {"label": "north_wall_nook", "xy": [4864, 6448], "role": "waypoint", "notes": "Closed center-shutter face. UP here does not room-change until the pot switch opens it."},
+    {"label": "center_pot", "xy": [4856, 6520], "role": "lift", "notes": "Floor south of the center 0x71 pot at (4856,6504). The exit hook walks UP onto it, lifts, and throws."},
+    {"label": "north_door_approach", "xy": [4856, 6248], "role": "approach", "notes": "Hold UP into 0xB9 after the hall popos are dead. The mouth reopens then. A push already at y≈6204 wedges."}
   ],
   "doors": [
     {
@@ -25,6 +27,18 @@
       "pathTolerances": {"default": 12},
       "pushFrames": 300,
       "notes": "Isolated 2026-09-21 from EasternPalaceEntry. Spawn is already on the south door; DOWN → OW 0x1E (3920,1579) module 0x09. Probe settle was (3920,1583)."
+    },
+    {
+      "label": "north_to_0xb9",
+      "direction": "UP",
+      "toRoom": 185,
+      "approachXy": [4856, 6248],
+      "landingXy": [4856, 6104],
+      "role": "primary",
+      "path": ["center_pot"],
+      "pathTolerances": {"default": 8},
+      "pushFrames": 300,
+      "notes": "Isolated from EasternPalaceEntry. Lift the center pot. Crossing the center shutter closes the north mouth until the 0x4F popos are dead, then hold UP from y=6248. Not natural. x>=4876 stays in 0xC9."
     }
   ],
   "clearPolicy": {
@@ -35,7 +49,7 @@
     "skirmishPad": 12,
     "skirmishMaxCycles": 80
   },
-  "walkBbox": [4784, 6448, 4872, 6644],
+  "walkBbox": [4784, 6236, 4896, 6644],
   "hostilesAtEntry": [
     {"type": "0x4f", "xy": [4864, 6224]},
     {"type": "0x4f", "xy": [4848, 6240]},
@@ -45,7 +59,7 @@
   "notes": [
     "Confirmed $A0 == 0xC9 on the live pin (hypothesis matched).",
     "South alcove is a 512-cell south quadrant (local y 304–472). Popos sit in the north hall (y≈6224) behind the alcove wall.",
-    "North door of the alcove is visible but UP at (4864,6448) does not room-change. First isolated door is south_to_overworld.",
+    "Center pot 0x71 hides the 0x23 switch. After it opens, slot-1 north (type 0x18) is the forward door to 0xB9. Left and right 0x80 mouths are dead ends. south_to_overworld stays the backtrack.",
     "Authority: maps/room_c9.json (load via alttp.room_sense.load_room_map)."
   ]
 }

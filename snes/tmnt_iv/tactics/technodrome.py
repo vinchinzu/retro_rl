@@ -12,7 +12,7 @@ from __future__ import annotations
 from retro_harness.actions import buttons, idle_action
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import EnemyState, GameState
-from tmnt_iv.grind_knobs import active_knobs
+from tmnt_iv.tactics.knobs import active_knobs
 from tmnt_iv.stages import RAPH_CHAR
 
 _TECHNODROME_STAGE = 3
@@ -33,6 +33,8 @@ _JB_BUDGET = 56
 _JB_BEHIND_DX = 10
 _JB_WALL_LEFT = 48
 _JB_WALL_RIGHT = 208
+# Frames of unmoving Y before an align in retreat/grab is abandoned.
+_ALIGN_GIVE_UP = 16
 
 
 class TechnodromeTactics:
@@ -62,6 +64,8 @@ class TechnodromeTactics:
         self._in_tank = False
         self._force_ram = False
         self._jb_side = "RIGHT"
+        self._align_y = -1
+        self._align_still = 0
 
     @staticmethod
     def _toward(state: GameState, enemy_x: int) -> str:
@@ -71,15 +75,33 @@ class TechnodromeTactics:
     def _away(toward: str) -> str:
         return "LEFT" if toward == "RIGHT" else "RIGHT"
 
-    @staticmethod
-    def _align(state: GameState, enemy_y: int) -> FrameAction | None:
+    def _align(self, state: GameState, enemy_y: int) -> FrameAction | None:
+        """UP/DOWN toward the enemy's band; None once aligned or blocked."""
         dy = enemy_y - state.player_y
         if abs(dy) <= _JB_Y_BAND:
+            self._align_still = 0
+            return None
+        if self._align_blocked(state):
             return None
         return FrameAction(
             action=buttons("UP" if dy < 0 else "DOWN"),
             reason="technodrome_align",
         )
+
+    def _align_blocked(self, state: GameState) -> bool:
+        """True once aligning has not moved Y for ``_ALIGN_GIVE_UP`` frames.
+
+        A Foot can stand above or below the walkable band (Leo capped at
+        y=160 under a Foot at y=144): UP never lands, and every caller waits
+        for alignment, so the tactic pressed UP forever (two deadlocks, at
+        (47,160) and (224,176), on 2026-11-14).
+        """
+        if state.player_y == self._align_y:
+            self._align_still += 1
+        else:
+            self._align_y = state.player_y
+            self._align_still = 0
+        return self._align_still >= _ALIGN_GIVE_UP
 
     @staticmethod
     def _jump_side(state: GameState, target: EnemyState) -> str:

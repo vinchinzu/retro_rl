@@ -138,6 +138,45 @@ GRAPE_STAND_PX = (326, 409)
 GRAPE_STAND_TILE = (20, 25)
 GRAPE_STAND_RADIUS = 16
 GRAPE_STAND_NUDGE = 3
+# Mountain tile (28,10) gives the green fruit in Summer; stand on (28,11) and face up.
+GREEN_FRUIT_STAND_PX = (454, 187)
+MUSHROOM_STAND_PX = (662, 633)
+POISON_MUSHROOM_STAND_PX = (678, 633)  # tile (42,39), facing right to the poison mushroom at (43,39)
+
+
+@dataclass(frozen=True)
+class ForageStand:
+    """Where and how to take one forage kind (``planner.forage_calendar`` has the ROM facts)."""
+
+    stand_px: Tuple[int, int]
+    face: Optional[str]  # None: the walk in already ends facing the tile (the grape tape)
+    items: frozenset[int]  # held-item ids that count as picked
+    segments: Tuple[str, ...]  # nav hops from the farm to the stand
+    ship_route: str  # ``map_routes.ROUTES`` key from the stand to the bin
+    push_frames: int = 1  # frames to hold ``face`` into the tile before A (the lift wants contact)
+
+
+FORAGE_STANDS = {
+    "grape": ForageStand(
+        GRAPE_STAND_PX, None, frozenset({3, 8}), BERRY_NAV_SEGMENTS,
+        "first_mountain_berry_to_shipping_bin",
+    ),
+    "mushroom": ForageStand(
+        MUSHROOM_STAND_PX, "down", frozenset({1}),
+        (*BERRY_NAV_SEGMENTS[:2], "mountain_entry_to_first_mushroom"),
+        "first_mushroom_to_shipping_bin",
+    ),
+    "poison_mushroom": ForageStand(
+        POISON_MUSHROOM_STAND_PX, "right", frozenset({2}),
+        (*BERRY_NAV_SEGMENTS[:2], "mountain_entry_to_poison_mushroom"),
+        "poison_mushroom_to_shipping_bin", push_frames=16,
+    ),
+    "green_fruit": ForageStand(
+        GREEN_FRUIT_STAND_PX, "up", frozenset({4}),
+        (*BERRY_NAV_SEGMENTS[:2], "mountain_entry_to_green_fruit"),
+        "green_fruit_to_shipping_bin", push_frames=16,
+    ),
+}
 def mountain_corridor_segments(samples: Sequence[dict]) -> dict:
     """Measure mountain land → grape and grape → mountain exit.
 
@@ -273,6 +312,8 @@ class MountainBerryTask(Task):
     segments: Tuple[str, ...] = BERRY_NAV_SEGMENTS
     stand_px: Tuple[int, int] = GRAPE_STAND_PX
     expected_items: frozenset[int] = frozenset(MOUNTAIN_FORAGE_ITEMS)
+    face: Optional[str] = None  # direction to press toward the tile; None: grape tape (down)
+    push_frames: int = 1  # frames to hold ``face`` into the tile before A (held through A when > 1)
 
     _step_count: int = field(default=0, init=False)
     _held_before: int = field(default=0, init=False)
@@ -457,14 +498,16 @@ class MountainBerryTask(Task):
         # Tape: last step is already Down onto (326,409), idle, then A 14f
         # in place. Extra face-walk steps off the grape. Do not cycle
         # faces — south/east carpenter NPCs talk.
-        face = "down"
+        face = self.face or "down"
+        at_tape = self.stand_px == GRAPE_STAND_PX and self.face is None
         self._pick_queue.extend(
             press_a_sequence(
-                "down" if self.stand_px != GRAPE_STAND_PX else None,
-                face_frames=1 if self.stand_px != GRAPE_STAND_PX else 0,
+                None if at_tape else face,
+                face_frames=0 if at_tape else max(1, int(self.push_frames)),
                 pre_press_settle_frames=10,
                 hold_frames=14,
                 settle_frames=12,
+                hold_face_with_a=self.push_frames > 1,
             )
         )
         self._last_reason = f"pick attempt={self._picks} face={face}"
@@ -725,6 +768,9 @@ def go_to_town_waypoints() -> List[Waypoint]:
 
 
 __all__ = [
+    "FORAGE_STANDS",
+    "ForageStand",
+    "GREEN_FRUIT_STAND_PX",
     "MOUNTAIN_FORAGE_ITEMS",
     "MOUNTAIN_BERRY_ITEMS",
     "BERRY_NAV_SEGMENTS",

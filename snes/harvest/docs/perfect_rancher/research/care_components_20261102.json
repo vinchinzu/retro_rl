@@ -1,0 +1,78 @@
+{
+  "scope": "isolated components only; no full run",
+  "shopping": {
+    "pin": "PR_e2es4_Y2_Spring_D4",
+    "medicine": {
+      "price_g": 1000,
+      "shop": 36,
+      "shed_delivery": true,
+      "pickup_into_carry_pair": true,
+      "cure_proven": false
+    },
+    "turnip": {
+      "price_g": 200,
+      "stock_delta": 1,
+      "return_to_farm": true
+    }
+  },
+  "barn": {
+    "passed_pins": [
+      "LN_care_barn_stall",
+      "PR_e2eh6_Y2_Spring_D2"
+    ],
+    "idle_delays": [
+      0,
+      31,
+      97,
+      257
+    ],
+    "assertions": [
+      "all requested daily care flags",
+      "no unfed adult slots",
+      "no RAM writes",
+      "no mid-run loads"
+    ],
+    "full12": {
+      "pin": "LN_repair-herd_whatif_all12_finalnight",
+      "research_only": true,
+      "passed": false,
+      "observed": "Repeated fodder misses now trigger re-entry; later milk shipping and EXIT_BARN remain blocked.",
+      "pytest": "strict xfail; unexpected pass fails until gate reviewed"
+    }
+  },
+  "crop_ab": {
+    "pin": "PR_spring_final_Y1_Spring_D3",
+    "center": [
+      9,
+      35
+    ],
+    "all_eight_sown_and_watered": true,
+    "notch_open": true,
+    "growth_stage": "fresh sprouts only",
+    "frames": {
+      "eight_tile_ring": {
+        "plant": 1451,
+        "water": 1079
+      },
+      "eight_east_notch": {
+        "plant": 1454,
+        "water": 1019
+      },
+      "eight_west_notch": {
+        "plant": 1611,
+        "water": 1021
+      }
+    },
+    "limits": [
+      "one plot, not paired packing",
+      "no mature access or shipping evidence",
+      "campaign default remains center-hole ring"
+    ]
+  },
+  "next": [
+    "full12 feed/exit navigation",
+    "apply medicine and schedule cure",
+    "mature mirrored-notch pair watering/harvest/shipping timings",
+    "five-girl social windows"
+  ]
+}

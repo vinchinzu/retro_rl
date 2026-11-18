@@ -1,0 +1,1313 @@
+{
+  "pin": "Whatif_PalaceOfDarknessEntry_parallel",
+  "natural": false,
+  "rooms": {
+    "0x4A": {
+      "glance": {
+        "room": "0x4A",
+        "room_id": 74,
+        "xy": [
+          5368,
+          2520
+        ],
+        "module": 7,
+        "sub": 0,
+        "indoors": true,
+        "control": true,
+        "dark_world": true,
+        "layer": 0,
+        "floor": 0,
+        "hp": 56,
+        "keys": 1,
+        "big_key": 512,
+        "magic": 128,
+        "hammer": 0,
+        "bombs": 0,
+        "follower": 5,
+        "sprites": [
+          {
+            "slot": 0,
+            "type": "0x1C",
+            "name": "statue",
+            "xy": [
+              5440,
+              2167
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 1,
+            "type": "0x13",
+            "name": "mini helmasaur",
+            "xy": [
+              5248,
+              2176
+            ],
+            "hp": 4
+          },
+          {
+            "slot": 2,
+            "type": "0x13",
+            "name": "mini helmasaur",
+            "xy": [
+              5504,
+              2176
+            ],
+            "hp": 4
+          }
+        ]
+      },
+      "doors_text": [
+        "doors room=0x004A",
+        "  slot 0 north type=0x18 shutter pos=$121C dest=unknown",
+        "  slot 1 north type=0x18 shutter pos=$125C dest=unknown",
+        "  slot 2 north type=0x1C small_key pos=$023C dest=unknown",
+        "  slot 3 north type=0x00 regular pos=$123C dest=unknown",
+        "  slot 4 south type=0x0A entrance pos=$1D3C dest=screen=0x5E",
+        "  slot 8 south type=0x18 shutter pos=$0D1C layer of slot 0",
+        "  slot 9 south type=0x18 shutter pos=$0D5C layer of slot 1",
+        "  slot 11 south type=0x00 regular pos=$0D3C layer of slot 3"
+      ],
+      "chests_text": [
+        "chests room=0x004A (none)"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "type": "0x18",
+          "dir": "UP",
+          "pos": "$121C",
+          "tile": [
+            14,
+            36
+          ]
+        },
+        {
+          "slot": 1,
+          "type": "0x18",
+          "dir": "UP",
+          "pos": "$125C",
+          "tile": [
+            46,
+            36
+          ]
+        },
+        {
+          "slot": 2,
+          "type": "0x1C",
+          "dir": "UP",
+          "pos": "$023C",
+          "tile": [
+            30,
+            4
+          ]
+        },
+        {
+          "slot": 3,
+          "type": "0x00",
+          "dir": "UP",
+          "pos": "$123C",
+          "tile": [
+            30,
+            36
+          ]
+        },
+        {
+          "slot": 4,
+          "type": "0x0A",
+          "dir": "DOWN",
+          "pos": "$1D3C",
+          "tile": [
+            30,
+            58
+          ]
+        }
+      ],
+      "tiles": {
+        "0x00:floor": 1358,
+        "0x01:wall": 2178,
+        "0x02:wall": 98,
+        "0x04:wall": 258,
+        "0x24:unknown": 8,
+        "0x27:unknown": 86,
+        "0x34:unknown": 2,
+        "0x35:unknown": 2,
+        "0x5E:stairs": 12,
+        "0x70:unknown": 4,
+        "0x71:unknown": 4,
+        "0x72:unknown": 4,
+        "0x73:unknown": 4,
+        "0x74:unknown": 4,
+        "0x75:unknown": 4,
+        "0x76:unknown": 4,
+        "0x77:unknown": 4,
+        "0x78:unknown": 4,
+        "0x79:unknown": 4,
+        "0x80:unknown": 24,
+        "0x8E:door": 10,
+        "0xF0:door": 4,
+        "0xF1:unknown": 4,
+        "0xF2:unknown": 4,
+        "0xF8:unknown": 4,
+        "0xF9:unknown": 4
+      },
+      "chest_play": {
+        "ok": true,
+        "reason": "no closed chest",
+        "after": {
+          "room": "0x4A",
+          "room_id": 74,
+          "xy": [
+            5368,
+            2520
+          ],
+          "module": 7,
+          "sub": 0,
+          "indoors": true,
+          "control": true,
+          "dark_world": true,
+          "layer": 0,
+          "floor": 0,
+          "hp": 56,
+          "keys": 1,
+          "big_key": 512,
+          "magic": 128,
+          "hammer": 0,
+          "bombs": 0,
+          "follower": 5,
+          "sprites": [
+            {
+              "slot": 0,
+              "type": "0x1C",
+              "name": "statue",
+              "xy": [
+                5440,
+                2167
+              ],
+              "hp": 0
+            },
+            {
+              "slot": 1,
+              "type": "0x13",
+              "name": "mini helmasaur",
+              "xy": [
+                5248,
+                2176
+              ],
+              "hp": 4
+            },
+            {
+              "slot": 2,
+              "type": "0x13",
+              "name": "mini helmasaur",
+              "xy": [
+                5504,
+                2176
+              ],
+              "hp": 4
+            }
+          ]
+        }
+      },
+      "rays": [
+        {
+          "button": "UP",
+          "room": "0x4A",
+          "xy": [
+            5368,
+            2320
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "DOWN",
+          "room": "0x4A",
+          "xy": [
+            3920,
+            1595
+          ],
+          "keys": 255,
+          "layer": 0,
+          "indoors": false,
+          "module": 9
+        },
+        {
+          "button": "LEFT",
+          "room": "0x4A",
+          "xy": [
+            5280,
+            2496
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "RIGHT",
+          "room": "0x4A",
+          "xy": [
+            5456,
+            2496
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        }
+      ]
+    },
+    "0x3A": {
+      "glance": {
+        "room": "0x3A",
+        "room_id": 58,
+        "xy": [
+          5368,
+          2008
+        ],
+        "module": 7,
+        "sub": 0,
+        "indoors": true,
+        "control": true,
+        "dark_world": true,
+        "layer": 0,
+        "floor": 0,
+        "hp": 56,
+        "keys": 0,
+        "big_key": 512,
+        "magic": 128,
+        "hammer": 0,
+        "bombs": 0,
+        "follower": 5,
+        "sprites": [
+          {
+            "slot": 0,
+            "type": "0x8E",
+            "name": "terrorpin",
+            "xy": [
+              5344,
+              1808
+            ],
+            "hp": 8
+          },
+          {
+            "slot": 1,
+            "type": "0x8E",
+            "name": "terrorpin",
+            "xy": [
+              5392,
+              1808
+            ],
+            "hp": 8
+          },
+          {
+            "slot": 2,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              5184,
+              1856
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 3,
+            "type": "0x24",
+            "name": "blue bari",
+            "xy": [
+              5280,
+              1855
+            ],
+            "hp": 2
+          },
+          {
+            "slot": 4,
+            "type": "0x24",
+            "name": "blue bari",
+            "xy": [
+              5456,
+              1856
+            ],
+            "hp": 2
+          },
+          {
+            "slot": 5,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              5552,
+              1856
+            ],
+            "hp": 0
+          }
+        ]
+      },
+      "doors_text": [
+        "doors room=0x003A",
+        "  slot 0 south type=0x1C small_key pos=$1D3C dest=unknown",
+        "  slot 1 north type=0x00 regular pos=$021C dest=unknown",
+        "  slot 2 north type=0x00 regular pos=$025C dest=unknown"
+      ],
+      "chests_text": [
+        "chests room=0x003A n=1 live=$0000",
+        "  chest 0 tile=(31,18) layer=0 loc=$093E opened=0 live=0x0100 save=0x0010:0 item=BigKeyD1 z3=0xEA37"
+      ],
+      "slots": [
+        {
+          "slot": 0,
+          "type": "0x1C",
+          "dir": "DOWN",
+          "pos": "$1D3C",
+          "tile": [
+            30,
+            58
+          ]
+        },
+        {
+          "slot": 1,
+          "type": "0x00",
+          "dir": "UP",
+          "pos": "$021C",
+          "tile": [
+            14,
+            4
+          ]
+        },
+        {
+          "slot": 2,
+          "type": "0x00",
+          "dir": "UP",
+          "pos": "$025C",
+          "tile": [
+            46,
+            4
+          ]
+        }
+      ],
+      "tiles": {
+        "0x00:floor": 969,
+        "0x01:wall": 1934,
+        "0x02:wall": 207,
+        "0x04:wall": 364,
+        "0x1D:stairs": 4,
+        "0x20:pit": 404,
+        "0x27:unknown": 4,
+        "0x28:ledge": 56,
+        "0x2A:ledge": 96,
+        "0x34:unknown": 2,
+        "0x58:unknown": 4,
+        "0x5E:stairs": 6,
+        "0x62:unknown": 4,
+        "0x74:unknown": 4,
+        "0x80:unknown": 38
+      },
+      "after_fight": {
+        "room": "0x3A",
+        "room_id": 58,
+        "xy": [
+          5381,
+          1839
+        ],
+        "module": 7,
+        "sub": 0,
+        "indoors": true,
+        "control": true,
+        "dark_world": true,
+        "layer": 0,
+        "floor": 0,
+        "hp": 8,
+        "keys": 0,
+        "big_key": 512,
+        "magic": 128,
+        "hammer": 0,
+        "bombs": 0,
+        "follower": 5,
+        "sprites": [
+          {
+            "slot": 0,
+            "type": "0x8E",
+            "name": "terrorpin",
+            "xy": [
+              5383,
+              1843
+            ],
+            "hp": 8
+          },
+          {
+            "slot": 1,
+            "type": "0x8E",
+            "name": "terrorpin",
+            "xy": [
+              5369,
+              1834
+            ],
+            "hp": 8
+          },
+          {
+            "slot": 2,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              5184,
+              1856
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 3,
+            "type": "0x24",
+            "name": "blue bari",
+            "xy": [
+              5282,
+              1834
+            ],
+            "hp": 2
+          },
+          {
+            "slot": 4,
+            "type": "0x24",
+            "name": "blue bari",
+            "xy": [
+              5429,
+              1838
+            ],
+            "hp": 2
+          },
+          {
+            "slot": 5,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              5552,
+              1856
+            ],
+            "hp": 0
+          }
+        ]
+      },
+      "after_push": {
+        "room": "0x3A",
+        "room_id": 58,
+        "xy": [
+          5384,
+          1800
+        ],
+        "module": 7,
+        "sub": 0,
+        "indoors": true,
+        "control": true,
+        "dark_world": true,
+        "layer": 0,
+        "floor": 0,
+        "hp": 8,
+        "keys": 0,
+        "big_key": 512,
+        "magic": 128,
+        "hammer": 0,
+        "bombs": 0,
+        "follower": 5,
+        "sprites": [
+          {
+            "slot": 0,
+            "type": "0x8E",
+            "name": "terrorpin",
+            "xy": [
+              5402,
+              1833
+            ],
+            "hp": 8
+          },
+          {
+            "slot": 1,
+            "type": "0x8E",
+            "name": "terrorpin",
+            "xy": [
+              5395,
+              1838
+            ],
+            "hp": 8
+          },
+          {
+            "slot": 2,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              5184,
+              1856
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 3,
+            "type": "0x24",
+            "name": "blue bari",
+            "xy": [
+              5282,
+              1834
+            ],
+            "hp": 2
+          },
+          {
+            "slot": 4,
+            "type": "0x24",
+            "name": "blue bari",
+            "xy": [
+              5432,
+              1856
+            ],
+            "hp": 2
+          },
+          {
+            "slot": 5,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              5552,
+              1856
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 13,
+            "type": "0x55",
+            "name": "zora",
+            "xy": [
+              5434,
+              1825
+            ],
+            "hp": 8
+          }
+        ]
+      },
+      "chest_play": {
+        "ok": true,
+        "reason": "skip chest 0 no path",
+        "after": {
+          "room": "0x3A",
+          "room_id": 58,
+          "xy": [
+            5384,
+            1800
+          ],
+          "module": 7,
+          "sub": 0,
+          "indoors": true,
+          "control": true,
+          "dark_world": true,
+          "layer": 0,
+          "floor": 0,
+          "hp": 8,
+          "keys": 0,
+          "big_key": 512,
+          "magic": 128,
+          "hammer": 0,
+          "bombs": 0,
+          "follower": 5,
+          "sprites": [
+            {
+              "slot": 0,
+              "type": "0x8E",
+              "name": "terrorpin",
+              "xy": [
+                5402,
+                1833
+              ],
+              "hp": 8
+            },
+            {
+              "slot": 1,
+              "type": "0x8E",
+              "name": "terrorpin",
+              "xy": [
+                5395,
+                1838
+              ],
+              "hp": 8
+            },
+            {
+              "slot": 2,
+              "type": "0xC5",
+              "name": "medusa",
+              "xy": [
+                5184,
+                1856
+              ],
+              "hp": 0
+            },
+            {
+              "slot": 3,
+              "type": "0x24",
+              "name": "blue bari",
+              "xy": [
+                5282,
+                1834
+              ],
+              "hp": 2
+            },
+            {
+              "slot": 4,
+              "type": "0x24",
+              "name": "blue bari",
+              "xy": [
+                5432,
+                1856
+              ],
+              "hp": 2
+            },
+            {
+              "slot": 5,
+              "type": "0xC5",
+              "name": "medusa",
+              "xy": [
+                5552,
+                1856
+              ],
+              "hp": 0
+            },
+            {
+              "slot": 13,
+              "type": "0x55",
+              "name": "zora",
+              "xy": [
+                5434,
+                1825
+              ],
+              "hp": 8
+            }
+          ]
+        }
+      },
+      "rays": [
+        {
+          "button": "UP",
+          "room": "0x3A",
+          "xy": [
+            5384,
+            1800
+          ],
+          "keys": 0,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "DOWN",
+          "room": "0x3A",
+          "xy": [
+            5382,
+            1822
+          ],
+          "keys": 0,
+          "layer": 0,
+          "indoors": true,
+          "module": 18
+        },
+        {
+          "button": "LEFT",
+          "room": "0x3A",
+          "xy": [
+            5344,
+            1800
+          ],
+          "keys": 0,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "RIGHT",
+          "room": "0x3A",
+          "xy": [
+            5391,
+            1800
+          ],
+          "keys": 0,
+          "layer": 0,
+          "indoors": true,
+          "module": 18
+        }
+      ]
+    },
+    "0x09": {
+      "glance": {
+        "room": "0x09",
+        "room_id": 9,
+        "xy": [
+          4985,
+          54
+        ],
+        "module": 7,
+        "sub": 0,
+        "indoors": true,
+        "control": true,
+        "dark_world": true,
+        "layer": 0,
+        "floor": 255,
+        "hp": 56,
+        "keys": 1,
+        "big_key": 512,
+        "magic": 128,
+        "hammer": 0,
+        "bombs": 0,
+        "follower": 5,
+        "sprites": [
+          {
+            "slot": 0,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              4720,
+              128
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 1,
+            "type": "0xC5",
+            "name": "medusa",
+            "xy": [
+              4736,
+              128
+            ],
+            "hp": 0
+          },
+          {
+            "slot": 2,
+            "type": "0x15",
+            "name": "antifairy",
+            "xy": [
+              4973,
+              173
+            ],
+            "hp": 255
+          }
+        ]
+      },
+      "doors_text": [
+        "doors room=0x0009",
+        "  (no door slots)"
+      ],
+      "chests_text": [
+        "chests room=0x0009 n=1 live=$0000",
+        "  chest 0 tile=(24,22) layer=0 loc=$0B30 opened=0 live=0x0100 save=0x0010:0 item=KeyD1 z3=0xEA5B"
+      ],
+      "slots": [],
+      "tiles": {
+        "0x00:floor": 1664,
+        "0x01:wall": 2008,
+        "0x02:wall": 60,
+        "0x04:wall": 276,
+        "0x10:unknown": 5,
+        "0x11:unknown": 5,
+        "0x12:unknown": 5,
+        "0x13:unknown": 5,
+        "0x18:unknown": 6,
+        "0x19:unknown": 6,
+        "0x1A:unknown": 6,
+        "0x1B:unknown": 6,
+        "0x27:unknown": 12,
+        "0x30:unknown": 2,
+        "0x31:unknown": 2,
+        "0x4B:unknown": 4,
+        "0x5E:stairs": 12,
+        "0x70:unknown": 4,
+        "0x71:unknown": 4,
+        "0x72:unknown": 4
+      },
+      "chest_play": {
+        "ok": true,
+        "reason": "skip chest 0 no path",
+        "after": {
+          "room": "0x09",
+          "room_id": 9,
+          "xy": [
+            4985,
+            54
+          ],
+          "module": 7,
+          "sub": 0,
+          "indoors": true,
+          "control": true,
+          "dark_world": true,
+          "layer": 0,
+          "floor": 255,
+          "hp": 56,
+          "keys": 1,
+          "big_key": 512,
+          "magic": 128,
+          "hammer": 0,
+          "bombs": 0,
+          "follower": 5,
+          "sprites": [
+            {
+              "slot": 0,
+              "type": "0xC5",
+              "name": "medusa",
+              "xy": [
+                4720,
+                128
+              ],
+              "hp": 0
+            },
+            {
+              "slot": 1,
+              "type": "0xC5",
+              "name": "medusa",
+              "xy": [
+                4736,
+                128
+              ],
+              "hp": 0
+            },
+            {
+              "slot": 2,
+              "type": "0x15",
+              "name": "antifairy",
+              "xy": [
+                4973,
+                173
+              ],
+              "hp": 255
+            }
+          ]
+        }
+      },
+      "rays": [
+        {
+          "button": "UP",
+          "room": "0x4A",
+          "xy": [
+            5496,
+            2100
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "DOWN",
+          "room": "0x09",
+          "xy": [
+            4985,
+            192
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "LEFT",
+          "room": "0x09",
+          "xy": [
+            4904,
+            88
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        },
+        {
+          "button": "RIGHT",
+          "room": "0x09",
+          "xy": [
+            5064,
+            88
+          ],
+          "keys": 1,
+          "layer": 0,
+          "indoors": true,
+          "module": 7
+        }
+      ]
+    }
+  },
+  "edges": [
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "mapped",
+        "name": "east_stairs_to_0x09"
+      },
+      "result": "0x4A",
+      "indoors": true,
+      "xy": [
+        5515,
+        2096
+      ],
+      "keys": 1,
+      "hp": 40,
+      "module": 7
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 0,
+        "type": "0x18",
+        "dir": "UP",
+        "pos": "$121C",
+        "tile": [
+          14,
+          36
+        ]
+      },
+      "result": "no path to local 112,312",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 1,
+        "type": "0x18",
+        "dir": "UP",
+        "pos": "$125C",
+        "tile": [
+          46,
+          36
+        ]
+      },
+      "result": "no path to local 368,312",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 2,
+        "type": "0x1C",
+        "dir": "UP",
+        "pos": "$023C",
+        "tile": [
+          30,
+          4
+        ]
+      },
+      "result": "0x3A",
+      "indoors": true,
+      "xy": [
+        5368,
+        2008
+      ],
+      "keys": 0,
+      "hp": 56,
+      "module": 7
+    },
+    {
+      "from": "0x3A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 0,
+        "type": "0x1C",
+        "dir": "DOWN",
+        "pos": "$1D3C",
+        "tile": [
+          30,
+          58
+        ]
+      },
+      "result": "no path to local 240,456",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x3A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 1,
+        "type": "0x00",
+        "dir": "UP",
+        "pos": "$021C",
+        "tile": [
+          14,
+          4
+        ]
+      },
+      "result": "no path to local 112,56",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x3A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 2,
+        "type": "0x00",
+        "dir": "UP",
+        "pos": "$025C",
+        "tile": [
+          46,
+          4
+        ]
+      },
+      "result": "no path to local 368,56",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x3A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          31,
+          3
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 248,40",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x3A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          31,
+          5
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 248,48",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x3A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          41,
+          59
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 328,480",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 3,
+        "type": "0x00",
+        "dir": "UP",
+        "pos": "$123C",
+        "tile": [
+          30,
+          36
+        ]
+      },
+      "result": "0x4A",
+      "indoors": true,
+      "xy": [
+        5368,
+        2321
+      ],
+      "keys": 1,
+      "hp": 56,
+      "module": 7
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "slot",
+        "slot": 4,
+        "type": "0x0A",
+        "dir": "DOWN",
+        "pos": "$1D3C",
+        "tile": [
+          30,
+          58
+        ]
+      },
+      "result": "no path to local 240,456",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          15,
+          3
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 120,40",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          47,
+          3
+        ],
+        "button": "UP"
+      },
+      "result": "0x09",
+      "indoors": true,
+      "xy": [
+        4985,
+        54
+      ],
+      "keys": 1,
+      "hp": 56,
+      "module": 7
+    },
+    {
+      "from": "0x09",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          15,
+          3
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 120,40",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x09",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          47,
+          3
+        ],
+        "button": "UP"
+      },
+      "result": "0x4A",
+      "indoors": true,
+      "xy": [
+        5496,
+        2100
+      ],
+      "keys": 1,
+      "hp": 56,
+      "module": 7
+    },
+    {
+      "from": "0x09",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          15,
+          5
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 120,48",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x09",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          47,
+          5
+        ],
+        "button": "UP"
+      },
+      "result": "0x4A",
+      "indoors": true,
+      "xy": [
+        5496,
+        2100
+      ],
+      "keys": 1,
+      "hp": 56,
+      "module": 7
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          15,
+          5
+        ],
+        "button": "UP"
+      },
+      "result": "no path to local 120,48",
+      "indoors": null,
+      "xy": null,
+      "keys": null,
+      "hp": null,
+      "module": null
+    },
+    {
+      "from": "0x4A",
+      "attempt": {
+        "kind": "stair",
+        "tile": [
+          47,
+          5
+        ],
+        "button": "UP"
+      },
+      "result": "0x09",
+      "indoors": true,
+      "xy": [
+        4985,
+        54
+      ],
+      "keys": 1,
+      "hp": 56,
+      "module": 7
+    }
+  ]
+}

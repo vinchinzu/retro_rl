@@ -1,0 +1,60 @@
+{
+  "pocket_steps": 11,
+  "door_steps": 0,
+  "illegal_on_path": 0,
+  "goes_south": 0,
+  "cut_col": -1,
+  "cut_row": -1,
+  "cut_byte": -1,
+  "path": [
+    [
+      4808,
+      6008
+    ],
+    [
+      4816,
+      6008
+    ],
+    [
+      4824,
+      6008
+    ],
+    [
+      4832,
+      6008
+    ],
+    [
+      4840,
+      6008
+    ],
+    [
+      4848,
+      6008
+    ],
+    [
+      4856,
+      6008
+    ],
+    [
+      4864,
+      6008
+    ],
+    [
+      4872,
+      6008
+    ],
+    [
+      4872,
+      6000
+    ],
+    [
+      4872,
+      5992
+    ],
+    [
+      4872,
+      5984
+    ]
+  ],
+  "note": "Row 45 columns 31-38: 31 0x27 unknown, 32 0x27 unknown, 33 0x00 floor, 34 0x00 floor, 35 0x00 floor, 36 0x00 floor, 37 0x00 floor, 38 0x00 floor. Same bytes as both prior notes (31 and 32 are 0x27 unknown, 33 through 38 are 0x00 floor)."
+}

@@ -1,31 +1,28 @@
-"""One emulator trial for TMNT IV probes and the continuous Hard run."""
+"""One emulator trial: live play (optionally ROM-lookahead guarded) or tape replay."""
 
 from __future__ import annotations
 
-import hashlib
-import re
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field, replace
-from pathlib import Path
 from typing import Any, Literal
 
 from retro_harness.actions import buttons, idle_action
 from retro_harness.controls import SNES_START
 from retro_harness.env import make_env, reset_obs, save_state
 from retro_harness.ram_state import GameMode, GameState
-from retro_harness.segment_runner import SegmentOutcome, configure_headless
+from retro_harness.segment_runner import configure_headless
 from tmnt_iv.assist import (
     EMERGENCY_HP_RESTORE,
     apply_emergency_hp,
     apply_form2_iframe_hold,
 )
-from tmnt_iv.menus import RAPH_HARD_BOOT_LAST, raph_hard_boot_action
+from tmnt_iv.menus import BOOT_LAST, DEFAULT_TURTLE, hard_boot_action
 from tmnt_iv.observe import HpDelta, living_hp, policy_input
-from tmnt_iv.paths import GAME, GAME_DIR, INTEGRATION_DIR
+from tmnt_iv.paths import GAME, GAME_DIR
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.ram import (
-    ADDR_DIFFICULTY,
+    is_stage_clear_zero,
     ADDR_LIVES,
     ADDR_STAGE,
     PLAYER_BASE,
@@ -47,14 +44,16 @@ from tmnt_iv.run.metrics import (
     StageSplit,
     format_duration,
 )
+from tmnt_iv.tape import CHECK_EVERY, Tape
+from tmnt_iv.lookahead import ram_crc
 
 EntryKind = Literal["power_on", "state"]
-ObjectiveKind = Literal["stage_advance", "boss_fade", "credits", "wave_chain"]
+ObjectiveKind = Literal["stage_advance", "credits"]
 ContractName = Literal["clean", "assisted", "dev"]
 OnFrame = Callable[["TrialFrame"], None]
 LivePred = Callable[[GameState], bool]
 
-_SUCCESS = frozenset({"stage_advance", "boss_down", "cleared", "credits"})
+_SUCCESS = frozenset({"stage_advance", "credits"})
 _BOSS_FADE_EVENTS = frozenset({0x0B, 0x19, 0x04})
 _WRITE_ADDR = {
     "player_hp": PLAYER_BASE + OFF_HP,
@@ -64,9 +63,11 @@ _WRITE_ADDR = {
     "player_lives": ADDR_LIVES,
 }
 _LIVES_KEYS = frozenset({"lives", "player_lives"})
-_CRAFTED_NAME = re.compile(r"_hp\d+", re.I)
 _UNDERFOOT = (14, 18)
 _DEV_HEAL_BELOW = 28
+# One stage longer than this is a loop, not play (longest Clean stage so far:
+# Technodrome 42,024f). Leo F burned 300,000 frames in the tank fight.
+STAGE_FRAME_CAP = 72_000
 
 
 @dataclass(frozen=True)
@@ -85,10 +86,13 @@ class TrialEntry:
     state_name: str
     is_live: LivePred | None = None
     boot_actions: Sequence[Any] | None = None
-    expected_stage: int | None = None
-    expected_character: int | None = None
-    expected_difficulty: int | None = None
     entry_state_prefix: str | None = None
+    # Power-on boot picks this turtle on character select (``menus``).
+    turtle: str = DEFAULT_TURTLE
+    # Replay: every frame's buttons come from this tape; no policy runs.
+    tape: Tape | None = None
+    # An interrupted ending may continue with neutral input only.
+    finish_credits: bool = False
 
 
 @dataclass(frozen=True)
@@ -98,7 +102,6 @@ class TrialObjective:
     kind: ObjectiveKind
     stop_stage_gt: int | None = None
     strict_advance: bool = False
-    tracker: Any | None = None
     metric_hold_frames: int = METRIC_HOLD_FRAMES
 
 
@@ -185,14 +188,24 @@ class TrialResult:
     post_boot_start_presses: int = 0
     credits_start_frame: int | None = None
     credits_complete_frame: int | None = None
+    final_scene_start_frame: int | None = None
     hard_credits_event_seen: bool = False
     hard_confirmed: bool = False
     stage_splits: list[StageSplit] = field(default_factory=list)
     damage_by_stage: dict[int, int] = field(default_factory=dict)
+    # Lookahead guard report (``GuardedPolicy.report``) and its restores to
+    # the live frame or its future. Those are not state loads.
+    lookahead: dict[str, Any] | None = None
+    rollout_restores: int = 0
+    # Replay verification: first frame whose RAM CRC missed the tape.
+    desync_frame: int | None = None
+    crc_checks: int = 0
+    tape: Tape | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON-friendly snapshot."""
-        payload = asdict(self)
+        """JSON-friendly snapshot (the tape is saved separately)."""
+        payload = asdict(replace(self, tape=None))
+        payload.pop("tape", None)
         payload["top_reasons"] = [list(row) for row in self.top_reasons]
         payload["damage_by_stage"] = {
             str(k): v for k, v in self.damage_by_stage.items()
@@ -213,6 +226,7 @@ class TrialResult:
             min_health_seen=self.min_hp,
             credits_start_frame=self.credits_start_frame,
             credits_complete_frame=self.credits_complete_frame,
+            final_scene_start_frame=self.final_scene_start_frame,
             hard_credits_event_seen=self.hard_credits_event_seen,
             stage_splits=list(self.stage_splits),
             damage_by_stage=dict(self.damage_by_stage),
@@ -241,34 +255,6 @@ DEV_CONTRACT = TrialContract(
     iframe_hold=False,
     allowed_write_keys=frozenset({"player_hp"}),
 )
-
-
-def catalog_state(
-    name: str,
-    state: GameState,
-    *,
-    path: Path | None = None,
-) -> dict[str, Any]:
-    """Provenance row for one pin. Does not scan the state directory."""
-    pin = path if path is not None else (INTEGRATION_DIR / f"{name}.state")
-    digest = None
-    if pin.is_file():
-        digest = hashlib.sha256(pin.read_bytes()).hexdigest()
-    last_life = state.lives == 0
-    crafted = bool(_CRAFTED_NAME.search(name))
-    return {
-        "name": name,
-        "sha256": digest,
-        "character": int(state.extras.get("char_id", -1)),
-        "difficulty": int(state.extras.get("difficulty", -1)),
-        "stage": state.stage,
-        "event": int(state.extras.get("event", -1)),
-        "hp": state.health,
-        "lives": state.lives,
-        "last_life": last_life,
-        "hp_crafted": crafted,
-        "clean_gate_eligible": not last_life and not crafted,
-    }
 
 
 class _AuditEm:
@@ -399,23 +385,6 @@ def _write_detail(write: dict[str, Any]) -> str:
     return f"{key} @ {addr:#06x}"
 
 
-def _identity_error(entry: TrialEntry, state: GameState, ram: Any) -> str | None:
-    char = int(state.extras.get("char_id", -1))
-    difficulty = int(state.extras.get("difficulty", -1))
-    if difficulty < 0 and ram is not None:
-        difficulty = int(ram[ADDR_DIFFICULTY])
-    if entry.expected_character is not None and char != entry.expected_character:
-        return f"character {char} != {entry.expected_character}"
-    if (
-        entry.expected_difficulty is not None
-        and difficulty != entry.expected_difficulty
-    ):
-        return f"difficulty {difficulty} != {entry.expected_difficulty}"
-    if entry.expected_stage is not None and state.stage != entry.expected_stage:
-        return f"stage {state.stage} != {entry.expected_stage}"
-    return None
-
-
 def _fps(env: Any) -> float:
     getter = getattr(getattr(env, "em", None), "get_screen_rate", None)
     return float(getter()) if callable(getter) else 60.0
@@ -451,6 +420,11 @@ def run_trial(
         obs, _info = reset_obs(env)
     env = _AuditEnv(env)
     policy = policy or Stage1Policy()
+    binder = getattr(policy, "bind", None)
+    if callable(binder):
+        # Lookahead gets the raw core: its restores return to the live frame
+        # and are counted by the guard, not as state loads.
+        binder(env._env.em, env._env.get_ram)
     spec = limits.progress or ProgressSpec(
         stall_frames=2400,
         freeze_abort_frames=limits.freeze_abort_frames,
@@ -476,7 +450,6 @@ def run_trial(
     metrics = RunMetrics()
     outcome = "timeout"
     saw_boss = False
-    saw_boss_fade = False
     boss_entry_hp: int | None = None
     start_hp: int | None = None
     start_lives: int | None = None
@@ -489,10 +462,15 @@ def run_trial(
     emergency = 0
     iframe = 0
     a_special = 0
+    post_boot_start = 0
     life_losses = 0
     hard_confirmed = False
     failure: dict[str, Any] | None = None
-    tracker = objective.tracker
+    tape = entry.tape
+    taped = Tape(entry=entry.state_name, turtle=entry.turtle)
+    cap_stage, cap_start = -1, 0
+    desync_frame: int | None = None
+    crc_checks = 0
     fps = _fps(env)
     final = parse_game_state(env.get_ram(), frame=0)
     seen_loads = 0
@@ -522,6 +500,9 @@ def run_trial(
             state = parse_game_state(env.get_ram(), frame=frame)
             final = state
             event = int(state.extras.get("event", -1))
+            in_ending = objective.kind == "credits" and (
+                metrics.credits_start_frame is not None or state.stage >= 10
+            )
             became_live = (not live) and _is_live(entry, state)
             if became_live:
                 live = True
@@ -538,23 +519,18 @@ def run_trial(
                 entry_event = event
                 entry_character = int(state.extras.get("char_id", -1))
                 entry_difficulty = int(state.extras.get("difficulty", -1))
-                ident = _identity_error(entry, state, env.get_ram())
-                if ident is not None:
-                    outcome, failure = "error", _fail(recorder, ident)
-                    break
-                if tracker is not None:
-                    tracker.begin(state)
 
-            if (
-                live
-                and objective.kind == "wave_chain"
-                and entry_stage is not None
-                and state.stage > entry_stage
-            ):
-                state = replace(state, level_complete=True)
-                final = state
+            if frame % CHECK_EVERY == 0:
+                crc = ram_crc(env.get_ram())
+                taped.crcs[frame] = crc
+                if tape is not None and frame in tape.crcs:
+                    crc_checks += 1
+                    if tape.crcs[frame] != crc:
+                        desync_frame = frame
+                        outcome, failure = "desync", _fail(recorder, f"tape desync at {frame}")
+                        break
 
-            if live and prev_state is not None and living_hp(state.health):
+            if live and not in_ending and prev_state is not None and living_hp(state.health):
                 if hp.prev is not None and state.health > hp.prev:
                     fade_hp = (
                         event in _BOSS_FADE_EVENTS
@@ -588,7 +564,8 @@ def run_trial(
                         break
 
             if live:
-                hit = hp.note(state.health)
+                # A stage clear zeroes the player entity; that is not a hit.
+                hit = 0 if in_ending or is_stage_clear_zero(state) else hp.note(state.health)
                 if hit:
                     hits.append(
                         {
@@ -610,7 +587,7 @@ def run_trial(
                     boss_entry_hp = state.health
                 if state.boss_active:
                     saw_boss = True
-                if contract.emergency_hp and "player_hp" in contract.allowed_write_keys:
+                if not in_ending and contract.emergency_hp and "player_hp" in contract.allowed_write_keys:
                     if apply_emergency_hp(env, state.health):
                         emergency += 1
                         state = parse_game_state(env.get_ram(), frame=frame)
@@ -618,6 +595,7 @@ def run_trial(
                         hp.prev = state.health
                 elif (
                     contract.name == "dev"
+                    and not in_ending
                     and "player_hp" in contract.allowed_write_keys
                     and 0 < state.health < _DEV_HEAL_BELOW
                     and state.health <= 0x60
@@ -626,7 +604,7 @@ def run_trial(
                     state = parse_game_state(env.get_ram(), frame=frame)
                     final = state
                     hp.prev = state.health
-                if contract.iframe_hold and "player_iframes" in contract.allowed_write_keys:
+                if not in_ending and contract.iframe_hold and "player_iframes" in contract.allowed_write_keys:
                     if apply_form2_iframe_hold(
                         env, stage=state.stage, event=event
                     ):
@@ -642,24 +620,33 @@ def run_trial(
 
             stop: str | None = None
             if live:
-                if state.mode is GameMode.TITLE:
+                if state.stage != cap_stage:
+                    cap_stage, cap_start = state.stage, frame
+                if not in_ending and state.mode is GameMode.TITLE:
                     stop = "title"
-                elif state.player_dead:
+                elif not in_ending and state.player_dead:
                     stop = "player_dead"
-                elif state.mode is GameMode.GAME_OVER:
+                elif not in_ending and state.mode is GameMode.GAME_OVER:
                     stop = "game_over"
                 elif (
                     prev_lives is not None
+                    and not in_ending
                     and state.lives < prev_lives
                     and contract.fail_on_life_loss
                 ):
                     life_losses += prev_lives - state.lives
                     stop = "life_loss"
-                elif (not contract.allow_continue) and _ko_state(state):
+                elif not in_ending and (not contract.allow_continue) and _ko_state(state):
                     stop = "ko"
-                if prev_lives is None or state.lives >= (prev_lives or 0):
+                if not in_ending and (prev_lives is None or state.lives >= (prev_lives or 0)):
                     if stop != "life_loss":
                         prev_lives = state.lives
+                if stop is None and not in_ending and frame - cap_start > STAGE_FRAME_CAP:
+                    stop = "stage_timeout"
+                    failure = _fail(
+                        recorder,
+                        f"stage byte {state.stage} ran past {STAGE_FRAME_CAP} frames",
+                    )
                 if stop is None and objective.kind == "stage_advance":
                     limit = (
                         objective.stop_stage_gt
@@ -671,16 +658,6 @@ def run_trial(
                             state.mode is GameMode.PLAYING and living_hp(state.health)
                         ):
                             stop = "stage_advance"
-                if stop is None and saw_boss and not state.boss_active:
-                    if event in _BOSS_FADE_EVENTS:
-                        saw_boss_fade = True
-                        if objective.kind == "boss_fade":
-                            if event in {0x19, 0x04} or (
-                                entry_stage is not None and state.stage > entry_stage
-                            ):
-                                stop = "cleared"
-                            else:
-                                stop = "boss_down"
                 if stop is None and objective.kind == "credits":
                     difficulty = int(state.extras.get("difficulty", -1))
                     if difficulty == HARD_VALUE:
@@ -690,7 +667,13 @@ def run_trial(
                         failure = _fail(
                             recorder, f"difficulty changed from Hard: {difficulty}"
                         )
-                    elif last_stage >= 0 and state.stage < last_stage:
+                    elif (
+                        last_stage >= 0
+                        and state.stage < last_stage
+                        # The Hard staff/cast roll walks the stage byte back
+                        # through 0-9 (event 0x1A). Only gameplay regresses.
+                        and metrics.credits_start_frame is None
+                    ):
                         stop = "error"
                         failure = _fail(
                             recorder,
@@ -698,7 +681,7 @@ def run_trial(
                         )
                     else:
                         last_stage = max(last_stage, state.stage)
-                        if state.stage not in split_stages and state.player_x > 0:
+                        if not in_ending and state.stage not in split_stages and state.player_x > 0:
                             split_stages.add(state.stage)
                             policy.reset()
                             hp.prev = (
@@ -733,39 +716,31 @@ def run_trial(
                         and frame >= complete + objective.metric_hold_frames
                     ):
                         stop = "credits"
-                if (
-                    stop is None
-                    and objective.kind == "wave_chain"
-                    and tracker is not None
-                    and not became_live
-                ):
-                    tracked = tracker.update(state)
-                    if tracked is SegmentOutcome.SUCCESS:
-                        stop = "cleared"
-                    elif tracked is SegmentOutcome.DEATH:
-                        stop = "ko"
-                    elif tracked is SegmentOutcome.TIMEOUT:
-                        stop = "timeout"
-
             action: Any
             reason: str
-            if not live:
-                if (
-                    objective.kind == "credits"
-                    and entry.kind == "power_on"
-                    and frame <= RAPH_HARD_BOOT_LAST
-                ):
-                    action = raph_hard_boot_action(frame)
+            if tape is not None:
+                if frame >= len(tape):
+                    if (
+                        entry.finish_credits
+                        and objective.kind == "credits"
+                        and metrics.credits_start_frame is not None
+                    ):
+                        action, reason = idle_action(), "credits_idle"
+                    else:
+                        stop = stop or "tape_end"
+                        action, reason = idle_action(), "tape_end"
+                else:
+                    action, reason = tape.action(frame), "tape"
+            elif not live:
+                if entry.kind == "power_on" and frame <= BOOT_LAST:
+                    action = hard_boot_action(frame, entry.turtle)
                     reason = "boot_menu" if any(action) else "boot_idle"
                 elif boot_i < len(boot):
                     action = boot[boot_i]
                     boot_i += 1
                     reason = "boot_menu" if any(action) else "boot_idle"
-                elif entry.kind == "power_on" and objective.kind != "credits":
-                    action = (
-                        buttons("START") if frame % 40 == 0 else idle_action()
-                    )
-                    reason = "boot_wait"
+                elif entry.kind == "power_on":
+                    action, reason = idle_action(), "boot_wait"
                 else:
                     action, reason = policy_input(policy, state)
             elif stop is not None:
@@ -773,27 +748,32 @@ def run_trial(
             else:
                 if objective.kind == "credits" and metrics.credits_start_frame is not None:
                     action, reason = idle_action(), "credits_idle"
-                elif objective.kind == "credits" and (
-                    state.player_x == 0
-                    or state.mode in {GameMode.CUTSCENE, GameMode.CONTINUE}
-                ):
+                elif state.player_x == 0 or state.mode in {
+                    GameMode.CUTSCENE,
+                    GameMode.CONTINUE,
+                }:
                     action, reason = idle_action(), "transition_idle"
                 else:
                     action, reason = policy_input(policy, state)
-                if (
-                    objective.kind == "credits"
-                    and frame > RAPH_HARD_BOOT_LAST
-                    and _pressed(action, SNES_START)
-                ):
+                if _pressed(action, SNES_START):
                     action, reason = idle_action(), "suppressed_start"
                 if _pressed(action, 8):
                     a_special += 1
                     stop = "forbidden_action"
                     reason = "forbidden_action"
 
+            if tape is not None and live and stop is None:
+                if _pressed(action, 8):
+                    a_special += 1
+                    stop = "forbidden_action"
+                if _pressed(action, SNES_START):
+                    post_boot_start += 1
+                    stop = "forbidden_action"
+                if stop == "forbidden_action":
+                    reason = stop
+                    failure = _fail(recorder, "forbidden input in replay tape")
+
             reasons[reason] += 1
-            if tracker is not None and live and stop is None:
-                tracker.note_reason(reason)
 
             freeze_armed = (
                 live
@@ -840,7 +820,7 @@ def run_trial(
                     violations[-1]["detail"] if violations else hooked,
                 )
 
-            if live and objective.kind == "credits" and frame and frame % 10_000 == 0:
+            if live and frame and frame % 10_000 == 0:
                 print(
                     f"frame {frame}  stage={state.stage} event={event:#04x} "
                     f"damage={hp.damage} lives={state.lives} "
@@ -853,19 +833,16 @@ def run_trial(
                 outcome = stop
                 break
             if frame >= limits.max_frames:
-                if saw_boss_fade and objective.kind in {"boss_fade", "stage_advance"}:
-                    outcome = "boss_down"
-                    failure = _fail(recorder, "boss faded without stage advance")
-                else:
-                    outcome = "timeout"
-                    failure = _fail(recorder, f"timeout at {limits.max_frames}")
+                outcome = "timeout"
+                failure = _fail(recorder, f"timeout at {limits.max_frames}")
                 break
+            taped.actions.append(tuple(int(bool(v)) for v in action))
             stepped = env.step(action)
             if isinstance(stepped, tuple) and stepped:
                 obs = stepped[0]
             prev_state = state
         else:
-            outcome = "boss_down" if saw_boss_fade else "timeout"
+            outcome = "timeout"
             failure = _fail(recorder, f"timeout at {limits.max_frames}")
     except Exception as exc:  # noqa: BLE001 — classified as error
         outcome = "error"
@@ -876,12 +853,7 @@ def run_trial(
 
     if outcome in _SUCCESS:
         failure = None
-    success = outcome in _SUCCESS and (
-        (objective.kind == "stage_advance" and outcome == "stage_advance")
-        or (objective.kind == "boss_fade" and outcome in {"boss_down", "cleared"})
-        or (objective.kind == "credits" and outcome == "credits")
-        or (objective.kind == "wave_chain" and outcome == "cleared")
-    )
+    success = outcome in _SUCCESS and outcome == objective.kind
     ram_writes = [
         {k: v for k, v in row.items() if k != "_seen"} for row in env.writes
     ]
@@ -946,12 +918,23 @@ def run_trial(
         integrity=integrity,
         failure=failure,
         boss_entry_hp=boss_entry_hp,
-        post_boot_start_presses=0,
+        post_boot_start_presses=post_boot_start,
         credits_start_frame=metrics.credits_start_frame,
         credits_complete_frame=metrics.credits_complete_frame,
+        final_scene_start_frame=metrics.final_scene_start_frame,
         hard_credits_event_seen=metrics.hard_credits_event_seen,
         hard_confirmed=hard_confirmed
         or int(final.extras.get("difficulty", -1)) == HARD_VALUE,
         stage_splits=splits,
         damage_by_stage=damage_by_stage,
+        lookahead=_lookahead_report(policy),
+        rollout_restores=int((_lookahead_report(policy) or {}).get("restores", 0)),
+        desync_frame=desync_frame,
+        crc_checks=crc_checks,
+        tape=taped,
     )
+
+
+def _lookahead_report(policy: Any) -> dict[str, Any] | None:
+    reporter = getattr(policy, "report", None)
+    return reporter() if callable(reporter) else None

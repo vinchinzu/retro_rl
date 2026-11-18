@@ -27,7 +27,6 @@ from tmnt_iv.ram import (
     parse_game_state,
     write_u16le,
 )
-from tmnt_iv.run.clean_suite import STAGE1_CLEAN, STAGE2_CLEAN, _result_to_clean_report, run_suite
 from tmnt_iv.run.freeze import FREEZE_ABORT_FRAMES
 from tmnt_iv.run.metrics import HARD_VALUE, RunMetrics
 from tmnt_iv.run.trial import (
@@ -36,10 +35,10 @@ from tmnt_iv.run.trial import (
     TrialEntry,
     TrialLimits,
     TrialObjective,
-    catalog_state,
     run_trial,
 )
 from tmnt_iv.tests._state import ram, write_enemy
+from tmnt_iv.tape import Tape
 
 ADDR_DIFFICULTY = 0x1FEE
 A = 8
@@ -253,23 +252,6 @@ def test_boss_fade_hp_restore_is_not_unlabeled_pizza() -> None:
     assert result.failure is None
 
 
-def test_clean_row_includes_failure_and_violations() -> None:
-    unlabeled, _env = _run(
-        [
-            play_ram(hp=40, pizza=False, stage=0),
-            play_ram(hp=80, pizza=False, stage=0),
-            play_ram(hp=80, stage=1),
-        ]
-    )
-    assert unlabeled.outcome == "contract_violation"
-    row = _result_to_clean_report(STAGE2_CLEAN, unlabeled, label="Boss2")
-    assert "failure" in row
-    assert row["failure"] is not None
-    assert row["failure"]["reason"] == "unlabeled_hp_gain"
-    assert row["contract_violations"]
-    assert row["contract_violations"][0]["kind"] == "unlabeled_hp_gain"
-
-
 def test_clean_hp_write_is_contract_violation() -> None:
     def poke(ctx) -> None:
         if ctx.live:
@@ -380,30 +362,6 @@ def test_stage_advance_with_living_hp_succeeds() -> None:
     assert result.end_stage == 1
 
 
-def test_boss_fade_is_boss_down() -> None:
-    fade, _env = _run(
-        [
-            play_ram(hp=80, event=0x0A, boss=True),
-            play_ram(hp=80, event=0x0B, boss=False),
-        ],
-        objective=TrialObjective(kind="boss_fade"),
-    )
-    assert fade.outcome == "boss_down"
-    assert fade.success is True
-
-    ignored, _env = _run(
-        [
-            play_ram(hp=80, event=0x0A, boss=True, stage=0),
-            play_ram(hp=80, event=0x0B, boss=False, stage=0),
-            play_ram(hp=80, event=0x0B, stage=0),
-        ],
-        objective=TrialObjective(kind="stage_advance", stop_stage_gt=0, strict_advance=True),
-        limits=TrialLimits(max_frames=4, progress=ProgressSpec(stall_frames=10_000)),
-    )
-    assert ignored.outcome == "boss_down"
-    assert ignored.success is False
-
-
 def test_timeout_at_max_frames() -> None:
     result, _env = _run(
         [play_ram(stage=0) for _ in range(8)],
@@ -429,30 +387,6 @@ def test_progress_stall_with_living_enemies_fires() -> None:
     assert result.success is False
     assert result.failure is not None
     assert "last_progress" in result.failure
-
-
-def test_suite_keeps_both_rows_when_second_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_probe(spec, **kwargs):
-        if kwargs.get(spec.extra_entry):
-            raise RuntimeError("extra failed")
-        name = kwargs.get("state_name") or spec.default_state
-        return {
-            "state": name,
-            "outcome": "stage_advance",
-            "success": True,
-            "emergency_hp_writes": 0,
-            "iframe_writes": 0,
-        }
-
-    monkeypatch.setattr("tmnt_iv.run.clean_suite.run_clean_probe", fake_probe)
-    report = run_suite(STAGE1_CLEAN, max_frames=1)
-    assert report["suite_size"] == len(STAGE1_CLEAN.suite_states) + 1
-    assert len(report["results"]) == report["suite_size"]
-    extra = report["results"][-1]
-    assert extra["outcome"] == "error"
-    assert extra["success"] is False
-    assert extra.get("emergency_hp_writes", 0) == 0
-    assert extra.get("iframe_writes", 0) == 0
 
 
 def test_integrity_flags_false_when_writes_or_loads_happened() -> None:
@@ -481,22 +415,144 @@ def test_integrity_flags_false_when_writes_or_loads_happened() -> None:
     assert empty["lives_writes_zero"] is not True
 
 
-def test_catalog_quarantines_last_life_and_refuses_wrong_character() -> None:
-    live = parse_game_state(play_ram(hp=80, lives=0, char=2))
-    row = catalog_state("Boss3_hp0", live)
-    assert row["name"] == "Boss3_hp0"
-    assert row["lives"] == 0
-    assert row["clean_gate_eligible"] is False
 
-    result, _env = _run(
-        [play_ram(char=2, hp=80), play_ram(char=2, hp=80, stage=1)],
+
+def test_trial_records_a_tape_and_replays_it() -> None:
+    frames = [play_ram(stage=0), play_ram(stage=0), play_ram(stage=1)]
+    live, env = _run(frames, policy=_FixedPolicy(buttons("RIGHT")))
+    assert live.success is True
+    assert live.tape is not None and len(live.tape) == len(env.actions)
+    assert live.tape.crcs and 0 in live.tape.crcs
+    assert live.lookahead is None and live.rollout_restores == 0
+    replay, renv = _run(
+        [play_ram(stage=0), play_ram(stage=0), play_ram(stage=1)],
+        entry=TrialEntry(kind="state", state_name="Stage1", is_live=_live, tape=live.tape),
+        policy=_FixedPolicy(buttons("LEFT")),
+    )
+    assert replay.success is True and replay.desync_frame is None
+    assert renv.actions == env.actions  # tape, not the policy, drove the replay
+
+
+@pytest.mark.parametrize("finish_credits", [False, True])
+def test_replay_fails_on_ram_mismatch(finish_credits) -> None:
+    live, _env = _run([play_ram(stage=0), play_ram(stage=1)])
+    replay, _ = _run(
+        [play_ram(stage=0, x=99), play_ram(stage=1)],
         entry=TrialEntry(
-            kind="state",
-            state_name="Stage1",
-            is_live=_live,
-            expected_character=8,
-            expected_difficulty=HARD_VALUE,
+            kind="state", state_name="Stage1", is_live=_live,
+            tape=live.tape, finish_credits=finish_credits,
         ),
     )
-    assert result.success is False
-    assert result.outcome in {"error", "contract_violation"}
+    assert replay.outcome == "desync" and replay.desync_frame == 0
+
+
+def test_credits_cast_roll_stage_reset_is_not_a_regression() -> None:
+    frames = (
+        [play_ram(stage=9) for _ in range(3)]
+        + [play_ram(stage=10, x=0, event=0x0F) for _ in range(3)]
+        + [play_ram(stage=0, x=0, event=0x1A) for _ in range(3)]
+    )
+    result, _env = _run(
+        frames,
+        objective=TrialObjective(kind="credits"),
+        limits=TrialLimits(max_frames=8, progress=ProgressSpec(stall_frames=10_000)),
+    )
+    assert result.outcome != "error", result.failure
+
+
+def test_gameplay_stage_regression_still_fails() -> None:
+    result, _env = _run(
+        [play_ram(stage=1), play_ram(stage=0)],
+        objective=TrialObjective(kind="credits"),
+    )
+    assert result.outcome == "error" and not result.success
+    assert result.failure["reason"] == "stage regressed 1->0"
+
+
+@pytest.mark.parametrize("finish_credits", [False, True])
+def test_replay_can_finish_only_an_already_started_credits_roll(finish_credits) -> None:
+    frames = [
+        play_ram(stage=9),
+        play_ram(stage=10, x=0, event=0x0F),
+        # Cast demonstrations reuse HP/lives; they are not gameplay.
+        play_ram(stage=0, x=10, hp=70, event=0x1A),
+        play_ram(stage=1, x=10, hp=80, event=0x1A),
+        play_ram(stage=9, x=10, lives=1, event=0x1A),
+        play_ram(stage=9, x=0, event=0x1A),
+        play_ram(stage=9, x=10, event=0x1A),
+        play_ram(stage=9, x=0, event=0x1A),
+    ]
+    tape = Tape(entry="NONE", turtle="leo", actions=[tuple(idle_action())] * 2)
+    result, env = _run(
+        frames,
+        entry=TrialEntry(
+            kind="power_on", state_name="NONE", is_live=_live,
+            tape=tape, finish_credits=finish_credits,
+        ),
+        objective=TrialObjective(kind="credits", metric_hold_frames=2),
+        limits=TrialLimits(max_frames=1300),
+        policy=_FixedPolicy(buttons("A")),
+    )
+    assert result.outcome == ("credits" if finish_credits else "tape_end"), result.failure
+    assert result.success is finish_credits
+    assert result.tape.actions[:len(tape)] == tape.actions
+    assert not any(any(action) for action in env.actions)
+    assert all(result.integrity.values())
+    if finish_credits:
+        assert result.hard_confirmed and result.hard_credits_event_seen
+        assert result.credits_complete_frame is not None
+        assert len(result.tape) == result.total_frames
+        assert result.damage_taken == 0 and result.life_losses == 0
+        assert not result.pizza_heals
+
+
+def test_finish_credits_never_replaces_missing_gameplay() -> None:
+    tape = Tape(entry="NONE", turtle="leo", actions=[tuple(idle_action())])
+    result, env = _run(
+        [play_ram(stage=9)],
+        entry=TrialEntry(
+            kind="power_on", state_name="NONE", is_live=_live,
+            tape=tape, finish_credits=True,
+        ),
+        objective=TrialObjective(kind="credits"),
+    )
+    assert result.outcome == "tape_end" and not result.success
+    assert len(env.actions) == len(tape)
+
+
+@pytest.mark.parametrize("intervention", ["hp", "state"])
+def test_credits_recovery_keeps_write_and_state_load_audits_active(intervention) -> None:
+    def intervene(ctx):
+        if ctx.frame == 2:
+            if intervention == "hp":
+                ctx.env.set_value("player_hp", 80)
+            else:
+                ctx.env.em.set_state(b"forbidden")
+
+    tape = Tape(entry="NONE", turtle="leo", actions=[tuple(idle_action())] * 2)
+    result, _env = _run(
+        [play_ram(stage=9), play_ram(stage=10, x=0), play_ram(stage=0, x=0, event=0x1A)],
+        entry=TrialEntry(
+            kind="power_on", state_name="NONE", is_live=_live,
+            tape=tape, finish_credits=True,
+        ),
+        objective=TrialObjective(kind="credits"),
+        on_frame=intervene,
+    )
+    assert result.outcome == "contract_violation" and not result.success
+    assert result.contract_violations[-1]["kind"] == (
+        "ram_write" if intervention == "hp" else "state_load"
+    )
+
+
+@pytest.mark.parametrize("button", ["A", "START"])
+def test_replay_rejects_forbidden_live_inputs(button) -> None:
+    tape = Tape(entry="Stage1", turtle="leo", actions=[tuple(buttons(button))])
+    result, env = _run(
+        [play_ram(stage=0), play_ram(stage=1)],
+        entry=TrialEntry(kind="state", state_name="Stage1", is_live=_live, tape=tape),
+    )
+    assert result.outcome == "forbidden_action" and not result.success
+    assert result.a_special_uses == (button == "A")
+    assert result.post_boot_start_presses == (button == "START")
+    assert not env.actions

@@ -5,14 +5,16 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pytest
 
 from retro_harness import TaskStatus, WorldState
 
-from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
+from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec, ram_index
 from harvest.core.shipping_credit import (
     SHIPPING_DIALOG_TEXT_IDS,
     SHIPPING_SCENE_HOUR,
     SHIPPING_SCENE_PENDING_FLAG,
+    ShippingLedger,
     acceptance_ok,
     money_rose_after_shipping_window,
     shipping_credit_journal_row,
@@ -103,6 +105,43 @@ class ShippingCreditTests(unittest.TestCase):
         self.assertFalse(acceptance_ok(row))
 
 
+class ShippingLedgerTests(unittest.TestCase):
+    def test_counts_deposits_without_double_counting_nights_or_opening_stock(self) -> None:
+        ram = np.zeros(0x24000, dtype=np.uint8)
+
+        def write(**fields):
+            for key, value in fields.items():
+                spec = field_spec(key)
+                raw = spec.to_storage(value)
+                index = ram_index(ram, spec.address, live_offset=spec.live_offset)
+                for byte in range(spec.width):
+                    ram[index + byte] = raw >> (byte * 8) & 255
+
+        ledger = ShippingLedger()
+        write(year=0, season=3, day=30, shipping_money=150, shipped_corn=7)
+        ledger.observe(ram)  # predecessor's stock is excluded
+        write(shipping_money=270, shipped_corn=8)
+        ledger.observe(ram)
+        ledger.observe(ram)  # same frame/amount is not another sale
+        write(year=1, season=0, day=1, shipping_money=0)
+        ledger.observe(ram)  # night reset never subtracts from gross sales
+        write(shipping_money=50)
+        ledger.observe(ram)  # egg, no crop counter change
+        before = ram.copy()
+        ledger.observe(ram)
+        self.assertTrue(np.array_equal(before, ram))
+        report = ledger.report()
+        winter, spring = report["seasons"]
+        self.assertEqual((winter["bin_gold"], spring["bin_gold"]), (120, 50))
+        self.assertEqual(winter["crop_shipped"]["corn"], 1)
+        self.assertEqual(spring["crop_shipped"]["corn"], 0)
+        self.assertEqual(report["opening_bin_gold"], 150)
+        write(shipped_corn=0)
+        ledger.observe(ram)
+        self.assertEqual(ledger.report()["counter_decreases"][0]["delta"], -8)
+        self.assertEqual(report["counter_decreases"], [])  # detached report
+
+
 def _shipping_wait_world(
     *,
     hour: int,
@@ -155,10 +194,19 @@ class ShippingSceneDismissTests(unittest.TestCase):
         _set_dialog_text_id(world.ram, SHIPPING_DIALOG_TEXT_IDS[0])
         self.assertFalse(shipping_scene_needs_dismiss(world.ram))
 
-    def test_pending_flag_needs_dismiss_when_locked(self) -> None:
-        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=0)
+    def test_pending_flag_needs_dismiss_once_input_is_taken(self) -> None:
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=2)
         _set_event_flags_1f5a(world.ram, SHIPPING_SCENE_PENDING_FLAG)
         self.assertTrue(shipping_scene_needs_dismiss(world.ram))
+
+    def test_pending_flag_with_lock_zero_waits_for_the_box(self) -> None:
+        # The scene opens its own box ~180 frames after 17:00; an A while input_lock is 0
+        # set game_state & 0x0800 for the rest of the day and the bed stopped working
+        # (Y2 Spring D10, LN_y23_dogrise_d10).
+        world = _shipping_wait_world(hour=17, tilemap=0x00, input_lock=0)
+        _set_event_flags_1f5a(world.ram, SHIPPING_SCENE_PENDING_FLAG)
+        _set_dialog_text_id(world.ram, SHIPPING_DIALOG_TEXT_IDS[0])
+        self.assertFalse(shipping_scene_needs_dismiss(world.ram))
 
     def test_farm_5pm_lock_zero_without_text_is_tool_swing(self) -> None:
         # lock==0 after 17:00 is a hammer/lift/menu, not the shipper box.
@@ -308,6 +356,58 @@ class GateAJournalSummaryTests(unittest.TestCase):
         summary = _summarize_journal(journal)
         self.assertFalse(summary["gate_a_economy_ok"])
         self.assertFalse(summary["harvest_phases_present"])
+
+
+@pytest.mark.rom
+def test_shipping_ledger_preserves_native_harvest_inputs_and_end_state():
+    """A/B the real Composer from the same power-on Summer checkpoint."""
+    from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE, HARVEST_ROUTE_PHASE
+    from harvest.planner.day_plan_orchestrator import DayPlanTask
+    from harvest.planner.livestock_econ import SHIP_PRICE_G
+    from harvest.runtime.retro_setup import STATES_DIR, find_harvest_rom, make_harvest_env
+    from harvest.tasks.nav import make_action
+    from harvest.core.task_progress import WorkFrameLedger
+    from retro_harness import AuditCapabilities, AuditedEnv
+
+    pin = "LN_cowfix_poweron_summer_d5"
+    if find_harvest_rom() is None or not (STATES_DIR / f"{pin}.state").exists():
+        pytest.skip("needs the Harvest ROM and natural Summer D5 harvest checkpoint")
+
+    def run(observe):
+        env = AuditedEnv(make_harvest_env(pin, lean_step=True),
+                         capabilities=AuditCapabilities.all("harvest.shipping_ledger_ab"))
+        ledger = ShippingLedger()
+        work = WorkFrameLedger()
+        try:
+            env.reset()
+            task = DayPlanTask(phase_sequence=[EXIT_TO_FARM_PHASE, HARVEST_ROUTE_PHASE])
+            task.reset(WorldState(0, env.get_ram(), {}))
+            for frame in range(26000):
+                ram = env.get_ram()
+                if observe:
+                    before = ram.copy()
+                    ledger.observe(ram)
+                    assert np.array_equal(ram, before)
+                result = task.step(WorldState(frame, ram, {}))
+                if result.status != TaskStatus.RUNNING:
+                    break
+                if observe:
+                    work.observe(frame=frame, ram=ram, task=task)
+                env.step(result.action.action if result.action else make_action())
+            assert result.status == TaskStatus.SUCCESS, result.reason
+            assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+            return frame, env.unwrapped.em.get_state(), ledger.report(), work.report(env.get_ram())
+        finally:
+            env.close()
+
+    baseline, observed = run(False), run(True)
+    assert baseline[:2] == observed[:2]  # same frames and complete emulator state
+    assert observed[3]["frames"] == observed[0]
+    season = observed[2]["seasons"][0]
+    assert season["bin_gold"] > 0
+    assert sum(season["crop_shipped"].values()) > 0
+    assert season["bin_gold"] == sum(n * SHIP_PRICE_G[kind] for kind, n in season["crop_shipped"].items())
+    assert not observed[2]["counter_decreases"]
 
 
 if __name__ == "__main__":

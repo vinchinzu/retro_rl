@@ -1,0 +1,7 @@
+{
+  "source_run": "poke:Whatif_SwampPalaceEntry_parallel:room=0x37:warp_sub=0x15",
+  "frame": 156,
+  "git_sha": "6013e537b7b57fb1546792e84ee4e4c29f6f2a4a",
+  "dirty": true,
+  "kind": "poke"
+}

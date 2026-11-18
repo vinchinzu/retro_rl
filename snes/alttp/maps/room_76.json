@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 118,
+  "roomHex": "0x76",
+  "name": "Swamp Palace water switch, flooded room",
+  "measured": "2026-10-18",
+  "sourceState": "Scan_swamp_0x76",
+  "points": [],
+  "doors": [
+    {
+      "label": "west_upper",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x02 pos $07CA. Dest unknown. Not walked."
+    },
+    {
+      "label": "west_lower",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x02 pos $17CA. Dest unknown. Not walked."
+    },
+    {
+      "label": "north_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x02 pos $039C. Dest unknown. Not walked."
+    },
+    {
+      "label": "east_upper",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 8 type 0x02 pos $07AE, other layer of slot 0. Not walked."
+    },
+    {
+      "label": "east_lower",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 9 type 0x02 pos $17AE, other layer of slot 1. Not walked."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x21", "xy": [3472, 3637], "notes": "water switch floor 0"}
+  ],
+  "notes": [
+    "Scan_swamp_0x76 kind poke. Not a walk. Chests tile (42,42) and (48,42) TwentyRupees 0xEAA9 and 0xEAAC opened=0.",
+    "Live tag was [0, 24] before the lever. Layer 0 had 12 deep water and 240 shallow. Door-only; approach xy omitted.",
+    "Isolated development. Not natural."
+  ]
+}

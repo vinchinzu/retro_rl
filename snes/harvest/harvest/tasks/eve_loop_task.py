@@ -29,7 +29,7 @@ from harvest.core.npc_catalog import (
     romance_points_for_hearts,
 )
 from harvest.core.ram_catalog import field_spec, read_ram_u8, read_ram_u16, read_ram_value
-from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.core.tile_catalog import ADDR_TILEMAP, is_path_tilemap
 from harvest.maps.map_types import Waypoint
 from harvest.planner.tasks.multi_nav import MultiMapNavTask
 from harvest.tasks.nav import get_pos_from_ram, make_action
@@ -75,7 +75,7 @@ def _hops_to_bar(tilemap: int):
     door = Waypoint(TOWN_TILEMAP, DOOR_PX, radius=DOOR_RADIUS)
     if tilemap in FARM_TILEMAPS:
         return segment_waypoints("farm_to_path", "path_to_town") + [door]
-    if tilemap == PATH_TILEMAP:
+    if is_path_tilemap(tilemap):
         return segment_waypoints("path_to_town") + [door]
     return None
 

@@ -25,6 +25,47 @@ from retro_harness import TaskStatus
 
 
 @pytest.mark.rom
+@pytest.mark.parametrize("state", ["y1_complete/progress_f254000", "y1_complete/progress_f255000"])
+def test_d2_hammer_ready_leaves_a_loaded_farm(state):
+    """Equipping the hammer indoors must not release the next farm phase."""
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.day_plan_status import is_farm_tilemap
+    from harvest.tasks.farm_clear_quota import farm_map_loaded
+    from harvest.tasks.nav import get_pos_from_ram, make_action
+
+    env = AuditedEnv(make_harvest_env(state, lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.d2_hammer_exit"))
+    try:
+        env.reset()
+        task = EnsureCarryToolTask(tool_id=int(Tool.HAMMER))
+        task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+        for frame in range(5000):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action else make_action())
+        ram = env.get_ram()
+        evidence = dict(state=state, frame=frame, status=result.status,
+                        reason=result.reason, tilemap=read_ram_value(ram, "tilemap"),
+                        pos=get_pos_from_ram(ram))
+        assert result.status == TaskStatus.SUCCESS, evidence
+        assert farm_map_loaded(ram), evidence
+        from harvest.planner.tasks.transitions import screen_faded_in
+        assert screen_faded_in(ram), evidence
+        for _ in range(90):
+            env.step(make_action())
+        ram = env.get_ram()
+        evidence.update(tilemap=read_ram_value(ram, "tilemap"), pos=get_pos_from_ram(ram))
+        assert is_farm_tilemap(read_ram_value(ram, "tilemap")), evidence
+        assert farm_map_loaded(ram), evidence
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
 @pytest.mark.parametrize("state", ["LN_marriage_shelf_before_take", "marriage_feather_probe"])
 def test_blue_feather_native_pickup(state):
     """Exercise the tile-boundary miss and the real morning-to-shed fetch."""
@@ -67,7 +108,61 @@ def test_blue_feather_native_pickup(state):
         env.close()
 
 
+@pytest.mark.rom
+def test_d2_hammer_handoff_breaks_a_real_boulder_through_composer():
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.planner.day_plan import DayPlanTask
+    from harvest.planner.d2_work import rock_clear_phase
+    from harvest.planner.d2_farm_chunks import FARM_CHUNK_BOUNDS
+    from harvest.tasks.farm_clear_quota import count_debris, farm_map_loaded
+    from harvest.tasks.nav import make_action
+
+    env = AuditedEnv(make_harvest_env("y1_complete/progress_f255000", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.d2_hammer_handoff"))
+    try:
+        env.reset()
+        from harvest.planner.day_plan_phases import DayPlannerPolicy
+        task = DayPlanTask(policy=DayPlannerPolicy(include_end_day=False), phase_sequence=[ensure_hammer_phase(),
+            rock_clear_phase(farm_bounds=FARM_CHUNK_BOUNDS["nw"], chunk="nw")])
+        task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+        before = None
+        for frame in range(8000):
+            ram = env.get_ram()
+            if task._phase_index >= 1 and farm_map_loaded(ram):
+                now = count_debris(ram).large_rocks
+                if before is None:
+                    before = now
+                elif now < before:
+                    break
+            result = task.step(WorldState(frame=frame, ram=ram, info={}, obs=None))
+            assert result.status == TaskStatus.RUNNING, result.reason
+            env.step(result.action.action if result.action else make_action())
+        assert before is not None and now < before, (frame, before, result.reason)
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
 class ShedHammerAxeSpecTests(unittest.TestCase):
+    def test_tool_fetch_propagates_exit_and_step_off_failure(self) -> None:
+        from types import SimpleNamespace
+        from harvest.planner.tasks.inventory_shed import ShedFetchItemTask
+        from retro_harness import TaskResult
+
+        for phase in ("exit_after_ready", "leave_door"):
+            for status in (TaskStatus.FAILURE, TaskStatus.BLOCKED):
+                with self.subTest(phase=phase, status=status):
+                    world = make_world(0x00)
+                    world.ram[0x0921] = int(Tool.HAMMER)
+                    task = ShedFetchItemTask(item_id=int(Tool.HAMMER))
+                    task.reset(world)
+                    task._phase = phase
+                    task._task = SimpleNamespace(step=lambda world: TaskResult(status, reason="exit blocked"))
+                    result = task.step(world)
+                    self.assertEqual(result.status, TaskStatus.FAILURE)
+                    self.assertIn("exit blocked", result.reason)
+
     def test_hammer_and_axe_are_bottom_shelf_stands(self) -> None:
         hammer = SHED_TOOL_SPECS[int(Tool.HAMMER)]
         axe = SHED_TOOL_SPECS[int(Tool.AXE)]

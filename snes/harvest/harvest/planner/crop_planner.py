@@ -64,9 +64,11 @@ _MOORE_OFFSETS: tuple[Tile, ...] = tuple(
 
 # Potato and turnip are one-shot: a Spring sowing holds its ring until it ripens.
 # A Summer ring planted by D3 still gets six corn harvests (12 nights to ripen,
-# then every 3), so Spring sowing stops where the last bag ripens on Summer D1
-# and the five days after it leave the rings empty for corn.
-SPRING_LAST_SOW_DAY = 24
+# then every 3), so Spring sowing stops where the last bag ripens by Summer D2:
+# a watered potato ripens five nights after sowing (D3 pin: sown D2, picked D8
+# with D3 dry), so a D25 bag ships on D30 and a D26 bag on Summer D1, and the
+# ring takes its corn bag that morning (``pocket_plant_targets(replant_ripe)``).
+SPRING_LAST_SOW_DAY = 26
 
 
 @dataclass(frozen=True)
@@ -201,6 +203,18 @@ CROP_LAYOUTS: dict[str, CropLayoutPattern] = {
         crop_offsets=_ring_offsets_without(),
         access_offsets=((0, 0),),
         note="Maximum seed-bag yield; center can become sealed once crops block movement.",
+    ),
+    "eight_east_notch": CropLayoutPattern(
+        name="eight_east_notch",
+        crop_offsets=tuple((x, y) for y in (-1, 0, 1) for x in (-1, 0, 1) if (x, y) != (1, 0)),
+        access_offsets=((1, 0),),
+        note="xxx/xxo/xxx: center planted, east working notch open.",
+    ),
+    "eight_west_notch": CropLayoutPattern(
+        name="eight_west_notch",
+        crop_offsets=tuple((x, y) for y in (-1, 0, 1) for x in (-1, 0, 1) if (x, y) != (-1, 0)),
+        access_offsets=((-1, 0),),
+        note="xxx/oxx/xxx: center planted, west working notch open.",
     ),
     "seven_south_access": _notch_layout("seven_south_access", (0, 1)),
     "seven_north_access": _notch_layout("seven_north_access", (0, -1)),
@@ -501,8 +515,14 @@ def resolve_seed_type_for_date(
     inventory: Optional[dict[str, int]] = None,
     shipped: Optional[dict[str, int]] = None,
     layout_tiles: int = 8,
+    quota_bags: Optional[dict[str, int]] = None,
 ) -> Optional[str]:
-    """Pick today's seed: inventory, then ranch-master remaining, then profit."""
+    """Pick today's seed: inventory, then ranch-master remaining, then profit.
+
+    ``quota_bags`` (Summer score runs) is how many bags each crop may still buy today. A crop whose share
+    is already bought is skipped while another crop still has bags to buy, so the ground reserved for the
+    smaller quota (tomatoes: 26 left in Y3) is sown instead of idling behind the crop with the most room.
+    """
     season_id = normalize_season(season)
     day_i = int(day)
     if not is_crop_planting_season(season_id):
@@ -515,11 +535,19 @@ def resolve_seed_type_for_date(
         for crop in crops_for_season(season_id)
         if crop.harvests_from_planting_day(day_i) > 0
     ]
+    if shipped is not None:
+        # A capping strategy never sows a crop already at its ship cap or one the shop cannot sell.
+        from harvest.planner import run_strategy
+
+        strategy = run_strategy.active()
+        in_season = [crop for crop in in_season if run_strategy.seed_allowed(crop.name, ship, strategy)]
     if not in_season:
         return None
 
     stocked = [crop for crop in in_season if inv.get(crop.name, 0) > 0]
     pool = stocked or in_season
+    if quota_bags:
+        pool = [crop for crop in pool if int(quota_bags.get(crop.name, 0)) > 0] or pool
 
     def _rank(crop: CropSpec) -> tuple[int, int, int, int]:
         shipped_count = ship.get(crop.name, 0)
@@ -598,11 +626,10 @@ def evaluate_plot_candidate(
     water_stands = tuple(sorted({item.stand_tiles[0] for item in access}))
     ship_dist = tile_dist(center, config.shipping_tile)
     walk = tile_dist(config.start_tile, center) + tile_dist(center, config.water_source_tile)
-    # 3-day corn/tomato: many bin trips, stay close. Potato/turnip: one
-    # harvest per cycle, plant farther so the close rings stay free for
-    # summer regrow. Walk to water/start is still a cost either way.
-    ship_pref = -ship_dist if crop.is_regrowable else ship_dist
-    route_cost = walk - ship_pref * config.shipping_weight
+    # Every harvested crop is carried to the bin individually, including
+    # one-shot Spring crops. Distance is a cost for every crop type.
+    ship_pref = -ship_dist
+    route_cost = walk + ship_dist * config.shipping_weight
     clutter = _plot_clutter(ram, crop_tiles, all_needed | {center})
     score = (
         expected_profit

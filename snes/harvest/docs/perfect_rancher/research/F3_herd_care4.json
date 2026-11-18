@@ -1,0 +1,353 @@
+{
+  "bead": "PR-012",
+  "kind": "care4",
+  "pin": "LN_mgr-f3_whatif_care3",
+  "result": "PROBE_CARE4_FAIL feed",
+  "fed_flags": 0,
+  "cow": {
+    "status": 9,
+    "flags": 13,
+    "map": 39,
+    "age": 0,
+    "happiness": 5,
+    "cow_x": 150,
+    "cow_y": 281
+  },
+  "clock": {
+    "year": 0,
+    "season": 0,
+    "day": 16,
+    "weekday": 2,
+    "hour": 18,
+    "minute": 0,
+    "tilemap": 39,
+    "x": 113,
+    "y": 275,
+    "weather": 192,
+    "fed_cows_flags": 0,
+    "hay": 174,
+    "held": 0,
+    "tool": 15
+  },
+  "marks": [
+    {
+      "name": "boot",
+      "frame": 0,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 179,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 167,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "before_talk_walk",
+      "frame": 0,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 179,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 167,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "after_talk_replay",
+      "frame": 762,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 163,
+        "y": 280,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 179,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 12,
+        "map": 39,
+        "age": 0,
+        "happiness": 2,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "talked",
+      "frame": 762,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 163,
+        "y": 280,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 179,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 12,
+        "map": 39,
+        "age": 0,
+        "happiness": 2,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "brushed",
+      "frame": 858,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 163,
+        "y": 280,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 179,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 13,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "feed_replay_end",
+      "frame": 1170,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 273,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 178,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 5,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 281
+      }
+    },
+    {
+      "name": "holding_fodder",
+      "frame": 1294,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 177,
+        "held": 26,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 5,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 281
+      }
+    },
+    {
+      "name": "holding_fodder",
+      "frame": 1550,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 176,
+        "held": 26,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 5,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 281
+      }
+    },
+    {
+      "name": "holding_fodder",
+      "frame": 1806,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 175,
+        "held": 26,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 5,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 281
+      }
+    },
+    {
+      "name": "holding_fodder",
+      "frame": 2062,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 174,
+        "held": 26,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 5,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 281
+      }
+    },
+    {
+      "name": "feed_fail",
+      "frame": 2193,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 275,
+        "weather": 192,
+        "fed_cows_flags": 0,
+        "hay": 174,
+        "held": 0,
+        "tool": 15
+      },
+      "cow": {
+        "status": 9,
+        "flags": 13,
+        "map": 39,
+        "age": 0,
+        "happiness": 5,
+        "cow_x": 150,
+        "cow_y": 281
+      }
+    }
+  ]
+}

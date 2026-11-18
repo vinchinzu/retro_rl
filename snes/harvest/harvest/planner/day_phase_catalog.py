@@ -43,6 +43,7 @@ from harvest.planner.day_phase_chicken import (  # noqa: F401
     NAV_TO_COOP_FOR_CHICKEN_SALE_PHASE,
     NAV_TO_COOP_PHASE,
     OPTIONAL_CHICKEN_SALE_PHASES,
+    OPTIONAL_WIFE_GIFT_PHASES,
     PICKUP_CHICKEN_FOR_SALE_PHASE,
     REQUEST_CHICKEN_SALE_PHASE,
     RETURN_FARM_AFTER_CHICKEN_SALE_PHASE,
@@ -57,6 +58,7 @@ from harvest.planner.day_phase_chicken import (  # noqa: F401
 from harvest.planner.day_phase_cow import (  # noqa: F401
     BARN_CURRENT_COW_PHASES,
     COW_CHORES_PHASE,
+    COW_ROUNDUP_PHASE,
     ENTER_BARN_PHASE,
     EXIT_BARN_PHASE,
     NAV_TO_BARN_PHASE,
@@ -147,29 +149,64 @@ BUY_SEEDS_PHASE = PhaseSpec(
 )
 
 
-LIVE_SHOP_SEED_TYPES = frozenset({"corn", "tomato"})
+LIVE_SHOP_SEED_TYPES = frozenset({"corn", "tomato", "turnip"})
 
 
-def pasture_day_phases(ram) -> List[PhaseSpec]:
-    """This morning's grass errand (:func:`livestock_econ.pasture_errand`) as phases."""
-    from harvest.planner.livestock_econ import pasture_errand, pasture_target_tiles
+def pasture_day_phases(ram, *, afternoon: bool = False) -> List[PhaseSpec]:
+    """This morning's grass errand (:func:`livestock_econ.pasture_errand`) as phases.
+
+    After noon a short herd still cuts; Fall also banks Winter's reserve. In y23_final the Y2
+    Summer mornings went to the mountain wood trips, the outdoor plan expanded
+    after 12:00 every day, and the hay hit 0 on D13 with 101 tiles of grass.
+
+    A score run adds the whole-field cover bags (``field_cover``) to the same shop trip. The hoeing itself is the
+    evening ``COVER_FIELD`` phase (:func:`field_cover_phases`), after the crops.
+    """
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner import run_strategy
+    from harvest.planner.field_cover import BAG_BUY_FRAMES, STACK_CAP, cover_buy_allowed, cover_errand_for
+    from harvest.planner.livestock_econ import hay_cut_target, hay_wanted, pasture_errand, pasture_target_tiles
 
     errand = pasture_errand(ram)
-    if errand.cut:
-        return [PhaseSpec("CUT_FODDER", "grass", {"cut_only": True}, failure_policy="optional")]
+    if afternoon:
+        goal = hay_cut_target(ram) if int(read_ram_value(ram, "season")) == 2 else hay_wanted(ram)
+        short = int(read_ram_value(ram, "stored_grass")) < goal
+        errand = type(errand)(cut=errand.cut and short)
+    stock = int(read_ram_value(ram, "grass_seeds"))
+    herd_stock = errand.buy_to_stock if errand.buy_to_stock else stock
+    buy_to = errand.buy_to_stock
+    cover_buy = False
+    if run_strategy.field_cover() and int(read_ram_value(ram, "hour")) < 15:
+        buying = cover_buy_allowed(ram)
+        cover = cover_errand_for(ram, herd_stock, errand.plant, buying=buying)
+        print(f"[COVER] morning shop={'open' if buying else 'shut'} buy={cover.buy} bags={cover.bags} "
+              f"behind={cover.behind} money={int(read_ram_value(ram, 'money'))} reason={cover.reason}")
+        if cover.buy > 0:
+            buy_to = min(STACK_CAP, herd_stock + cover.buy)      # the clerk charges for bags past the u8 stack
+            cover_buy = True
     phases: List[PhaseSpec] = []
-    if errand.buy_to_stock:
-        phases.append(PhaseSpec(
+    if errand.cut:
+        params = {"cut_only": True, "hay_goal": hay_cut_target(ram)}
+        if run_strategy.field_cover():
+            params["bounds"] = (2, 3, 62, 60)
+        phases.append(PhaseSpec("CUT_FODDER", "grass", params, failure_policy="optional"))
+    if buy_to:
+        # The clerk loop is ~650 frames a bag (21 bags hit the old 14,000f cap); the shop clock is frozen.
+        timeout = max(14_000, 4_000 + BAG_BUY_FRAMES * (buy_to - stock))
+        buy = PhaseSpec(
             "BUY_GRASS_SEEDS", "shop_buy",
-            {"stock_field": "grass_seeds", "target_stock": errand.buy_to_stock},
+            {"stock_field": "grass_seeds", "target_stock": buy_to, "timeout": timeout,
+             **({"latest_start_hour": 15} if cover_buy else {})},
             failure_policy="optional",
-        ))
+        )
+        # Feeding already claimed the morning. With hay left, shop before an optional top-up cut;
+        # the cut can continue after 18:00. An empty loft keeps the cut first.
+        phases.insert(0 if cover_buy and int(read_ram_value(ram, "stored_grass")) > 0 else len(phases), buy)
     if errand.plant:
         # The planter stops at its own target. Without this one it stops at 32,
         # so every bag past the cow gate sat in stock while the phase "succeeded".
         phases.append(PhaseSpec(
-            "PLANT_PASTURE", "grass", {"target_tiles": pasture_target_tiles(ram)},
-            failure_policy="optional",
+            "PLANT_PASTURE", "grass", {"target_tiles": pasture_target_tiles(ram)}, failure_policy="optional",
         ))
     return phases
 
@@ -263,7 +300,8 @@ NAV_CROP_PHASE = PhaseSpec(
         "target_px": (248, 472),
         "radius": 28,
         "soft_radius": 64,
-        "timeout": 9000,
+        # A real NAV_CROP is 60-700 f (rec1: median 161); the 9,000 f it had let a wedge burn 150 s or a day.
+        "timeout": 2400,
     },
     failure_policy="optional",
     required_maps=(0x00,),
@@ -291,6 +329,37 @@ CLEAR_FIELD_PHASE = PhaseSpec(
     required_maps=(0x00,),
     estimated_frames=3500,
     failure_modes=("timeout_budget", "tool_missing", "stamina_low"),
+)
+
+CLEAR_BUSHES_PHASE = PhaseSpec(
+    "CLEAR_BUSHES",
+    "clear_field",
+    {
+        "timeout": 12000,
+        "priority": ["weed"],
+        "handoff": "type_clear",
+        "fetch_tools": False,
+        "prefer_lift_for_weeds": True,
+        "prefer_lift_for_stones": False,
+    },
+    failure_policy="optional",
+    required_maps=(0x00,),
+    estimated_frames=8000,
+    failure_modes=("timeout_budget",),
+)
+
+TILL_FIELD_PHASE = PhaseSpec(
+    "TILL_FIELD",
+    "grass",
+    {
+        "till_only": True,
+        "till_limit": 32,
+        "timeout": 12000,
+    },
+    failure_policy="optional",
+    required_maps=(0x00,),
+    estimated_frames=12000,
+    failure_modes=("timeout_budget", "stamina_low"),
 )
 
 DYNAMIC_OUTDOOR_PLAN_PHASE = PhaseSpec(
@@ -469,7 +538,7 @@ def tool_purchase_phases(items=None) -> List[PhaseSpec]:
     cannot cover at its turn, so the caller only gates on ``cow_tool_trip_affordable``,
     the money it wants to keep, and ``tool_shop_open`` (both in ``livestock_econ``).
     """
-    names = {"brush": int(Tool.BRUSH), "milker": int(Tool.MILKER)}
+    names = {"brush": int(Tool.BRUSH), "milker": int(Tool.MILKER), "sprinkler": int(Tool.SPRINKLER)}
     ids = [names[i.lower()] if isinstance(i, str) else int(i)
            for i in (items if items is not None else ("brush", "milker"))]
     return [PhaseSpec(
@@ -481,19 +550,22 @@ def tool_purchase_phases(items=None) -> List[PhaseSpec]:
 
 def cow_day_phases(ram) -> List[PhaseSpec]:
     """Feed and talk even before the brush and milker have been bought."""
+    from harvest.core.animal_status import cows_outside
     from harvest.core.ram_catalog import read_ram_value
     from harvest.planner.livestock_econ import missing_cow_tools
 
     missing = missing_cow_tools(ram)
+    roundup = [COW_ROUNDUP_PHASE] if cows_outside(ram) else []
     if not missing:
-        return list(COW_PHASES)
+        tools, leave, *barn = COW_PHASES
+        return [tools, leave, *roundup, *barn]
     # The brush alone is worth +3 happiness a day on a calf, so fetch it
     # without the milker. An empty loft cannot set a trough bit: feed only
     # when hay exists.
     brush = int(Tool.BRUSH) not in missing
     feed = int(read_ram_value(ram, "stored_grass")) > 0
     return [*([ENSURE_BRUSH_PHASE] if brush else []),
-            EXIT_TO_FARM_PHASE, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE,
+            EXIT_TO_FARM_PHASE, *roundup, NAV_TO_BARN_PHASE, ENTER_BARN_PHASE,
             PhaseSpec("COW_CHORES", "cow_chores",
                       {"talk": True, "brush": brush, "milk": False, "feed": feed},
                       required_maps=(0x27,)), EXIT_BARN_PHASE]
@@ -724,6 +796,7 @@ OPTIONAL_MONEY_PHASES = (
     | OPTIONAL_SHOP_PHASES
     | OPTIONAL_CHICKEN_SALE_PHASES
     | OPTIONAL_COW_PURCHASE_PHASES
+    | OPTIONAL_WIFE_GIFT_PHASES
 )
 
 # Phases whose success marks the day ready for return-home/sleep.
@@ -804,10 +877,9 @@ def _crop_work_phases(
     if plant_seeds:
         phases.extend(crop_establish_phases())
     if needs_manual_water:
-        prefer_harvest_nav = bool(
-            policy.include_harvest and has_harvest and not late_day and not plant_seeds
-        )
-        phases.extend(crop_water_phases(include_nav=not prefer_harvest_nav))
+        # Each watering pair owns its stand approach. The fixed field pre-nav
+        # can be sealed by grown crops and waste 9,000f before the same work.
+        phases.extend(crop_water_phases(include_nav=False))
     return phases
 
 
@@ -827,6 +899,8 @@ __all__ = [
     "mountain_berry_phase",
     "NAV_CROP_PHASE",
     "HARVEST_ROUTE_PHASE",
+    "CLEAR_BUSHES_PHASE",
+    "TILL_FIELD_PHASE",
     "DYNAMIC_OUTDOOR_PLAN_PHASE",
     "ENSURE_WATERING_CAN_PHASE",
     "ENSURE_CROP_SEEDS_PHASE",

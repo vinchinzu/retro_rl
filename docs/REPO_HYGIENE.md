@@ -3,6 +3,23 @@
 Cleanup policy. Live process: [FULL_RUN_PROCESS.md](FULL_RUN_PROCESS.md).
 Maturity gates: [DEVELOPMENT_LADDER.md](DEVELOPMENT_LADDER.md).
 
+## Active checkout
+
+Use `/home/v/01_projects/11_games/retro`, branch `main`, as the sole working
+tree. Serialize source edits and ROM runs here; finish a run before changing
+its runtime code. Do not create parallel worktrees for the current campaign.
+
+On 2026-10-24 the 11 inactive Harvest worktrees were preserved outside the repo
+at `/home/v/01_projects/11_games/archive/retro-worktrees-20261024` and their
+registrations removed. Branch refs, full directories, Git indexes, binary
+patches, and an inventory remain available there. Some Harvest edits differ
+from main: archival preserves them; it does not mean they were merged.
+The main checkout still contains substantial uncommitted multi-game work.
+
+For ALttP, the execution sequence is [the local plan](../snes/alttp/docs/plan.md).
+Verified maturity remains in the game's STATUS; the route census is not a
+start-to-finish executable route.
+
 ## Doc layout
 
 | Location | Owns |

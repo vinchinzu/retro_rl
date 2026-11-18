@@ -15,7 +15,7 @@ from __future__ import annotations
 from retro_harness.actions import buttons, idle_action
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import EnemyState, GameState
-from tmnt_iv.grind_knobs import GrindKnobs, active_knobs
+from tmnt_iv.tactics.knobs import TacticKnobs, active_knobs
 
 SLASH_CHAR = 0x50
 
@@ -148,7 +148,7 @@ class SlashTactics:
 
     def _punish(
         self,
-        knobs: GrindKnobs,
+        knobs: TacticKnobs,
         dy: int,
         adx: int,
         toward: str,
@@ -170,7 +170,7 @@ class SlashTactics:
         self,
         state: GameState,
         slash: EnemyState,
-        knobs: GrindKnobs,
+        knobs: TacticKnobs,
         dy: int,
         adx: int,
         toward: str,

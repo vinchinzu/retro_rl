@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 58,
+  "roomHex": "0x3A",
+  "name": "Palace of Darkness north of the lobby key door",
+  "measured": "2026-10-18",
+  "sourceState": "Whatif_PalaceOfDarknessEntry_parallel",
+  "points": [],
+  "doors": [
+    {
+      "label": "south_key_to_0x4a",
+      "direction": "DOWN",
+      "toRoom": 74,
+      "toRoomHex": "0x4A",
+      "role": "backtrack",
+      "notes": "Slot 0 type 0x1C pos $1D3C tile (30,58). DOWN from the landing (5368,2008) returns to room 0x4A at (5368,2080) with keys already 0. Door-only skeleton; approach xy omitted."
+    },
+    {
+      "label": "north_west_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x00 pos $021C tile (14,4). No layer-0 path from the south landing. Stopping lock."
+    },
+    {
+      "label": "north_east_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x00 pos $025C tile (46,4). No layer-0 path from the south landing. Stopping lock."
+    },
+    {
+      "label": "west_north_to_0x2a",
+      "direction": "UP",
+      "toRoom": 42,
+      "toRoomHex": "0x2A",
+      "role": "primary",
+      "notes": "Not a door slot. UP from tile (14,24) at (5236,1728) enters room 0x2A at (5240,1496), module 0x07. Keys stayed 0 and big key stayed 512. Door-only skeleton; approach xy omitted."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x8E", "xy": [5344, 1808], "notes": "terrorpin hp 8"},
+    {"type": "0x8E", "xy": [5392, 1808], "notes": "terrorpin hp 8"},
+    {"type": "0x24", "xy": [5280, 1855], "notes": "blue bari hp 2"},
+    {"type": "0x24", "xy": [5456, 1856], "notes": "blue bari hp 2"},
+    {"type": "0xC5", "xy": [5184, 1856], "notes": "medusa hp 0"},
+    {"type": "0xC5", "xy": [5552, 1856], "notes": "medusa hp 0"}
+  ],
+  "notes": [
+    "Entered from 0x4A slot 2 type 0x1C. Poke keys 1 to 0. Big key stayed 0x0200. Not a saved Scan pin.",
+    "Chest 0 BigKeyD1 z3=0xEA37 tile (31,18) layer 0 opened=0, not a big-chest bit. Floor 0x00 around the graphic. Wall 0x01 rows 25-32 cols 28-35 separates that island from the south platform. Stairs 0x5E at (31,3), (31,5), and (31,6) sit on the island.",
+    "UP from the landing stops at (5368,1800) on the terrorpins. A 50-cycle fight left both at hp 8 and Link hp 56 to 8, still y=1800.",
+    "Stairs 0x1D and 0x5E had no layer-0 path from the landing. 404 pit tiles and ledge bytes 0x28 and 0x2A stay walls to the search.",
+    "Isolated development. Not natural."
+  ]
+}

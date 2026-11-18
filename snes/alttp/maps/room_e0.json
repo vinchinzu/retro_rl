@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 224,
+  "roomHex": "0xE0",
+  "name": "Castle Tower lobby",
+  "measured": "2026-10-18",
+  "sourceState": "CastleTowerEntry",
+  "points": [
+    {
+      "label": "entry_spawn",
+      "xy": [120, 7640],
+      "role": "spawn",
+      "notes": "CastleTowerEntry load. Tile (15,59) attr 0x8E, the south entrance mouth."
+    }
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x1b",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 27,
+      "approachXy": [120, 7640],
+      "landingXy": [2040, 1628],
+      "role": "backtrack",
+      "path": ["entry_spawn"],
+      "pathTolerances": {"default": 8},
+      "pushFrames": 300,
+      "notes": "Slot 3 type 0x0A pos $1D1C. DOWN from the spawn leaves indoors for overworld screen 0x1B. Not the forward indoor door. Not natural."
+    },
+    {
+      "label": "west_slot0",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 0 type 0x00 pos $07C4 anchor tile (34,15). Layer slot 8 is east type 0x18 shutter pos $07B4. RIGHT from the west half stopped at x=200. Not a room change."
+    },
+    {
+      "label": "north_slot1",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 1 type 0x00 pos $121C anchor tile (14,36). UP scrolls inside room 0xE0 (submodule 0x01 then 0x05) and stays 0xE0. Layer slot 9 is south type 0x18 shutter pos $0D1C. Not a room change."
+    },
+    {
+      "label": "stairs_slot2",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 2 type 0x20 stairs pos $025C anchor tile (46,4). Right half. Not reached from the west stand."
+    }
+  ],
+  "walkBbox": [100, 7600, 140, 7680],
+  "hostilesAtEntry": [
+    {"type": "0x6A", "xy": [64, 7264], "hp": 16, "notes": "ball and chain, north-west of the lobby mouth"},
+    {"type": "0x6A", "xy": [176, 7264], "hp": 16, "notes": "ball and chain, north-east of the lobby mouth"},
+    {"type": "0x44", "xy": [416, 7264], "hp": 6, "notes": "assault soldier on the right half"},
+    {"type": "0x44", "xy": [416, 7312], "hp": 6, "notes": "assault soldier on the right half"}
+  ],
+  "notes": [
+    "CastleTowerEntry kind poke. Room 0xE0 module 0x07 dungeon 0x08. dark_world flag was 0. Follower 5 was not written.",
+    "Live exit is screen 0x1B. Entrance table index 0x24 word is room 0x00E0.",
+    "Other slots are door-only. No approach. They were not room changes.",
+    "Chest 0 tile (54,22) item KeyA1 z3=0xEAB5 opened=0. Right half. Not taken.",
+    "Authority: maps/room_e0.json."
+  ]
+}

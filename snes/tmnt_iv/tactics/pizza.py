@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from retro_harness.actions import buttons
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import GameMode, GameState
-from tmnt_iv.ram import LEO_MAX_HP
+from tmnt_iv.ram import LEO_MAX_HP, max_hp
 
 # Post-pickup step-out; 6f lines up Baxter entry for the Clean clear.
 _PIZZA_DISENGAGE_FRAMES = 6
@@ -111,7 +111,7 @@ class PizzaSeek:
 
     def _between_wave_seek(self, state: GameState) -> FrameAction | None:
         """Stages 1–2: underfoot always; far seek only with an empty screen."""
-        if not (0 < state.health < LEO_MAX_HP):
+        if not (0 < state.health < max_hp(state)):
             return None
         pickups = self._pickups(state)
         if not pickups:
@@ -147,7 +147,7 @@ class PizzaSeek:
         if self._disengage_frames > 0:
             self._disengage_frames -= 1
             return FrameAction(action=buttons("LEFT"), reason="pizza_disengage")
-        if not (0 < state.health < LEO_MAX_HP):
+        if not (0 < state.health < max_hp(state)):
             return None
         pickups = self._pickups(state)
         if not pickups:

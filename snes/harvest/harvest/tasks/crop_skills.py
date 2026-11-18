@@ -172,13 +172,16 @@ class UseToolUntilTileSkill(Task):
     _face_ok_step: int = field(default=0, init=False)
     _edge_nudges: int = field(default=0, init=False)
     _busy_waits: int = field(default=0, init=False)
+    _face_frames: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._steps = 0
+        self._berry_pickup = None
         self._saw_tool = False
         self._face_ok_step = 0
         self._edge_nudges = 0
         self._busy_waits = 0
+        self._face_frames = 0
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -192,6 +195,10 @@ class UseToolUntilTileSkill(Task):
         )
 
     def step(self, world: WorldState) -> TaskResult:
+        from harvest.tasks.power_berry import collect_spawned_berry
+        berry = collect_spawned_berry(self, world)
+        if berry is not None:
+            return berry
         self._steps += 1
         pos = get_pos_from_ram(world.ram)
         player_tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
@@ -308,6 +315,7 @@ class UseToolUntilTileSkill(Task):
                 status=TaskStatus.FAILURE,
                 reason=f"tool 0x{wanted:02X} not selected",
             )
+        self._face_frames += 1
         wanted_face = _FACE_CODE.get(self.face) if self.face else None
         if (
             wanted_face is not None
@@ -331,7 +339,7 @@ class UseToolUntilTileSkill(Task):
         if (
             wanted_face is not None
             and facing != wanted_face
-            and self._steps - self._busy_waits > _FACE_GIVE_UP_STEPS
+            and self._face_frames > _FACE_GIVE_UP_STEPS
         ):
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -344,7 +352,7 @@ class UseToolUntilTileSkill(Task):
             wanted_face is not None
             and self._face_ok_step == 0
             and facing != wanted_face
-            and self._steps - self._busy_waits <= 24
+            and self._face_frames <= 24
         ):
             # 1f tap every 8f — holding the face walks onto the hoe target.
             if self._steps % 8 == 1:
@@ -594,6 +602,8 @@ def pocket_hoe_ring_skills(
     center: Tuple[int, int],
     *,
     ram=None,
+    opening=None,
+    plant_center=True,
     timeout: int = 240,
     nav_timeout: int = 4500,
 ):
@@ -607,7 +617,7 @@ def pocket_hoe_ring_skills(
     from harvest.tasks.crop_geometry import hoe_plan
 
     plan = []
-    for target, stand, face in hoe_plan(center):
+    for target, stand, face in hoe_plan(center, opening=opening, plant_center=plant_center):
         if ram is not None:
             tid = int(get_tile_at(ram, target[0], target[1]))
             if tid in HOED_OR_PLANTED or is_crop_tile(tid):
@@ -668,6 +678,7 @@ class PlantPlotSkill(Task):
 
     name: str = "plant_until_plot"
     seed_type: str = "potato"
+    layout_name: str = "eight_tile_ring"
     center: Tuple[int, int] = (13, 28)
     min_planted: int = PLOT_RING_SIZE
     timeout: int = 480
@@ -694,7 +705,9 @@ class PlantPlotSkill(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._steps += 1
-        planted = count_ring_planted(world.ram, self.center)
+        from harvest.planner.crop_planner import CROP_LAYOUTS
+        planted = sum(int(get_tile_at(world.ram, *tile)) in PLANTED_OR_WET
+                      for tile in CROP_LAYOUTS[self.layout_name].crop_tiles(self.center))
         sel = int(selected_tool(world.ram))
         back = int(backpack_tool(world.ram))
         wanted = int(self._tool_id or seed_item_id(self.seed_type))
@@ -753,6 +766,7 @@ def plant_until_plot_skill(
     *,
     seed_type: str = "potato",
     center: Optional[Tuple[int, int]] = None,
+    layout_name: str = "eight_tile_ring",
     min_planted: int = PLOT_RING_SIZE,
     timeout: int = 480,
 ) -> PlantPlotSkill:
@@ -760,6 +774,7 @@ def plant_until_plot_skill(
 
     return PlantPlotSkill(
         seed_type=seed_type,
+        layout_name=layout_name,
         center=center or WEST_POCKET_PLANT_CENTER,
         min_planted=min_planted,
         timeout=timeout,

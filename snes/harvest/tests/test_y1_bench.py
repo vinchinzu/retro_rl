@@ -5,11 +5,14 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 import numpy as np
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
 from coop_task_test_helpers import make_coop_ram
 from cow_test_helpers import write_u16, write_u24
 from retro_harness import WorldState
@@ -51,6 +54,62 @@ def synthetic_ram() -> np.ndarray:
 
 
 class EconomySnapshotTests(unittest.TestCase):
+    def test_work_scorecard_counts_partial_failures_and_keeps_unknown_gates(self):
+        report = {"work_metrics": {"frames": 25, "phase_frames": {"CROP_WATER": 20, "OTHER": 5}},
+                  "day_journal": [{"phase_results": [
+                      {"phase": "CROP_WATER", "status": "interrupted", "frames": 20,
+                       "work": {"counts": {"watered_count": 2, "skipped_water": 1},
+                                "after": {"gates": {"all_growing_crops_wet": False}}}},
+                      {"phase": "CROP_WATER", "status": "no_work", "frames": 5,
+                       "work": {"counts": {}, "after": {"gates": {"all_growing_crops_wet": None}}}}
+                  ]}]}
+        result = y1_bench.farm_work(report)
+        water = result["phases"]["CROP_WATER"]
+        self.assertEqual((water["frames"], water["frames_per_unit"]), (20, 10))
+        self.assertEqual(water["receipt_frames"], 25)
+        self.assertEqual((water["wet_gate_pass"], water["wet_gate_fail"], water["wet_gate_unknown"]), (0, 1, 1))
+        self.assertEqual(water["interrupted"], 1)
+        self.assertIsNone(y1_bench.farm_work({})["attributed_frames"])
+
+    def test_plant_metrics_use_live_tile_growth_instead_of_sequence_prose(self):
+        report = {"day_journal": [{"phase_results": [{"phase": "CROP_ESTABLISH", "status": "success",
+                  "reason": "sequence complete", "frames": 800, "work": {
+                      "before": {"crops": {"crop": 8}}, "after": {"crops": {"crop": 16}}, "counts": {}}}]}]}
+        row = y1_bench.farm_work(report)["phases"]["CROP_ESTABLISH"]
+        self.assertEqual(row["counts"]["planted_tiles"], 8)
+        self.assertEqual((row["frames_per_unit"], row["unit"]), (100, "planted_tile"))
+        self.assertEqual((row["plant_gate_pass"], row["plant_gate_fail"]), (1, 0))
+        report["day_journal"][0]["phase_results"][0]["work"]["before"]["crops"]["crop"] = 10
+        self.assertEqual(y1_bench.farm_work(report)["phases"]["CROP_ESTABLISH"]["plant_gate_pass"], 1)
+
+    def test_harvest_rate_uses_native_receipts_even_if_task_overreports(self):
+        report = {"sales_ledger": {"seasons": [{"crop_shipped": {"potato": 2}}]},
+                  "day_journal": [{"phase_results": [{"phase": "HARVEST_ROUTE", "frames": 600,
+                    "work": {"counts": {"shipped_count": 3}, "after": {}}}]}]}
+        row = y1_bench.farm_work(report)["phases"]["HARVEST_ROUTE"]
+        self.assertEqual((row["frames_per_unit"], row["shipment_delta"]), (300, 1))
+        self.assertEqual(row["counts"]["confirmed_shipped_count"], 2)
+        report["sales_ledger"]["counter_decreases"] = [{"crop": "potato", "delta": -1}]
+        self.assertIsNone(y1_bench.farm_work(report)["phases"]["HARVEST_ROUTE"]["frames_per_unit"])
+
+    def test_work_scorecard_flags_a_receipt_copied_into_the_next_day(self):
+        phase = {"phase": "CROP_WATER", "start_frame": 10, "end_frame": 30,
+                 "frames": 20, "work": {"counts": {"watered_count": 4}, "after": {}}}
+        report = {"day_journal": [{"plan_day": 8, "phase_results": [phase]},
+                                  {"plan_day": 9, "phase_results": [dict(phase)]}]}
+        work = y1_bench.farm_work(report)
+        self.assertEqual(work["phases"]["CROP_WATER"]["counts"]["watered_count"], 4)
+        self.assertEqual(work["duplicate_receipts"][0]["plan_day"], 9)
+
+    def test_wallet_trace_reconciles_purchases_and_overnight_credits(self):
+        report = {"start": {"money": 100}, "end": {"money": 150}, "work_metrics": {"segments": [
+            {"phase": "BUY_SEEDS", "before": {"money": 100}, "after": {"money": 80}},
+            {"phase": "SLEEP", "before": {"money": 80}, "after": {"money": 150}}]}}
+        work = y1_bench.farm_work(report)
+        self.assertEqual(work["wallet_delta_by_phase"], {"BUY_SEEDS": -20, "SLEEP": 70})
+        self.assertTrue(work["wallet_balanced"])
+        self.assertIsNone(y1_bench.farm_work({})["wallet_balanced"])
+
     def test_reads_every_field(self) -> None:
         ram = synthetic_ram()
         ram[SHED_ROW_2_ADDR] = SHED_ROW_2_BRUSH_BIT
@@ -276,6 +335,20 @@ class ScorecardTests(unittest.TestCase):
         self.assertEqual(animals["milk_shipped"], 3)
         self.assertEqual(animals["egg_ship_days"], 1)
 
+    def test_hen_sales_count_the_event_drop_or_a_walk_home_payment(self) -> None:
+        self.assertEqual(self.card["animals"]["hens_sold"], 0)
+        report = synthetic_report()
+        report["day_journal"][2]["phase_results"].append(
+            phase("SELL_CHICKEN", "chickens 4->3 money 4060->4560 target_sales=1"))
+        report["day_journal"][3]["phase_results"] += [
+            phase("SELL_CHICKEN_WINDOW", "before cutoff at 06:00"),
+            phase("SELL_CHICKEN", "paid on the walk home (request flag clear) chickens 2->2 money 5110->5110 target_sales=1"),
+        ]
+        card = y1_bench.scorecard(report, "sales")
+        self.assertEqual(card["animals"]["hens_sold"], 2)
+        self.assertEqual(card["animals"]["first_hen_sale"]["label"], "Y1 Su D1")
+        self.assertIn("hens sold 2, first Y1 Su D1 (day 31)", y1_bench.render(card))
+
     def test_animal_gold_is_bin_minus_crop_counters_on_chore_days(self) -> None:
         animals = self.card["animals"]
         # Su D1: 410 - (2 potato 160 + 1 tomato 100) = 150; Su D2: 300 - 0; Wi D30: 0 - 0.
@@ -328,6 +401,75 @@ class ScorecardTests(unittest.TestCase):
         text = y1_bench.render(self.card)
         self.assertLessEqual(len(text.splitlines()), 40)
         self.assertNotIn("Traceback", text)
+
+
+class SeasonalSalesTests(unittest.TestCase):
+    def test_transient_new_year_calendar_and_unpaid_ending_bin(self) -> None:
+        report = synthetic_report()
+        report["end"] = {"year": 2, "season": 1, "day": 30, "money": 1000}
+        report["day_journal"] = []
+        report["end_economy"] = {"bin_gold": 50}
+        report["sales_ledger"] = {
+            "source": "per_frame_ram", "observations": 100,
+            "start": {key: report["start"][key] for key in ("year", "season", "day")},
+            "end": {key: report["end"][key] for key in ("year", "season", "day")},
+            "seasons": [{"year": year, "season": season, "bin_gold": gold,
+                         "crop_shipped": dict.fromkeys(("corn", "potato", "turnip", "tomato"), 0)}
+                        for year, season, gold in ((0, 3, 100), (2, 3, 0), (2, 1, 250))],
+        }
+        sold = y1_bench.scorecard(report)["sales"]
+        self.assertEqual([row["label"] for row in sold["seasons"]], ["Y1 Winter", "Y3 Summer"])
+        self.assertTrue(sold["complete_shipping_observation"])
+        self.assertEqual((sold["bin_gold"], sold["paid_shipping_gold"]), (350, 300))
+        self.assertEqual(sold["closing_unpaid_bin_gold"], 50)
+
+    def test_frame_ledger_includes_sales_without_journal_snapshots(self) -> None:
+        report = synthetic_report()
+        report["sales_ledger"] = {
+            "source": "per_frame_ram", "observations": 100, "counter_decreases": [],
+            "start": {key: report["start"][key] for key in ("year", "season", "day")},
+            "end": {key: report["end"][key] for key in ("year", "season", "day")},
+            "seasons": [{"year": 0, "season": 1, "bin_gold": 1480,
+                         "crop_shipped": {"turnip": 0, "potato": 2, "tomato": 1, "corn": 1}}],
+        }
+        report["day_journal"][2].pop("eod")  # missing snapshot must not lose the shipping
+        report["day_journal"][3]["phase_results"].append(
+            phase("SELL_CHICKEN", "chickens 4->3 money 500->1000"))
+        card = y1_bench.scorecard(report)
+        summer = card["sales"]["seasons"][1]
+        self.assertEqual(summer["source"], "frame ledger")
+        self.assertEqual(summer["crop_gold"], {"turnip": 0, "potato": 160, "tomato": 100, "corn": 120})
+        self.assertEqual(summer["milk_egg_gold_est"], 300)  # only measured chore-day residuals
+        self.assertEqual(summer["unattributed_bin_gold"], 1480 - 380 - 150 - 300)
+        self.assertEqual(summer["hen_sales_gold_receipts"], 500)
+        self.assertEqual(summer["gross_sales_gold"], 1980)
+        self.assertEqual(summer["other_net_cash"], -560 - 1980 + 6600)
+        self.assertIn("2 / 160", y1_bench.render_sales(card))
+        self.assertIn("Milk + egg G (est.)", y1_bench.render_sales(card))
+
+    def test_credits_with_score_does_not_claim_perfect(self) -> None:
+        report = synthetic_report()
+        report["ending"] = {"finished": True, "final": {
+            "scene_index": 0x25, "terminal": True, "ranch_mastery_0x25": 120}}
+        check = y1_bench.completion(report)
+        self.assertTrue(check["power_on_credits_with_score"])
+        self.assertFalse(check["perfect_999"])
+        report["ending"]["final"]["ranch_mastery_0x25"] = 999
+        self.assertTrue(y1_bench.completion(report)["perfect_999"])
+        report["clean_run"].pop("ram_writes")
+        self.assertFalse(y1_bench.completion(report)["power_on_credits_with_score"])
+
+    def test_legacy_totals_and_unjournaled_tail_are_explicit(self) -> None:
+        report = synthetic_report()
+        report["day_journal"][-1]["money"] = 7900
+        card = y1_bench.scorecard(report)
+        final = card["sales"]["seasons"][-1]
+        self.assertEqual(final["wallet_end"], 8000)  # end receipt beats incomplete journal
+        self.assertFalse(card["sales"]["complete_shipping_observation"])
+        self.assertIn("Incomplete shipping observation", y1_bench.render_sales(card))
+        before, after = eco(), eco()
+        before["shipped"]["corn"] = 100
+        self.assertIsNone(y1_bench._crop_gold(before, after))  # decreases are not zero sales
 
 
 class DegradeTests(unittest.TestCase):
@@ -398,6 +540,10 @@ class CompareAndCliTests(unittest.TestCase):
             self.assertIn("Y1 BENCH COMPARE", stdout.getvalue())
             self.assertIn("Y1 BENCH COMPARE", out_md.read_text())
             self.assertEqual(json.loads(out_json.read_text())["headline"]["net_worth"], 21000)
+            with contextlib.redirect_stdout(stdout):
+                self.assertEqual(y1_bench.main([str(a), "--sales", "--out", str(out_md)]), 0)
+            self.assertIn("| Season | Turnip | Potato | Tomato | Corn |", out_md.read_text())
+            self.assertIn("Incomplete shipping observation", out_md.read_text())
 
 
 if __name__ == "__main__":

@@ -1,0 +1,1003 @@
+{
+  "seed": "LN_repair-herd_whatif_all12_finalnight",
+  "setup": "RAM-edited research seed; all actions after load native inputs",
+  "ram_writes_during_run": 0,
+  "loads_during_run": 0,
+  "initial_state_loads": 1,
+  "audit": {
+    "ram_writes": 0,
+    "mid_run_loads": 0,
+    "assists": {},
+    "runtime_observation_class": null,
+    "intervention_class": null,
+    "start_identity_digest": null,
+    "policy_identity_digest": null,
+    "audit_capabilities": {
+      "schema_version": 1,
+      "provider": "harvest.pr999.herd",
+      "observes_ram_writes": true,
+      "observes_mid_run_loads": true,
+      "observes_assists": true
+    }
+  },
+  "imports": "/home/v/01_projects/11_games/retro_rl/snes/harvest/harvest/__init__.py",
+  "source_sha256": "560af06c35da5bb8cdcb45d7a27a64dde7e8fef98d9c648dbab6932a6ef13082",
+  "frames": 7507,
+  "events": [
+    {
+      "label": "boot",
+      "frame": 0,
+      "tilemap": 39,
+      "player_x": 113,
+      "player_y": 277,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 0,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 500,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 47
+    },
+    {
+      "label": "exit_to_farm",
+      "frame": 259,
+      "tilemap": 0,
+      "player_x": 328,
+      "player_y": 360,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 0,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 500,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 161,
+      "result": "SUCCESS",
+      "reason": "tilemap=0x00"
+    },
+    {
+      "label": "multi_nav",
+      "frame": 515,
+      "tilemap": 0,
+      "player_x": 312,
+      "player_y": 374,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 3,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 500,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 161,
+      "result": "SUCCESS",
+      "reason": "all waypoints reached"
+    },
+    {
+      "label": "directional_transition",
+      "frame": 679,
+      "tilemap": 39,
+      "player_x": 128,
+      "player_y": 360,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 3,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 500,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 226,
+      "result": "SUCCESS",
+      "reason": "tilemap=0x27"
+    },
+    {
+      "label": "fresh_barn",
+      "frame": 679,
+      "tilemap": 39,
+      "player_x": 128,
+      "player_y": 360,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 3,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 500,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 226
+    },
+    {
+      "label": "cow_chores",
+      "frame": 6256,
+      "tilemap": 39,
+      "player_x": 56,
+      "player_y": 341,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 3,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 488,
+      "fed_cows_flags": 4095,
+      "fed_cows_n": 12,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 47,
+      "result": "SUCCESS",
+      "reason": "talk=False brush=False milk=0 ship=0 fed=12"
+    },
+    {
+      "label": "before_sleep",
+      "frame": 6256,
+      "tilemap": 39,
+      "player_x": 56,
+      "player_y": 341,
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "hour": 18,
+      "minute": 3,
+      "num_cows": 12,
+      "tool_selected": 15,
+      "tool_backpack": 14,
+      "held_item": 0,
+      "stored_grass": 488,
+      "fed_cows_flags": 4095,
+      "fed_cows_n": 12,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 47
+    },
+    {
+      "label": "go_to_sleep",
+      "frame": 7507,
+      "tilemap": 21,
+      "player_x": 49,
+      "player_y": 86,
+      "year": 0,
+      "season": 0,
+      "day": 17,
+      "hour": 6,
+      "minute": 0,
+      "num_cows": 12,
+      "tool_selected": 14,
+      "tool_backpack": 15,
+      "held_item": 0,
+      "stored_grass": 488,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 161,
+      "result": "SUCCESS",
+      "reason": "day advanced; morning house ready"
+    },
+    {
+      "label": "morning",
+      "frame": 7507,
+      "tilemap": 21,
+      "player_x": 49,
+      "player_y": 86,
+      "year": 0,
+      "season": 0,
+      "day": 17,
+      "hour": 6,
+      "minute": 0,
+      "num_cows": 12,
+      "tool_selected": 14,
+      "tool_backpack": 15,
+      "held_item": 0,
+      "stored_grass": 488,
+      "fed_cows_flags": 0,
+      "fed_cows_n": 0,
+      "happiness": 70,
+      "slots": [
+        {
+          "slot": 0,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 1,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 2,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 3,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 4,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 5,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 6,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 7,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 8,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 9,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 10,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        },
+        {
+          "slot": 11,
+          "status": 9,
+          "happy": 200,
+          "timer": 0,
+          "map": 39
+        }
+      ],
+      "trough0": 161
+    }
+  ],
+  "evidence_kind": "native_research_fixture",
+  "scope": "One ordinary fed night Y1 Spring D16 to D17; not the ending night or dated acquisition"
+}

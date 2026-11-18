@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 152,
+  "roomHex": "0x98",
+  "name": "Misery Mire entrance",
+  "measured": "2026-10-18",
+  "sourceState": "Scan_mire_0x98",
+  "points": [],
+  "doors": [
+    {
+      "label": "south_entrance",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "role": "backtrack",
+      "path": [],
+      "notes": "Slot 0 type 0x0A entrance pos $1D1C. Door-position decode (pos>>1)&0x3F, (pos>>7)&0x3F is tile (14,58). Door glyphs in the pin_probe window are columns 15-16, rows 59-63. Link stands on tile (15,59), byte 0x8E. DOWN from MiseryMireEntry left indoors: module 0x09, dungeon 0xFF, xy (296,3368). Screen id was not recorded. Backtrack, not the forward hop."
+    }
+  ],
+  "notes": [
+    "Isolated poke pin MiseryMireEntry and scan pin Scan_mire_0x98, room 0x98, dungeon 0x0E, module 0x07, keys 0, big key 0. Entrance table $02C813 index 0x27.",
+    "pin_probe window is columns 7-60. Rows 39-40: floor 14-35, pit 36-41, floor 42-43, block 44-45, floor 46-58. Rows 41-42: floor 14-31, block 32-33, floor 34-35, pit 36-41, floor 42-58. Stairs columns 49-50 rows 35-38 sit east of the pit. Corridor floor is columns 14-17 on rows 43-51 and columns 9-22 on rows 52-58.",
+    "The pit is the stopping lock. Five zols occupy the west floor. The stairs were not stood on. No chest slots. Geometry for this room stays in this file."
+  ]
+}

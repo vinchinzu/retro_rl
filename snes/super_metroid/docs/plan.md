@@ -1,207 +1,163 @@
-# Plan: Super Metroid
+# Super Metroid Clean finish plan
 
-Verified facts: [STATUS.md](STATUS.md). Language:
-[`CONTEXT.md`](../CONTEXT.md). Assist:
-[ASSIST_CONTRACT.md](ASSIST_CONTRACT.md). Tracker:
-`bd ready -l super_metroid -l spine`.
+Finish vanilla any% KPDR on stable-retro snes9x from power-on, through the
+final “SEE YOU NEXT MISSION” screen. Keep Crocomire and Grapple on the human
+route. The deliverables are the controller tape, an independent replay report
+with zero loads, RAM writes and deaths, the final screen, and elapsed real
+time from the input frames. Speed and 100% follow the first finish.
+[Clean contract](CLEAN_TRACK.md) · [Verified leaves](STATUS.md)
 
-**Doc home:** STATUS is verified facts; this file is future work; beads
-are ready/in-flight. Session loop lives in `.grok/skills/sm-session/`
-(not a QUEUE, not PROCESS.md). One living residual per open tip. Do not
-rewrite the route or claim a new tip from a pin bench.
+## Start here next session
 
-**Program role:** Beat vanilla Super Metroid with a **skill API**, equal token
-weight with Harvest. Solver/SMZ3 is downstream. See
-[`CONTEXT.md`](../CONTEXT.md) and
-[`docs/SOLVER_ARCHITECTURE.md`](../../../docs/SOLVER_ARCHITECTURE.md).
+Resume at row 212 in Space Jump Room (`0xD9AA`), right after defeating
+Draygon (row 210, `combat.draygon.play_clean_draygon_leave`) and collecting
+Space Jump (row 211, `tape+idle:0`). Samus starts at `(85,155)` with 71/399
+energy, 28/35 missiles, 1/5 Supers, 3/5 Power Bombs, items `0x7325`, beams
+`0x1007`, and `$7E:D82C = 0x03`. [Clean evidence](CLEAN_TRACK.md)
 
-## Strategy
+Verify the current prefix with both the guarded chain replay and the
+independent zero-harness audit before extending to Plasma Beam (row 223).
 
-**Survival** (energy + unlocked ammo) makes combat attrition secondary. The
-hard problem is long-horizon navigation. The campaign is a skillset. TAS and
-human **tapes** are guidelines; trash them once the skill exists.
-
-One **living tip**. Pin is for building; rung green is power-on to that tip.
-Scratch, Clean, and practice are parallel, not a second product.
-
-**Chip** is one room: tape → skill. **Sync** is a clean **Join** into the next
-room (doorway pause / a few frames allowed). If the leftover will not Join:
-one multi-room Skill, a smaller checkbox, or write the miss and end the
-Sitting. Drop the split, not Gravity. Full power-on dual at milestones
-(Gravity, a new living tip, credits) and before **Publish**, not every slop
-hop.
-
-**Clear rooms by play.** Door-warps are topology diagnostics only. Recipe
-([ARCHITECTURE.md](ARCHITECTURE.md)):
-
-```text
-tape/TAS guideline → hop dual-green → SpineHop → power-on compose → Sync next
+```bash
+QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python -m super_metroid.splice chain --replay --through-row 211
+QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
+  uv run python snes/super_metroid/scripts/tools/audit_master_tape.py
 ```
 
-**Boss fights stay deferred** until natural *entry* to that boss room exists on
-the played chain. Pipeline: [BOSS_PIPELINE.md](BOSS_PIPELINE.md).
+## End-to-end coverage
 
-**Agent discipline:** `.grok/skills/sm-session/` (one bead, one knob, never
-halt, no STATUS from a pin). Do not relax for scale.
+The Clean candidate board has 340 rows, including one boot metadata row,
+the power-on sequence, 316 planned room crossings and 22 same-room rows
+through Landing Site ship launch. Its 27 source tapes and two existing
+crossing controllers connect every planned visit. The physical room graph
+contains all 316 crossings. The route visits 168 of the 262 rooms in that
+graph. The other 94 rooms each have a development entry in
+`maps/room_problems.json`. An all-room run still needs an ordered route
+through those rooms and recordings that connect them.
 
-**Ticket size:** one hop, or drop the split (merge rooms / shrink checkbox /
-write the miss). Prefer 30–90 min sessions. STATUS/docs updates are
-planner-owned.
+| Rows | Route section | Crossings | Open source-entry work |
+|---|---|---:|---|
+| 1–83 | Power-on to Business Center after Kraid | 76 | Verified from power-on. The actual replay includes 16 additional farming transitions in rows 41 and 46. |
+| 84–134 | Upper Norfair to the Moat | 46 | Verified from power-on, including the Sloaters Energy Refill detour in row 127. |
+| 135–148 | Moat, Wrecked Ship and Gravity | 13 | Verified from power-on, including Phantoon, the Attic enemy lock, and Gravity Suit. |
+| 149–185 | Return to Norfair, Crocomire and Grapple | 36 | Verified from power-on, including the Maridia Tube break, Crocomire defeat and Grapple pickup. |
+| 186–223 | Maridia, Botwoon, Draygon and Plasma | 35 | Verified through 211 (Botwoon, Draygon and Space Jump). Next is row 212 toward Plasma. |
+| 224–272 | Lower Norfair, Screw Attack and Ridley | 46 | 251, 262 and 271. Resolve Spring Ball before 253. |
+| 273–315 | Lower Norfair return, statues and Tourian entry | 43 | 282 |
+| 316–339 | Tourian, Mother Brain, escape and ship launch | 21 | 319 retimed. Red rows 331 and 332. The credits tail follows 339. |
 
----
+The Survival report independently covers 120 crossings through Phantoon.
+Every one appears in the Clean board's physical links. The runs take
+different sequences through those links, so resume Clean from its own master
+state. The source-entry census remains a record of which archived candidates
+sync from their source states. Cathedral, Rising Tide, Bubble Mountain, and
+the Ice return needed different inputs on the Clean chain. Each remaining
+candidate still needs to clear from its actual Clean predecessor.
 
-## Current focus
+## Route milestones
 
-| Priority | Work | Beads |
-|----------|------|-------|
-| **★ Product next** | Gravity on the Phantoon tip (power-on) | `rr-kw8t` |
-| Living tip | `--to phantoon` **195,336f** ×2 | STATUS `rr-b926` |
-| Parallel | Chip prefix slop under Sync | not a second tip |
-| Parked | TAS/oracle, 100%, Clean spore+ | not `spine` |
+Rows below are inclusive IDs on the rebuilt Clean board. A row can be a
+same-room pickup or a controller crossing. Each milestone uses the same
+master tape. Promote it when an independent replay reaches its row **and**
+shows the listed result. Check boss flags in bank 7E, collected item/beam
+bits and actual ammo capacities at the appropriate split.
 
-**Rungs:** Phantoon (living tip) → Gravity → Maridia → LN+Ridley → Tourian+credits
-→ rewrite toward sub-hour.
+| Through row | Milestone | What the replay must show |
+|---:|---|---|
+| 44 | Brinstar Supers | Morph, Bombs, Bomb Torizo and Spore Spawn cleared, first five-Super capacity |
+| 55 | Charge and Spazer | Big Pink Charge pickup, Super gate open, Spazer collected in A447 |
+| 74 | Kraid and Varia | Hi-Jump and its tank, Kraid defeat flag, Varia collected in A6E2 |
+| 130 | Upper Norfair and Power Bombs | Speed, Wave and Ice collected, first Power Bomb capacity in A3AE |
+| 148 | Phantoon and Gravity | Cross the Moat and West Ocean, Phantoon flag set, Gravity collected in CE40 |
+| 185 | Crocomire and Grapple | Crocomire defeated, Grapple collected in AC2B |
+| 223 | Draygon and Plasma | Botwoon and Draygon defeated, Space Jump and Plasma collected |
+| 272 | Ridley | Lower Norfair traversed with Screw Attack, Ridley defeated, Ridley Tank Room reached |
+| 315 | Tourian access | All four major boss flags, natural statue opening, Tourian entrance and save-room return |
+| 338 | Mother Brain and escape | Mother Brain defeated, escape rooms traversed before timeout, Landing Site reached |
+| 339 + credits tail | Finish | Samus boards the ship. Replay all neutral tail inputs, verify the fully drawn final message, capture final screen and report elapsed time |
 
-**Critical path:** Phantoon is the living tip. Next compose is Gravity.
-The residual owns the pin. Do not name that pin in STATUS.
-[tasks/rr-kw8t-residual.md](tasks/rr-kw8t-residual.md).
+## Parallel work and integration (first dispatch, now closed)
 
-Live work: `bd ready -l super_metroid -l spine`.
-Source states: [SOURCE_STATES.md](SOURCE_STATES.md).
+| Owner during the first dispatch | Input | Work returned to the integrator |
+|---|---|---|
+| Frontier Sol | The last accepted master row | Solve consecutive leaves until the next failure. Save the best viable prefix and its replay, with entry/exit energy and ammo. This worker alone changes the canonical tape. |
+| Kraid Sol | Repaired s10 doorway, then row 72's actual leave when available | Record buttons for the quick kill, Varia pickup and return. Report required ammo, first damage and the successor's settled position. |
+| Credits Sol | Final Landing Site source, then the natural early-game farming state | Validate the credits detector and tail against the cartridge. On completion, search for a natural resource farm upstream of the Spazer gate. |
+| Integrator | Clean board, source pins, independent replay | Grade room inputs on the same row IDs used by the solver. Test the two Moat/West Ocean crossings together. Update this handoff and STATUS only with the appropriate evidence. |
 
-Parallel room work, human-tape bootstrap, permissive scaffold assists, and
-safe ten-agent speed waves are specified in
-[PARALLEL_SPINE_PLAN.md](PARALLEL_SPINE_PLAN.md). Read it before dispatching
-work that starts from archived room pins, changes a room already on the spine,
-or attempts a tape-backed continuous chain. Its scaffold track is development
-evidence, not the Survival living tip.
+Independent workers may use an exact room-entry state, read RAM and restore
+to search. Deliver SNES-12 buttons or a reusable room controller, source
+identity, frame range, energy and ammo costs, and the next room. When the
+master reaches that entry, try the candidate and run the next row. A different
+loadout, input phase, or enemy RNG can change the result.
 
-### Ceres elevator (parallel Chip)
+After Kraid, move the fight worker to Phantoon, then Botwoon/Draygon, then
+Ridley. Move the terminal worker to the first resource shortage or uncovered
+connection ahead of the master. A failed downstream room that needs ammo sends
+work back to the nearest affordable pickup, enemy drop or refill station.
+Develop alternative prefixes under separate artifact stems so the integrator
+can compare the downstream result before replacing the accepted tape.
 
-Not Gravity and not a second tip. Closed climb notes live in
-[tasks/rr-gzsd-residual.md](tasks/rr-gzsd-residual.md). Still open: wall
-jumps between shaft rungs (slower than the TAS elevator), and the
-`CERES_ELEV_MAX_FRAMES` check at the end of `play_ceres_escape_to_landing`
-never fires because `RouteSession.step` replaces `session.info` each frame.
-`_ceres_elev_budget` inside the climb still uses a local start. Do not
-STATUS. Do not change `DEFAULT_CONTINUOUS_TIP`.
+The 340-row source census graded 320 as recorded, one after a three-frame
+delay (row 319), and 16 red. Two crossings require controllers and one row is
+boot metadata. The saved results are in `recordings/tape_census_clean.json`.
+Rows 331–332 are consecutive Mother Brain visits from different takes.
 
----
+## Known resource and route gaps
 
-## Next rungs
+- **Early Brinstar.** Super selection, the remaining pickup animation and
+  enemy drops differ at the s6→s8 handoff. Spend Supers deliberately on gates.
+  Keep enough energy and ammo to survive Green Hill Zone, get Spazer and kill
+  Kraid. Measure this on the actual prefix.
+- **Maridia, row 212.** The source ammo jumps from 30 to 60 Missiles,
+  4 to 15 Supers and 5 to 10 Power Bombs. These are current counts.
+  Measure actual capacities and stock on the Clean entry and budget
+  natural pickups or drops for later fights.
+- **Lower Norfair, row 253.** s31 introduces Spring Ball (bit 0002) without
+  a pickup. The room graph gives an approach from Oasis (row 229) via
+  East Sand Hall, Pants Room and Shaktool to the Spring Ball Room. The
+  return leads through Shaktool, East Pants Room, Pants Room and East
+  Sand Hall to Oasis. Develop the crossings and pickup as a row 229
+  candidate, then prove the original exit to West Sand Hall. Alternatively,
+  prove the later sections with the current loadout and update their item
+  requirements in the board. The detour has topology evidence only.
+- **Tourian, row 307 onward.** At the Landing Site seam, source energy
+  jumps from 344 to 499, Missiles from 65 to 70 and Power Bombs from 2
+  to 15. Budget Metroid rooms, barriers, Mother Brain's drain and escape
+  from the actual Clean loadout. The end-of-credits detector has been
+  verified from the ending pin. The master must continue past state 39
+  to the fully drawn final message.
 
-### Gravity (NOW)
+## Commands
 
-Natural Phantoon leave / WS power-on → Gravity Suit (`rr-kw8t`). Residual
-owns pin, checkbox, and probe CLI. Power-on green is the rung.
+Run from the repository root with the local ROM and human tapes installed.
 
-### After Gravity
+```bash
+export QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
 
-- Maridia: Tube / Everest / Botwoon / Draygon / Space Jump, each from natural
-  entry. Human shape: [tasks/SM-MARIDIA-BOTWOON-HUMAN.md](tasks/SM-MARIDIA-BOTWOON-HUMAN.md).
-- LN + Ridley from natural entry. Human shape:
-  [tasks/SM-POST-SJ-EXIT-HUMAN.md](tasks/SM-POST-SJ-EXIT-HUMAN.md),
-  [tasks/SM-POST-MAIN-HALL-HUMAN.md](tasks/SM-POST-MAIN-HALL-HUMAN.md).
-- Tourian / Mother Brain / escape / credits (M8). Human G4→Tourian tape is
-  still open (`--from post-bosses`).
+# Validate joins, physical room links, input slices and the ship-launch row.
+uv run python snes/super_metroid/scripts/tools/tape_census.py --audit
 
-Tapes are guidelines. Continuous tips only after natural doorway entry.
+# Source-entry candidates on the current board, including the late game.
+uv run python snes/super_metroid/scripts/tools/tape_census.py
+uv run python snes/super_metroid/scripts/tools/tape_census.py --rows 70-76 \
+  --out snes/super_metroid/recordings/kraid_census_clean.json
 
-### Parked (not spine)
+# Advance to a milestone, then independently verify that milestone again.
+uv run python -m super_metroid.splice chain --through-row 55
+uv run python -m super_metroid.splice chain --replay --through-row 55
 
-- Prefix Chip/slop under Sync. Morph is **24,187f**. Ceres TAS-speed
-  elevator is the parallel Chip above; do not freeze Gravity for it.
-- Planner STATUS for prefix CI `--to moat` (`rr-g3nj`) and Ice dual
-  (`rr-ucl9`). Not a second living tip.
-- TAS/oracle, 100% board ([routes/TRACK_100.md](routes/TRACK_100.md)).
-- Practice `ROOM_WORK_QUEUE` when the planner opts in.
+# Include the actual room sequence and its owning rows in the replay output.
+uv run python -m super_metroid.splice chain --replay --proof-json
 
-### Clean (parallel)
-
-Morph Clean **26,824f** and Bombs/Torizo Clean **49,321f** ×2 are green.
-Next is Spore Clean, parked. Never mutate default CLI assists.
-[CLEAN_TRACK.md](CLEAN_TRACK.md).
-
----
-
-## Maturity targets
-
-| Gate | Target | Notes |
-|------|--------|-------|
-| **M5** | Bronze observation; Survival continuous tip | **Current** (Phantoon). Sticker, not a rung. |
-| **M6** | Complete route graph with owners/predicates | In progress |
-| **M7** | Continuous dry-run invariants (power-on → credits path) | Open |
-| **M8** | Verified capture + ending/credits evidence | Open |
-
-Observation-class migration (Bronze → Silver) is a separate workstream after
-continuous reliability.
-
----
-
-## Structure (open)
-
-Current layers (CLI → continuous + catalog + segment → pure kpdr → graph →
-ram/assist → combat) are correct. Planner-serial when touching
-`continuous.py` / `progression.py` / `catalog.py`. See
-[ARCHITECTURE.md](ARCHITECTURE.md).
-
-- Profile frame time on long tips (WRAM-copy rate); optional linter against
-  bare full `parse_env_state` inside `routes/kpdr/`.
-- Prefer `wait_ordinary_room` handoff bands over airborne settle hope.
-- Typed path-summary model; work-queue export from graph verification.
-- Keep `legacy/` and `dev/` (door-warps) strictly fenced.
-- Promote shared adventure patterns to `retro_harness.adventure` only after
-  SM + ALTTP both prove the abstraction.
-
-**Do not** relax pure-first / one-knob / residual rules.
-
----
-
-## Risks
-
-| Risk | Mitigation |
-|------|------------|
-| Long-horizon nav fragility / high-dwell segments | Tighten offline secondary; stabilize after each tip |
-| Architecture debt (multi-registry tip wire, full WRAM hot paths) | Highest-leverage ARCH first |
-| Residual / card proliferation | One living residual; delete closed-hop cards |
-| Process drift (practice claiming continuous) | Dual-track gates; planner owns STATUS |
-| Endgame (Zebetites regen, escape geometry, timer/WRAM) | Deferred until natural entry |
-
-## Non-goals (now)
-
-- Door-warp / hybrid tours as continuous evidence
-- Ship-first / PRKD continuous route
-- Pink PB maze (first PB is Alpha after Ice)
-- Vision-based boss combat in `legacy/`
-- Claiming Clean greens as the program M5/M8 assisted gate
-- Full endgame fight code before natural entry
-
----
-
-## Recommended next waves
-
-```text
-★ NOW   Gravity on the Phantoon tip (rr-kw8t). Power-on is the rung.
-THEN    Maridia (tube / Botwoon / Draygon / SJ) on the tip
-        LN + Ridley → Tourian + MB + escape + credits
-Parallel Chip prefix slop under Sync (drop the split, not Gravity)
-Publish every 20–30 working sessions to the living tip (not a calendar)
-Later   rewrite toward sub-hour; drop convenience majors; 100%
+# Final acceptance returns success only for a complete loadless replay.
+uv run python -m super_metroid.splice chain --replay --require-credits
 ```
 
-Live dispatch: `bd ready -l super_metroid`.
-Milestone names: [routes/MILESTONES.md](routes/MILESTONES.md).
-
----
-
-## Pointers
-
-| Doc | Role |
-|-----|------|
-| [`CONTEXT.md`](../CONTEXT.md) | Language |
-| [STATUS.md](STATUS.md) | Verified tip + prefix frames |
-| `bd ready -l super_metroid` | Ready / in-flight work |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Layers + structural debt |
-| [BOSS_PIPELINE.md](BOSS_PIPELINE.md) | Boss natural-entry rules |
-| [CLEAN_TRACK.md](CLEAN_TRACK.md) | Clean track process |
-| [routes/ROUTE_KPDR.md](routes/ROUTE_KPDR.md) | KPDR route text |
+Use `--override ROW=path.npz` while extending an unaccepted room. An override
+for a row already on the master requires a new prefix ending before that row.
+The board can be regenerated with `chain --rebuild-board` during a solver run.
+Keep all development output under Super Metroid. The older assisted Phantoon
+run, reference TAS movies and parked lsnes work are described in the
+[game instructions](../AGENTS.md).

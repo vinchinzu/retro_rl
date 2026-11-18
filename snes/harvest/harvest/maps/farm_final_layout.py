@@ -21,6 +21,7 @@ from functools import lru_cache
 
 from harvest.core.harvest_state import (
     CURRENT_MAP_ARRAY_ADDR,
+    FARM_DEVELOPMENT_DIVISOR,
     FARM_MAP_ARRAY_ADDR,
     HarvestStateDocument,
     is_farm_development_tile,
@@ -433,3 +434,268 @@ def stump_anchor(x: int, y: int, tile_id: int) -> tuple[int, int]:
         raise ValueError(f"not a quad tile: {tile_id:#x}")
     offset = tile_id - origin
     return (x - (offset & 1), y - (offset >> 1))
+
+
+# --- Terrain ledger: how much of the field is worked, and what 2,950 still needs ---------------
+#
+# ROM policy (F2): ``CalculateFarmDevelopment`` counts a tile below ``0xA0`` that is fence
+# ``0x05``/``0x06`` or ``>= 0x1D``; the term is ``min(100, counted * 10 // 295) >> 1``. Hoed soil
+# (``0x07``/``0x08``) does not count, it only takes the seed. So 50 points need 2,950 counted tiles
+# and 49 stop at 2,949: on the 2,968-cell pool that is 99.4% of the field, at most 18 cells may
+# stay bare (24 of 2,974 on the Fall mask). A bag is one ``PreCheckToolSuccessSquare`` pass over a
+# 3x3, so nine tiles when every square is hoed; a square that is not hoed is skipped.
+
+GRASS_BAG_TILES = 9
+GRASS_BAG_PRICE_G = 500  # ``livestock_econ.SHOP_PRICE_G["grass_seed"]``; one bag of 329 is free
+HOE_STAMINA = 2          # ``core.stamina.SWING_STAMINA_COST``; a bag is 1
+BAG_STAMINA = 1
+_TILLED_IDS = frozenset({FRESH_TILLED, WATERED_TILLED})
+_HEAVY_DEBRIS = STUMP_TILES | LARGE_ROCK_TILES | LARGE_ROCK_DAMAGE_TILES
+TERRAIN_CLASSES = (
+    "grass", "fall_seed", "crop", "fence", "tilled", "untilled", "dried",
+    "weed", "stone", "heavy_debris", "blocked", "other",
+)
+
+
+def terrain_class(tile: int) -> str:
+    """Work state of one farm cell. The ROM's own count wins over the bot's tile names."""
+
+    tile &= 0xFF
+    if tile >= 0xA0:
+        return "structure"
+    if tile in (0x05, 0x06):
+        return "fence"
+    if tile == 0x1D:
+        return "fall_seed"
+    if tile in _DONE_GRASS:
+        return "grass"
+    if tile >= 0x1E:
+        return "crop" if tile <= 0x6F else "other"
+    if tile in _TILLED_IDS:
+        return "tilled"
+    if tile == UNTILLED:
+        return "untilled"
+    if tile == DRIED_TILLED:
+        return "dried"
+    if tile == WEED:
+        return "weed"
+    if tile == STONE:
+        return "stone"
+    if tile in _HEAVY_DEBRIS:
+        return "heavy_debris"
+    return "other"
+
+
+def _windows(centre_x: int, centre_y: int) -> list[int]:
+    """Indexes of the 3x3 around a faced centre, clipped to the map."""
+
+    return [
+        _index(x, y)
+        for y in range(centre_y - 1, centre_y + 2)
+        for x in range(centre_x - 1, centre_x + 2)
+        if 0 <= x < MAP_WIDTH and 0 <= y < MAP_HEIGHT
+    ]
+
+
+def disjoint_full_windows(mask: list[bool] | tuple[bool, ...]) -> int:
+    """Raster-greedy count of non-overlapping 3x3 blocks whose nine cells are all set."""
+
+    used = [False] * MAP_TILE_COUNT
+    count = 0
+    for y in range(MAP_HEIGHT - 2):
+        for x in range(MAP_WIDTH - 2):
+            cells = [_index(x + dx, y + dy) for dy in range(3) for dx in range(3)]
+            if all(mask[i] and not used[i] for i in cells):
+                count += 1
+                for i in cells:
+                    used[i] = True
+    return count
+
+
+def plan_grass_bags(
+    uncovered: set[int], need: int, centres: set[int] | None = None
+) -> list[tuple[int, int, int]]:
+    """Greedy bag stands that newly cover ``need`` cells: ``(centre_x, centre_y, new_cells)``.
+
+    Full nines first, then eights and so on, scanning in raster order. Counts only fall as
+    cells are claimed, so one pass per threshold is enough. A geometry bound over the tile
+    array: it does not prove a farmer can stand next to every centre.
+    """
+
+    left = set(uncovered)
+    plan: list[tuple[int, int, int]] = []
+    covered = 0
+    pool = sorted(centres if centres is not None else uncovered)
+    for threshold in range(GRASS_BAG_TILES, 0, -1):
+        for centre in pool:
+            if covered >= need:
+                return plan
+            cx, cy = _cell(centre)
+            cells = [i for i in _windows(cx, cy) if i in left]
+            if len(cells) >= threshold:
+                left.difference_update(cells)
+                covered += len(cells)
+                plan.append((cx, cy, len(cells)))
+    return plan
+
+
+@dataclass(frozen=True)
+class TerrainLedger:
+    """One read of the field: what is worked, what is counted, what a perfect score still needs."""
+
+    pool: int
+    classes: dict[str, int]
+    counted: int
+    worked: int
+    need: int
+    to_go: int
+    slack: int
+    dev_byte: int
+    points: int
+    hoe_swings_left: int
+    clear_left: int
+    bags_min: int
+    bags_plan: int
+    plan_unhoed: int
+    plan_ready_bags: int
+    full_grass_blocks: int
+    ready_blocks: int
+    planted_grass: int | None
+
+    @property
+    def worked_pct(self) -> float:
+        return round(100.0 * self.worked / self.pool, 2) if self.pool else 0.0
+
+    @property
+    def counted_pct(self) -> float:
+        return round(100.0 * self.counted / self.pool, 2) if self.pool else 0.0
+
+    @property
+    def required_pct(self) -> float:
+        return round(100.0 * self.need / self.pool, 2) if self.pool else 0.0
+
+    @property
+    def bag_cost_g(self) -> int:
+        return self.bags_plan * GRASS_BAG_PRICE_G
+
+    @property
+    def stamina_left(self) -> int:
+        return HOE_STAMINA * self.hoe_swings_left + BAG_STAMINA * self.bags_plan
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "pool": self.pool,
+            "classes": dict(self.classes),
+            "counted": self.counted,
+            "counted_pct": self.counted_pct,
+            "worked": self.worked,
+            "worked_pct": self.worked_pct,
+            "need": self.need,
+            "required_pct": self.required_pct,
+            "to_go": self.to_go,
+            "slack": self.slack,
+            "dev_byte": self.dev_byte,
+            "points": self.points,
+            "hoe_swings_left": self.hoe_swings_left,
+            "clear_left": self.clear_left,
+            "bags_min": self.bags_min,
+            "bags_plan": self.bags_plan,
+            "bag_cost_g": self.bag_cost_g,
+            "plan_unhoed": self.plan_unhoed,
+            "plan_ready_bags": self.plan_ready_bags,
+            "full_grass_blocks": self.full_grass_blocks,
+            "ready_blocks": self.ready_blocks,
+            "stamina_left": self.stamina_left,
+            "planted_grass": self.planted_grass,
+        }
+
+    def line(self) -> str:
+        """One log line; the unhoed count is the gate before any bag can land."""
+
+        return (
+            f"terrain worked {self.worked}/{self.pool} ({self.worked_pct:.1f}%) "
+            f"counted {self.counted}/{self.need} ({self.points}/50) to_go {self.to_go} "
+            f"hoe_left {self.hoe_swings_left} bags_left>={self.bags_min} plan {self.bags_plan} "
+            f"({self.bag_cost_g:,}G) unhoed_in_plan {self.plan_unhoed} "
+            f"full_blocks {self.full_grass_blocks}"
+        )
+
+
+def terrain_ledger(
+    tiles: tuple[int, ...] | list[int],
+    cover: tuple[tuple[int, int], ...] | None = None,
+    planted_grass: int | None = None,
+    need: int = MIN_COUNTED_TILES,
+) -> TerrainLedger:
+    """Ledger over a 64x64 farm array.
+
+    ``cover`` is the pool the pin says can ever count (``final_layout().cover``); without it
+    every live cell below ``0xA0`` is the pool. Cells that are below ``0xA0`` live are always in
+    it, so the six Fall-mask cells that read ``0xA0`` on the clear pin join once they are hoeable.
+    """
+
+    if len(tiles) != MAP_TILE_COUNT:
+        raise ValueError(f"farm map has {len(tiles)} cells, want {MAP_TILE_COUNT}")
+    pool_cells = {_index(x, y) for x, y in cover} if cover is not None else set()
+    pool_cells.update(i for i, tile in enumerate(tiles) if (int(tile) & 0xFF) < 0xA0)
+    classes = {name: 0 for name in TERRAIN_CLASSES}
+    counted = 0
+    for index in pool_cells:
+        tile = int(tiles[index]) & 0xFF
+        name = terrain_class(tile)
+        name = "blocked" if name == "structure" else name
+        classes[name if name in classes else "other"] += 1
+        if is_farm_development_tile(tile):
+            counted += 1
+    hoed_or_better = (
+        classes["grass"] + classes["fall_seed"] + classes["crop"] + classes["fence"] + classes["tilled"]
+    )
+    to_go = max(0, need - counted)
+    # Cells a bag still has to reach: everything in the pool that does not count yet. A fence
+    # already counts, so it never needs a bag.
+    uncovered = {
+        i
+        for i in pool_cells
+        if (int(tiles[i]) & 0xFF) < 0xA0 and not is_farm_development_tile(int(tiles[i]) & 0xFF)
+    }
+    plan = plan_grass_bags(uncovered, to_go)
+    plan_cells = {
+        i
+        for cx, cy, _n in plan
+        for i in _windows(cx, cy)
+        if i in uncovered
+    }
+    plan_unhoed = sum(1 for i in plan_cells if (int(tiles[i]) & 0xFF) not in _TILLED_IDS)
+    ready_bags = sum(
+        1
+        for cx, cy, _n in plan
+        if all(
+            (int(tiles[i]) & 0xFF) in _TILLED_IDS
+            for i in _windows(cx, cy)
+            if i in uncovered
+        )
+    )
+    grass_mask = [terrain_class(int(t)) in ("grass", "fall_seed") for t in tiles]
+    tilled_mask = [terrain_class(int(t)) == "tilled" for t in tiles]
+    dev_byte = min(100, counted * 10 // FARM_DEVELOPMENT_DIVISOR)
+    return TerrainLedger(
+        pool=len(pool_cells),
+        classes=classes,
+        counted=counted,
+        worked=hoed_or_better,
+        need=need,
+        to_go=to_go,
+        slack=len(pool_cells) - need,
+        dev_byte=dev_byte,
+        points=dev_byte >> 1,
+        hoe_swings_left=classes["untilled"] + classes["dried"] + classes["weed"] + classes["stone"]
+        + classes["heavy_debris"],
+        clear_left=classes["weed"] + classes["stone"] + classes["heavy_debris"],
+        bags_min=-(-to_go // GRASS_BAG_TILES),
+        bags_plan=len(plan),
+        plan_unhoed=plan_unhoed,
+        plan_ready_bags=ready_bags,
+        full_grass_blocks=disjoint_full_windows(grass_mask),
+        ready_blocks=disjoint_full_windows(tilled_mask),
+        planted_grass=None if planted_grass is None else int(planted_grass),
+    )

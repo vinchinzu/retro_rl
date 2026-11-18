@@ -17,6 +17,7 @@ from water_refill_helpers import (
     _set_tile,
 )
 
+from crop_planter_test_helpers import set_stamina
 from harvest.tasks.crop_planter import CropWaterTask
 from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
@@ -111,6 +112,7 @@ class CropCompletionTests(unittest.TestCase):
         ram[ADDR_TILEMAP] = 0x00
         ram[ADDR_INPUT_LOCK] = 1
         ram[ADDR_TOOL] = 0x10
+        set_stamina(ram, 100)
         _set_player_tile(ram, center)
         world = SimpleNamespace(ram=ram, info={}, obs=None)
         task = CropWaterTask(
@@ -165,6 +167,7 @@ class CropCompletionTests(unittest.TestCase):
         ram[ADDR_INPUT_LOCK] = 1
         ram[ADDR_TOOL] = 0x10
         ram[0x0926] = 20
+        set_stamina(ram, 100)
         _set_player_tile(ram, (8, 26))
         world = SimpleNamespace(ram=ram, info={}, obs=None)
         task = CropWaterTask(work_mode="water", bounds=(2, 3, 62, 60))

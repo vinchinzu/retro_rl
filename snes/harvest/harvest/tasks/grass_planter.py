@@ -16,7 +16,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Set, Tuple, List
 from collections import deque
 
-
 import numpy as np
 
 from harvest.core.ram_catalog import read_ram_value
@@ -27,6 +26,7 @@ from harvest.core.tile_catalog import (
     Tool,
     ADDR_INPUT_LOCK,
     LIFTABLE_TILES,
+    WEED,
 )
 from harvest.planner.tasks.transitions import hands_are_clear, toss_held_actions
 from harvest.tasks.nav import (
@@ -49,7 +49,6 @@ from harvest.tasks.farm_clearer import (
 )
 
 
-
 # =============================================================================
 # CONSTANTS (from Step 1 discovery)
 # =============================================================================
@@ -66,8 +65,40 @@ GRASS_TILES = {0x1D, *range(0x70, 0x7D)}  # includes cut-regrowth $7C
 # nearest the anchor first, so stumps, rocks and boulders are skipped rather than
 # cleared. The first stand sits at PASTURE_ANCHOR (the nav arrival). On the
 # natural Summer D1 farm this holds ~21 stands (~180 seedable squares).
-PASTURE_BOUNDS = (13, 33, 27, 48)
-PASTURE_ANCHOR = (16, 34)
+# Two zones, picked once per process. ``south`` is the original field below the pocket. The packed ring
+# lattice (``HARVEST_RING_LAYOUT=packed``) owns x2-26, y33-49, so grass moves ``east`` of the buildings:
+# x31-60, y17-30 lies east of the barn and coop wall, off the pond (y31-34) and the crop lanes, and is
+# reached along the open y=24 row from the house door (``PASTURE_NAV_PX``, pixel centres of tiles
+# (8,26) door front, (14,24), (24,24), (33,24)). Stands are taken nearest the anchor first, so the
+# first 180 tiles (the cash path's cap) fill x31-45 beside the barn and the rest of the block is
+# the room a cover run grows into.
+PASTURE_ZONE_ENV = "HARVEST_PASTURE_ZONE"
+PASTURE_ZONES = {
+    "south": {
+        "bounds": (13, 33, 27, 48),
+        "anchor": (16, 34),
+        "nav_px": ((136, 424), (232, 392), (296, 392), (312, 488), (312, 520), (296, 536), (264, 536)),
+    },
+    "east": {
+        "bounds": (31, 17, 60, 30),
+        "anchor": (33, 24),
+        "nav_px": ((136, 424), (136, 392), (232, 392), (392, 392), (528, 392)),
+    },
+}
+
+def pasture_zone_name() -> str:
+    from harvest.maps.farm_pond import is_packed_layout
+
+    default = "east" if is_packed_layout() else "south"
+    name = os.environ.get(PASTURE_ZONE_ENV, default).strip().lower()
+    if name not in PASTURE_ZONES:
+        raise ValueError(f"unknown {PASTURE_ZONE_ENV}={name!r}; choose from {', '.join(PASTURE_ZONES)}")
+    return name
+
+_ZONE = PASTURE_ZONES[pasture_zone_name()]
+PASTURE_BOUNDS = _ZONE["bounds"]
+PASTURE_ANCHOR = _ZONE["anchor"]
+PASTURE_NAV_PX = _ZONE["nav_px"]
 # Weeds, stones and lumber cost no stamina to lift (A) and toss, and the carry
 # pair holds hoe + seeds, so lifting is the only clearing a pasture day has.
 # Stumps and rocks need the axe or hammer and stay lost squares.
@@ -82,20 +113,36 @@ TILLED_TILES = {DRIED_TILLED, FRESH_TILLED}  # Both types of tilled
 # Tiles the hoe can act on (both untilled AND dried-out tilled need re-hoeing)
 TILLABLE_TILES = {UNTILLED_TILE, DRIED_TILLED}
 
-# Tiles grass seeds can be planted on (only freshly hoed)
-PLANTABLE_TILES = {FRESH_TILLED}
+# Tiles grass seeds can be planted on: freshly hoed 0x07 and the same square after rain (0x08, seed
+# bit still set). With only 0x07 here, a rainy day turned the hoed centre into a non-target: scan
+# started the walk, navigate saw a "finished" target and went back to scan, for ever (e2e t2 and t3
+# ran 6M frames on Summer D20-21 without a single failure).
+PLANTABLE_TILES = frozenset(_FRESH_SOIL)
+# Scan/navigate bounces allowed without one tool use before the chunk is given up (a livelock guard).
+MAX_BOUNCES = 12
 
 # Item ID for grass seeds when equipped
 GRASS_SEED_ITEM_ID = 0x0C
 
 # Power Berry detection
-ADDR_POWER_BERRIES = 0x0976  # Count of collected berries (verified via state diff)
+ADDR_POWER_BERRIES = 0x11F36  # persistent eaten count, not transient $0976
 
 # Default bounds: full farmable area
 DEFAULT_BOUNDS = (3, 3, 62, 60)
 
 # Default no-go: entire left side of farm (house, shed, shipping bin, barn)
 DEFAULT_NO_GO_RECTS = [(3, 3, 28, 60)]
+
+# Whole-field cover restarts at its first stand after every hot-spring soak. A stand the farmer cannot reach would otherwise cost nine tile
+# timeouts of 1,200 steps again on every restart (ROM probe: 400 timeouts, 480k frames, nothing planted). Stands that timed out are
+# remembered per game day; the next day tries them once more.
+_DEAD_STANDS: dict[tuple[int, int, int], set[tuple[int, int]]] = {}
+
+
+def dead_stands(today: tuple[int, int, int]) -> set[tuple[int, int]]:
+    for key in [k for k in _DEAD_STANDS if k != today]:
+        del _DEAD_STANDS[key]
+    return _DEAD_STANDS.setdefault(today, set())
 
 
 # =============================================================================
@@ -107,7 +154,6 @@ class Phase:
     TILL = "till"
     PLANT = "plant"
     CUT = "cut"
-
 
 def reachable_tiles(ram: np.ndarray, pathfinder: Pathfinder, start: Tuple[int, int],
                     depth: int = MAX_WALK_TILES) -> Set[Tuple[int, int]]:
@@ -129,7 +175,6 @@ def reachable_tiles(ram: np.ndarray, pathfinder: Pathfinder, start: Tuple[int, i
                 queue.append((nx, ny))
     return set(seen)
 
-
 def stand_squares(ram: np.ndarray, centre: Tuple[int, int],
                   reach: Optional[Set[Tuple[int, int]]]) -> Tuple[int, int]:
     """(seedable, liftable) squares of a bag at ``centre`` that the farmer can reach."""
@@ -144,7 +189,6 @@ def stand_squares(ram: np.ndarray, centre: Tuple[int, int],
             lifts += tid in LIFTABLE_TILES
     return soil, lifts
 
-
 def plan_stands(ram: np.ndarray, bounds: Tuple[int, int, int, int], limit: int,
                 reach: Optional[Set[Tuple[int, int]]],
                 anchor: Tuple[int, int] = PASTURE_ANCHOR) -> List[Tuple[int, int]]:
@@ -155,10 +199,15 @@ def plan_stands(ram: np.ndarray, bounds: Tuple[int, int, int, int], limit: int,
     anchor. A stand needs MIN_BAG_TILES squares that are soil or liftable.
     Order: best first.
     """
+    from harvest.maps.farm_pond import crop_working_tiles
+
+    reserved = crop_working_tiles()
     x0, y0, x1, y1 = bounds
     cost = {}
     for cy in range(y0 + 1, y1):
         for cx in range(x0 + 1, x1):
+            if any((cx + dx, cy + dy) in reserved for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
+                continue
             if (reach is not None and (cx, cy) not in reach) or get_tile_at(ram, cx, cy) not in (
                     TILLABLE_TILES | _FRESH_SOIL | LIFTABLE_TILES):
                 continue
@@ -172,7 +221,6 @@ def plan_stands(ram: np.ndarray, bounds: Tuple[int, int, int, int], limit: int,
         cost = {c: v for c, v in cost.items() if abs(c[0] - best[0]) > 2 or abs(c[1] - best[1]) > 2}
     return stands
 
-
 @dataclass
 class GrassPlantTask(Task):
     """Till ground and plant grass seeds within configurable bounds."""
@@ -182,8 +230,17 @@ class GrassPlantTask(Task):
     no_go_rects: List[Tuple[int, int, int, int]] = field(default_factory=lambda: list(DEFAULT_NO_GO_RECTS))
     till_only: bool = False
     cut_only: bool = False
+    hay_goal: int = 0
     target_tiles: int = 0
+    till_limit: int = 0  # verified hoe work this run, independent of pasture size
     bag_limit: int = 0
+    # Whole-field cover (``planner/field_cover``): an explicit, ordered stand list replaces the greedy stand plan,
+    # ``min_bag_tiles`` lets the last ragged stands through, and ``release_reserved`` frees the crop footprints once
+    # no crop bag can ripen any more.
+    stands: Optional[List[Tuple[int, int]]] = None
+    min_bag_tiles: int = MIN_BAG_TILES
+    release_reserved: bool = False
+    release_cells: Tuple[Tuple[int, int], ...] = ()    # sown rings' bands, freed from the no-go set before the final fill
     max_steps_per_target: int = 1200
     stasis_repath: int = 180
     max_failures: int = 50
@@ -227,9 +284,13 @@ class GrassPlantTask(Task):
     _chunk_order: List[Tuple[int, int]] = field(default_factory=list, init=False)
     _chunk_index: int = field(default=0, init=False)
     _act_count: int = field(default=0, init=False)  # total act attempts (for diagnostic logging)
+    _bounces: int = field(default=0, init=False)    # scan round trips since the last tool use (livelock guard)
 
     tilled_count: int = field(default=0, init=False)
     planted_count: int = field(default=0, init=False)
+    # One (stand_x, stand_y, tiles_planted) per spent bag. Nine is a full ring; fewer means a
+    # square was not hoed or not reachable, which the field ledger shows as unhoed cells.
+    bag_log: List[Tuple[int, int, int]] = field(default_factory=list, init=False)
     berries_found: int = field(default=0, init=False)
     _prev_berry_count: int = field(default=0, init=False)
     _berry_dialog_frames: int = field(default=0, init=False)
@@ -260,36 +321,53 @@ class GrassPlantTask(Task):
         self._seeds_before = int(read_ram_value(world.ram, "grass_seeds"))
         self._grass_before = int(read_ram_value(world.ram, "planted_grass"))
         self._act_count = 0
+        self._bounces = 0
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
         self._init_no_go()
-        if self.cut_only:
+        if self.stands and self.till_only:
+            # Whole-field hoe pass: the planner's stands, east side first, hoed and never sown.
+            self._chunk_order = [(cx - 1, cy - 1) for cx, cy in (tuple(s) for s in self.stands)]
+            print(f"[GRASS] hoe stands={len(self._chunk_order)} planted={self._grass_before}")
+        elif self.cut_only or self.till_only:
             self._chunk_order = self._build_chunk_order()
         else:
             seeds = self._seeds_before
             bags = min(seeds, self.bag_limit) if self.bag_limit else seeds
             self.cleared_count = 0
-            reach = reachable_tiles(world.ram, self._pathfinder, self._navigator.current_tile)
-            wanted = max(bags, 1) + 2
-            # An odd start tile (indoors, off the map) leaves nothing reachable:
-            # plan on the soil alone and let the walk fail loudly.
-            stands = plan_stands(world.ram, self.bounds, wanted, reach) \
-                or plan_stands(world.ram, self.bounds, wanted, None)
+            if self.stands:
+                stands = [tuple(s) for s in self.stands]
+            else:
+                reach = reachable_tiles(world.ram, self._pathfinder, self._navigator.current_tile)
+                wanted = max(bags, 1) + 2
+                # An odd start tile (indoors, off the map) leaves nothing reachable:
+                # plan on the soil alone and let the walk fail loudly.
+                stands = plan_stands(world.ram, self.bounds, wanted, reach) \
+                    or plan_stands(world.ram, self.bounds, wanted, None)
             self._chunk_order = [(cx - 1, cy - 1) for cx, cy in stands]
             print(f"[GRASS] stands={stands} bags={bags} planted={self._grass_before}")
         self._chunk_index = 0
         self._swing_fails.clear()
         self.tilled_count = 0
         self.planted_count = 0
+        self.bag_log = []
         self.berries_found = 0
         pb = int(world.ram[ADDR_POWER_BERRIES]) if ADDR_POWER_BERRIES < len(world.ram) else 0
         self._prev_berry_count = pb
         self._berry_dialog_frames = 0
+        self._berry_pickup = None
         self._short_sow_used = False
+
+    @staticmethod
+    def _today(ram: np.ndarray) -> tuple[int, int, int]:
+        return (int(read_ram_value(ram, "year", raw=True) or 0), int(read_ram_value(ram, "season", raw=True) or 0),
+                int(read_ram_value(ram, "day", raw=True) or 1))
 
     def _init_no_go(self):
         """Build no-go tile set from rects + GRASS_NO_GO env var."""
-        self._no_go_tiles.clear()
+        from harvest.maps.farm_pond import crop_working_tiles
+
+        self._no_go_tiles = set() if self.release_reserved else set(crop_working_tiles()) - set(self.release_cells)
         all_rects = list(self.no_go_rects)
         env_val = os.getenv("GRASS_NO_GO", "")
         if env_val:
@@ -324,7 +402,7 @@ class GrassPlantTask(Task):
         if self._phase == Phase.CUT:
             return MATURE_GRASS_TILES
         if self._phase == Phase.CLEAR:
-            return LIFTABLE_TILES
+            return frozenset({WEED})
         return TILLABLE_TILES if self._phase == Phase.TILL else PLANTABLE_TILES
 
     def _wanted_tool(self):
@@ -356,7 +434,7 @@ class GrassPlantTask(Task):
         fresh = sum(get_tile_at(ram, x, y) in _FRESH_SOIL
                     for y in range(oy, oy + self.chunk_size)
                     for x in range(ox, ox + self.chunk_size))
-        return fresh >= MIN_BAG_TILES and get_tile_at(ram, ox + 1, oy + 1) in _FRESH_SOIL
+        return fresh >= self.min_bag_tiles and get_tile_at(ram, ox + 1, oy + 1) in _FRESH_SOIL
 
     def _scan_targets(self, ram: np.ndarray) -> List[Tuple[int, int]]:
         """Find tiles matching the current phase within full bounds (for tests/stats)."""
@@ -412,9 +490,33 @@ class GrassPlantTask(Task):
         self._chunk_index += 1
         self._phase = self._first_phase()
         self._chunk_origin = None
+        self._bounces = 0
+
+    def _bounce(self) -> Optional[TaskResult]:
+        """Count a scan -> navigate/act -> scan round trip that used no tool.
+
+        A target that is not valid when the walk ends sends the machine back to scan, which can pick the
+        same target again. One such trip is normal (the tile just changed); a dozen with no swing or
+        seeding between them is a livelock, so the chunk is failed instead of spinning for ever.
+        """
+        self._bounces += 1
+        if self._bounces <= MAX_BOUNCES:
+            return None
+        print(f"[GRASS] livelock: {self._bounces} scan bounces at chunk {self._chunk_origin} "
+              f"phase={self._phase} target={self._target_tile}; skipping the chunk")
+        if self._target_tile is not None:
+            self._failed_tiles.add(self._target_tile)
+        self._failures += 1
+        self._target_tile = None
+        self._action_queue.clear()
+        self._state = "scan"
+        self._next_chunk()
+        if self._failures >= self.max_failures:
+            return TaskResult(status=TaskStatus.FAILURE, reason="scan/navigate livelock")
+        return None
 
     def _approach(self, ram: np.ndarray, target: Tuple[int, int]) -> Optional[Tuple[Tuple[int, int], List[Tuple[int, int]]]]:
-        """Nearest neighbour of ``target`` with a short walk, or None.
+        """Nearest neighbour of ``target`` with a short walk (full-field cuts may walk farther), or None.
 
         ``find_approach`` takes the nearest neighbour even when a weed wall makes
         it a 100-step detour, which sends the farmer across the map.
@@ -428,7 +530,7 @@ class GrassPlantTask(Task):
             if not self._pathfinder.is_walkable(ram, *cand):
                 continue
             path = self._pathfinder.find_path(ram, self._navigator.current_tile, cand)
-            if path is not None and len(path) <= MAX_WALK_TILES:
+            if path is not None and (self.cut_only or len(path) <= MAX_WALK_TILES):
                 return cand, path
         return None
 
@@ -443,8 +545,12 @@ class GrassPlantTask(Task):
 
     def _handle_scan(self, ram: np.ndarray) -> Optional[TaskResult]:
         """Per-chunk till, plant: finish one 3x3 stand, then advance."""
+        dead = dead_stands(self._today(ram)) if self.stands else ()
         while self._chunk_index < len(self._chunk_order):
             origin = self._chunk_order[self._chunk_index]
+            if origin in dead:
+                self._next_chunk()
+                continue
             targets = self._scan_chunk(ram, origin)
 
             if not targets:
@@ -525,6 +631,10 @@ class GrassPlantTask(Task):
             hay = int(read_ram_value(ram, "stored_grass"))
             return TaskResult(status=TaskStatus.SUCCESS if hay > self._hay_before else TaskStatus.FAILURE,
                               reason=f"stored_grass={self._hay_before}->{hay}")
+        if self.till_only:
+            if self.till_limit and self.tilled_count < self.till_limit:
+                return TaskResult(status=TaskStatus.FAILURE, reason=f"tilling short: {msg}")
+            return TaskResult(status=TaskStatus.SUCCESS, reason=msg)
         if self.target_tiles and int(read_ram_value(ram, "planted_grass")) < self.target_tiles:
             if self._begin_short_sow(ram):
                 return None
@@ -587,7 +697,7 @@ class GrassPlantTask(Task):
         target_ids = self._target_ids()
         if tid not in target_ids:
             self._state = "scan"
-            return None
+            return self._bounce()
 
         # Arrived?
         if self._navigator.current_tile == self._approach_tile:
@@ -681,6 +791,7 @@ class GrassPlantTask(Task):
             return None
 
         self._act_count += 1
+        self._bounces = 0
         phase = self._phase.upper()
         if self._phase == Phase.PLANT:
             self._bag_seeds = int(read_ram_value(ram, "grass_seeds"))
@@ -689,7 +800,7 @@ class GrassPlantTask(Task):
             stood = get_tile_at(ram, *player)
             if stood not in _FRESH_SOIL:
                 self._state = "scan"
-                return None
+                return self._bounce()
             # A direction hold walks off 0x07 and the bag misses the 3x3.
             direction = "still"
         else:
@@ -778,6 +889,7 @@ class GrassPlantTask(Task):
                 self._failures += 1  # the press never registered; scan re-presses
             else:
                 self.planted_count += grass - self._bag_grass
+                self.bag_log.append((player[0], player[1], grass - self._bag_grass))
                 print(f"[GRASS] PLANT @ ({player[0]},{player[1]}) +{grass - self._bag_grass} "
                       f"grass={self._bag_grass}->{grass} grass70={self._grass70(ram)} seeds={seeds}")
                 if grass == self._bag_grass:
@@ -791,6 +903,16 @@ class GrassPlantTask(Task):
 
         self._state = "scan"
         return None
+
+    @staticmethod
+    def _stamina_short(ram: np.ndarray) -> bool:
+        """The bar cannot pay the next swing (a hoe swing is 2, a bag 1)."""
+        from harvest.core.stamina import _read_u8
+
+        try:
+            return _read_u8(ram, "max_stamina") > 0 and _read_u8(ram, "stamina") <= 1
+        except Exception:
+            return False
 
     def _toss_faces(self, ram: np.ndarray) -> List[str]:
         """Throw directions, most open ground first (a blocked toss keeps the item)."""
@@ -860,25 +982,23 @@ class GrassPlantTask(Task):
             print(f"[GRASS] step={self._total_steps} phase={phase} state={self._state} pos={cur} "
                   f"tilled={self.tilled_count} planted={self.planted_count} failures={self._failures}")
 
-        # ---- Power Berry detection ----
-        cur_pb = int(world.ram[ADDR_POWER_BERRIES]) if ADDR_POWER_BERRIES < len(world.ram) else 0
-        if cur_pb > self._prev_berry_count:
-            gained = cur_pb - self._prev_berry_count
-            self.berries_found += gained
-            self._prev_berry_count = cur_pb
-            self._action_queue.clear()
-            self._berry_dialog_frames = 90
-            print(f"[GRASS] POWER BERRY! total={cur_pb}")
-
-        if self._berry_dialog_frames > 0:
-            self._berry_dialog_frames -= 1
-            action = make_action(a=True) if self._berry_dialog_frames % 2 == 0 else make_action()
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason="berry_dialog")
+        from harvest.tasks.power_berry import collect_spawned_berry
+        berry = collect_spawned_berry(self, world)
+        if berry is not None:
+            return berry
+        cur_pb = int(read_ram_value(world.ram, "power_berry_count"))
+        self.berries_found += max(0, cur_pb - self._prev_berry_count)
+        self._prev_berry_count = cur_pb
 
         # ---- Timeout per target ----
         if self._steps_on_target > self.max_steps_per_target and self._target_tile is not None:
             self._failed_tiles.add(self._target_tile)
             self._failures += 1
+            if self.stands and self._chunk_origin is not None:
+                dead_stands(self._today(world.ram)).add(self._chunk_origin)
+                print(f"[GRASS] target {self._target_tile} timed out at {self._navigator.current_tile}; stand "
+                      f"{(self._chunk_origin[0] + 1, self._chunk_origin[1] + 1)} is dead for today")
+                self._next_chunk()
             self._state = "scan"
             self._target_tile = None
             self._action_queue.clear()
@@ -891,20 +1011,32 @@ class GrassPlantTask(Task):
 
         # Dialog dismissal (only after queue is empty so tool swings aren't interrupted)
         input_lock = int(world.ram[ADDR_INPUT_LOCK]) if ADDR_INPUT_LOCK < len(world.ram) else 1
+        hay = int(read_ram_value(world.ram, "stored_grass"))
+        if input_lock == 1 and self.cut_only and self.hay_goal and hay >= self.hay_goal:
+            return TaskResult(TaskStatus.SUCCESS, reason=f"hay stocked {self._hay_before}->{hay} goal={self.hay_goal}")
+        if input_lock == 1 and self._state == "scan" and self.till_only \
+                and self.till_limit and self.tilled_count >= self.till_limit:
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilled={self.tilled_count}")
         seeds = int(read_ram_value(world.ram, "grass_seeds"))
         daily_limit = min(self.bag_limit, self._seeds_before)
-        if input_lock == 1 and self.bag_limit and self._seeds_before - seeds >= daily_limit:
+        if input_lock == 1 and not self.till_only and self.bag_limit and self._seeds_before - seeds >= daily_limit:
             grass = int(read_ram_value(world.ram, "planted_grass"))
             return TaskResult(status=TaskStatus.SUCCESS if grass > self._grass_before else TaskStatus.FAILURE,
                               reason=(f"pasture progress {self._grass_before}->{grass} "
-                                      f"grass70={self._grass70(world.ram)}; remaining tomorrow"))
+                                      f"grass70={self._grass70(world.ram)} bags={len(self.bag_log)} "
+                                      f"full={self.full_bags}; remaining tomorrow"))
         # Between bags only: the gate count climbs square by square mid-bag.
-        if input_lock == 1 and self._state == "scan" and self.target_tiles \
+        if input_lock == 1 and self._state == "scan" and not self.till_only and self.target_tiles \
                 and int(read_ram_value(world.ram, "planted_grass")) >= self.target_tiles:
             return TaskResult(status=TaskStatus.SUCCESS, reason=f"planted_grass={int(read_ram_value(world.ram, 'planted_grass'))}")
         if input_lock != 1:
             action = make_action(a=True) if self._total_steps % 2 == 0 else make_action()
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action), reason="dialog")
+
+        # Whole-field cover works until the bar is empty and says so, like the watering pass: the day plan splices
+        # a hot-spring soak and reruns the phase (the hoe at 0 stamina does nothing and would fail the whole errand).
+        if (self.stands or self.cut_only) and self._state == "scan" and self._stamina_short(world.ram):
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"stamina_low {self.progress_text} hay_added={hay-self._hay_before}")
 
         # State dispatch
         handlers = {
@@ -938,8 +1070,15 @@ class GrassPlantTask(Task):
         return f"{self._phase}:{self._state}"
 
     @property
+    def full_bags(self) -> int:
+        """Bags that landed all nine squares (a full 3x3 ring)."""
+        return sum(1 for _x, _y, tiles in self.bag_log if tiles >= 9)
+
+    @property
     def progress_text(self) -> str:
         s = f"cleared={self.cleared_count} tilled={self.tilled_count} planted={self.planted_count}"
+        if self.bag_log:
+            s += f" bags={len(self.bag_log)} full={self.full_bags}"
         if self._retry_pass > 0:
             s += f" retry={self._retry_pass}"
         if self._failures:

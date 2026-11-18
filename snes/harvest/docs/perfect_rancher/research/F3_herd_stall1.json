@@ -1,0 +1,87 @@
+{
+  "bead": "PR-012",
+  "kind": "fed_barn_night_slot1",
+  "pin": "LN_mgr-f3_whatif_stall1",
+  "pin_note": "RAM what-if copied from LN_mgr-f3_whatif_barn0. Not route evidence.",
+  "pin_write": {
+    "source": "LN_mgr-f3_whatif_barn0",
+    "copied_slot0_to_slot1": true,
+    "cleared_slot0": true,
+    "happiness_byte_rewritten": false,
+    "slot1_hex": "0900270001000000a70016011c2830b3",
+    "happiness": 1
+  },
+  "command": "HEADLESS=1 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy QT_QPA_PLATFORM=offscreen setsid nohup uv run python /tmp/f3_stall1.py",
+  "cwd": "/home/v/01_projects/11_games/retro_rl",
+  "log": "/tmp/f3_stall1.log",
+  "result": "PROBE_STALL1_OK",
+  "frames": 1404,
+  "boot": {
+    "frame": 0,
+    "tilemap": 39,
+    "x": 113,
+    "y": 277,
+    "dir": 2,
+    "hour": 18,
+    "year": 0,
+    "season": 0,
+    "day": 16,
+    "weekday": 2,
+    "weather": 192,
+    "hay": 179,
+    "fed_flags": 0,
+    "map_var": 1,
+    "tile_8_15": 227,
+    "slot1_happiness": 1,
+    "slot0_status": 0
+  },
+  "fodder": {"frame": 115, "x": 217, "y": 185, "held": 26, "hay": 178},
+  "presses": [
+    {
+      "n": 1,
+      "frame": 231,
+      "x": 113,
+      "y": 244,
+      "faced": [8, 15, 227],
+      "flags": 0,
+      "held": 26,
+      "note": "Property 0xE3, bit 0x0002 not set. No press at (113, 277)."
+    },
+    {
+      "n": 2,
+      "frame": 251,
+      "x": 113,
+      "y": 244,
+      "faced": [8, 15, 227],
+      "flags": 2,
+      "held": 0,
+      "fed_n": 1,
+      "note": "Same 0xE3 stall, one retry, then stop."
+    }
+  ],
+  "before_sleep": {
+    "frame": 251,
+    "happiness": 1,
+    "fed_flags": 2,
+    "hour": 18,
+    "day": 16,
+    "weather": 192,
+    "status": 9,
+    "map": 39
+  },
+  "day_roll": {"frame": 1362, "day": 17, "hour": 18, "happiness": 1, "tilemap": 21, "x": 49, "y": 86},
+  "at_0600": {
+    "frame": 1404,
+    "hour": 6,
+    "minute": 0,
+    "day": 17,
+    "weekday": 3,
+    "happiness": 1,
+    "slot0_happiness": 0,
+    "slot0_status": 0,
+    "status": 9,
+    "map": 39,
+    "fed_flags": 2,
+    "night_delta": 0
+  }
+}

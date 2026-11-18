@@ -106,7 +106,7 @@ class EditorTwinOverlayTests(unittest.TestCase):
         canvas.update_from_ram(ram, None)
 
         labels = [getattr(obj, "label", "") for obj in canvas._entity_markers]
-        self.assertIn("candidate_npc_0201", labels)
+        self.assertIn("horse", labels)
 
     def test_full_rom_render_is_not_replaced_by_live_viewport(self) -> None:
         canvas = TileMapCanvas()

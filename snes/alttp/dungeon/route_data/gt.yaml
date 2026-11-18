@@ -1,0 +1,697 @@
+schema_version: 1
+slug: gt
+name: Ganons Tower
+z3_id: 209
+room_type: Dungeon
+source_file: regions/dungeons/gt/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Ganons Tower (Entrance)
+  nodes:
+  - Ganons Tower (Tile Room)
+  - Ganons Tower (Hookshot Room)
+  - Ganons Tower Big Key Door
+  - Ganons Tower Exit
+  - Ganons Tower - Bob's Torch
+  - Ganons Tower - Hope Room - Left
+  - Ganons Tower - Hope Room - Right
+- name: Ganons Tower (Tile Room)
+  nodes:
+  - Ganons Tower (Tile Room) Key Door
+  - Ganons Tower - Tile Room
+- name: Ganons Tower (Compass Room)
+  nodes:
+  - Ganons Tower (Bottom) (East)
+  - Ganons Tower - Compass Room - Top Left
+  - Ganons Tower - Compass Room - Top Right
+  - Ganons Tower - Compass Room - Bottom Left
+  - Ganons Tower - Compass Room - Bottom Right
+- name: Ganons Tower (Hookshot Room)
+  nodes:
+  - Ganons Tower (Map Room)
+  - Ganons Tower (Double Switch Room)
+  - Ganons Tower - DMs Room - Top Left
+  - Ganons Tower - DMs Room - Top Right
+  - Ganons Tower - DMs Room - Bottom Left
+  - Ganons Tower - DMs Room - Bottom Right
+- name: Ganons Tower (Map Room)
+  nodes:
+  - Ganons Tower - Map Chest
+- name: Ganons Tower (Firesnake Room)
+  nodes:
+  - Ganons Tower (Firesnake Room)
+  - Ganons Tower - Firesnake Room
+- name: Ganons Tower (Teleport Room)
+  nodes:
+  - Ganons Tower (Bottom) (West)
+  - Ganons Tower - Randomizer Room - Top Left
+  - Ganons Tower - Randomizer Room - Top Right
+  - Ganons Tower - Randomizer Room - Bottom Left
+  - Ganons Tower - Randomizer Room - Bottom Right
+- name: Ganons Tower (Bottom)
+  nodes:
+  - Ganons Tower - Bob's Chest
+  - Ganons Tower - Big Chest
+  - Ganons Tower - Big Key Room - Left
+  - Ganons Tower - Big Key Room - Right
+  - Ganons Tower - Big Key Chest
+- name: Ganons Tower (Top)
+  nodes:
+  - Ganons Tower Torch Rooms
+- name: Ganons Tower (Before Moldorm)
+  nodes:
+  - Ganons Tower Moldorm Door
+  - Ganons Tower - Mini Helmasaur Room - Left
+  - Ganons Tower - Mini Helmasaur Room - Right
+  - Ganons Tower - Pre-Moldorm Chest
+- name: Ganons Tower (Moldorm)
+  nodes:
+  - Ganons Tower Moldorm Gap
+- name: Agahnim 2
+  nodes:
+  - Ganons Tower - Validation Chest
+  - Agahnim 2
+locations:
+- id: 5
+  name: Ganons Tower - Bob's Torch
+  region: Ganons Tower (Entrance)
+  node_type: item
+  item: KeyA2
+  address: '0x180161'
+  requires:
+  - canDash
+  keys: []
+  items:
+  - canDash
+- id: 6
+  name: Ganons Tower - Hope Room - Left
+  region: Ganons Tower (Entrance)
+  node_type: item
+  item: TenArrows
+  address: '0xEAD9'
+  requires: []
+  keys: []
+  items: []
+- id: 7
+  name: Ganons Tower - Hope Room - Right
+  region: Ganons Tower (Entrance)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEADC'
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Ganons Tower - Tile Room
+  region: Ganons Tower (Tile Room)
+  node_type: item
+  item: KeyA2
+  address: '0xEAE2'
+  requires:
+  - CaneOfSomaria
+  keys: []
+  items:
+  - CaneOfSomaria
+- id: 11
+  name: Ganons Tower - Compass Room - Top Left
+  region: Ganons Tower (Compass Room)
+  node_type: item
+  item: CompassA2
+  address: '0xEAE5'
+  requires: []
+  keys: []
+  items: []
+- id: 12
+  name: Ganons Tower - Compass Room - Top Right
+  region: Ganons Tower (Compass Room)
+  node_type: item
+  item: OneRupee
+  address: '0xEAE8'
+  requires: []
+  keys: []
+  items: []
+- id: 13
+  name: Ganons Tower - Compass Room - Bottom Left
+  region: Ganons Tower (Compass Room)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEAEB'
+  requires: []
+  keys: []
+  items: []
+- id: 14
+  name: Ganons Tower - Compass Room - Bottom Right
+  region: Ganons Tower (Compass Room)
+  node_type: item
+  item: TenArrows
+  address: '0xEAEE'
+  requires: []
+  keys: []
+  items: []
+- id: 17
+  name: Ganons Tower - DMs Room - Top Left
+  region: Ganons Tower (Hookshot Room)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEAB8'
+  requires: []
+  keys: []
+  items: []
+- id: 18
+  name: Ganons Tower - DMs Room - Top Right
+  region: Ganons Tower (Hookshot Room)
+  node_type: item
+  item: TenArrows
+  address: '0xEABB'
+  requires: []
+  keys: []
+  items: []
+- id: 19
+  name: Ganons Tower - DMs Room - Bottom Left
+  region: Ganons Tower (Hookshot Room)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEABE'
+  requires: []
+  keys: []
+  items: []
+- id: 20
+  name: Ganons Tower - DMs Room - Bottom Right
+  region: Ganons Tower (Hookshot Room)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEAC1'
+  requires: []
+  keys: []
+  items: []
+- id: 21
+  name: Ganons Tower - Map Chest
+  region: Ganons Tower (Map Room)
+  node_type: item
+  item: MapA2
+  address: '0xEAD3'
+  requires: []
+  keys: []
+  items: []
+  note: 'FIXME: Changes based on key placement'
+- id: 23
+  name: Ganons Tower - Firesnake Room
+  region: Ganons Tower (Firesnake Room)
+  node_type: item
+  item: KeyA2
+  address: '0xEAD0'
+  requires: []
+  keys: []
+  items: []
+- id: 25
+  name: Ganons Tower - Randomizer Room - Top Left
+  region: Ganons Tower (Teleport Room)
+  node_type: item
+  item: TenArrows
+  address: '0xEAC4'
+  requires: []
+  keys: []
+  items: []
+- id: 26
+  name: Ganons Tower - Randomizer Room - Top Right
+  region: Ganons Tower (Teleport Room)
+  node_type: item
+  item: TenArrows
+  address: '0xEAC7'
+  requires: []
+  keys: []
+  items: []
+- id: 27
+  name: Ganons Tower - Randomizer Room - Bottom Left
+  region: Ganons Tower (Teleport Room)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEACA'
+  requires: []
+  keys: []
+  items: []
+- id: 28
+  name: Ganons Tower - Randomizer Room - Bottom Right
+  region: Ganons Tower (Teleport Room)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEACD'
+  requires: []
+  keys: []
+  items: []
+- id: 29
+  name: Ganons Tower - Bob's Chest
+  region: Ganons Tower (Bottom)
+  node_type: item
+  item: TenArrows
+  address: '0xEADF'
+  requires:
+  - or:
+    - and:
+      - canGrapple
+      - Hammer
+    - and:
+      - FireRod
+      - CaneOfSomaria
+  - KeyA2:3
+  keys:
+  - name: KeyA2
+    count: 3
+  items:
+  - canGrapple
+  - Hammer
+  - FireRod
+  - CaneOfSomaria
+- id: 30
+  name: Ganons Tower - Big Chest
+  region: Ganons Tower (Bottom)
+  node_type: item
+  item: RedMail
+  address: '0xEAD6'
+  requires:
+  - or:
+    - and:
+      - canGrapple
+      - Hammer
+    - and:
+      - FireRod
+      - CaneOfSomaria
+  - BigKeyA2
+  - KeyA2:3
+  keys:
+  - name: BigKeyA2
+    count: 1
+  - name: KeyA2
+    count: 3
+  items:
+  - canGrapple
+  - Hammer
+  - FireRod
+  - CaneOfSomaria
+- id: 31
+  name: Ganons Tower - Big Key Room - Left
+  region: Ganons Tower (Bottom)
+  node_type: item
+  item: TenArrows
+  address: '0xEAF4'
+  requires:
+  - or:
+    - and:
+      - canGrapple
+      - Hammer
+    - and:
+      - FireRod
+      - CaneOfSomaria
+  - KeyA2:3
+  keys:
+  - name: KeyA2
+    count: 3
+  items:
+  - canGrapple
+  - Hammer
+  - FireRod
+  - CaneOfSomaria
+- id: 32
+  name: Ganons Tower - Big Key Room - Right
+  region: Ganons Tower (Bottom)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEAF7'
+  requires:
+  - or:
+    - and:
+      - canGrapple
+      - Hammer
+    - and:
+      - FireRod
+      - CaneOfSomaria
+  - KeyA2:3
+  keys:
+  - name: KeyA2
+    count: 3
+  items:
+  - canGrapple
+  - Hammer
+  - FireRod
+  - CaneOfSomaria
+- id: 33
+  name: Ganons Tower - Big Key Chest
+  region: Ganons Tower (Bottom)
+  node_type: item
+  item: BigKeyA2
+  address: '0xEAF1'
+  requires:
+  - or:
+    - and:
+      - canGrapple
+      - Hammer
+    - and:
+      - FireRod
+      - CaneOfSomaria
+  - KeyA2:3
+  keys:
+  - name: KeyA2
+    count: 3
+  items:
+  - canGrapple
+  - Hammer
+  - FireRod
+  - CaneOfSomaria
+- id: 36
+  name: Ganons Tower - Mini Helmasaur Room - Left
+  region: Ganons Tower (Before Moldorm)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEAFD'
+  requires:
+  - canShootArrows
+  - canLightTorches
+  - BigKeyA2
+  - KeyA2:3
+  keys:
+  - name: BigKeyA2
+    count: 1
+  - name: KeyA2
+    count: 3
+  items:
+  - canShootArrows
+  - canLightTorches
+- id: 37
+  name: Ganons Tower - Mini Helmasaur Room - Right
+  region: Ganons Tower (Before Moldorm)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEB00'
+  requires:
+  - canShootArrows
+  - canLightTorches
+  - BigKeyA2
+  - KeyA2:3
+  keys:
+  - name: BigKeyA2
+    count: 1
+  - name: KeyA2
+    count: 3
+  items:
+  - canShootArrows
+  - canLightTorches
+- id: 38
+  name: Ganons Tower - Pre-Moldorm Chest
+  region: Ganons Tower (Before Moldorm)
+  node_type: item
+  item: KeyA2
+  address: '0xEB03'
+  requires:
+  - canShootArrows
+  - canLightTorches
+  - BigKeyA2
+  - KeyA2:3
+  keys:
+  - name: BigKeyA2
+    count: 1
+  - name: KeyA2
+    count: 3
+  items:
+  - canShootArrows
+  - canLightTorches
+- id: 40
+  name: Ganons Tower - Validation Chest
+  region: Agahnim 2
+  node_type: item
+  item: TwentyRupees
+  address: '0xEB06'
+  requires:
+  - canGrapple
+  - canShootArrows
+  - canLightTorches
+  - BigKeyA2
+  - KeyA2:4
+  keys:
+  - name: BigKeyA2
+    count: 1
+  - name: KeyA2
+    count: 4
+  items:
+  - canGrapple
+  - canShootArrows
+  - canLightTorches
+  note: Ganon's Tower - Moldorm Chest
+- id: 41
+  name: Agahnim 2
+  region: Agahnim 2
+  node_type: item
+  requires:
+  - canGrapple
+  - canShootArrows
+  - canLightTorches
+  - BigKeyA2
+  - KeyA2:4
+  keys:
+  - name: BigKeyA2
+    count: 1
+  - name: KeyA2
+    count: 4
+  items:
+  - canGrapple
+  - canShootArrows
+  - canLightTorches
+gates:
+- id: 1
+  name: Ganons Tower (Tile Room)
+  region: Ganons Tower (Entrance)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 2
+  name: Ganons Tower (Hookshot Room)
+  region: Ganons Tower (Entrance)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 3
+  name: Ganons Tower Big Key Door
+  region: Ganons Tower (Entrance)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 4
+  name: Ganons Tower Exit
+  region: Ganons Tower (Entrance)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 8
+  name: Ganons Tower (Tile Room) Key Door
+  region: Ganons Tower (Tile Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 10
+  name: Ganons Tower (Bottom) (East)
+  region: Ganons Tower (Compass Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 15
+  name: Ganons Tower (Map Room)
+  region: Ganons Tower (Hookshot Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 16
+  name: Ganons Tower (Double Switch Room)
+  region: Ganons Tower (Hookshot Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 22
+  name: Ganons Tower (Firesnake Room)
+  region: Ganons Tower (Firesnake Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 24
+  name: Ganons Tower (Bottom) (West)
+  region: Ganons Tower (Teleport Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 34
+  name: Ganons Tower Torch Rooms
+  region: Ganons Tower (Top)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 35
+  name: Ganons Tower Moldorm Door
+  region: Ganons Tower (Before Moldorm)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 39
+  name: Ganons Tower Moldorm Gap
+  region: Ganons Tower (Moldorm)
+  node_type: obstacle
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyA2
+    count: 1
+    nodes:
+    - Ganons Tower - Big Chest
+    - Ganons Tower - Mini Helmasaur Room - Left
+    - Ganons Tower - Mini Helmasaur Room - Right
+    - Ganons Tower - Pre-Moldorm Chest
+    - Ganons Tower - Validation Chest
+    - Agahnim 2
+  - name: KeyA2
+    count: 4
+    nodes:
+    - Ganons Tower - Bob's Chest
+    - Ganons Tower - Big Chest
+    - Ganons Tower - Big Key Room - Left
+    - Ganons Tower - Big Key Room - Right
+    - Ganons Tower - Big Key Chest
+    - Ganons Tower - Mini Helmasaur Room - Left
+    - Ganons Tower - Mini Helmasaur Room - Right
+    - Ganons Tower - Pre-Moldorm Chest
+    - Ganons Tower - Validation Chest
+    - Agahnim 2
+  items:
+  - name: CaneOfSomaria
+    nodes:
+    - Ganons Tower - Tile Room
+    - Ganons Tower - Bob's Chest
+    - Ganons Tower - Big Chest
+    - Ganons Tower - Big Key Room - Left
+    - Ganons Tower - Big Key Room - Right
+    - Ganons Tower - Big Key Chest
+  - name: FireRod
+    nodes:
+    - Ganons Tower - Bob's Chest
+    - Ganons Tower - Big Chest
+    - Ganons Tower - Big Key Room - Left
+    - Ganons Tower - Big Key Room - Right
+    - Ganons Tower - Big Key Chest
+  - name: Hammer
+    nodes:
+    - Ganons Tower - Bob's Chest
+    - Ganons Tower - Big Chest
+    - Ganons Tower - Big Key Room - Left
+    - Ganons Tower - Big Key Room - Right
+    - Ganons Tower - Big Key Chest
+  - name: canDash
+    nodes:
+    - Ganons Tower - Bob's Torch
+  - name: canGrapple
+    nodes:
+    - Ganons Tower - Bob's Chest
+    - Ganons Tower - Big Chest
+    - Ganons Tower - Big Key Room - Left
+    - Ganons Tower - Big Key Room - Right
+    - Ganons Tower - Big Key Chest
+    - Ganons Tower - Validation Chest
+    - Agahnim 2
+  - name: canLightTorches
+    nodes:
+    - Ganons Tower - Mini Helmasaur Room - Left
+    - Ganons Tower - Mini Helmasaur Room - Right
+    - Ganons Tower - Pre-Moldorm Chest
+    - Ganons Tower - Validation Chest
+    - Agahnim 2
+  - name: canShootArrows
+    nodes:
+    - Ganons Tower - Mini Helmasaur Room - Left
+    - Ganons Tower - Mini Helmasaur Room - Right
+    - Ganons Tower - Pre-Moldorm Chest
+    - Ganons Tower - Validation Chest
+    - Agahnim 2
+connections:
+- connection_type: Door
+  description: Door connection between Ganons Tower (Tile Room) and Ganons Tower (Tile Room)
+  origin: Ganons Tower (Tile Room)
+  destination: Ganons Tower (Tile Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Tile Room) Key Door and Ganons Tower (Compass Room)
+  origin: Ganons Tower (Tile Room) Key Door
+  destination: Ganons Tower (Compass Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Bottom) (East) and Ganons Tower (Bottom)
+  origin: Ganons Tower (Bottom) (East)
+  destination: Ganons Tower (Bottom)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Hookshot Room) and Ganons Tower (Hookshot Room)
+  origin: Ganons Tower (Hookshot Room)
+  destination: Ganons Tower (Hookshot Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Map Room) and Ganons Tower (Map Room)
+  origin: Ganons Tower (Map Room)
+  destination: Ganons Tower (Map Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Double Switch Room) and Ganons Tower (Firesnake Room)
+  origin: Ganons Tower (Double Switch Room)
+  destination: Ganons Tower (Firesnake Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Firesnake Room) and Ganons Tower (Teleport Room)
+  origin: Ganons Tower (Firesnake Room)
+  destination: Ganons Tower (Teleport Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower (Bottom) (West) and Ganons Tower (Bottom)
+  origin: Ganons Tower (Bottom) (West)
+  destination: Ganons Tower (Bottom)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower Big Key Door and Ganons Tower (Top)
+  origin: Ganons Tower Big Key Door
+  destination: Ganons Tower (Top)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower Torch Rooms and Ganons Tower (Before Moldorm)
+  origin: Ganons Tower Torch Rooms
+  destination: Ganons Tower (Before Moldorm)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower Moldorm Door and Ganons Tower (Moldorm)
+  origin: Ganons Tower Moldorm Door
+  destination: Ganons Tower (Moldorm)
+  internal: true
+- connection_type: Obstacle
+  description: Obstacle connection between Ganons Tower Moldorm Gap and Agahnim 2
+  origin: Ganons Tower Moldorm Gap
+  destination: Agahnim 2
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower and Ganons Tower (Entrance)
+  origin: Ganons Tower
+  destination: Ganons Tower (Entrance)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ganons Tower Exit and Dark Death Mountain (Top)
+  origin: Ganons Tower Exit
+  destination: Dark Death Mountain (Top)
+  internal: false
+strats: []
+notes: []

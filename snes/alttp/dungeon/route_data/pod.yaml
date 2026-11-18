@@ -1,0 +1,484 @@
+schema_version: 1
+slug: pod
+name: Palace of Darkness (Entrance)
+z3_id: 201
+room_type: Dungeon
+source_file: regions/dungeons/pod/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+note: Also requires access to Northeast Dark World
+regions:
+- name: Palace of Darkness (Entrance)
+  nodes:
+  - Palace of Darkness Bridge Room
+  - Palace of Darkness Bonk Wall
+  - Palace of Darkness Exit
+  - Palace of Darkness - Shooter Room
+- name: Palace of Darkness (Center)
+  nodes:
+  - Palace of Darkness Big Key Chest Staircase
+  - Palace of Darkness (North)
+  - Palace of Darkness Big Key Door
+  - Palace of Darkness - The Arena - Bridge
+  - Palace of Darkness - Stalfos Basement
+- name: Palace of Darkness (Big Key Chest)
+  nodes:
+  - Palace of Darkness - Big Key Chest
+- name: Palace of Darkness (Bonk Section)
+  nodes:
+  - Palace of Darkness Hammer Peg Drop
+  - Palace of Darkness - The Arena - Ledge
+  - Palace of Darkness - Map Chest
+- name: Palace of Darkness (North)
+  nodes:
+  - Palace of Darkness Spike Statue Room Door
+  - Palace of Darkness Maze Door
+  - Palace of Darkness - Compass Chest
+  - Palace of Darkness - Dark Basement - Left
+  - Palace of Darkness - Dark Basement - Right
+- name: Palace of Darkness (Maze)
+  nodes:
+  - Palace of Darkness - Dark Maze - Top
+  - Palace of Darkness - Dark Maze - Bottom
+  - Palace of Darkness - Big Chest
+- name: Palace of Darkness (Harmless Hellway)
+  nodes:
+  - Palace of Darkness - Harmless Hellway
+- name: Palace of Darkness (Final Section)
+  nodes:
+  - Palace of Darkness - Helmasaur
+  - Palace of Darkness - Prize
+locations:
+- id: 4
+  name: Palace of Darkness - Shooter Room
+  region: Palace of Darkness (Entrance)
+  node_type: item
+  item: KeyD1
+  address: '0xEA5B'
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 8
+  name: Palace of Darkness - The Arena - Bridge
+  region: Palace of Darkness (Center)
+  node_type: item
+  item: KeyD1
+  address: '0xEA3D'
+  requires:
+  - or:
+    - KeyD1
+    - and:
+      - Hammer
+      - canShootArrows
+  keys:
+  - name: KeyD1
+    count: 1
+  items:
+  - Hammer
+  - canShootArrows
+- id: 9
+  name: Palace of Darkness - Stalfos Basement
+  region: Palace of Darkness (Center)
+  node_type: item
+  item: KeyD1
+  address: '0xEA49'
+  requires:
+  - or:
+    - KeyD1
+    - and:
+      - Hammer
+      - canShootArrows
+  keys:
+  - name: KeyD1
+    count: 1
+  items:
+  - Hammer
+  - canShootArrows
+- id: 10
+  name: Palace of Darkness - Big Key Chest
+  region: Palace of Darkness (Big Key Chest)
+  node_type: item
+  item: BigKeyD1
+  address: '0xEA37'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 12
+  name: Palace of Darkness - The Arena - Ledge
+  region: Palace of Darkness (Bonk Section)
+  node_type: item
+  item: KeyD1
+  address: '0xEA3A'
+  requires:
+  - canShootArrows
+  keys: []
+  items:
+  - canShootArrows
+- id: 13
+  name: Palace of Darkness - Map Chest
+  region: Palace of Darkness (Bonk Section)
+  node_type: item
+  item: MapD1
+  address: '0xEA52'
+  requires:
+  - canShootArrows
+  keys: []
+  items:
+  - canShootArrows
+- id: 16
+  name: Palace of Darkness - Compass Chest
+  region: Palace of Darkness (North)
+  node_type: item
+  item: CompassD1
+  address: '0xEA43'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 17
+  name: Palace of Darkness - Dark Basement - Left
+  region: Palace of Darkness (North)
+  node_type: item
+  item: Arrow
+  address: '0xEA4C'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 18
+  name: Palace of Darkness - Dark Basement - Right
+  region: Palace of Darkness (North)
+  node_type: item
+  item: KeyD1
+  address: '0xEA4F'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 19
+  name: Palace of Darkness - Dark Maze - Top
+  region: Palace of Darkness (Maze)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEA55'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 20
+  name: Palace of Darkness - Dark Maze - Bottom
+  region: Palace of Darkness (Maze)
+  node_type: item
+  item: KeyD1
+  address: '0xEA58'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 21
+  name: Palace of Darkness - Big Chest
+  region: Palace of Darkness (Maze)
+  node_type: item
+  item: Hammer
+  address: '0xEA40'
+  requires:
+  - BigKeyD1
+  - Hammer
+  - canShootArrows
+  - hasLightCone
+  keys:
+  - name: BigKeyD1
+    count: 1
+  items:
+  - Hammer
+  - canShootArrows
+  - hasLightCone
+  note: 'FIXME: Changes based on key placement'
+- id: 22
+  name: Palace of Darkness - Harmless Hellway
+  region: Palace of Darkness (Harmless Hellway)
+  node_type: item
+  item: FiveRupees
+  address: '0xEA46'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  keys: []
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 23
+  name: Palace of Darkness - Helmasaur
+  region: Palace of Darkness (Final Section)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180153'
+  requires:
+  - canShootArrows
+  - hasLightCone
+  - BigKeyD1
+  - KeyD1:6
+  - Hammer
+  keys:
+  - name: BigKeyD1
+    count: 1
+  - name: KeyD1
+    count: 6
+  items:
+  - canShootArrows
+  - hasLightCone
+  - Hammer
+- id: 24
+  name: Palace of Darkness - Prize
+  region: Palace of Darkness (Final Section)
+  node_type: item
+  item: Crystal1
+  address:
+  - '0x120A1'
+  - '0x53F00'
+  - '0x53F01'
+  - '0x180056'
+  - '0x18007D'
+  - '0xC702'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Palace of Darkness Bridge Room
+  region: Palace of Darkness (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 2
+  name: Palace of Darkness Bonk Wall
+  region: Palace of Darkness (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 3
+  name: Palace of Darkness Exit
+  region: Palace of Darkness (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 5
+  name: Palace of Darkness Big Key Chest Staircase
+  region: Palace of Darkness (Center)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 6
+  name: Palace of Darkness (North)
+  region: Palace of Darkness (Center)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 7
+  name: Palace of Darkness Big Key Door
+  region: Palace of Darkness (Center)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 11
+  name: Palace of Darkness Hammer Peg Drop
+  region: Palace of Darkness (Bonk Section)
+  node_type: drop
+  requires: []
+  keys: []
+  items: []
+- id: 14
+  name: Palace of Darkness Spike Statue Room Door
+  region: Palace of Darkness (North)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 15
+  name: Palace of Darkness Maze Door
+  region: Palace of Darkness (North)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD1
+    count: 1
+    nodes:
+    - Palace of Darkness - Big Chest
+    - Palace of Darkness - Helmasaur
+  - name: KeyD1
+    count: 6
+    nodes:
+    - Palace of Darkness - The Arena - Bridge
+    - Palace of Darkness - Stalfos Basement
+    - Palace of Darkness - Helmasaur
+  items:
+  - name: Hammer
+    nodes:
+    - Palace of Darkness - The Arena - Bridge
+    - Palace of Darkness - Stalfos Basement
+    - Palace of Darkness - Big Key Chest
+    - Palace of Darkness - Compass Chest
+    - Palace of Darkness - Dark Basement - Left
+    - Palace of Darkness - Dark Basement - Right
+    - Palace of Darkness - Dark Maze - Top
+    - Palace of Darkness - Dark Maze - Bottom
+    - Palace of Darkness - Big Chest
+    - Palace of Darkness - Harmless Hellway
+    - Palace of Darkness - Helmasaur
+  - name: RescueZelda
+    nodes:
+    - Palace of Darkness Bridge Room
+    - Palace of Darkness Bonk Wall
+    - Palace of Darkness Exit
+    - Palace of Darkness - Shooter Room
+  - name: canShootArrows
+    nodes:
+    - Palace of Darkness - The Arena - Bridge
+    - Palace of Darkness - Stalfos Basement
+    - Palace of Darkness - Big Key Chest
+    - Palace of Darkness - The Arena - Ledge
+    - Palace of Darkness - Map Chest
+    - Palace of Darkness - Compass Chest
+    - Palace of Darkness - Dark Basement - Left
+    - Palace of Darkness - Dark Basement - Right
+    - Palace of Darkness - Dark Maze - Top
+    - Palace of Darkness - Dark Maze - Bottom
+    - Palace of Darkness - Big Chest
+    - Palace of Darkness - Harmless Hellway
+    - Palace of Darkness - Helmasaur
+  - name: hasLightCone
+    nodes:
+    - Palace of Darkness - Big Key Chest
+    - Palace of Darkness - Compass Chest
+    - Palace of Darkness - Dark Basement - Left
+    - Palace of Darkness - Dark Basement - Right
+    - Palace of Darkness - Dark Maze - Top
+    - Palace of Darkness - Dark Maze - Bottom
+    - Palace of Darkness - Big Chest
+    - Palace of Darkness - Harmless Hellway
+    - Palace of Darkness - Helmasaur
+  - name: isDarkLink
+    nodes:
+    - Palace of Darkness Bridge Room
+    - Palace of Darkness Bonk Wall
+    - Palace of Darkness Exit
+    - Palace of Darkness - Shooter Room
+connections:
+- connection_type: Door
+  description: Door connection between Palace of Darkness Bridge Room and Palace of Darkness (Center)
+  origin: Palace of Darkness Bridge Room
+  destination: Palace of Darkness (Center)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness Bonk Wall and Palace of Darkness (Bonk Section)
+  origin: Palace of Darkness Bonk Wall
+  destination: Palace of Darkness (Bonk Section)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness Big Key Chest Staircase and Palace of Darkness (Big Key Chest)
+  origin: Palace of Darkness Big Key Chest Staircase
+  destination: Palace of Darkness (Big Key Chest)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness (North) and Palace of Darkness (North)
+  origin: Palace of Darkness (North)
+  destination: Palace of Darkness (North)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness Big Key Door and Palace of Darkness (Final Section)
+  origin: Palace of Darkness Big Key Door
+  destination: Palace of Darkness (Final Section)
+  internal: true
+- connection_type: Drop
+  description: Drop connection between Palace of Darkness Hammer Peg Drop and Palace of Darkness (Center)
+  origin: Palace of Darkness Hammer Peg Drop
+  destination: Palace of Darkness (Center)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness Spike Statue Room Door and Palace of Darkness (Harmless Hellway)
+  origin: Palace of Darkness Spike Statue Room Door
+  destination: Palace of Darkness (Harmless Hellway)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness Maze Door and Palace of Darkness (Maze)
+  origin: Palace of Darkness Maze Door
+  destination: Palace of Darkness (Maze)
+  internal: true
+- connection_type: Door
+  description: Door connection between Palace of Darkness and Palace of Darkness (Entrance)
+  origin: Palace of Darkness
+  destination: Palace of Darkness (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Palace of Darkness Exit and East Dark World
+  origin: Palace of Darkness Exit
+  destination: East Dark World
+  internal: false
+strats: []
+notes: []

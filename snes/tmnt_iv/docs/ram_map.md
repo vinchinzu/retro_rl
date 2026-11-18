@@ -11,14 +11,18 @@ player/enemy coordinates confirmed by walk/UP/attack differentials from
 |--------|------|------|-------|
 | `+0x08` | `0x0408` | `<u2` | Player X (screen-space on Stage 1 locks) |
 | `+0x0C` | `0x040C` | `<u2` | Player Y (UP decreases; normal screen Y) |
-| `+0x14` | `0x0414` | `u8` | Turtle / weapon id (Leo≈2) |
+| `+0x14` | `0x0414` | `u8` | Turtle id: Leo 2, Mike 4, Don 6, Raph 8 |
 | `+0x28` | `0x0428` | `u8` | Animation |
-| `+0x4A` | `0x044A` | `u8` | Health (Leo 80, Mike 96, Don 64, Raph 48) |
+| `+0x4A` | `0x044A` | `u8` | Health; full bar Leo 80, Mike 96, Don 64, Raph 48 (power-on probe 2026-11-14; hit sizes match across turtles) |
 | `+0x6E` | `0x046E` | `u8` | Invuln flash timer |
 
 `0x0412` mirrors Y during probes (treat `+0x0C` as canonical).
 
-## Enemies (base `0x08D0 + i*0x70`, i=0..6)
+## Enemies (base `0x08D0 + i*0x70`, i=0..8)
+
+Nine slots. The PAR codes below cover 0-6; slots 7 (`0x0BE0`) and 8
+(`0x0C50`, HP at `0x0C9A`) hold real Foot too (census of a full power-on
+tape, 2026-11-14). Slots 9+ are props and projectiles.
 
 Same relative layout as the player. HP PAR one-hit-kill codes land at
 `base+0x4A`:
@@ -60,6 +64,11 @@ etc.) filtered only when stage byte **7**. Starbase hover/teleporter
 Foot `0x6A` (plus `0x6C`/`0xB0`/`0xB2`/`0xB4`/`0xF2`) need jump-slash
 or grounded Y soft-locks mid-stage.
 
+**Technodrome tank** (event `0x18`): enemy slot 0 (`0x08D0`) holds char
+**`0xFE`** with HP **90**, −10 per Foot thrown into the screen (9 throws),
+positioned off-screen so `living_enemies` filters it. The guard counts all
+occupied slots' HP for progress (2026-11-14, from a winning tape).
+
 **Pickups:** Ground pizza box char **`0x30`** (blue “PIZZA” crate). HP
 byte stays **0**, so it never appears in `living_enemies`. Adapter
 exposes on-screen boxes as `extras["pickups"]` = `(x, y, char)` tuples.
@@ -83,7 +92,7 @@ Bebop, Rocksteady).
 | `0x0070` | In-game event / scene (`0x0A` playing; `0x19` stage-clear fade; `0x04`–`0x09` intermission; `0x0D`/`0x0E`/`0x0F` ending sequence) |
 | `0x0082` | **Stage id** (0 = Big Apple / S1, 1 = Alleycat Blues / S2, **2 = Sewer Surfin' / S3**, **3 = Technodrome / S4**, **4 = Prehistoric / S5**, **5 = Skull and Crossbones / S6**, **6 = Wounded Knee / S7**, **7 = Neon Night Riders / S8**, **8 = Starbase / S9**, **9 = Super Shredder form 2**, **≥10 = ending sequence**) |
 | `0x0096` | Timer |
-| `0x003A` | Progress heuristic (increases while advancing; not scroll origin) |
+| `0x003A` | Frame clock: +1 per frame in play (measured 2026-11-14). Not camera progress; walk-stall code that reads it is timing, not position |
 | `0x046E` | Player invulnerability/flash timer; capture uses value 1 as a disclosed form-2 assist |
 | `0x1AA0` | Lives (P1). `0` = last life still playable if HP > 0 |
 | `0x1A9A` | Lifebar modifier (PAR); not required for adapter |
@@ -94,11 +103,11 @@ Bebop, Rocksteady).
 
 - Attack button: **Y**. Jump: **B**. Special (**A**) drains HP — avoid.
 - Vertical align uses normal screen coords (`invert_vertical=False`).
-- Player/enemy X are **screen-space** during locks. `0x003A` is a
-  progress counter (wave unlock / walk stall), not camera-left; policy
-  zeros `camera_x` for combat edge clamps. Progress can tick while Leo
-  is stuck on Stage 2 dumpster collision — policy stalls on frozen
-  `player_x` and cycles DOWN → JUMP+RIGHT → UP (dumpster breakers).
+- Player/enemy X are **screen-space** during locks. `0x003A` is a frame
+  clock, not camera-left; policy zeros `camera_x` for combat edge clamps.
+  Stage 2 dumpster collision freezes `player_x` while the clock runs —
+  policy stalls on frozen `player_x` and cycles DOWN → JUMP+RIGHT → UP
+  (dumpster breakers).
   Foot parked past ~screen-right (`x > 244`) widen the combat right
   margin so we walk in instead of `edge_wait` forever.
 - First Stage 1 lock: walk right from spawn (~50f) until living enemies

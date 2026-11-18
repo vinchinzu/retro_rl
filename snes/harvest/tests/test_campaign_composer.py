@@ -275,6 +275,84 @@ def test_save_season_pins_parses_without_starting_a_run() -> None:
     assert _parse_args([]).save_season_pins is False
 
 
+def test_daily_pins_are_settled_named_once_and_restore_planner(tmp_path) -> None:
+    from harvest.core.ram_catalog import field_spec, ram_index
+
+    ram = np.frombuffer(parse_save_state(resolve_state_path("Y1_Summer_D1_Pin")).ram, dtype=np.uint8).copy()
+    for name, value in (("year", 1), ("day", 2)):
+        spec = field_spec(name)
+        ram[ram_index(ram, spec.address, live_offset=spec.live_offset)] = value
+    baseline = tmp_path / "PR_Y2_Summer_D2.state"
+    baseline.write_bytes(b"preserve baseline")
+    saved = []
+
+    def save(path):
+        saved.append(path)
+        path.write_bytes(b"daily pin")
+        return path
+
+    planner = _Planner()
+    planner._step_count = 12345
+    session = SeasonPinSession(
+        save=True, daily=True, prefix="PR_watch_", power_on=False,
+        source_sha256="source", start_key=(1, 1, 1),
+        state_name="PR_Y2_Summer_D1", save_dir=tmp_path,
+    )
+    planner._phase = "sleep"
+    session.before_step(planner, ram, 100, save)
+    assert saved == []
+    planner._phase = "plan_day"
+    session.before_step(planner, ram, 101, save)
+    session.before_step(planner, ram, 102, save)
+    assert [path.name for path in saved] == ["PR_watch_Y2_Summer_D2.state"]
+    assert baseline.read_bytes() == b"preserve baseline"
+    resume = SeasonPinSession(
+        save=False, power_on=False, source_sha256="daily",
+        start_key=(1, 1, 2), state_name="PR_watch_Y2_Summer_D2", save_dir=tmp_path,
+    )
+    resumed_planner = _Planner()
+    resumed_planner._step_count = 0
+    resume.before_step(resumed_planner, ram, 0, save)
+    assert resumed_planner._step_count == 12345
+    assert resume.loaded["date"] == {"year": 1, "season": 1, "day": 2}
+
+    seasonal = SeasonPinSession(
+        save=True, power_on=False, source_sha256="source",
+        start_key=(1, 1, 1), state_name="PR_Y2_Summer_D1", save_dir=tmp_path,
+    )
+    seasonal.before_step(planner, ram, 103, save)
+    assert len(saved) == 1
+    spec = field_spec("day")
+    ram[ram_index(ram, spec.address, live_offset=spec.live_offset)] = 3
+    planner._phase = "settle_morning"
+    session.before_step(planner, ram, 104, save)
+    assert len(saved) == 1
+    session.before_step(planner, ram, 104, save, terminal_morning=True)
+    assert saved[-1].name == "PR_watch_Y2_Summer_D3.state"
+
+
+def test_resume_uses_the_local_state_when_the_recorded_checkout_has_moved(tmp_path):
+    import gzip
+    import json
+    from types import SimpleNamespace
+
+    pin = "PR_moved_Y2_Spring_D2"
+    (tmp_path / f"{pin}.state").write_bytes(gzip.compress(b"the actual saved core"))
+    lineage = {"pin": pin, "path": f"/removed/checkout/{pin}.state", "planner": {"_step_count": 123}}
+    (tmp_path / f"{pin}.lineage.json").write_text(json.dumps(lineage))
+    loaded = []
+    ram = np.zeros(0x20000, dtype=np.uint8)
+    env = SimpleNamespace(load_start_state=loaded.append, get_ram=lambda: ram)
+    session = SeasonPinSession(save=False, power_on=False, source_sha256="source", start_key=(1, 0, 2),
+                               state_name=pin, save_dir=tmp_path)
+    planner = _Planner()
+    planner._step_count = 0
+    session.before_step(planner, ram, 0, lambda path: path, env)
+    assert loaded == [b"the actual saved core"]
+    assert planner._step_count == 123
+    assert json.loads((tmp_path / f"{pin}.lineage.json").read_text()) == lineage
+
+
 def test_resume_trace_matches_the_parent_next_day(tmp_path) -> None:
     ram = np.frombuffer(parse_save_state(resolve_state_path("Y1_Summer_D1_Pin")).ram, dtype=np.uint8).copy()
     saved: list[Path] = []
@@ -335,6 +413,23 @@ def test_resume_trace_matches_the_parent_next_day(tmp_path) -> None:
 
 def _phase(name: str, kind: str, frames: int = 0) -> PhaseSpec:
     return PhaseSpec(name, kind, estimated_frames=frames or None)
+
+
+def test_renamed_handoff_pin_restores_its_lineage(tmp_path, monkeypatch) -> None:
+    import json
+    from types import SimpleNamespace
+    from harvest.planner import campaign_composer
+
+    name = "LN_handoff_Y2_Fall_D20"
+    (tmp_path / f"{name}.lineage.json").write_text(json.dumps({
+        "path": "/tmp/old_run/old.state", "planner": {"_step_count": 7036468},
+    }))
+    monkeypatch.setattr(campaign_composer, "GAME_DIR", tmp_path)
+    session = campaign_composer.season_pin_session(
+        SimpleNamespace(state=name, power_on=False), (1, 2, 20), "source")
+    assert session is not None
+    assert session.loaded["planner"]["_step_count"] == 7036468
+    assert session.loaded["path"] == str(tmp_path / f"{name}.state")
 
 
 def test_arbiter_orders_deadline_then_animals_crops_social_cover() -> None:

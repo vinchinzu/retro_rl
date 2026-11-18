@@ -35,6 +35,7 @@ class Tool(IntEnum):
     MILKER = 0x0E
     BRUSH = 0x0F
     WATERING_CAN = 0x10
+    SPRINKLER = 0x15
 
 
 ADDR_X = field_spec("player_x").address
@@ -74,6 +75,12 @@ MATURE_CROP_TILES = frozenset({
     0x60, 0x61,  # potato
     0x6E, 0x6F,  # turnip
 })
+MATURE_TILE_CROP: dict[int, str] = {
+    0x38: "tomato", 0x39: "tomato",
+    0x52: "corn", 0x53: "corn",
+    0x60: "potato", 0x61: "potato",
+    0x6E: "turnip", 0x6F: "turnip",
+}
 PLOT_TILES = frozenset({FRESH_TILLED, WATERED_TILLED}) | frozenset(CROP_TILE_RANGE)
 UNRIPE_DRY_CROP_TILES = frozenset(tile_id for tile_id in DRY_CROP_TILES if tile_id not in MATURE_CROP_TILES)
 WATERABLE_TILES = UNRIPE_DRY_CROP_TILES
@@ -211,6 +218,16 @@ MOUNTAIN_WALKABLE = frozenset({
     0xD6,
 })
 MOUNTAIN_TILEMAP_IDS = frozenset({0x10, 0x11, 0x12, 0x13})
+# The path is 0x0C in Spring, Summer and Fall and 0x0F in Winter (measured on
+# LN_cowfix_pin_winter_d5: the farm's west exit and the town's east exit both
+# load 0x0F). The overnight fade also loads 0x0F; ``scene.in_sleep_transition``
+# tells them apart by the clock byte.
+PATH_TILEMAP_IDS = frozenset({0x0C, 0x0F})
+
+
+def is_path_tilemap(tilemap: int) -> bool:
+    """True for the path between farm and town in any season."""
+    return int(tilemap) in PATH_TILEMAP_IDS
 
 # Farm-style debris that can appear on mountain (off spa corridor in spring
 # ROM dump: stumps west of climb, large rocks near mid-ridge). BFS must not
@@ -226,7 +243,7 @@ WALKABLE_BY_TILEMAP = {
     0x01: FARM_WALKABLE,
     0x02: FARM_WALKABLE,
     0x03: FARM_WALKABLE,
-    0x0C: PATH_WALKABLE,
+    **{tilemap_id: PATH_WALKABLE for tilemap_id in sorted(PATH_TILEMAP_IDS)},
     0x04: TOWN_WALKABLE,
     0x05: TOWN_WALKABLE,
     **{tilemap_id: MOUNTAIN_WALKABLE for tilemap_id in sorted(MOUNTAIN_TILEMAP_IDS)},
@@ -420,6 +437,11 @@ def crop_pickup_stage(tile_id: int) -> int:
 
 def is_mature_crop_tile(tile_id: int) -> bool:
     return tile_id in MATURE_CROP_TILES
+
+
+def mature_tile_crop(tile_id: int) -> str | None:
+    """The crop a ripe tile id holds (``"corn"``, ``"tomato"``, ...), None for any other tile."""
+    return MATURE_TILE_CROP.get(int(tile_id))
 
 
 def tile_is_watered(tile_id: int) -> bool:

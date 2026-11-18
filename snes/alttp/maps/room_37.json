@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 55,
+  "roomHex": "0x37",
+  "name": "Swamp Palace water switch, map chest",
+  "measured": "2026-10-18",
+  "sourceState": "Scan_swamp_0x37",
+  "points": [],
+  "doors": [
+    {
+      "label": "west_upper",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x2E pos $0784. Dest unknown. Poke warp, not walked."
+    },
+    {
+      "label": "east_upper",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x2E pos $07F4. Dest unknown. Poke warp, not walked."
+    },
+    {
+      "label": "north_small_key",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x1C small key pos $121C. Stopping lock. Not walked."
+    },
+    {
+      "label": "east_small_key",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x1C small key pos $17F4. Stopping lock. Not walked."
+    },
+    {
+      "label": "west_regular",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 4 type 0x00 pos $1784. Dest unknown. Not walked."
+    },
+    {
+      "label": "north_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 5 type 0x02 pos $13BC. Dest unknown. Not walked."
+    },
+    {
+      "label": "south_small_key",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 10 type 0x1C small key pos $0D1C, other layer of slot 2. Stopping lock. Not walked."
+    },
+    {
+      "label": "south_regular",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 13 type 0x02 pos $0BBC, other layer of slot 5. Not walked."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x21", "xy": [3760, 1605], "notes": "water switch floor 0"}
+  ],
+  "notes": [
+    "Scan_swamp_0x37 kind poke from Whatif_SwampPalaceEntry_parallel, submodule 0x15. Not a walk.",
+    "Chest 0 tile (39,16) MapD2 0xE986 opened=0.",
+    "Live tag was [0, 25] before the lever. Door-only; approach xy omitted.",
+    "Isolated development. Not natural."
+  ]
+}

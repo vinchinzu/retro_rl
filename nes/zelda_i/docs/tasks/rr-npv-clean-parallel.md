@@ -44,6 +44,6 @@ path → stand. No `idle(n)` as a hop. Leave is `screen_glance` bands.
 | `rr-npv.6` | OW | `overworld/{rupee_farm,heart_farm,stitch}.py` (not the L2 walk while `rr-ps7.3` is live) |
 | `rr-4oz` / `rr-bxzj` / `rr-d6v` | L2 / L4 / L6 Clean | existing children |
 
-Integrator-only: `spine/survival.py`, `assist.py`, `ram.py`, `STATUS.md`,
-`.beads/issues.jsonl`. Never `git add -A`. Do not overwrite
+Integrator-only: `spine/survival.py`, `assist.py`, `ram.py`, `STATUS.md`.
+Never `git add -A` and do not commit `.beads/`. Do not overwrite
 `recordings/BASELINE_20260907.json`.

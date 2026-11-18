@@ -24,6 +24,18 @@ HELD_WEED = 0x09
 HELD_STONE = 0x0D
 HELD_BUSH = 0x29
 POCKET_LIFT_HELD: frozenset[int] = frozenset({HELD_WEED, HELD_STONE, HELD_BUSH})
+HELD_FENCE = 0x0F  # a lifted fence post (tile 0x05)
+# Debris the pond takes (the Day 2 clear dumps stones and fence posts there).
+POND_TOSS_HELD: frozenset[int] = POCKET_LIFT_HELD | {HELD_FENCE}
+# Held ids the pond must never take: a crop, an egg or milk (the bin pays), fodder, a hen.
+KEEP_HELD: frozenset[int] = frozenset({0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x1A, 0x25})
+
+
+def pond_takes(held: int) -> bool:
+    """Debris, or anything unrecognised that the yard refused (Y2 Summer D18, sweep t5f_s54:
+    held 0x57 after a forced-failure day, every yard tile 0xA8 refused it, 8 rescues)."""
+    held = int(held)
+    return held in POND_TOSS_HELD or (held != 0 and held not in KEEP_HELD)
 
 # Tape drop stands (reference only). The skill runs straight south, not to these.
 POCKET_DROP_COLUMNS: Tuple[int, ...] = (14, 15, 16)
@@ -351,12 +363,16 @@ def held_toss_actions(
 
 __all__ = [
     "FENCE_WALL_Y",
+    "HELD_FENCE",
     "HELD_BUSH",
     "HELD_STONE",
     "HELD_WEED",
     "POCKET_DROP_COLUMNS",
     "POCKET_DROP_Y",
     "POCKET_LIFT_HELD",
+    "KEEP_HELD",
+    "POND_TOSS_HELD",
+    "pond_takes",
     "FenceJumpTossSkill",
     "evaluate_lift_verify",
     "fence_jump_action",

@@ -1,0 +1,32 @@
+{
+  "bead": "PR-013",
+  "note": "RAM what-ifs. Not route evidence. No LiveRamEditor. No --ram-set.",
+  "timeline": {
+    "latest_marriage_for_both_children_on_y3_summer_d29_morning": "Y2 Fall D9",
+    "child1_morning_if_gates_ready": "Y2 Fall D29",
+    "child2_morning_if_gates_ready": "Y3 Summer D29",
+    "nights_after_marriage_for_child1": 20,
+    "nights_after_marriage_for_child2": 110,
+    "nights_between_child_flags": 90,
+    "assumption": "On the night the counter reaches 20, house bit $7F1F64 $0080 is set and that wife's hearts are still >= 450. On the night kid1_age starts >= 90, hearts are still >= 650."
+  },
+  "try1": {
+    "pin": "LN_mgr-f4_whatif_preg",
+    "json": "F4_family_probe_try1.json",
+    "frames": 24001,
+    "night_reset": false,
+    "wife_pregnancy": 19
+  },
+  "try2": {
+    "pin": "LN_mgr-f4_whatif_preg2",
+    "json": "F4_family_probe_try2.json",
+    "day_changed_frame": 1868,
+    "morning_frame": 1973,
+    "wife_pregnancy": [19, 20],
+    "maria_hearts_at_day_change": 448,
+    "incubator_flags": 0,
+    "kid1_age": 0,
+    "kid2_age": 0,
+    "upgrade_flags": 192
+  }
+}

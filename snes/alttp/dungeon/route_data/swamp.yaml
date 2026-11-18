@@ -1,0 +1,333 @@
+schema_version: 1
+slug: swamp
+name: Swamp Palace (Entrance)
+z3_id: 166
+room_type: Dungeon
+source_file: regions/dungeons/swamp/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+note: Also requires access to South Dark World
+regions:
+- name: Swamp Palace (Entrance)
+  nodes:
+  - Swamp Palace Moat
+  - Swamp Palace Exit
+- name: Swamp Palace (First Room)
+  nodes:
+  - Swamp Palace Small Key Door
+  - Swamp Palace - Entrance
+- name: Swamp Palace (Starting Area)
+  nodes:
+  - Swamp Palace (Center)
+  - Swamp Palace - Map Chest
+- name: Swamp Palace (Center)
+  nodes:
+  - Swamp Palace (North)
+  - Swamp Palace - Big Chest
+  - Swamp Palace - Compass Chest
+  - Swamp Palace - Big Key Chest
+  - Swamp Palace - West Chest
+- name: Swamp Palace (North)
+  nodes:
+  - Swamp Palace - Flooded Room - Left
+  - Swamp Palace - Flooded Room - Right
+  - Swamp Palace - Waterfall Room
+  - Swamp Palace - Arrghus
+  - Swamp Palace - Prize
+locations:
+- id: 4
+  name: Swamp Palace - Entrance
+  region: Swamp Palace (First Room)
+  node_type: item
+  item: KeyD2
+  address: '0xEA9D'
+  requires: []
+  keys: []
+  items: []
+- id: 6
+  name: Swamp Palace - Map Chest
+  region: Swamp Palace (Starting Area)
+  node_type: item
+  item: MapD2
+  address: '0xE986'
+  requires:
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items: []
+- id: 8
+  name: Swamp Palace - Big Chest
+  region: Swamp Palace (Center)
+  node_type: item
+  item: Hookshot
+  address: '0xE989'
+  requires:
+  - Hammer
+  - BigKeyD2
+  - KeyD2
+  keys:
+  - name: BigKeyD2
+    count: 1
+  - name: KeyD2
+    count: 1
+  items:
+  - Hammer
+- id: 9
+  name: Swamp Palace - Compass Chest
+  region: Swamp Palace (Center)
+  node_type: item
+  item: CompassD2
+  address: '0xEAA0'
+  requires:
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - Hammer
+- id: 10
+  name: Swamp Palace - Big Key Chest
+  region: Swamp Palace (Center)
+  node_type: item
+  item: BigKeyD2
+  address: '0xEAA6'
+  requires:
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - Hammer
+- id: 11
+  name: Swamp Palace - West Chest
+  region: Swamp Palace (Center)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEAA3'
+  requires:
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - Hammer
+- id: 12
+  name: Swamp Palace - Flooded Room - Left
+  region: Swamp Palace (North)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEAA9'
+  requires:
+  - canGrapple
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - canGrapple
+  - Hammer
+- id: 13
+  name: Swamp Palace - Flooded Room - Right
+  region: Swamp Palace (North)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEAAC'
+  requires:
+  - canGrapple
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - canGrapple
+  - Hammer
+- id: 14
+  name: Swamp Palace - Waterfall Room
+  region: Swamp Palace (North)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEAAF'
+  requires:
+  - canGrapple
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - canGrapple
+  - Hammer
+- id: 15
+  name: Swamp Palace - Arrghus
+  region: Swamp Palace (North)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180154'
+  requires:
+  - canGrapple
+  - Hammer
+  - KeyD2
+  keys:
+  - name: KeyD2
+    count: 1
+  items:
+  - canGrapple
+  - Hammer
+- id: 16
+  name: Swamp Palace - Prize
+  region: Swamp Palace (North)
+  node_type: item
+  item: Crystal2
+  address:
+  - '0x120A0'
+  - '0x53F6C'
+  - '0x53F6D'
+  - '0x180055'
+  - '0x180071'
+  - '0xC701'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Swamp Palace Moat
+  region: Swamp Palace (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - canMirror
+  - canSwim
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - canMirror
+  - canSwim
+  - isDarkLink
+- id: 2
+  name: Swamp Palace Exit
+  region: Swamp Palace (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - canMirror
+  - canSwim
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - canMirror
+  - canSwim
+  - isDarkLink
+- id: 3
+  name: Swamp Palace Small Key Door
+  region: Swamp Palace (First Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 5
+  name: Swamp Palace (Center)
+  region: Swamp Palace (Starting Area)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 7
+  name: Swamp Palace (North)
+  region: Swamp Palace (Center)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD2
+    count: 1
+    nodes:
+    - Swamp Palace - Big Chest
+  - name: KeyD2
+    count: 1
+    nodes:
+    - Swamp Palace - Map Chest
+    - Swamp Palace - Big Chest
+    - Swamp Palace - Compass Chest
+    - Swamp Palace - Big Key Chest
+    - Swamp Palace - West Chest
+    - Swamp Palace - Flooded Room - Left
+    - Swamp Palace - Flooded Room - Right
+    - Swamp Palace - Waterfall Room
+    - Swamp Palace - Arrghus
+  items:
+  - name: Hammer
+    nodes:
+    - Swamp Palace - Big Chest
+    - Swamp Palace - Compass Chest
+    - Swamp Palace - Big Key Chest
+    - Swamp Palace - West Chest
+    - Swamp Palace - Flooded Room - Left
+    - Swamp Palace - Flooded Room - Right
+    - Swamp Palace - Waterfall Room
+    - Swamp Palace - Arrghus
+  - name: RescueZelda
+    nodes:
+    - Swamp Palace Moat
+    - Swamp Palace Exit
+  - name: canGrapple
+    nodes:
+    - Swamp Palace - Flooded Room - Left
+    - Swamp Palace - Flooded Room - Right
+    - Swamp Palace - Waterfall Room
+    - Swamp Palace - Arrghus
+  - name: canMirror
+    nodes:
+    - Swamp Palace Moat
+    - Swamp Palace Exit
+  - name: canSwim
+    nodes:
+    - Swamp Palace Moat
+    - Swamp Palace Exit
+  - name: isDarkLink
+    nodes:
+    - Swamp Palace Moat
+    - Swamp Palace Exit
+connections:
+- connection_type: Door
+  description: Door connection between Swamp Palace Moat and Swamp Palace (First Room)
+  origin: Swamp Palace Moat
+  destination: Swamp Palace (First Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Swamp Palace Small Key Door and Swamp Palace (Starting Area)
+  origin: Swamp Palace Small Key Door
+  destination: Swamp Palace (Starting Area)
+  internal: true
+- connection_type: Door
+  description: Door connection between Swamp Palace (Center) and Swamp Palace (Center)
+  origin: Swamp Palace (Center)
+  destination: Swamp Palace (Center)
+  internal: true
+- connection_type: Door
+  description: Door connection between Swamp Palace (North) and Swamp Palace (North)
+  origin: Swamp Palace (North)
+  destination: Swamp Palace (North)
+  internal: true
+- connection_type: Door
+  description: Door connection between Swamp Palace and Swamp Palace (Entrance)
+  origin: Swamp Palace
+  destination: Swamp Palace (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Swamp Palace Exit and South Dark World
+  origin: Swamp Palace Exit
+  destination: South Dark World
+  internal: false
+strats: []
+notes: []

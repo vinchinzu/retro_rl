@@ -20,6 +20,7 @@ from alttp.opening_route.escape_graph import (
     N_SANCTUARY_HEART,
     N_SANCTUARY_EXIT,
     N_KAKARIKO,
+    N_ROOM_C9,
 )
 from alttp.opening_route.full_tip import VERIFIED_TIP_SEGMENT_IDS
 
@@ -93,6 +94,12 @@ SPINE_HOPS: tuple[SpineHop, ...] = (
         through="kakariko", stop="kakariko",
         stages=("sanctuary_to_kakariko",), success=N_KAKARIKO,
     ),
+    # Branch from the Sanctuary exit. Not played by --through kakariko.
+    SpineHop(
+        through="eastern_entry", stop="eastern_entry",
+        stages=("eastern_grounds", "sahasrahla_hut", "eastern_approach"),
+        success=N_ROOM_C9,
+    ),
 )
 
 SPINE_THROUGH: tuple[str, ...] = tuple(
@@ -110,9 +117,21 @@ def hop_for(through: str) -> SpineHop | None:
 
 
 def hops_through(through: str) -> Sequence[SpineHop]:
-    """Rows to play, inclusive of ``through``. Unknown and fail-closed ids yield nothing."""
+    """Rows to play, inclusive of ``through``. Unknown and fail-closed ids yield nothing.
+
+    ``eastern_entry`` continues the Sanctuary exit (heart, south door, proved
+    screens, hut, hedge, lobby). It does not take the Kakariko branch.
+    """
+    if through == "eastern_entry":
+        base = hops_through("sanctuary_exit")
+        hop = hop_for("eastern_entry")
+        if not base or hop is None:
+            return ()
+        return tuple(base) + (hop,)
     played: list[SpineHop] = []
     for hop in SPINE_HOPS:
+        if hop.through == "eastern_entry":
+            continue
         played.append(hop)
         if hop.through == through:
             return tuple(played)

@@ -1,0 +1,109 @@
+schema_version: 1
+slug: castle_tower
+name: Agahnims Tower
+z3_id: 88
+room_type: Dungeon
+source_file: regions/dungeons/castletower/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Agahnims Tower
+  nodes:
+  - Agahnim 1
+  - Agahnims Tower Exit
+  - Castle Tower - Room 03
+  - Castle Tower - Dark Maze
+  - Agahnim 1
+locations:
+- id: 3
+  name: Castle Tower - Room 03
+  region: Agahnims Tower
+  node_type: item
+  item: KeyA1
+  address: '0xEAB5'
+  requires:
+  - hasLightCone
+  keys: []
+  items:
+  - hasLightCone
+- id: 4
+  name: Castle Tower - Dark Maze
+  region: Agahnims Tower
+  node_type: item
+  item: KeyA1
+  address: '0xEAB2'
+  requires:
+  - hasLightCone
+  keys: []
+  items:
+  - hasLightCone
+gates:
+- id: 1
+  name: Agahnim 1
+  region: Agahnims Tower
+  node_type: door
+  requires:
+  - hasLightCone
+  keys: []
+  items:
+  - hasLightCone
+- id: 2
+  name: Agahnims Tower Exit
+  region: Agahnims Tower
+  node_type: door
+  requires:
+  - hasLightCone
+  keys: []
+  items:
+  - hasLightCone
+- id: 5
+  name: Agahnim 1
+  region: Agahnims Tower
+  node_type: event
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys: []
+  items:
+  - name: hasLightCone
+    nodes:
+    - Agahnim 1
+    - Agahnims Tower Exit
+    - Castle Tower - Room 03
+    - Castle Tower - Dark Maze
+connections:
+- connection_type: Door
+  description: Door connection between Agahnim 1 and Agahnim 1
+  origin: Agahnim 1
+  destination: Agahnim 1
+  internal: true
+- connection_type: Door
+  description: Door connection between Agahnims Tower and Agahnims Tower
+  origin: Agahnims Tower
+  destination: Agahnims Tower
+  internal: true
+- connection_type: Door
+  description: Door connection between Agahnims Tower Exit and Hyrule Castle Ledge
+  origin: Agahnims Tower Exit
+  destination: Hyrule Castle Ledge
+  internal: false
+strats:
+- name: Agahnim 1
+  link:
+  - 5
+  - 5
+  requires:
+  - and:
+    - swords.swordless
+    - or:
+      - Hammer
+      - BugCatchingNet
+  - canSlashCurtains
+  - hasLightCone
+  - KeyA1:2
+  yields:
+  - DefeatAgahnim1
+  id: 1
+notes: []

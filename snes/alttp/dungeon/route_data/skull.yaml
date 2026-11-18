@@ -1,0 +1,409 @@
+schema_version: 1
+slug: skull
+name: Skull Woods First Section
+z3_id: 174
+room_type: Dungeon
+source_file: regions/dungeons/skwoods/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+note: Also requires access to Northwest Dark World
+regions:
+- name: Skull Woods First Section
+  nodes:
+  - Skull Woods First Section Exit
+  - Skull Woods First Section Bomb Jump
+  - Skull Woods First Section South Door
+  - Skull Woods First Section West Door
+  - Skull Woods - Map Chest
+- name: Skull Woods First Section (Right)
+  nodes:
+  - Skull Woods First Section (Right) North Door
+  - Skull Woods - Pinball Room
+- name: Skull Woods First Section (Left)
+  nodes:
+  - Skull Woods First Section (Left) Door to Exit
+  - Skull Woods First Section (Left) Door to Right
+  - Skull Woods - Compass Chest
+  - Skull Woods - Pot Prison
+- name: Skull Woods First Section (Top)
+  nodes:
+  - Skull Woods First Section (Top) One-Way Path
+  - Skull Woods - Big Chest
+- name: Skull Woods Second Section (Drop)
+  nodes:
+  - Skull Woods Second Section (Drop)
+- name: Skull Woods Second Section
+  nodes:
+  - Skull Woods Second Section Exit (East)
+  - Skull Woods Second Section Exit (West)
+  - Skull Woods - Big Key Chest
+- name: Skull Woods Final Section (Entrance)
+  nodes:
+  - Skull Woods Torch Room
+  - Skull Woods Final Section Exit
+  - Skull Woods - Bridge Room
+- name: Skull Woods Final Section (Mothula)
+  nodes:
+  - Skull Woods - Mothula
+  - Skull Woods - Prize
+locations:
+- id: 5
+  name: Skull Woods - Map Chest
+  region: Skull Woods First Section
+  node_type: item
+  item: MapD3
+  address: '0xE99B'
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 7
+  name: Skull Woods - Pinball Room
+  region: Skull Woods First Section (Right)
+  node_type: item
+  item: KeyD3
+  address: '0xE9C8'
+  requires: []
+  keys: []
+  items: []
+- id: 10
+  name: Skull Woods - Compass Chest
+  region: Skull Woods First Section (Left)
+  node_type: item
+  item: CompassD3
+  address: '0xE992'
+  requires: []
+  keys: []
+  items: []
+- id: 11
+  name: Skull Woods - Pot Prison
+  region: Skull Woods First Section (Left)
+  node_type: item
+  item: KeyD3
+  address: '0xE9A1'
+  requires: []
+  keys: []
+  items: []
+- id: 13
+  name: Skull Woods - Big Chest
+  region: Skull Woods First Section (Top)
+  node_type: item
+  item: FireRod
+  address: '0xE998'
+  requires:
+  - 'BigKeyD3 '
+  keys:
+  - name: BigKeyD3
+    count: 1
+    raw: 'BigKeyD3 '
+  items: []
+- id: 17
+  name: Skull Woods - Big Key Chest
+  region: Skull Woods Second Section
+  node_type: item
+  item: BigKeyD3
+  address: '0xE99E'
+  requires: []
+  keys: []
+  items: []
+- id: 20
+  name: Skull Woods - Bridge Room
+  region: Skull Woods Final Section (Entrance)
+  node_type: item
+  item: KeyD3
+  address: '0xE9FE'
+  requires:
+  - isDarkLink
+  - FireRod
+  keys: []
+  items:
+  - isDarkLink
+  - FireRod
+- id: 21
+  name: Skull Woods - Mothula
+  region: Skull Woods Final Section (Mothula)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180155'
+  requires:
+  - canSlashCurtains
+  - isDarkLink
+  - FireRod
+  - KeyD3:3
+  keys:
+  - name: KeyD3
+    count: 3
+  items:
+  - canSlashCurtains
+  - isDarkLink
+  - FireRod
+- id: 22
+  name: Skull Woods - Prize
+  region: Skull Woods Final Section (Mothula)
+  node_type: item
+  item: Crystal3
+  address:
+  - '0x120A3'
+  - '0x53F12'
+  - '0x53F13'
+  - '0x180058'
+  - '0x18007B'
+  - '0xC704'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Skull Woods First Section Exit
+  region: Skull Woods First Section
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 2
+  name: Skull Woods First Section Bomb Jump
+  region: Skull Woods First Section
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 3
+  name: Skull Woods First Section South Door
+  region: Skull Woods First Section
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 4
+  name: Skull Woods First Section West Door
+  region: Skull Woods First Section
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 6
+  name: Skull Woods First Section (Right) North Door
+  region: Skull Woods First Section (Right)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 8
+  name: Skull Woods First Section (Left) Door to Exit
+  region: Skull Woods First Section (Left)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Skull Woods First Section (Left) Door to Right
+  region: Skull Woods First Section (Left)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 12
+  name: Skull Woods First Section (Top) One-Way Path
+  region: Skull Woods First Section (Top)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 14
+  name: Skull Woods Second Section (Drop)
+  region: Skull Woods Second Section (Drop)
+  node_type: drop
+  requires: []
+  keys: []
+  items: []
+- id: 15
+  name: Skull Woods Second Section Exit (East)
+  region: Skull Woods Second Section
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 16
+  name: Skull Woods Second Section Exit (West)
+  region: Skull Woods Second Section
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 18
+  name: Skull Woods Torch Room
+  region: Skull Woods Final Section (Entrance)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 19
+  name: Skull Woods Final Section Exit
+  region: Skull Woods Final Section (Entrance)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD3
+    count: 1
+    nodes:
+    - Skull Woods - Big Chest
+  - name: KeyD3
+    count: 3
+    nodes:
+    - Skull Woods - Mothula
+  items:
+  - name: FireRod
+    nodes:
+    - Skull Woods - Bridge Room
+    - Skull Woods - Mothula
+  - name: RescueZelda
+    nodes:
+    - Skull Woods First Section Exit
+    - Skull Woods First Section Bomb Jump
+    - Skull Woods First Section South Door
+    - Skull Woods First Section West Door
+    - Skull Woods - Map Chest
+  - name: canSlashCurtains
+    nodes:
+    - Skull Woods - Mothula
+  - name: isDarkLink
+    nodes:
+    - Skull Woods First Section Exit
+    - Skull Woods First Section Bomb Jump
+    - Skull Woods First Section South Door
+    - Skull Woods First Section West Door
+    - Skull Woods - Map Chest
+    - Skull Woods - Bridge Room
+    - Skull Woods - Mothula
+connections:
+- connection_type: Door
+  description: Door connection between Skull Woods Torch Room and Skull Woods Final Section (Mothula)
+  origin: Skull Woods Torch Room
+  destination: Skull Woods Final Section (Mothula)
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section Bomb Jump and Skull Woods First Section (Top)
+  origin: Skull Woods First Section Bomb Jump
+  destination: Skull Woods First Section (Top)
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section South Door and Skull Woods First Section (Right)
+  origin: Skull Woods First Section South Door
+  destination: Skull Woods First Section (Right)
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section West Door and Skull Woods First Section (Left)
+  origin: Skull Woods First Section West Door
+  destination: Skull Woods First Section (Left)
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section (Right) North Door and Skull Woods First Section
+  origin: Skull Woods First Section (Right) North Door
+  destination: Skull Woods First Section
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section (Left) Door to Right and Skull Woods First Section (Right)
+  origin: Skull Woods First Section (Left) Door to Right
+  destination: Skull Woods First Section (Right)
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section (Left) Door to Exit and Skull Woods First Section
+  origin: Skull Woods First Section (Left) Door to Exit
+  destination: Skull Woods First Section
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section (Top) One-Way Path and Skull Woods First Section
+  origin: Skull Woods First Section (Top) One-Way Path
+  destination: Skull Woods First Section
+  internal: true
+- connection_type: Drop
+  description: Drop connection between Skull Woods Second Section (Drop) and Skull Woods Second Section
+  origin: Skull Woods Second Section (Drop)
+  destination: Skull Woods Second Section
+  internal: true
+- connection_type: Door
+  description: Door connection between Skull Woods First Section Hole (East) and Skull Woods First Section (Right)
+  origin: Skull Woods First Section Hole (East)
+  destination: Skull Woods First Section (Right)
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods First Section Hole (West) and Skull Woods First Section (Left)
+  origin: Skull Woods First Section Hole (West)
+  destination: Skull Woods First Section (Left)
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods First Section Hole (North) and Skull Woods First Section (Top)
+  origin: Skull Woods First Section Hole (North)
+  destination: Skull Woods First Section (Top)
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods First Section Door and Skull Woods First Section
+  origin: Skull Woods First Section Door
+  destination: Skull Woods First Section
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods First Section Exit and Skull Woods Forest
+  origin: Skull Woods First Section Exit
+  destination: Skull Woods Forest
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Second Section Hole and Skull Woods Second Section (Drop)
+  origin: Skull Woods Second Section Hole
+  destination: Skull Woods Second Section (Drop)
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Second Section Door (East) and Skull Woods Second Section
+  origin: Skull Woods Second Section Door (East)
+  destination: Skull Woods Second Section
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Second Section Door (West) and Skull Woods Second Section
+  origin: Skull Woods Second Section Door (West)
+  destination: Skull Woods Second Section
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Second Section Exit (East) and Skull Woods Forest
+  origin: Skull Woods Second Section Exit (East)
+  destination: Skull Woods Forest
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Second Section Exit (West) and Skull Woods Forest (West)
+  origin: Skull Woods Second Section Exit (West)
+  destination: Skull Woods Forest (West)
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Final Section and Skull Woods Final Section (Entrance)
+  origin: Skull Woods Final Section
+  destination: Skull Woods Final Section (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Skull Woods Final Section Exit and Skull Woods Forest (West)
+  origin: Skull Woods Final Section Exit
+  destination: Skull Woods Forest (West)
+  internal: false
+strats: []
+notes:
+- 'Skull Woods - Big Chest: requirement token ''BigKeyD3 '' normalizes to ''BigKeyD3'''

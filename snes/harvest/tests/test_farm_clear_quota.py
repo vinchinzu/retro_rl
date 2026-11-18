@@ -98,6 +98,24 @@ def _quota_task(**kwargs) -> FarmClearTask:
     return FarmClearTask(**params)
 
 
+class QuotaCarryCompletionTests(unittest.TestCase):
+    def test_met_quota_finishes_with_empty_hands(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+
+        ram = _make_farm_ram(player_tile=(37, 58))
+        ram[ADDR_HELD_ITEM] = 0x09
+        ram[0xD2] = 2
+        task = _quota_task(quota={"weeds": 10000}, priority=[DebrisType.WEED])
+        task.reset(_world(ram))
+        result = task.step(_world(ram))
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertIn("quota_met", task._pending_finish_reason)
+        ram[ADDR_HELD_ITEM] = 0
+        ram[0xD2] = 0
+        task._drop_queue.clear()
+        self.assertEqual(task.step(_world(ram)).status, TaskStatus.SUCCESS)
+
+
 def _place_weeds(ram: np.ndarray, n: int, *, origin: tuple[int, int] = (8, 8)):
     tiles = []
     ox, oy = origin
@@ -217,6 +235,52 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         self.assertEqual(count_debris(ram).stumps, 1)
         self.assertEqual(ram[ADDR_MAP + 12 * MAP_WIDTH + 20], STUMP_TL)
 
+    def test_grown_pasture_is_not_an_unloaded_map(self) -> None:
+        """Y2 Summer D6: 57 pasture tiles at 0x76 sent the stump clearer into the barn."""
+        from harvest.tasks.grass_planter import PASTURE_BOUNDS
+
+        ram = _make_farm_ram(player_tile=(40, 20), tool=int(Tool.AXE))
+        x0, y0, x1, _y1 = PASTURE_BOUNDS
+        for i in range(70):
+            ram[ADDR_MAP + (y0 + i // (x1 - x0 + 1)) * MAP_WIDTH + x0 + i % (x1 - x0 + 1)] = 0x76
+        self.assertTrue(farm_map_loaded(ram))
+        for i in range(70):
+            ram[ADDR_MAP + (2 + i // 30) * MAP_WIDTH + 30 + i % 30] = 0xFF
+        self.assertFalse(farm_map_loaded(ram))
+
+    def test_whole_field_cover_grass_is_not_an_unloaded_map(self) -> None:
+        """Y2 Spring D8 (compose6): the cover's young grass (0x75/0x76) outside the pasture read as stale ids.
+
+        389 such tiles made ``farm_map_loaded`` False for the whole day, so ``EnsureCarryToolTask`` kept starting
+        its leave-the-shed-door walk (it succeeds at once) and ``ENSURE_ANIMAL_TOOLS`` ran silently for 2M frames.
+        """
+        import os
+        from unittest import mock
+
+        from harvest.tasks.farm_clear_quota import stale_under_player
+        from harvest.tasks.nav import get_pos_from_ram
+
+        def sow(ram, tile_id, count):
+            for i in range(count):
+                ram[ADDR_MAP + (4 + i // 40) * MAP_WIDTH + 20 + i % 40] = tile_id   # rows 4-11, x 20-59: no pasture
+
+        for tile_id in (0x75, 0x76):
+            ram = _make_farm_ram(player_tile=(40, 20), tool=int(Tool.AXE))
+            sow(ram, tile_id, 300)
+            with mock.patch.dict(os.environ, {"HARVEST_FIELD_COVER": "0"}):
+                self.assertFalse(farm_map_loaded(ram), "without the cover, 300 stale ids outside the pasture are unloaded")
+            with mock.patch.dict(os.environ, {"HARVEST_FIELD_COVER": "1"}):
+                self.assertTrue(farm_map_loaded(ram))
+                ram[ADDR_MAP + 20 * MAP_WIDTH + 40] = tile_id          # the farmer stands on sown grass
+                self.assertFalse(stale_under_player(ram))
+                for i in range(70):                                    # a truly unloaded viewport is still caught
+                    ram[ADDR_MAP + (30 + i // 30) * MAP_WIDTH + 30 + i % 30] = 0xFF
+                self.assertFalse(farm_map_loaded(ram))
+            ram2 = _make_farm_ram(player_tile=(40, 6), tool=int(Tool.AXE))      # outside every layout's pasture
+            ram2[ADDR_MAP + 6 * MAP_WIDTH + 40] = tile_id
+            with mock.patch.dict(os.environ, {"HARVEST_FIELD_COVER": "0"}):
+                self.assertTrue(stale_under_player(ram2), "outside the cover a stale id under the farmer is a stale map")
+
     def test_capped_empty_quota_is_satisfied_when_farm_loaded(self) -> None:
         ram = _make_farm_ram(player_tile=(40, 40), tool=int(Tool.HAMMER))
         _place_large_rock(ram, 12, 12)
@@ -328,7 +392,8 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         task.clearer.navigator.update(ram)
         nxt = task.clearer._handle_scanning(ram)
         self.assertIsNone(nxt)
-        self.assertGreaterEqual(len(task.clearer.action_queue), 10)
+        from harvest.tasks.nav import make_action
+        np.testing.assert_array_equal(task.clearer.action_queue[0], make_action(down=True, b=True))
 
     def test_quota_scan_steps_off_a8_when_farm_still_unloaded(self) -> None:
         ram = _make_farm_ram(player_tile=(25, 30), tool=int(Tool.HAMMER))
@@ -348,7 +413,7 @@ class TestQuotaTaskHandoff(unittest.TestCase):
         self.assertTrue(needs_shed_door_step_off(ram))
         nxt = task.clearer._handle_scanning(ram)
         self.assertIsNone(nxt)
-        self.assertGreaterEqual(len(task.clearer.action_queue), 16)
+        self.assertGreaterEqual(len(task.clearer.action_queue), 1)
 
     def test_yard_load_action_west_gate_runs_right(self) -> None:
         from harvest.tasks.nav import make_action

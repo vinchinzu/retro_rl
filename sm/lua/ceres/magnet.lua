@@ -126,12 +126,13 @@ local function state_str(st)
     return "nil"
   end
   return string.format(
-    "room=0x%04X gs=%s xy=(%s,%s) pose=%s mx=%s inv=%s",
+    "room=0x%04X gs=%s xy=(%s,%s) pose=%s mt=%s mx=%s inv=%s",
     I(st.room_id),
     tostring(st.game_state),
     tostring(st.samus_x),
     tostring(st.samus_y),
     tostring(st.pose),
+    tostring(st.movement_type),
     tostring(st.momentum_x),
     tostring(st.invincibility_timer)
   )
@@ -318,15 +319,26 @@ function M.ceres_magnet_escape_action(state, track)
   local grounded = _ceres_grounded(state)
   local planted_347 = grounded and math.abs(y - _CERES_MAGNET_BOT_Y) <= 8
 
-  if track.phase == "door" or track.phase == "slope" then
+  if track.phase == "door" or track.phase == "slope" or track.phase == "recover" then
     if kb then
       return {"LEFT", "B", "A"}, replace(track, {phase = "slope"})
     end
     if track.phase == "door" and track.held < _CERES_MAGNET_DOOR_STEAM_FRAMES then
       return {"LEFT", "B", "A"}, replace(track, {phase = "door", held = track.held + 1})
     end
-    if planted_347 and (hop_ready(bot, state) or x <= 70) then
-      return {"LEFT", "B", "A"}, replace(track, {phase = "shelf_hop", held = 1})
+    -- A jump at x=85 rises into the 267 underside (live (75,333) pose 26)
+    -- and slides left along it. Take off at x=58–66 so the rise is already
+    -- in the open shaft before y hits 332.
+    if planted_347 then
+      local face_left = I(state.facing) == 4
+      local mx = math.abs(I(state.momentum_x))
+      if x < 56 or (track.phase == "recover" and x < 78) then
+        local names = _tas_l_pump("RIGHT", track.pump_i, state)
+        return names, replace(track, {phase = "recover", pump_i = track.pump_i + 1, held = 0})
+      end
+      if face_left and mx >= 1 and x <= 66 then
+        return {"LEFT", "B", "A"}, replace(track, {phase = "shelf_hop", held = 1})
+      end
     end
     -- Door hop shifts subpixel vs TAS; start L on the other phase so
     -- the 347 east corner is not the magnet-stop tile.
@@ -341,29 +353,51 @@ function M.ceres_magnet_escape_action(state, track)
       return names, replace(track, {phase = "shelf", pump_i = 1, held = 0})
     end
     if grounded and math.abs(y - _CERES_MAGNET_BOT_Y) <= 8 then
-      local names = hop_ready(bot, state) and {"B", "A"} or {"LEFT", "B", "A"}
-      return names, replace(track, {held = track.held + 1})
+      -- Spin squat stays on y=347 for several frames. Releasing A here
+      -- collapsed the jump to a 1px hop (live (68,347) pose 26 → (63,348)).
+      if track.held < 14 then
+        return {"LEFT", "B", "A"}, replace(track, {held = track.held + 1})
+      end
+      if x < 56 then
+        local names = _tas_l_pump("RIGHT", track.pump_i, state)
+        return names, replace(track, {phase = "recover", pump_i = track.pump_i + 1, held = 0})
+      end
+      local names = _tas_l_pump("LEFT", track.pump_i, state)
+      return names, replace(track, {phase = "slope", pump_i = track.pump_i + 1, held = 0})
     end
     if not grounded then
       local held = track.held + 1
-      -- 267 underside is x≳65 y=332. Reach the shaft (x≲60), then
-      -- RIGHT onto 267. Release A near y=267 so we plant, not fly over.
-      if x <= 66 then
-        if y <= 275 then
-          return {"RIGHT", "B"}, replace(track, {held = held})
+      local pose = I(state.pose)
+      local mt = I(state.movement_type)
+      -- Left-wall latch (pose 47/48, movement 23). Jump is B.
+      if mt == 23 or pose == 47 or pose == 48 or pose == 132 then
+        return {"RIGHT", "B", "A"}, replace(track, {held = held})
+      end
+      -- The 267 block's left face is solid from about y=332 up to the
+      -- shelf. Stay in the shaft (x<48) until y is at the shelf, then
+      -- air-turn. RIGHT any higher plants on that face.
+      if y > 270 then
+        if x > 50 then
+          return {"LEFT", "A"}, replace(track, {held = held})
         end
-        return {"RIGHT", "A"}, replace(track, {held = held})
+        if x <= 38 then
+          return {"RIGHT", "A"}, replace(track, {held = held})
+        end
+        return {"A"}, replace(track, {held = held})
       end
-      if held <= 3 then
-        return {"LEFT", "B", "A"}, replace(track, {held = held})
-      end
-      return {"A"}, replace(track, {held = held})
+      return {"RIGHT", "B"}, replace(track, {held = held})
     end
     local names = _tas_l_pump("LEFT", track.pump_i, state)
     return names, replace(track, {phase = "slope", pump_i = track.pump_i + 1})
   end
 
   if track.phase == "shelf" then
+    -- The 267 slope walks up onto y=219. Shelf's RIGHT pump then runs
+    -- into the east magnet-stop (live (219,219) pose 137). Hand that
+    -- ledge to the mid jump.
+    if grounded and hop_covers_y(mid, y) then
+      return {"RIGHT", "B"}, replace(track, {phase = "steam_hop", held = 0})
+    end
     if grounded and hop_covers_y(steam, y) and 60 <= x and x <= 140 then
       if hop_ready(steam, state) and (track.steam_shown or track.held >= 24) then
         return {"RIGHT", "B", "A"}, replace(track, {phase = "steam_hop", held = 1})
@@ -382,16 +416,20 @@ function M.ceres_magnet_escape_action(state, track)
   end
 
   if track.phase == "steam_hop" then
+    if grounded and hop_covers_y(steam, y) and track.held > 0 and track.held < 14 then
+      return {"RIGHT", "B", "A"}, replace(track, {held = track.held + 1, kicked = false, latch_age = 0})
+    end
     if grounded and hop_covers_y(mid, y) then
+      local pose = I(state.pose)
+      local mt = I(state.movement_type)
+      if pose == 137 or pose == 138 or mt == 21 or x > 210 then
+        return {"LEFT", "B"}, replace(track, {held = 0, kicked = false})
+      end
       if x < 188 then
         local names = _tas_l_pump("RIGHT", track.pump_i, state)
-        return names, replace(track, {pump_i = track.pump_i + 1, held = 0})
+        return names, replace(track, {pump_i = track.pump_i + 1, held = 0, kicked = false})
       end
-      if not track.mid_fresh and track.mid_held < _CERES_MAGNET_MID_JET_WAIT then
-        local names = (x > _CERES_MAGNET_MID_WAIT_X) and {"LEFT", "B"} or {"RIGHT", "B"}
-        return names, replace(track, {mid_held = track.mid_held + 1})
-      end
-      return {"LEFT", "B", "A"}, replace(track, {phase = "mid_hop", held = 1})
+      return {"LEFT", "B", "A"}, replace(track, {phase = "mid_hop", held = 1, kicked = false, latch_age = 0})
     end
     if grounded and y <= _CERES_MAGNET_TOP_Y + 8 then
       local names = _tas_l_pump("LEFT", 0, state)
@@ -403,8 +441,44 @@ function M.ceres_magnet_escape_action(state, track)
     end
     if not grounded then
       local held = track.held + 1
-      if y <= 225 and x >= 160 then
-        return {"RIGHT", "B"}, replace(track, {held = held, contacted = contacted})
+      local pose = I(state.pose)
+      local mt = I(state.movement_type)
+      -- Left-stair wall at x≈152 (live pose 146, mt 23). B is already
+      -- held from the jump, so the wall ignores it. Release, then press.
+      if mt == 23 or pose == 47 or pose == 48 or pose == 132 or pose == 146 then
+        if y <= 130 then
+          return {"LEFT", "B"}, replace(track, {
+            held = held,
+            contacted = contacted,
+            latch_age = 0,
+            kicked = false,
+          })
+        end
+        local age = (track.latch_age or 0) + 1
+        local names = (age <= 3) and {"RIGHT"} or {"RIGHT", "B", "A"}
+        return names, replace(track, {
+          held = held,
+          contacted = contacted,
+          latch_age = age,
+          kicked = age > 3,
+        })
+      end
+      track = replace(track, {latch_age = 0})
+      -- RIGHT carry from 267 bonks the y≈204 ceiling and drops onto 219.
+      -- At the ceiling, slide left; the shaft up to 139 is on that side.
+      -- Right kick climbs the stair, then pins on x=219 and rides it
+      -- past y=139 (live apex (219,109)). Let go of right above the ledge.
+      if track.kicked and y < 250 and y > 130 then
+        return {"RIGHT", "B", "A"}, replace(track, {held = held, contacted = contacted})
+      end
+      if y <= 130 then
+        return {"LEFT", "B"}, replace(track, {held = held, contacted = contacted, kicked = false})
+      end
+      if y <= 210 then
+        if x >= 150 then
+          return {"LEFT", "A"}, replace(track, {held = held, contacted = contacted})
+        end
+        return {"A"}, replace(track, {held = held, contacted = contacted})
       end
       return {"RIGHT", "B", "A"}, replace(track, {held = held, contacted = contacted})
     end
@@ -417,6 +491,26 @@ function M.ceres_magnet_escape_action(state, track)
   end
 
   if track.phase == "mid_hop" then
+    local pose = I(state.pose)
+    local mt = I(state.movement_type)
+    if mt == 23 or pose == 47 or pose == 48 or pose == 132 or pose == 146 then
+      -- The climb up the stair is a right-wall. Above y=165 that same
+      -- right kick shoves Samus into x=219 (live fall from (207,146)).
+      if y <= 130 then
+        return {"LEFT", "B"}, replace(track, {held = track.held + 1, latch_age = 0, kicked = false})
+      end
+      local age = (track.latch_age or 0) + 1
+      local names = (age <= 3) and {"RIGHT"} or {"RIGHT", "B", "A"}
+      return names, replace(track, {
+        held = track.held + 1,
+        latch_age = age,
+        kicked = age > 3,
+      })
+    end
+    track = replace(track, {latch_age = 0})
+    if track.kicked and not grounded and y > 150 then
+      return {"RIGHT", "B", "A"}, replace(track, {held = track.held + 1})
+    end
     if grounded and y <= _CERES_MAGNET_TOP_Y + 8 then
       local names = _tas_l_pump("LEFT", 0, state)
       return names, replace(track, {phase = "exit", pump_i = 1, held = 0})
@@ -430,15 +524,18 @@ function M.ceres_magnet_escape_action(state, track)
       })
     end
     if grounded then
+      if y >= 200 then
+        local names = _tas_l_pump("LEFT", track.pump_i, state)
+        return names, replace(track, {phase = "steam_hop", pump_i = track.pump_i + 1, held = 0})
+      end
       return {"LEFT", "B", "A"}, replace(track, {held = track.held + 1})
     end
-    if y <= 150 then
-      return {"LEFT", "B"}, replace(track, {held = track.held + 1})
+    -- Hold the spin the whole way up. Near the top, steer left onto
+    -- y=139. Right carry from (207,146) hit the x=219 wall and fell.
+    if y <= 130 then
+      return {"LEFT", "B"}, replace(track, {held = track.held + 1, kicked = false})
     end
-    if y <= 180 then
-      return {"LEFT", "B", "A"}, replace(track, {held = track.held + 1})
-    end
-    return {"A"}, replace(track, {held = track.held + 1})
+    return {"LEFT", "B", "A"}, replace(track, {held = track.held + 1})
   end
 
   -- 139 west magnet-stop is pose 138 at x≈45. Hop the planted corner.
@@ -493,6 +590,7 @@ function M.play_magnet_to_falling(session, max_frames)
   local track = M.CeresMagnetEscapeTrack()
   local mid_map = nil
   local mid_age = 0
+  local last_mark = ""
   for _ = 1, max_frames do
     local st = session.state
     if M._ceres_magnet_reached_falling(st) then
@@ -514,13 +612,35 @@ function M.play_magnet_to_falling(session, max_frames)
     local names
     names, track = M.ceres_magnet_escape_action(st, track)
     step(session, names, "ceres_magnet_" .. track.phase)
+    local now = session.state
+    local mark
+    if track.phase == "shelf_hop" or track.phase == "steam_hop" or track.phase == "mid_hop" then
+      mark = string.format(
+        "%s:%d:%d:%d",
+        tostring(track.phase),
+        I(now.samus_x),
+        math.floor(I(now.samus_y) / 2),
+        I(now.pose)
+      )
+    else
+      mark = string.format(
+        "%s:%d:%d",
+        tostring(track.phase),
+        math.floor(I(now.samus_y) / 16),
+        math.floor(I(now.samus_x) / 16)
+      )
+    end
+    if mark ~= last_mark then
+      print("[gravity] magnet " .. mark .. " " .. state_str(now))
+      last_mark = mark
+    end
     if track.phase == "done" or M._ceres_magnet_reached_falling(session.state) then
       return
     end
-    if track.phase == "shelf_hop" and track.held > 50 then
+    if track.phase == "shelf_hop" and track.held > 90 then
       timeout("ceres magnet 347 hop stalled: " .. state_str(session.state))
     end
-    if track.phase == "steam_hop" and track.held > 60 then
+    if track.phase == "steam_hop" and track.held > 140 then
       timeout("ceres magnet missed 219 from 267: " .. state_str(session.state))
     end
     if track.phase == "mid_hop" and track.held > 55 then
@@ -558,14 +678,14 @@ function M._ceres_fast_entry_window(state)
     and I(state.vertical_direction) == 1
     and I(state.velocity_y) > 0
     and I(state.momentum_x) >= 1
-    and I(state.invincibility_timer) > 0
   )
 end
 
 function M._ceres_falling_reached_elev(state)
   -- TAS dest gs=8: (216, 632) pose 25 mx=2 vy=+4 inv=36.
-  -- Same predicate as the elevator fast-entry window. y=651 / mx=0 / inv=0
-  -- is a missed door jump, not a leave.
+  -- Same y/spin/mx predicate as the elevator wall jump. y=651 / mx=0 is a
+  -- walked door. Live spin (216, 624) mx=1 arrives with inv=0 because the
+  -- steam timer expires on the ledge; the wall jump does not read it.
   return M._ceres_fast_entry_window(state)
 end
 
@@ -582,11 +702,9 @@ function M.ceres_falling_escape_action(state, track)
     return {}, replace(track, {phase = "done"})
   end
   if room == ROOM_CERES_ELEVATOR then
-    -- gs=8 without the TAS window is a miss. Do not hold A into y=651.
-    if gs == 8 then
-      return {}, replace(track, {phase = "exit"})
-    end
-    return {"A"}, replace(track, {phase = "exit"})
+    -- Holding A through the fade turns the spin into pose 82 (live
+    -- arrival (216,629) pose 82). Empty input keeps pose 25.
+    return {}, replace(track, {phase = "exit"})
   end
   if room == ROOM_CERES_FALLING and (gs == 9 or gs == 11) and track.phase == "exit" then
     return {"A"}, replace(track, {held = track.held + 1})
@@ -772,28 +890,35 @@ function M.ceres_falling_escape_action(state, track)
     return {"A"}, replace(track, {phase = "exit", held = held})
   end
   if grounded and y <= _CERES_FALLING_DOOR_LEDGE_Y + 8 then
-    if track.held < _CERES_FALLING_DOOR_SHUTTER_FRAMES then
-      return {"DOWN"}, replace(track, {held = held})
+    -- Running LEFT through the door lands elev at y=651 pose 18 (live
+    -- (216,651)). Stop at the jump window, wait the shutter, then jump
+    -- even if the jet i-frames have already expired.
+    -- Crouch 10f to clear the shutter, then run LEFT and jump at
+    -- x<=36. The measured leave is pose 26 rising at (19, 121),
+    -- elev (216, 633). Hold LEFT+B+A in the air; an air-turn costs
+    -- the rise and lands under the band.
+    if not track.shutter_waited then
+      if track.held < _CERES_FALLING_DOOR_SHUTTER_FRAMES then
+        return {"DOWN"}, replace(track, {held = held + 1})
+      end
+      track = replace(track, {shutter_waited = true, held = 0})
+      held = 0
     end
+    local mx = math.abs(I(state.momentum_x))
+    local face_left = I(state.facing) == 4
     if (
-      hop_ready(door, state)
-      and I(state.invincibility_timer) > 0
-      and pose ~= 137 and pose ~= 138 and pose ~= 210
+      pose ~= 137 and pose ~= 138 and pose ~= 210
+      and mx >= 1 and face_left and x <= 36
     ) then
-      return {"LEFT", "B", "A"}, replace(track, {phase = "exit", held = 1})
+      return {"LEFT", "B", "A"}, replace(track, {phase = "exit", held = held + 1})
+    end
+    if x < 28 then
+      return {"RIGHT"}, replace(track, {held = 0})
     end
     local names = _tas_l_pump("LEFT", track.pump_i, state)
     return names, replace(track, {pump_i = track.pump_i + 1, held = held})
   end
   if not grounded then
-    if SPIN_POSES[pose] and 127 <= y and y <= 131 then
-      return {"B", "RIGHT", "A"}, replace(track, {held = held})
-    end
-    -- TAS air-4 is B+A at y=124 then A into gs=9. LEFT after the air-turn
-    -- faces away from the TAS dest and rides the y=108 ceiling.
-    if y <= 126 then
-      return {"A"}, replace(track, {held = held})
-    end
     return {"LEFT", "B", "A"}, replace(track, {held = held})
   end
   local names = _tas_l_pump("LEFT", track.pump_i, state)
@@ -808,6 +933,7 @@ function M.play_falling_to_elev(session, max_frames)
     error("expected Falling after magnet: " .. state_str(session.state), 2)
   end
   local track = M.CeresFallingEscapeTrack()
+  local last_mark = ""
   for _ = 1, max_frames do
     local st = session.state
     if M._ceres_falling_reached_elev(st) then
@@ -815,8 +941,10 @@ function M.play_falling_to_elev(session, max_frames)
     end
     if I(st.room_id) == ROOM_CERES_ELEVATOR and I(st.game_state) == 8 then
       timeout(string.format(
-        "falling leave missed TAS elev window: %s phase=%s contacted=%s boosted=%s",
+        "falling leave missed TAS elev window: %s vd=%s vy=%s phase=%s contacted=%s boosted=%s",
         state_str(st),
+        tostring(st.vertical_direction),
+        tostring(st.velocity_y),
         tostring(track.phase),
         tostring(track.contacted),
         tostring(track.boosted)
@@ -825,6 +953,17 @@ function M.play_falling_to_elev(session, max_frames)
     local names
     names, track = M.ceres_falling_escape_action(st, track)
     step(session, names, "ceres_falling_" .. track.phase)
+    local now = session.state
+    local mark = string.format(
+      "%s:%d:%d",
+      tostring(track.phase),
+      math.floor(I(now.samus_y) / 16),
+      math.floor(I(now.samus_x) / 8)
+    )
+    if mark ~= last_mark then
+      print("[gravity] falling " .. mark .. " " .. state_str(now))
+      last_mark = mark
+    end
     if track.phase == "done" or M._ceres_falling_reached_elev(session.state) then
       return
     end
@@ -974,22 +1113,22 @@ local function _ceres_entry_to_475(session)
   --
   -- The door leave arrives four air frames into its spin jump, so the entry
   -- rise alone tops out at y=608 and no amount of drift reaches 475. Riding
-  -- RIGHT+A up the x=211 wall to y≈571 and kicking off it does: release A for
+  -- RIGHT+B up the x=211 wall to y≈571 and kicking off it does: release B for
   -- two frames pressing LEFT (one frame reads as a jump cut and never
-  -- latches), then LEFT+A for the pose-132 kick, then hold A while movement
-  -- type 20 carries the kick to y=474.
+  -- latches), then LEFT+B for the pose-132 kick, then hold B while movement
+  -- type 20 carries the kick to y=474. lsnes B is jump; A is shoot.
   if not M._ceres_fast_entry_window(session.state) then
     return false
   end
-  session:hold(_CERES_ELEV_ENTRY_RISE_FRAMES, {"RIGHT", "A"}, "ceres_elev_entry_rise")
+  session:hold(_CERES_ELEV_ENTRY_RISE_FRAMES, {"RIGHT", "B"}, "ceres_elev_entry_rise")
   session:hold(_CERES_ELEV_WJ_RELEASE_FRAMES, {"LEFT"}, "ceres_elev_entry_release")
   local latched = false
   for _ = 1, _CERES_ELEV_WJ_KICK_FRAMES do
-    session:step({"LEFT", "A"}, "ceres_elev_entry_kick")
+    session:step({"LEFT", "B"}, "ceres_elev_entry_kick")
     latched = latched or I(session.state.pose) == POSE_WALL_LATCH
   end
   for _ = 1, _CERES_ELEV_WJ_RIDE_FRAMES do
-    session:step({"A"}, "ceres_elev_entry_ride")
+    session:step({"B"}, "ceres_elev_entry_ride")
     latched = latched or I(session.state.pose) == POSE_WALL_LATCH
   end
   if not latched then
@@ -1019,7 +1158,7 @@ function M._ceres_ledge_hop(session, target_y, launch_x, side, limit)
   session:hold(2, {side}, "ceres_elev_turn_" .. tostring(target_y))
   local airborne = false
   for _ = 1, limit do
-    session:step({side, "A"}, "ceres_elev_hop_" .. tostring(target_y))
+    session:step({side, "B"}, "ceres_elev_hop_" .. tostring(target_y))
     local state = session.state
     if M._ceres_elev_leaving(state) then
       return true
@@ -1071,7 +1210,7 @@ function M._ceres_elev_top_to_ship(session)
       if M._ceres_elev_ship_band(state) then
         break
       end
-      session:step({"RIGHT", "A"}, "ceres_elev_ship_hop")
+      session:step({"RIGHT", "B"}, "ceres_elev_ship_hop")
     end
   end
 

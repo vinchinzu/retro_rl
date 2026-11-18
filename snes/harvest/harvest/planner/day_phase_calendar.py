@@ -152,6 +152,34 @@ def attend_festival_phase(season: int | str, day: int, year: int = 0) -> PhaseSp
     )
 
 
+# ── Horse ───────────────────────────────────────────────────────────────
+
+# $7F1F68: the street bits are set by Summer, the pickup bit $0040 and the
+# owned bit $0100 when the scene ends. It plays on the first path walk from
+# Winter Y1 (pin probe, Winter D5): the ROM walks the farmer to (191,128),
+# opens the name grid (answered by ``unowned_scene_press``) and leaves its
+# actors on the west road, where a town walk pushed into them and failed.
+HORSE_STREET_FLAGS = 0x0011
+HORSE_PICKUP_DONE_FLAG = 0x0040
+
+MEET_HORSE_PHASE = PhaseSpec(
+    "MEET_HORSE",
+    "multi_nav",
+    {"route": "horse_event_loop", "timeout": 6000},
+    failure_policy="optional",
+)
+
+
+def horse_event_due(ram) -> bool:
+    """The next path walk will play the horse scene."""
+    from harvest.core.ram_catalog import read_ram_value
+
+    flags = int(read_ram_value(ram, "event_flags_1f68"))
+    if flags & HORSE_PICKUP_DONE_FLAG or flags & HORSE_STREET_FLAGS != HORSE_STREET_FLAGS:
+        return False
+    return int(read_ram_value(ram, "season")) == SEASON_WINTER or int(read_ram_value(ram, "year")) > 0
+
+
 # ── Sunday Phases ───────────────────────────────────────────────────────
 
 SUNDAY_CHURCH_PHASE = PhaseSpec(
@@ -233,6 +261,8 @@ __all__ = [
     "festival_name_for_date",
     "ATTEND_FESTIVAL_PHASE",
     "attend_festival_phase",
+    "MEET_HORSE_PHASE",
+    "horse_event_due",
     "SUNDAY_CHURCH_PHASE",
     "SUNDAY_MOUNTAIN_PHASE",
     "WEATHER_SUNNY",

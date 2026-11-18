@@ -15,11 +15,14 @@ from harvest.paths import GAME_DIR, PROJECT_DIR, ensure_monorepo_on_path
 ensure_monorepo_on_path()
 
 from retro_harness import AuditCapabilities, AuditedEnv, TaskStatus, WorldState
+from retro_harness.headed import add_headed_flag, attach_headed, configure_headed
 from retro_harness.video import VideoCaptureConfig, VideoRecorder
 
 from harvest.core.ram_catalog import read_ram_value
 from harvest.core.scene import classify_scene_from_ram, morning_scene_ready
-from harvest.core.task_progress import RunProgressSidecar, format_run_progress_line
+from harvest.core.shipping_credit import ShippingLedger
+from harvest.core.task_progress import RunProgressSidecar, WorkFrameLedger, format_run_progress_line
+from harvest.planner import run_strategy
 from harvest.planner.campaign_composer import season_pin_session
 from harvest.planner.day_plan import DayPlanTask, MultiDayPlannerTask, PHASE_SEQUENCES
 from harvest.planner.day_plan_status import format_world_date, read_world_ymd
@@ -35,6 +38,7 @@ from harvest.tools.pr999_report import (
     _gate_b_full_ok,
     _crop_survival_report,
     _d2_spine_checkpoint_evidence,
+    economy_snapshot,
 )
 
 _STOP = {"sig": None}
@@ -96,6 +100,8 @@ def _video_report(recorder: VideoRecorder, **extra: object) -> dict[str, object]
 
 def _parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run Harvest Moon through one or more overnights.")
+    add_headed_flag(p)
+    p.add_argument("--speed", type=float, default=4.0, help="Initial headed playback speed; [ ] adjusts it live, 8+ is turbo.")
     p.add_argument("--state", default="Y1_Inside_House")
     p.add_argument("--power-on", action="store_true")
     p.add_argument("--d1-handoff", action=argparse.BooleanOptionalAction, default=None)
@@ -105,6 +111,9 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--until-season", type=int, default=None)
     p.add_argument("--until-year", type=int, default=None)
     p.add_argument("--until-ending", action="store_true")
+    p.add_argument("--strategy", default=None, choices=sorted(run_strategy.PRESETS),
+                   help="What the run optimizes (default: $HARVEST_STRATEGY, else cash). "
+                        "score stops each crop at 496 shipped (the ROM's 31-point window); see run_strategy.py.")
     p.add_argument("--perfect-rancher", action="store_true",
                    help="Dispatch the Perfect Rancher milestone campaign with native receipts.")
     p.add_argument("--end-of-spring", action="store_true")
@@ -128,7 +137,12 @@ def _parse_args(argv=None) -> argparse.Namespace:
                    help="Frames per playable part at 60fps (216000 = 1 hour). 0 keeps one file.")
     p.add_argument("--trials", type=int, default=1)
     p.add_argument("--save-season-pins", action="store_true")
-    return p.parse_args(argv)
+    p.add_argument("--save-day-pins", action="store_true", help="Save every settled morning with planner lineage for short replays.")
+    p.add_argument("--pin-prefix", default="PR_", help="Pin namespace beginning PR_ (e.g. PR_watch_) to preserve other runs.")
+    args = p.parse_args(argv)
+    if not args.pin_prefix.startswith("PR_"):
+        p.error("--pin-prefix must begin PR_ so checkpoint planner state is restored on resume")
+    return args
 
 def _world(env, frame: int = 0) -> WorldState:
     return WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None)
@@ -304,7 +318,7 @@ def _progress_sidecar_path(args: argparse.Namespace) -> Path | None:
         return None
     if args.progress_sidecar is not None:
         return args.progress_sidecar
-    if args.stop_after_d2_clear or args.power_on:
+    if args.stop_after_d2_clear or args.power_on or args.headed:
         return args.out.with_name(args.out.stem + ".progress.json")
     return None
 
@@ -317,7 +331,13 @@ def _checkpoint_dir(args: argparse.Namespace) -> Path | None:
 
 def main() -> int:
     args = _parse_args()
-    _configure_headless()
+    if run_strategy.select(args.strategy or os.environ.get(run_strategy.ENV_VAR)).perfect_rancher:
+        args.perfect_rancher = True
+    if args.headed:
+        configure_headed()
+        os.environ.pop("INFINITE_STAMINA", None)
+    else:
+        _configure_headless()
     if args.stop_after_d2_shipping and args.power_on is False and args.state is None:
         raise SystemExit("--stop-after-d2-shipping needs --power-on or a D2 morning --state")
     if args.stop_after_d2_shipping and args.day_plan:
@@ -351,6 +371,7 @@ def main() -> int:
         ),
         capabilities=AuditCapabilities.all("harvest.run_to_day2"),
     )
+    pygame_mod = None
     video: VideoRecorder | None = None
     video_sealed = False
     video_result: dict[str, object] | None = None
@@ -376,6 +397,7 @@ def main() -> int:
         return video_result
 
     def _publish(report: dict, code: int) -> int:
+        report["strategy"] = run_strategy.active().name
         report["video"] = _seal_video()
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -400,6 +422,13 @@ def main() -> int:
         obs = env.reset()
         if isinstance(obs, tuple):
             obs = obs[0]
+        if args.headed:
+            def hud(active_env):
+                ram = active_env.get_ram()
+                return (f"{format_world_date(ram)} "
+                        f"{int(read_ram_value(ram, 'hour')):02d}:{int(read_ram_value(ram, 'minute')):02d} "
+                        f"{int(read_ram_value(ram, 'money'))}G")
+            pygame_mod = attach_headed(env, title="Harvest Moon - campaign watch", speed=args.speed, hud=hud)
         if args.video is not None:
             video = _open_video(
                 args.video, obs, fps=args.video_fps, scale=args.video_scale,
@@ -459,6 +488,9 @@ def main() -> int:
             )
         world = _world(env, frames)
         start_fields = _date_fields(world.ram)
+        start_economy = economy_snapshot(world.ram)
+        sales_ledger = ShippingLedger()
+        sales_ledger.observe(world.ram)
         start_season = start_fields["season"]
         start_day = start_fields["day"]
         start_key = (start_fields["year"], start_season, start_day)
@@ -476,6 +508,7 @@ def main() -> int:
             handoff_budget = min(int(handoff.timeout), max(30_000, args.max_frames // 3))
             while frames - handoff_start < handoff_budget:
                 world = _world(env, frames)
+                sales_ledger.observe(world.ram)
                 hr = handoff.step(world)
                 if hr.status == TaskStatus.SUCCESS:
                     d1_handoff_report = handoff.summary(world)
@@ -566,6 +599,7 @@ def main() -> int:
         d2_start_counts = _d2_counts(world.ram) if args.stop_after_d2_clear else None
         weed_checkpoint_saved: Path | None = None
         planner_start_frame = frames
+        work_frames = WorkFrameLedger()
         last_logged_day = read_world_ymd(world.ram)
         ending_task: EndingTask | None = None
         ending_report: dict[str, object] = {
@@ -600,6 +634,7 @@ def main() -> int:
         result = None
         while args.max_frames <= 0 or frames - planner_start_frame < args.max_frames:
             world = _world(env, frames)
+            sales_ledger.observe(world.ram)
             if ( args.until_ending and ending_task is None and is_ending_date(*read_world_ymd(world.ram)) ):
                 _start_ending(world, "ending date reached")
             if ending_task is not None:
@@ -710,18 +745,29 @@ def main() -> int:
                 terminal = True
                 break
             action = ( result.action.action if result.action is not None else make_action() )
-            step = env.step(action)
+            try:
+                work_frames.observe(frame=world.frame, ram=world.ram, task=stepped, action=action)
+                step = env.step(action)
+            except KeyboardInterrupt:
+                reason = "headed window closed"
+                terminal = True
+                break
             if pins is not None: pins.note(action, env.get_ram())
             if video is not None:
                 video.write(_rgb_frame(step[0]))
         world = _world(env, frames)
+        if pins is not None and result is not None and result.status == TaskStatus.SUCCESS:
+            pins.before_step(planner, world.ram, frames, lambda path: _write_state(env, path), terminal_morning=True)
         _sidecar_write( stepped, world, d2_status=d2_prev_status if args.stop_after_d2_clear else None, )
         scene = classify_scene_from_ram(world.ram)
         end_fields = _date_fields(world.ram)
+        sales_ledger.observe(world.ram)
         end_key = (end_fields["year"], end_fields["season"], end_fields["day"])
         if ending_task is not None and ending_task.signals is not None:
             ending_report["final"] = ending_task.signals.to_dict()
             ending_report["peak_index"] = max( int(ending_report["peak_index"]), ending_task.peak_index )
+            if ending_report["finished"] and isinstance(planner, MultiDayPlannerTask):
+                planner.journal_ending_day(world)
         year_fields = _year_report_fields(planner)
         days_completed = year_fields["days_completed"]
         journal = list(year_fields["day_journal"] or [])
@@ -819,7 +865,11 @@ def main() -> int:
             "frames": frames,
             "wall_seconds": round(time.monotonic() - t0, 1),
             "start": start_fields,
+            "start_economy": start_economy,
             "end": end_fields,
+            "end_economy": economy_snapshot(world.ram),
+            "sales_ledger": sales_ledger.report(),
+            "work_metrics": work_frames.report(world.ram),
             "scene": scene.summary(),
             "morning_ready": bool(morning_ok),
             "days_completed": days_completed,
@@ -856,6 +906,7 @@ def main() -> int:
             "mid_run_state_load": False,
             "clean_run": clean_run,
             "video": video_result,
+            "strategy": run_strategy.active().name,
         }
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
@@ -868,6 +919,8 @@ def main() -> int:
             except Exception as exc:
                 print(f"[RUN] video close failed: {exc}", flush=True)
         env.close()
+        if pygame_mod is not None:
+            pygame_mod.quit()
 
 if __name__ == "__main__":
     raise SystemExit(main())

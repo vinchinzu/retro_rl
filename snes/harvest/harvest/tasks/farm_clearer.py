@@ -41,7 +41,6 @@ from harvest.tasks.farm_ops import (  # noqa: F401
     drop_unarmed_debris,
     find_unfailed_approach,
     parse_priority_list,
-    shed_door_step_off_actions,
     snap_debris_anchor,
     sort_targets_cluster,
     start_progress_watch,
@@ -586,6 +585,9 @@ class FarmClearer(Task):
         return Stamina.from_ram(ram)
 
     def _can_afford_target(self, ram: np.ndarray, target: Target) -> bool:
+        # Native weed pickup disintegrates it even at zero stamina.
+        if target.debris_type == DebrisType.WEED and self._should_lift(target):
+            return True
         return self._stamina(ram).can_afford_clear(
             target.required_hits, lifting=self._should_lift(target)
         )
@@ -633,20 +635,18 @@ class FarmClearer(Task):
         return "clearing"
 
     def _step_off_stale(self, ram: np.ndarray) -> bool:
-        """Hold west/NW toward (25,28) until shed-door 0xFF loads a8/a1."""
+        """Move into the yard from either the shed or the west farm gate."""
+        from harvest.tasks.farm_clear_quota import yard_load_action
+
         if not needs_shed_door_step_off(ram):
             return False
         if self.action_queue:
             return True
-        self.action_queue.extend(shed_door_step_off_actions())
+        self.action_queue.append(yard_load_action(ram))
         return True
 
     def _handle_scanning(self, ram: np.ndarray) -> Optional[str]:
         stam = self._stamina(ram)
-        if stam < 1:
-            self.stamina_exhausted = True
-            print("[CLEARER] Stamina empty; stopping clear")
-            return "complete"
         if self._step_off_stale(ram):
             return None
         scan_bounds = self._active_bounds()

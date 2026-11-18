@@ -24,7 +24,7 @@ from harvest.tasks.farm_ops import TileScanner
 
 from harvest.tasks.harvest_task import read_shipping_money
 from harvest.maps.map_config import ROUTES, get_walkable_tiles
-from harvest.core.ram_catalog import field_spec, ram_index, read_ram_u8, read_ram_value
+from harvest.core.ram_catalog import field_spec, ram_index, read_ram_u8, read_ram_u16, read_ram_value
 from harvest.tasks.animal_navigation import (
     chicken_stage_tiles,
     navigate_to_tile_around_blockers,
@@ -59,6 +59,19 @@ from harvest.planner.day_plan_status import (
 from harvest.planner.tasks.navigation import MultiMapNavTask, NavTask
 
 ITEM_CHICKEN = 0x25
+# $7F1F5A bit $0008: set with the counter's request text $030B (CODE_81DF6A),
+# cleared when the buyer's scene starts (Event_UNKChickenRelated)
+# and by NightReset. The request lasts the day it is made.
+SALE_REQUEST_ADDR = 0x11F5A
+SALE_REQUEST_BIT = 0x0008
+# The paid branch ($81ED3C) adds $7F1F15 and takes the hen after dialogue;
+# the first-Fall trade can take her without paying.
+PAID_SCENE_WAIT_FRAMES = 900
+
+
+def chicken_sale_requested(ram: np.ndarray) -> bool:
+    return bool(read_ram_u16(ram, SALE_REQUEST_ADDR) & SALE_REQUEST_BIT)
+
 
 @dataclass
 class CoopPickupChickenTask(Task):
@@ -136,6 +149,12 @@ class CoopPickupChickenTask(Task):
 
         if self._phase == "nav":
             target = self._target
+            if target is not None and self._navigator.stasis > 45:
+                # A hen's body can stop centering even on the chosen stand
+                # tile. Try another side instead of spending the whole timeout.
+                self._pathfinder.temp_blocked.add(target[0])
+                self._target = target = None
+                self._navigator.stasis = 0
             adults = chicken_stage_tiles(world.ram, ("adult",), require_coop=True)
             blockers = set(chicken_stage_tiles(world.ram, ("adult", "egg"), require_coop=True))
             if (
@@ -173,6 +192,8 @@ class CoopPickupChickenTask(Task):
                 return TaskResult(status=TaskStatus.SUCCESS, reason="holding chicken")
             self._verify_count += 1
             if self._verify_count > 24:
+                if self._target is not None:
+                    self._pathfinder.temp_blocked.add(self._target[0])
                 if self._attempts >= 5:
                     return TaskResult(status=TaskStatus.FAILURE, reason="pickup did not register")
                 self._phase = "nav"
@@ -503,6 +524,8 @@ class ChickenSaleEventTask(Task):
     target_sales: int = 1
     timeout: int = 18000
     success_settle_frames: int = 30
+    # Count/wallet before requesting the sale, retained across the return trip.
+    sale_baseline: Optional[Tuple[int, int]] = None
 
     _phase: str = field(default="nav_standby", init=False)
     _step_count: int = field(default=0, init=False)
@@ -516,6 +539,7 @@ class ChickenSaleEventTask(Task):
     _post_event_wait: int = field(default=0, init=False)
     _sale_settle_frames: int = field(default=0, init=False)
     _entry_settle_frames: int = field(default=0, init=False)
+    _receipt_wait: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         pos = get_pos_from_ram(world.ram)
@@ -529,12 +553,15 @@ class ChickenSaleEventTask(Task):
         self._action_queue.clear()
         self._start_chickens = read_ram_u8(world.ram, ADDR_CHICKEN_COUNT)
         self._start_money = int(read_ram_value(world.ram, "money"))
+        if self.sale_baseline is not None:
+            self._start_chickens, self._start_money = self.sale_baseline
         self._sale_seen = False
         self._money_seen = False
         self._success_frames = 0
         self._post_event_wait = 0
         self._sale_settle_frames = 0
         self._entry_settle_frames = 0
+        self._receipt_wait = 0
 
     def can_start(self, world: WorldState) -> bool:
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
@@ -616,6 +643,16 @@ class ChickenSaleEventTask(Task):
                 return TaskResult(status=TaskStatus.SUCCESS, reason=self._completion_reason(world.ram))
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
         self._success_frames = 0
+        if self.target_sales == 1 and not chicken_sale_requested(world.ram):
+            # The request also clears without payment (e.g. NightReset).
+            # A first-Fall trade takes the hen without gold: require both deltas.
+            self._receipt_wait += 1
+            if self._receipt_wait < PAID_SCENE_WAIT_FRAMES:
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            return TaskResult(
+                status=TaskStatus.FAILURE,
+                reason=f"chicken sale receipt missing ({self._completion_reason(world.ram)})",
+            )
 
         queued = drain_action_queue(self._action_queue)
         if queued is not None:

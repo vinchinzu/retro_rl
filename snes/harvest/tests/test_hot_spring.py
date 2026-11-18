@@ -28,6 +28,7 @@ from harvest.tasks.hot_spring import (
     MOUNTAIN_TILEMAP,
     CAVE_TILEMAP,
     SPA_OUTDOOR_STAND_PX,
+    SPA_WATER_MIN_X_PX,
     near_outdoor_spa,
     read_stamina,
     read_max_stamina,
@@ -95,6 +96,62 @@ class HotSpringUnitTests(unittest.TestCase):
 
         self.assertEqual(result.status, TaskStatus.RUNNING)
         self.assertEqual(task.phase_text, "route_mountain")
+
+    def test_a_blocked_walk_to_the_spa_waits_for_the_dog_then_walks_again(self) -> None:
+        """ROM probe: the farm dog parked in the west corridor and evening soaks died on pixel_stuck / exit_walk timeout."""
+        from harvest.tasks.hot_spring import GATE_BLOCKS, GATE_RETRIES, GATE_WAIT_FRAMES, GATE_WAIT_NIGHT_FRAMES
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_STAMINA] = 0
+        ram[ADDR_MAX_STAMINA] = 100
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[ADDR_X], ram[ADDR_X + 1] = 136 & 0xFF, 0
+        ram[ADDR_Y], ram[ADDR_Y + 1] = 420 & 0xFF, 420 >> 8
+        task = HotSpringStaminaTask(min_stamina=None)
+        task.reset(_world(ram))
+        task.step(_world(ram))
+        self.assertEqual(task.phase_text, "route_mountain")
+
+        class Fake:
+            def __init__(self, status, reason=""):
+                self.status, self.reason = status, reason
+
+            def step(self, world):
+                return TaskResult(status=self.status, reason=self.reason)
+
+            def reset(self, world):
+                pass
+
+        for attempt in range(1, GATE_RETRIES + 1):
+            reason = f"route_mountain failed: {GATE_BLOCKS[attempt % len(GATE_BLOCKS)]} pos=(42,440)"
+            task._task = Fake(TaskStatus.FAILURE, reason)
+            task._phase = "route_mountain"
+            result = task.step(_world(ram))
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            self.assertEqual(task.phase_text, "gate_retreat")              # the farmer leaves the corridor first
+            task._task = Fake(TaskStatus.SUCCESS)
+            task.step(_world(ram))
+            self.assertEqual(task.phase_text, "gate_wait")
+            self.assertEqual(task._gate_wait, GATE_WAIT_FRAMES)             # by day the clock runs through the wait
+            for _ in range(GATE_WAIT_FRAMES - 1):
+                self.assertEqual(task.step(_world(ram)).status, TaskStatus.RUNNING)
+                self.assertEqual(task.phase_text, "gate_wait")
+            task.step(_world(ram))                       # the wait is over: the route is built again
+            self.assertEqual(task.phase_text, "route_mountain", attempt)
+        task._task = Fake(TaskStatus.FAILURE, "route_mountain failed: exit_walk timeout on tilemap 0x00 towards 0x00")
+        task._phase = "route_mountain"
+        task._route_retries = 0
+        from harvest.core.ram_catalog import live_wram_base
+
+        ram[field_spec("hour").address + live_wram_base(ram)] = 18
+        task.step(_world(ram))
+        self.assertEqual(task._gate_wait, GATE_WAIT_NIGHT_FRAMES)         # after 18:00 the clock is frozen: wait long
+        task._route_retries = GATE_RETRIES
+        task._task = Fake(TaskStatus.FAILURE, "route_mountain failed: exit_walk timeout on tilemap 0x00 towards 0x00")
+        task._phase = "route_mountain"
+        gave_up = task.step(_world(ram))
+        self.assertEqual(gave_up.status, TaskStatus.FAILURE)       # a wedged gate still ends the trip, after the retries
 
     def test_mountain_begins_route_or_soak_when_low(self) -> None:
         ram = _blank_ram()
@@ -288,20 +345,33 @@ class HotSpringUnitTests(unittest.TestCase):
         self.assertNotIn((132, 128), [wp.target_px for wp in path_hops])
 
     def test_south_field_farm_to_spa_uses_dirt_row_not_house(self) -> None:
-        """Sunday pin ~(78,598) must not first-hop house (137,375) through crops."""
+        """Sunday pin ~(78,598) must not first-hop house (137,375) through crops.
+
+        It takes the west steps (3-4,30-31): the x=13 climb runs through the
+        (13,28) ring and a grown ring stopped 18 of 44 spa trips (v2_d3).
+        """
         route = farm_to_spa_waypoints(78, 598, tilemap=0x00)
         sliced = slice_route_from_position(route, 78, 598, tilemap=0x00)
         self.assertEqual(sliced[-1].target_px, (619, 201))
-        self.assertEqual(sliced[0].target_px, (136, 600))
         self.assertNotEqual(sliced[0].target_px, (137, 375))
         farm_hops = [wp for wp in sliced if wp.tilemap == 0x00]
+        farm_px = [wp.target_px for wp in farm_hops]
         self.assertTrue(any(wp.is_exit and wp.exit_direction == "left" for wp in farm_hops))
-        # Dirt-row run stays on y=37; x=13 column hops are tight so arrival
-        # cannot sit on the neighboring 0x5E crop tile.
-        self.assertEqual(farm_hops[0].run_direction, "right")
-        self.assertEqual(farm_hops[1].target_px, (216, 600))
-        self.assertLessEqual(farm_hops[1].radius, 6)
-        self.assertIsNone(farm_hops[2].run_direction)
+        self.assertNotIn((216, 440), farm_px)
+        self.assertLess(farm_px.index((104, 536)), farm_px.index((72, 488)))
+        self.assertLess(farm_px.index((72, 488)), farm_px.index((72, 424)))
+        # The exit row is reached at its centre: from y=430 the left walk caught (1,27).
+        self.assertLessEqual(farm_hops[farm_px.index((72, 424))].radius, 3)
+
+    def test_west_strip_shop_exit_takes_the_steps_and_stops_at_the_gate(self) -> None:
+        """NAV_FARM_EXIT from the west-strip rings: no (8,35) ring hop, no path map."""
+        from harvest.maps.farm_gate import farm_exit_waypoints
+
+        hops = farm_exit_waypoints(100, 597, tilemap=0x00)
+        self.assertNotIn((136, 568), [wp.target_px for wp in hops])
+        self.assertIn((72, 488), [wp.target_px for wp in hops])
+        self.assertTrue(hops[-1].is_exit and hops[-1].exit_direction == "left")
+        self.assertTrue(all(wp.tilemap == 0x00 for wp in hops))
 
     def test_house_farm_to_spa_keeps_house_south_then_gate(self) -> None:
         house = farm_to_west_gate_waypoints(136, 375, tilemap=0x00)
@@ -473,10 +543,15 @@ class HotSpringUnitTests(unittest.TestCase):
         farm = [wp for wp in sliced if wp.tilemap == 0x00]
         farm_px = [wp.target_px for wp in farm]
         self.assertNotIn((136, 600), farm_px)
-        self.assertIn((216, 632), farm_px)
-        self.assertIn((216, 536), farm_px)
-        self.assertIn((136, 424), farm_px)
-        self.assertIn((72, 424), farm_px)
+        from harvest.maps.farm_pond import is_packed_layout
+
+        # The packed lattice keeps y=37 as its lane; the legacy field walks the y=39 row.
+        self.assertIn((216, 600 if is_packed_layout() else 632), farm_px)
+        # West along the y=38 lane to the steps, never up x=13 through (13,28).
+        self.assertNotIn((216, 440), farm_px)
+        self.assertIn((104, 536), farm_px)
+        self.assertIn((72, 488), farm_px)
+        self.assertTrue(any(wp.is_exit and wp.exit_direction == "left" for wp in farm))
         self.assertNotIn((72, 392), farm_px)
         self.assertNotIn((136, 440), farm_px)
         self.assertNotIn((72, 440), farm_px)
@@ -489,7 +564,9 @@ class HotSpringUnitTests(unittest.TestCase):
         stones = farm_to_spa_waypoints(478, 566, tilemap=0x00)
         stones_sliced = slice_route_from_position(stones, 478, 566, tilemap=0x00)
         self.assertNotEqual(stones_sliced[0].target_px, (136, 600))
-        self.assertIn((216, 632), [wp.target_px for wp in stones_sliced])
+        from harvest.maps.farm_pond import is_packed_layout
+
+        self.assertIn((216, 600 if is_packed_layout() else 632), [wp.target_px for wp in stones_sliced])
 
     def test_wood_checkpoint_farm_to_spa_densifies_east_of_join(self) -> None:
         """Y1_D2_Wood_Checkpoint ~(774,216) tile (48,13) is 8 tiles east of (39,17)."""
@@ -707,6 +784,142 @@ class SpaFillToMaxTests(unittest.TestCase):
         self.assertFalse(task._stamina_ok(ram))
         ram[ADDR_STAMINA] = 130
         self.assertTrue(task._stamina_ok(ram))
+
+
+class _PondSim:
+    """The spa lip as the ROM probe showed it, one frame per ``step``.
+
+    Water blocks the walk at x=617 (west) and x=646 (east). Holding A against the water starts a jump (+12 stamina) that crosses
+    it; a jump from the east lands 12 px past the west lip (605), as the failing sweep did. A fresh A press anywhere else is a
+    tool swing that eats the press, which is what killed the open-loop script.
+    """
+
+    WEST, EAST, WEST_LANDING, EAST_LANDING = 617, 646, 605, 646
+
+    def __init__(self, ram: np.ndarray, *, x: int = 604, can_jump: bool = True) -> None:
+        self.ram, self.x, self.can_jump = ram, x, can_jump
+        self.jump_left = self.swing_left = 0
+        self.jump_dir = 0
+        self.held_a = False
+        self.swings = 0
+        self.jumps = 0
+        ram[ADDR_TILEMAP] = MOUNTAIN_TILEMAP
+        ram[ADDR_INPUT_LOCK] = 1
+        self._write(0)
+
+    def _write(self, action: int) -> None:
+        r = self.ram
+        r[ADDR_X], r[ADDR_X + 1] = self.x & 0xFF, self.x >> 8
+        r[ADDR_Y], r[ADDR_Y + 1] = 201, 0
+        r[ADDR_PLAYER_ACTION] = action
+
+    def flush(self, direction: int) -> bool:
+        return (direction > 0 and self.x == self.WEST) or (direction < 0 and self.x == self.EAST)
+
+    def step(self, action) -> None:
+        right, left, a = int(action[7]) == 1, int(action[6]) == 1, int(action[8]) == 1
+        direction = 1 if right else -1 if left else 0
+        a_edge = a and not self.held_a
+        self.held_a = a
+        if self.jump_left:
+            self.jump_left -= 1
+            if not self.jump_left:
+                self.x = self.EAST_LANDING if self.jump_dir > 0 else self.WEST_LANDING
+            self._write(PLAYER_ACTION_JUMP if self.jump_left else 0)
+            return
+        if self.swing_left:
+            self.swing_left -= 1
+            self._write(4)
+            return
+        if a and direction and self.flush(direction) and self.can_jump:
+            self.jump_left, self.jump_dir, self.jumps = 40, direction, self.jumps + 1
+            self.ram[ADDR_STAMINA] = min(int(self.ram[ADDR_MAX_STAMINA]), int(self.ram[ADDR_STAMINA]) + 12)
+            self._write(PLAYER_ACTION_JUMP)
+            return
+        if a_edge:
+            self.swing_left, self.swings = 20, self.swings + 1
+            self._write(4)
+            return
+        if direction > 0:
+            if self.x < self.WEST:
+                self.x = min(self.x + 2, self.WEST)
+            elif self.x >= self.EAST:
+                self.x += 2
+        elif direction < 0:
+            if self.x > self.EAST:
+                self.x = max(self.x - 2, self.EAST)
+            elif self.x <= self.WEST:
+                self.x -= 2
+        self._write(0)
+
+
+class HotSpringBathLoopTests(unittest.TestCase):
+    def _soak_task(self, ram: np.ndarray, **kwargs) -> HotSpringStaminaTask:
+        ram[ADDR_STAMINA], ram[ADDR_MAX_STAMINA] = 0, 160
+        task = HotSpringStaminaTask(**kwargs)
+        task.reset(_world(ram))
+        task._begin_soak(_world(ram))
+        task._action_queue.clear()   # the walk to the lip is not under test
+        return task
+
+    def test_bath_fills_to_max_despite_a_lip_overshoot_and_never_swings(self) -> None:
+        ram = _blank_ram()
+        sim = _PondSim(ram, x=_PondSim.WEST)
+        task = self._soak_task(ram, return_to_farm=False)
+        result = None
+        for frame in range(2000):
+            result = task.step(_world(ram))
+            if result.status != TaskStatus.RUNNING:
+                break
+            sim.step(result.action.action)
+        self.assertEqual(result.status, TaskStatus.SUCCESS, result.reason)
+        self.assertEqual(read_stamina(ram), 160)
+        self.assertEqual(sim.jumps, 14)
+        self.assertEqual(sim.swings, 0, "A pressed away from the water is a tool swing, not a jump")
+        self.assertLess(frame, 1500)
+
+    def test_bath_recovers_when_a_jump_lands_past_the_lip(self) -> None:
+        ram = _blank_ram()
+        sim = _PondSim(ram, x=_PondSim.WEST_LANDING)   # the stall: back on the west shelf, short of the water
+        task = self._soak_task(ram, return_to_farm=False)
+        for _ in range(2000):
+            result = task.step(_world(ram))
+            if result.status != TaskStatus.RUNNING:
+                break
+            sim.step(result.action.action)
+        self.assertEqual(result.status, TaskStatus.SUCCESS, result.reason)
+        self.assertEqual(sim.swings, 0)
+
+    def test_bath_that_never_jumps_gives_up_instead_of_burning_the_timeout(self) -> None:
+        ram = _blank_ram()
+        sim = _PondSim(ram, x=_PondSim.WEST, can_jump=False)
+        task = self._soak_task(ram, return_to_farm=False)
+        for frame in range(3000):
+            result = task.step(_world(ram))
+            if result.status != TaskStatus.RUNNING:
+                break
+            sim.step(result.action.action)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("bath stalled", result.reason or "")
+        self.assertLess(frame, 1200, "a stalled bath must not wait out the 3,600-frame soak timeout")
+
+    def test_failed_soak_still_leaves_the_pond_before_it_reports_failure(self) -> None:
+        """The farmer left at (661,198) failed every later phase's map lock (Y3 Spring D12)."""
+        ram = _blank_ram()
+        sim = _PondSim(ram, x=_PondSim.EAST_LANDING)
+        ram[ADDR_STAMINA], ram[ADDR_MAX_STAMINA] = 48, 160
+        task = HotSpringStaminaTask(return_to_farm=True)
+        task.reset(_world(ram))
+        task._finish_soak(_world(ram), "soak timeout")
+        self.assertEqual(task.phase_text, "post_soak_settle")
+        self.assertIn("soak ended unrestored (soak timeout)", task._soak_failure)
+        for _ in range(600):
+            result = task.step(_world(ram))
+            if task.phase_text != "post_soak_settle":
+                break
+            sim.step(result.action.action)
+        self.assertLess(sim.x, SPA_WATER_MIN_X_PX, "the farmer must be west of the water before the walk home starts")
+        self.assertEqual(sim.swings, 0)
 
 
 if __name__ == "__main__":

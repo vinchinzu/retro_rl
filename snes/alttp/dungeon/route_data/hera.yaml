@@ -1,0 +1,193 @@
+schema_version: 1
+slug: hera
+name: Tower of Hera (Bottom)
+z3_id: 114
+room_type: Dungeon
+source_file: regions/dungeons/hera/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Tower of Hera (Bottom)
+  nodes:
+  - Tower of Hera Small Key Door
+  - Tower of Hera Big Key Door
+  - Tower of Hera Exit
+  - Tower of Hera - Basement Cage
+  - Tower of Hera - Map Chest
+- name: Tower of Hera (Basement)
+  nodes:
+  - Tower of Hera - Big Key Chest
+- name: Tower of Hera (Top)
+  nodes:
+  - Tower of Hera - Compass Chest
+  - Tower of Hera - Big Chest
+  - Tower of Hera - Moldorm
+  - Tower of Hera - Prize
+locations:
+- id: 4
+  name: Tower of Hera - Basement Cage
+  region: Tower of Hera (Bottom)
+  node_type: item
+  item: KeyP3
+  address: '0x180162'
+  requires: []
+  keys: []
+  items: []
+- id: 5
+  name: Tower of Hera - Map Chest
+  region: Tower of Hera (Bottom)
+  node_type: item
+  item: MapP3
+  address: '0xE9AD'
+  requires: []
+  keys: []
+  items: []
+- id: 6
+  name: Tower of Hera - Big Key Chest
+  region: Tower of Hera (Basement)
+  node_type: item
+  item: BigKeyP3
+  address: '0xE9E6'
+  requires:
+  - canLightTorches
+  - KeyP3
+  keys:
+  - name: KeyP3
+    count: 1
+  items:
+  - canLightTorches
+- id: 7
+  name: Tower of Hera - Compass Chest
+  region: Tower of Hera (Top)
+  node_type: item
+  item: CompassP3
+  address: '0xE9FB'
+  requires:
+  - BigKeyP3
+  keys:
+  - name: BigKeyP3
+    count: 1
+  items: []
+- id: 8
+  name: Tower of Hera - Big Chest
+  region: Tower of Hera (Top)
+  node_type: item
+  item: MoonPearl
+  address: '0xE9F8'
+  requires:
+  - BigKeyP3
+  keys:
+  - name: BigKeyP3
+    count: 1
+  items: []
+- id: 9
+  name: Tower of Hera - Moldorm
+  region: Tower of Hera (Top)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180152'
+  requires:
+  - BigKeyP3
+  keys:
+  - name: BigKeyP3
+    count: 1
+  items: []
+- id: 10
+  name: Tower of Hera - Prize
+  region: Tower of Hera (Top)
+  node_type: item
+  item: PendantOfPower
+  address:
+  - '0x120A5'
+  - '0x53F0A'
+  - '0x53F0B'
+  - '0x18005A'
+  - '0x18007A'
+  - '0xC706'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Tower of Hera Small Key Door
+  region: Tower of Hera (Bottom)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 2
+  name: Tower of Hera Big Key Door
+  region: Tower of Hera (Bottom)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 3
+  name: Tower of Hera Exit
+  region: Tower of Hera (Bottom)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyP3
+    count: 1
+    nodes:
+    - Tower of Hera - Compass Chest
+    - Tower of Hera - Big Chest
+    - Tower of Hera - Moldorm
+  - name: KeyP3
+    count: 1
+    nodes:
+    - Tower of Hera - Big Key Chest
+  items:
+  - name: canLightTorches
+    nodes:
+    - Tower of Hera - Big Key Chest
+connections:
+- connection_type: Door
+  description: Door connection between Tower of Hera Small Key Door and Tower of Hera (Basement)
+  origin: Tower of Hera Small Key Door
+  destination: Tower of Hera (Basement)
+  internal: true
+- connection_type: Door
+  description: Door connection between Tower of Hera Big Key Door and Tower of Hera (Top)
+  origin: Tower of Hera Big Key Door
+  destination: Tower of Hera (Top)
+  internal: true
+- connection_type: Door
+  description: Door connection between Tower of Hera and Tower of Hera (Bottom)
+  origin: Tower of Hera
+  destination: Tower of Hera (Bottom)
+  internal: false
+strats:
+- name: Moldorm - Sword
+  link:
+  - 9
+  - 9
+  collectsItems:
+  - 9
+  - 10
+  setsFlags:
+  - f_DefeatedMoldorm
+  requires:
+  - L1Sword
+  devNote:
+  - This is simplified because of the pots filled with hearts below.
+- name: Moldorm - Hammer
+  link:
+  - 9
+  - 9
+  collectsItems:
+  - 9
+  - 10
+  setsFlags:
+  - f_DefeatedMoldorm
+  requires:
+  - Hammer
+  devNote:
+  - This is simplified because of the pots filled with hearts below.
+  - Surprisingly, this is not really harder than with a sword, because it only takes three hits and never speeds up fully.
+notes: []

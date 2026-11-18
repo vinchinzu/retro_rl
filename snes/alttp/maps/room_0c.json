@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 12,
+  "roomHex": "0x0C",
+  "name": "Ganon's Tower lobby",
+  "measured": "2026-10-18",
+  "sourceState": "GanonsTowerEntry",
+  "points": [
+    {
+      "label": "entry_spawn",
+      "xy": [6392, 472],
+      "role": "spawn",
+      "notes": "GanonsTowerEntry load. Entrance index 0x37, room word 0x000C, dungeon 0x1A, floor 1."
+    },
+    {
+      "label": "north_mouth",
+      "xy": [6392, 48],
+      "role": "approach",
+      "notes": "South of the north stair. A straight UP from spawn last stood in 0x0C at (6392, 32) before room 0x6B."
+    },
+    {
+      "label": "south_mouth",
+      "xy": [6392, 472],
+      "role": "approach",
+      "notes": "South entrance slot 0 type 0x0A. DOWN leaves indoors. Not the forward hop."
+    }
+  ],
+  "doors": [
+    {
+      "label": "north_stair_to_0x6b",
+      "direction": "UP",
+      "toRoom": 107,
+      "toRoomHex": "0x6B",
+      "approachXy": [6392, 48],
+      "landingXy": [5880, 3123],
+      "role": "primary",
+      "path": ["entry_spawn", "north_mouth"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 180,
+      "notes": "No door slot. Hold UP from the spawn. Settled room 0x6B (5880, 3123) floor 2 module 0x07. Isolated, not natural."
+    },
+    {
+      "label": "south_to_overworld",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "approachXy": [6392, 472],
+      "landingXy": [2296, 59],
+      "role": "backtrack",
+      "path": ["south_mouth"],
+      "pathTolerances": {"default": 16},
+      "pushFrames": 120,
+      "notes": "Slot 0 south type 0x0A pos $1D3C anchor (30, 58). Settled outdoors at (2296, 59), module 0x09, dungeon 0xFF. Screen id was not read."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 180,
+    "attackDistance": 50,
+    "maxCycles": 40
+  },
+  "walkBbox": [6144, 0, 6655, 511],
+  "hostilesAtEntry": [],
+  "z3Label": "Ganons Tower (Entrance)",
+  "notes": [
+    "Dungeon entrance table ROM $02C813 index 0x37 room word 0x000C. Index 0x09 checked as 0x0084. Overworld door 0x36 is room 0x0010, a different table.",
+    "Yaml Hope Room chests 0xEAD9 and 0xEADC are room 0x008C, which is not an entrance-table word.",
+    "Pin GanonsTowerEntry is isolated poke, not natural, not continuous, not STATUS.",
+    "Live door slot is only the south entrance. The north stair has no slot.",
+    "West 0x3E at (21, 47) starts submodule 0x10 and the walk stops on wall 0x04 at (21, 9), (6312, 72), still room 0x0C.",
+    "East 0x3E at (41, 47) stops on wall 0x04 at (41, 9), (6472, 72), still room 0x0C. Neither side left the room."
+  ]
+}

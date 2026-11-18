@@ -65,7 +65,7 @@
         "default": 20
       },
       "pushFrames": 240,
-      "notes": "Pocket→main hall continuous. Bush-cut required; walk-only stays boxed ~48×64 at pocket."
+      "notes": "Pocket→main hall continuous. Two bush lifts leave the hedge; the door walk does not cut."
     }
   ],
   "clearPolicy": {
@@ -80,7 +80,7 @@
   "hostilesAtEntry": [],
   "notes": [
     "Outdoor geometry authority for pocket_to_main_hall.",
-    "Bush-cutting is still required between waypoints (room_engine move alone is not enough).",
+    "The hedge pocket opens with two bush lifts. Waypoints after that are a walk.",
     "Do not grow enter_main_door special cases — door approach/push live here.",
     "Authority: maps/screen_1b_courtyard.json"
   ]

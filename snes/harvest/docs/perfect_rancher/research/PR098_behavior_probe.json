@@ -1,0 +1,121 @@
+{
+  "evidence_kind": "native_fixture",
+  "source": "Y1_D3_Morning",
+  "scope": "One matched farm day, not the power-on ending acceptance",
+  "variants": [
+    {
+      "variant": "baseline",
+      "frames": 17538,
+      "success": true,
+      "end": {
+        "year": 0,
+        "season": 0,
+        "day": 4,
+        "hour": 6,
+        "minute": 0,
+        "tilemap": 21,
+        "money": 350,
+        "num_cows": 0,
+        "num_chickens": 0,
+        "planted_grass": 0,
+        "stored_grass": 0,
+        "grass_seeds": 1,
+        "stamina": 100
+      },
+      "clean_run": {
+        "intervention_class": "Clean",
+        "initial_state_loads": 1,
+        "mid_run_state_loads": 0,
+        "ram_writes": 0,
+        "assists": {},
+        "audit_capabilities": {
+          "schema_version": 1,
+          "provider": "harvest.run_to_day2",
+          "observes_ram_writes": true,
+          "observes_mid_run_loads": true,
+          "observes_assists": true
+        },
+        "infinite_stamina": false,
+        "source_state": "/home/v/01_projects/11_games/rr_harvest_pr999_repair-gutbase/snes/harvest/custom_integrations/HarvestMoon-Snes/Y1_D3_Morning.state",
+        "source_state_sha256": "db05426f52f7d8944db706f4b2e5d92db6da4cd2240b6c68c83253f3419e01c5"
+      },
+      "end_state_sha256": "b0b0dfc96946f5461665dfe44a2b84514f8e7dc46957ac66a2f8793c8e2c5066"
+    },
+    {
+      "variant": "current",
+      "frames": 17538,
+      "success": true,
+      "end": {
+        "year": 0,
+        "season": 0,
+        "day": 4,
+        "hour": 6,
+        "minute": 0,
+        "tilemap": 21,
+        "money": 350,
+        "num_cows": 0,
+        "num_chickens": 0,
+        "planted_grass": 0,
+        "stored_grass": 0,
+        "grass_seeds": 1,
+        "stamina": 100
+      },
+      "clean_run": {
+        "intervention_class": "Clean",
+        "initial_state_loads": 1,
+        "mid_run_state_loads": 0,
+        "ram_writes": 0,
+        "assists": {},
+        "audit_capabilities": {
+          "schema_version": 1,
+          "provider": "harvest.run_to_day2",
+          "observes_ram_writes": true,
+          "observes_mid_run_loads": true,
+          "observes_assists": true
+        },
+        "infinite_stamina": false,
+        "source_state": "/home/v/01_projects/11_games/retro_rl/snes/harvest/custom_integrations/HarvestMoon-Snes/Y1_D3_Morning.state",
+        "source_state_sha256": "db05426f52f7d8944db706f4b2e5d92db6da4cd2240b6c68c83253f3419e01c5"
+      },
+      "end_state_sha256": "b0b0dfc96946f5461665dfe44a2b84514f8e7dc46957ac66a2f8793c8e2c5066"
+    },
+    {
+      "variant": "folded",
+      "frames": 17538,
+      "success": true,
+      "end": {
+        "year": 0,
+        "season": 0,
+        "day": 4,
+        "hour": 6,
+        "minute": 0,
+        "tilemap": 21,
+        "money": 350,
+        "num_cows": 0,
+        "num_chickens": 0,
+        "planted_grass": 0,
+        "stored_grass": 0,
+        "grass_seeds": 1,
+        "stamina": 100
+      },
+      "clean_run": {
+        "intervention_class": "Clean",
+        "initial_state_loads": 1,
+        "mid_run_state_loads": 0,
+        "ram_writes": 0,
+        "assists": {},
+        "audit_capabilities": {
+          "schema_version": 1,
+          "provider": "harvest.run_to_day2",
+          "observes_ram_writes": true,
+          "observes_mid_run_loads": true,
+          "observes_assists": true
+        },
+        "infinite_stamina": false,
+        "source_state": "/home/v/01_projects/11_games/retro_rl/snes/harvest/custom_integrations/HarvestMoon-Snes/Y1_D3_Morning.state",
+        "source_state_sha256": "db05426f52f7d8944db706f4b2e5d92db6da4cd2240b6c68c83253f3419e01c5"
+      },
+      "end_state_sha256": "b0b0dfc96946f5461665dfe44a2b84514f8e7dc46957ac66a2f8793c8e2c5066"
+    }
+  ]
+}

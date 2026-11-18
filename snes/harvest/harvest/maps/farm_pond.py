@@ -3,6 +3,7 @@
 ROM-mapped spring-farm facts for can refill, fence access, and no-go tiles.
 """
 
+import os
 from typing import Dict, FrozenSet, Optional, Tuple
 
 from harvest.core.tile_catalog import MOUNTAIN_TILEMAP_IDS
@@ -57,6 +58,12 @@ SOUTH_STREAM_FC_BANKS: FrozenSet[Tuple[int, int]] = frozenset({
     (13, 49), (15, 49),
     (13, 50), (15, 50),
 })
+# The second well at (37,48) has walkable-looking A1/A3/A8 rim tiles.
+# The cover sweep stalled at (572,761), trying to reach (36,48) through
+# that rim, on every evening from Y3 Spring D9 onward in the 851 ending.
+SOUTH_WELL_BODY: FrozenSet[Tuple[int, int]] = frozenset(
+    (x, y) for y in range(47, 50) for x in range(36, 39)
+)
 HORSE_BARN_LEAVE_TILE: Tuple[int, int] = (17, 21)
 
 FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
@@ -75,7 +82,7 @@ FARM_NO_GO_TILES: FrozenSet[Tuple[int, int]] = frozenset({
     (24, 27), (25, 27), (26, 27), (27, 27), (28, 27),
     (24, 28), (25, 28), (27, 28), (28, 28),
     (24, 29), (25, 29), (27, 29), (28, 29),
-}) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | SOUTH_STREAM_FC_BANKS
+}) | HORSE_BARN_WALL_TILES | COW_BARN_EAST_FACE_TILES | SOUTH_STREAM_FC_BANKS | SOUTH_WELL_BODY
 
 # The x=11 column between the F2 ditch and the west ring is in FARM_NO_GO_TILES
 # but is open ground: a teleport to (11,26) and DOWN walked to (11,30) and on
@@ -238,14 +245,228 @@ SOUTH_POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
     (44, 29),
 )
 
-# Ordered establish targets: the west pocket first, then the ring east of the
-# well, then the south field nearest the bin. Sites are data: add a centre
-# here and ``pocket_plant_targets`` / the bag count / the splice limit follow.
-POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
+# West-strip block south-west of the bin, opened by the fully cleared D2 farm
+# (``FARM_CLEAR_D2``): the farm array of ``LN_d2_perfect_poweron``, Spring D24
+# and Summer D1 holds zero debris, so these 5x5 footprints stay bare soil all
+# Year 1. Two-tile lanes (x6-7, y37-38) and the x=11 bin column stay open, so
+# the y=37 dirt row of ``_FARM_SOUTH_FIELD_TO_WEST_GATE`` and (6,33) still
+# walk. A crop here is 6-12 tiles from the bin stand (11,30); the south field
+# is 22-35. The south stream (14,49) fills the can. Rings beyond five exceed
+# one stamina bar: ``CROP_WATER`` reports ``stamina_low`` and the day plan
+# splices a hot-spring refill.
+WEST_STRIP_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
+    (9, 35),
+    (4, 35),
+    (9, 40),
+    (4, 40),
+)
+
+# Packed lattice south of the bin (``HARVEST_RING_LAYOUT=packed``). Rings sit 4 tiles apart on both axes, so
+# the single lane between two rings is shared: every crop tile touches a lane, a lane serves the ring on each
+# side, and eight crops cost 16 tiles of ground instead of the 25 of an isolated 5x5 site. Lanes run on
+# x = 2, 6, 10 ... 26 and y = 33, 37, 41, 45, 49. That keeps the two tiles the hard-coded spa and shop walks
+# use (``map_routes._FARM_SOUTH_WEST_TO_WEST_GATE``: the (6,37) lane crossing and (6,33)), the x=2 edge
+# lane, and the open rows y=31-33 between the bin lane and the first ring row. Four rows of six, plus the
+# two pocket rings north of y=31, are 26 rings (208 crops). ``PACKED_RING_ORDER`` is closest-first by
+# walking distance from the bin stand (11,30) with every prefix still reachable, so a smaller N is always
+# the best N; computed on the cleared D2 farm array (``LN_d2_perfect_poweron``). Mean walk to a crop's lane
+# stand: 9.7 tiles at 9 rings, 13.4 at 18, 15.6 at 24 (the legacy nine average 18.0).
+PACKED_COLUMNS: Tuple[int, ...] = (4, 8, 12, 16, 20, 24)
+PACKED_ROWS: Tuple[int, ...] = (35, 39, 43, 47)
+PACKED_RING_ORDER: Tuple[Tuple[int, int], ...] = (
+    (12, 35), (8, 35), (16, 35), (12, 39), (4, 35), (8, 39), (20, 35), (16, 39),
+    (12, 43), (4, 39), (8, 43), (24, 35), (20, 39), (16, 43), (12, 47), (4, 43),
+    (8, 47), (24, 39), (20, 43), (16, 47), (4, 47), (24, 43), (20, 47), (24, 47),
+)
+
+# Keep the verified D2 opening, then establish by distance to the shipping
+# stand. Nearby west-strip plots precede remote eastern plots. Sites are data:
+# targets, bag counts and the splice limit all follow this ordering.
+LEGACY_POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
+    WEST_POCKET_PLANT_CENTER,
+    *sorted(
+        (SECOND_POCKET_PLANT_CENTER, *WEST_STRIP_PLANT_CENTERS, *SOUTH_POCKET_PLANT_CENTERS),
+        key=lambda center: abs(center[0] - 11) + abs(center[1] - 30),
+    ),
+)
+PACKED_POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = (
     WEST_POCKET_PLANT_CENTER,
     SECOND_POCKET_PLANT_CENTER,
-    *SOUTH_POCKET_PLANT_CENTERS,
+    *PACKED_RING_ORDER,
 )
+# Notch blocks (``HARVEST_RING_LAYOUT=blocks``): 3x3 plots with the centre planted and one side cell
+# left bare, ``xxx/xxo/xxx`` (east) or ``xxx/oxx/xxx`` (west), on the pitch-4 lattice in mirrored pairs
+# whose notches face across the shared lane. Rows are the ``block_calendar`` plan derived from the
+# cleared D2 farm (``LN_d2_perfect_poweron``, ``plan_blocks(pin_walkable(), core=12, late=2)``), nearest
+# first: (centre, notch, role, Spring last-sow day, Summer crop, Summer bag day). ``core`` blocks stop
+# potatoes on D25/D26 so they ripen on Summer D1/D2 and take corn that morning; the two ``late`` blocks
+# sow potatoes to D29/D30 (ripe Summer D5/D6), then take the Summer bag. (13,28) keeps the ring shape
+# the pin's D2 potatoes hoed (hoed soil never reverts).
+BLOCK_PLAN_ROWS: Tuple[Tuple[Tuple[int, int], str, str, int, str, int], ...] = (
+    ((13, 28), "ring", "core", 25, "corn", 1),
+    ((8, 35), "west", "core", 26, "corn", 2),
+    ((12, 35), "east", "core", 25, "corn", 1),
+    ((4, 35), "east", "core", 26, "corn", 2),
+    ((8, 39), "west", "core", 25, "corn", 1),
+    ((16, 35), "west", "core", 26, "corn", 2),
+    ((12, 39), "east", "core", 25, "corn", 1),
+    ((19, 28), "west", "core", 26, "corn", 2),
+    ((4, 39), "east", "core", 25, "corn", 1),
+    ((8, 43), "west", "core", 26, "corn", 2),
+    ((20, 35), "east", "core", 25, "corn", 1),
+    ((16, 39), "west", "core", 26, "corn", 2),
+    ((12, 43), "east", "late", 29, "tomato", 5),
+    ((4, 43), "east", "late", 30, "tomato", 6),
+)
+# Year-2 plots: the next six lattice blocks by pickup-to-bin frames (``block_calendar`` ranking over the
+# cleared farm; a field-side bin or the sprinkler would justify more, see docs/plan.md). Year 1 never sows
+# them (``calendar_bag``), because its calendar is tuned for the first fourteen. Year 2 starts with the
+# first fourteen hoed and every block open on Spring D1, so all twenty sow potatoes from D1 to their last
+# day (alternating D25/D26, ripe Summer D1/D2) and take corn that morning, like the Year-1 core blocks.
+Y2_BLOCK_PLAN_ROWS: Tuple[Tuple[Tuple[int, int], str, str, int, str, int], ...] = (
+    ((8, 47), "west", "core", 26, "corn", 2),
+    ((24, 35), "west", "core", 25, "corn", 1),
+    ((20, 39), "east", "core", 26, "corn", 2),
+    ((16, 43), "west", "core", 25, "corn", 1),
+    ((12, 47), "east", "core", 26, "corn", 2),
+    ((4, 47), "east", "core", 25, "corn", 1),
+)
+Y2_ONLY_CENTERS = frozenset(row[0] for row in Y2_BLOCK_PLAN_ROWS)   # Year 2 sows them only with ``HARVEST_Y2_BLOCKS=1`` (unproven: see docs/plan.md)
+_NOTCH_LAYOUT = {"east": "eight_east_notch", "west": "eight_west_notch", "ring": "eight_tile_ring"}
+
+RING_LAYOUT_ENV = "HARVEST_RING_LAYOUT"
+RING_LAYOUTS: Dict[str, Tuple[Tuple[int, int], ...]] = {
+    "legacy": LEGACY_POCKET_PLANT_CENTERS,
+    "packed": PACKED_POCKET_PLANT_CENTERS,
+    # Closest-first prefixes, for finding how many rings a day can pay for (every prefix stays reachable).
+    "packed12": PACKED_POCKET_PLANT_CENTERS[:12],
+    "packed18": PACKED_POCKET_PLANT_CENTERS[:18],
+    "blocks": tuple(row[0] for row in BLOCK_PLAN_ROWS),
+}
+
+
+def is_packed_layout(name: Optional[str] = None) -> bool:
+    """The lattice layouts (packed rings or notch blocks): they share the lane walks and the tour."""
+    return (name or ring_layout_name()).startswith(("packed", "blocks"))
+RING_LAYOUT_DEFAULT = "legacy"
+
+
+def ring_layout_name() -> str:
+    """The layout this process runs. Read once at import, like the site data it selects."""
+    name = os.environ.get(RING_LAYOUT_ENV, RING_LAYOUT_DEFAULT).strip().lower()
+    if name not in RING_LAYOUTS:
+        raise ValueError(f"unknown {RING_LAYOUT_ENV}={name!r}; choose from {', '.join(RING_LAYOUTS)}")
+    return name
+
+
+POCKET_PLANT_CENTERS: Tuple[Tuple[int, int], ...] = RING_LAYOUTS[ring_layout_name()]
+# Extend the legacy west strip only after the first economy year. These bare-ground sites preserve
+# x=6 and the bin column, avoid the pasture, and add 24 plants without moving the opening's plots.
+SCORE_WEST_STRIP_CENTERS = ((9, 45), (4, 45), (9, 50))
+# Year 3 Spring is the last window for potatoes and turnips (496 each is 31 points apiece) and twelve sites
+# only reached 386 and 390 in ``fixD``: the sites, not the stamina, were the limit (the daily watering was
+# ~90 tiles of two bars). These bare 5x5 sites sit east and south of the west strip on the pitch-5 grid, clear
+# of the pasture patch (x 14-21, y 33-41), the lanes (x=6, y=33, y=37) and the stump at (13-15, 49-50), nearest
+# the bin first. Year 3 only, so the verified Year 1-2 timeline is untouched.
+SCORE_Y3_EXTRA_CENTERS = ((14, 45), (24, 35), (19, 45), (24, 40), (24, 45), (19, 50), (4, 50), (14, 55),
+                          (24, 50), (9, 55), (29, 40), (29, 45))
+Y3_EXTRA_SITES_ENV = "HARVEST_Y3_EXTRA_SITES"
+Y3_SUMMER_SITES_ENV = "HARVEST_Y3_SUMMER_SITES"      # "1" keeps the extra sites through Summer (an A/B)
+Y3_FIRST_YEAR = 2          # ``year`` is 0-based: Year 3
+
+
+Y3_SUMMER_EXTRA_ENV = "HARVEST_Y3_SUMMER_EXTRA_SITES"   # how many extra sites Summer Y3 keeps (default 0: only the twelve)
+
+
+def y3_summer_extra_site_count() -> int:
+    """Extra Year-3 sites kept through Summer for corn and tomatoes (an A/B; 0 = the twelve base sites only)."""
+    try:
+        return max(0, int(os.environ.get(Y3_SUMMER_EXTRA_ENV, "0")))
+    except ValueError:
+        return 0
+
+
+def y3_extra_site_count() -> int:
+    """How many of ``SCORE_Y3_EXTRA_CENTERS`` Year 3 sows (env switch for an A/B; 0 restores twelve sites)."""
+    try:
+        wanted = int(os.environ.get(Y3_EXTRA_SITES_ENV, str(len(SCORE_Y3_EXTRA_CENTERS))))
+    except ValueError:
+        wanted = len(SCORE_Y3_EXTRA_CENTERS)
+    return max(0, min(len(SCORE_Y3_EXTRA_CENTERS), wanted))
+_BLOCK_ROWS: Dict[Tuple[int, int], tuple] = (
+    {row[0]: row for row in BLOCK_PLAN_ROWS + Y2_BLOCK_PLAN_ROWS} if ring_layout_name() == "blocks" else {}
+)
+
+
+def active_plot_centers(year: int = 0, season: Optional[int] = None) -> Tuple[Tuple[int, int], ...]:
+    """The plots this year sows: ``POCKET_PLANT_CENTERS``, plus the Year-2 blocks from Year 2 under ``blocks``.
+
+    The Year-3 extra sites are for the last Spring's potatoes and turnips: pass ``season`` and from Summer on they
+    drop out, so their ground is no longer reserved from the whole-field cover (twelve sites grow all the corn and
+    tomatoes the ending needs; the extra eight to twelve only made the final fill's backlog larger).
+    """
+    if int(year) >= 1 and ring_layout_name() == "blocks" and os.environ.get("HARVEST_Y2_BLOCKS", "0") == "1":
+        return POCKET_PLANT_CENTERS + tuple(row[0] for row in Y2_BLOCK_PLAN_ROWS)
+    from harvest.planner.run_strategy import active
+
+    if int(year) >= 1 and ring_layout_name() == "legacy" and active().balance_crops:
+        spring = season is None or int(season) == 0 or os.environ.get(Y3_SUMMER_SITES_ENV, "0") == "1"
+        extra = SCORE_Y3_EXTRA_CENTERS[:y3_extra_site_count()] if int(year) >= Y3_FIRST_YEAR and spring else ()
+        if not extra and int(year) >= Y3_FIRST_YEAR:
+            extra = SCORE_Y3_EXTRA_CENTERS[:min(y3_extra_site_count(), y3_summer_extra_site_count())]
+        return POCKET_PLANT_CENTERS + SCORE_WEST_STRIP_CENTERS + extra
+    return POCKET_PLANT_CENTERS
+
+
+def ram_year(ram) -> int:
+    from harvest.core.ram_catalog import read_ram_value
+
+    return int(read_ram_value(ram, "year", raw=True) or 0)
+
+
+def plot_layout_name(center: Tuple[int, int], year: int = 0) -> str:
+    """``CROP_LAYOUTS`` name of the plot at ``center``: a notch block, else the 8-around ring."""
+    row = _BLOCK_ROWS.get(tuple(center))
+    if row and int(year) >= 1:
+        return "seven_east_access" if row[1] == "east" else "seven_west_access"
+    return _NOTCH_LAYOUT[row[1]] if row else "eight_tile_ring"
+
+
+def plot_crop_tiles(center: Tuple[int, int], year: int = 0) -> Tuple[Tuple[int, int], ...]:
+    """The 8 cells a bag sows for the plot at ``center`` (the notch or the ring centre stays bare)."""
+    from harvest.planner.crop_planner import CROP_LAYOUTS
+
+    return tuple(CROP_LAYOUTS[plot_layout_name(center, year)].crop_tiles(center))
+
+
+def count_plot_tiles(ram, center: Tuple[int, int], ids: FrozenSet[int]) -> int:
+    from harvest.tasks.nav import get_tile_at
+
+    return sum(1 for tx, ty in plot_crop_tiles(center, ram_year(ram)) if int(get_tile_at(ram, tx, ty)) in ids)
+
+
+def calendar_bag(center: Tuple[int, int], season: int, day: int, year: int = 0) -> Optional[str]:
+    """The block calendar's bag for ``center`` today; ``"any"`` for plots outside the calendar."""
+    row = _BLOCK_ROWS.get(tuple(center))
+    if row is None:
+        return "any"
+    if row[0] in Y2_ONLY_CENTERS and int(year) < 1:
+        return None
+    from harvest.planner.block_calendar import BlockPlan, sow_crop
+
+    _c, notch, role, last_sow, crop, plant_day = row
+    plan = BlockPlan(center=row[0], notch=notch, role=role, spring_last_sow=last_sow,
+                     summer_crop=crop, summer_plant_day=plant_day)
+    return sow_crop(plan, season, day)
+
+
+def crop_working_tiles() -> FrozenSet[Tuple[int, int]]:
+    """Keep grass outside crop footprints, perimeter stands and the bin lane."""
+    return frozenset(
+        (cx + dx, cy + dy)
+        for cx, cy in active_plot_centers(1)
+        for dy in range(-2, 3) for dx in range(-2, 3)
+    ) | SHIP_BIN_STAND_TILES
 
 
 # Tile IDs a fresh potato seed can still be sown onto: bare farm dirt plus
@@ -261,6 +482,48 @@ _RIPE_REPLANT_MIN = 6
 _ONE_SHOT_RIPE_TILES: FrozenSet[int] = frozenset({0x60, 0x61, 0x6E, 0x6F})
 
 
+SOON_RIPE_ENV = "HARVEST_Y3_SOON_RIPE"
+SPRING_LAST_SOW = 26     # ``crop_planner.SPRING_LAST_SOW_DAY``: a potato sown later ripens past Summer D2
+
+
+def shop_closed_days_ahead(ram) -> int:
+    """Consecutive days from tomorrow on that the seed shop is shut: Sat+Sun (a Friday) or a festival eve."""
+    from harvest.calendar_schedule import festival_on
+    from harvest.core.ram_catalog import read_ram_value
+
+    weekday = int(read_ram_value(ram, "weekday"))
+    year, season, day = (int(read_ram_value(ram, key)) for key in ("year", "season", "day"))
+    closed = 0
+    for ahead in (1, 2, 3):
+        shut = (weekday + ahead) % 7 in (0, 6) or (day + ahead <= 30 and festival_on(year, season, day + ahead) is not None)
+        if not shut:
+            break
+        closed += 1
+    return closed
+
+
+def soon_ripe_nights(ram) -> int:
+    """Nights a Year-3 Spring shop trip looks ahead: rings that ripen while the shop is shut need their bag today.
+
+    ``fixD`` Y3 Spring D24 (Friday) bought nothing, six turnip rings ripened on D25 and the shop was shut D25-D26,
+    so they sat empty until the last sowing day (D26) had passed. Zero outside Year 3 Spring and past the last
+    day a bag can still ripen (``SPRING_LAST_SOW``).
+    """
+    from harvest.core.ram_catalog import read_ram_value
+
+    if os.environ.get(SOON_RIPE_ENV, "1") == "0":
+        return 0
+    if int(read_ram_value(ram, "year", raw=True) or 0) < Y3_FIRST_YEAR or int(read_ram_value(ram, "season")) != 0:
+        return 0
+    nights = shop_closed_days_ahead(ram)
+    return nights if nights and int(read_ram_value(ram, "day")) + nights <= SPRING_LAST_SOW else 0
+
+
+def soon_ripe_tiles(nights: int) -> FrozenSet[int]:
+    """Potato (0x60/0x61) and turnip (0x6E/0x6F) ids within ``nights`` watered nights of ripe (+2 ids a night)."""
+    return frozenset(range(0x60 - 2 * nights, 0x62)) | frozenset(range(0x6E - 2 * nights, 0x70))
+
+
 def _ring_bare_capacity(ram, center: Tuple[int, int]) -> int:
     """Count 8-ring tiles a seed bag could still be sown onto."""
     from harvest.tasks.crop_geometry import (
@@ -271,11 +534,7 @@ def _ring_bare_capacity(ram, center: Tuple[int, int]) -> int:
     from harvest.tasks.nav import get_tile_at
 
     sowable = _POCKET_BARE_TILE_IDS | _POCKET_LIFTABLE_TILE_IDS | {FRESH_TILLED, WATERED_TILLED}
-    return sum(
-        1
-        for tx, ty in plot_tiles(center, include_center=False)
-        if int(get_tile_at(ram, tx, ty)) in sowable
-    )
+    return count_plot_tiles(ram, center, frozenset(sowable))
 
 
 def pocket_plant_target(ram) -> Optional[Tuple[int, int]]:
@@ -307,29 +566,80 @@ def pocket_plant_targets(ram, *, replant_ripe: bool = False) -> Tuple[Tuple[int,
     """
     if ram is None:
         return ()
-    from harvest.tasks.crop_skills import PLOT_RING_SIZE, count_ring_planted, count_ring_tiles
+    from harvest.tasks.crop_skills import PLANTED_OR_WET, PLOT_RING_SIZE
     from harvest.core.ram_catalog import read_ram_value
+
+    from harvest.planner import run_strategy
+    from harvest.tasks.nav import get_tile_at
 
     targets = []
     season = int(read_ram_value(ram, "season"))
+    day = int(read_ram_value(ram, "day") or 0)
+    year = int(read_ram_value(ram, "year", raw=True) or 0)
     summer = season == 1
-    for center in POCKET_PLANT_CENTERS:
-        planted = count_ring_planted(ram, center)
-        if planted >= PLOT_RING_SIZE:
+    # A strategy that caps shipping leaves a capped one-shot crop on the plant, so its ring
+    # never empties and a morning bag for it would sit unplanted.
+    replant_ripe = replant_ripe and run_strategy.one_shot_replant_ok(ram)
+    if season == 0 and not run_strategy.one_shot_sowing_ok(ram):
+        return ()       # the Spring potatoes already planted or shipped reach the cap
+    soon_nights = soon_ripe_nights(ram) if replant_ripe and season == 0 else 0
+    soon = soon_ripe_tiles(soon_nights) if soon_nights else frozenset()
+    for center in active_plot_centers(year, season):
+        if calendar_bag(center, season, day, year) is None:
+            continue        # the block calendar: past its last Spring sowing, or no Summer bag yet
+        size = len(plot_crop_tiles(center, year))
+        planted = count_plot_tiles(ram, center, PLANTED_OR_WET)
+        if planted >= size:
             if (
                 replant_ripe
                 and season <= 1
-                and count_ring_tiles(ram, center, _ONE_SHOT_RIPE_TILES) >= _RIPE_REPLANT_MIN
+                and count_plot_tiles(ram, center, _ONE_SHOT_RIPE_TILES) >= _RIPE_REPLANT_MIN
+                and not run_strategy.within_ship_cap(ram, [
+                    t for t in plot_crop_tiles(center, year) if get_tile_at(ram, *t) in _ONE_SHOT_RIPE_TILES
+                ])[1]
             ):
                 targets.append(center)
+            elif soon and count_plot_tiles(ram, center, soon) >= _RIPE_REPLANT_MIN:
+                targets.append(center)      # ripens while the shop is shut: the bag is bought before the weekend
             continue
-        # Summer crops regrow. Spending another 300G bag to fill one or
-        # two missed cells delays livestock and rarely earns the seed back.
-        if summer and PLOT_RING_SIZE - planted < 3:
+        # A bag sown from the centre spends a use on every occupied cell, so
+        # one or two open cells never earn the seed back (Summer corn delays
+        # livestock too). Partly harvested rings wait for the rest to ripen.
+        if size - planted < 3:
             continue
-        if _ring_bare_capacity(ram, center) >= PLOT_RING_SIZE - planted:
+        if not ring_center_reachable(ram, center):
+            continue
+        if _ring_bare_capacity(ram, center) >= size - planted:
             targets.append(center)
     return tuple(targets)
+
+
+def ring_center_reachable(ram, center: Tuple[int, int]) -> bool:
+    """True when the sowing stand (the centre) opens onto a walkable side cell.
+
+    The bag is sown standing on the centre. Corners do not count: the farmer
+    walks in four directions, so a ring whose open cells are only corners
+    walls its centre in, and ``nav_pocket_plant`` timed out on five straight
+    Spring days (D19-D24, nine rings), each aborting the day's watering.
+    """
+    from harvest.core.tile_catalog import FARM_WALKABLE
+    from harvest.tasks.nav import get_tile_at
+
+    cx, cy = center
+    layout = plot_layout_name(center, ram_year(ram))
+    if layout != "eight_tile_ring":
+        # A notch block sows from its hoed centre and is entered through the bare notch.
+        from harvest.tasks.crop_geometry import FRESH_TILLED, WATERED_TILLED
+
+        notch = (cx + (1 if layout in {"eight_east_notch", "seven_east_access"} else -1), cy)
+        centre_ok = int(get_tile_at(ram, cx, cy)) in FARM_WALKABLE | {FRESH_TILLED, WATERED_TILLED}
+        return centre_ok and int(get_tile_at(ram, *notch)) in FARM_WALKABLE
+    if int(get_tile_at(ram, cx, cy)) not in FARM_WALKABLE:
+        return False
+    return any(
+        int(get_tile_at(ram, cx + dx, cy + dy)) in FARM_WALKABLE
+        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0))
+    )
 
 
 # Hoe swing and watering-can use each cost 2 stamina (ROM, see
@@ -343,28 +653,34 @@ STAMINA_PER_TOOL_USE = 2
 def pocket_water_reserve(ram) -> int:
     """Stamina the standing crops still need today (2 per dry growing tile)."""
     from harvest.tasks.crop_geometry import WATERABLE_TILES
-    from harvest.tasks.crop_skills import count_ring_tiles
 
     dry = sum(
-        count_ring_tiles(ram, center, frozenset(WATERABLE_TILES))
-        for center in POCKET_PLANT_CENTERS
+        count_plot_tiles(ram, center, frozenset(WATERABLE_TILES))
+        for center in active_plot_centers(ram_year(ram))
     )
     return dry * STAMINA_PER_TOOL_USE
 
 
-def ring_establish_affordable(ram, center: Tuple[int, int]) -> bool:
+# One hot-spring soak refills the bar. ``CROP_WATER`` reports ``stamina_low``
+# when it cannot fund every dry tile and the day plan splices one soak, so a
+# day with the spa allowed can pay for about two bars of tool use.
+SPA_REFILL_STAMINA = 100
+
+
+def ring_establish_affordable(ram, center: Tuple[int, int], *, spa_refills: int = 0) -> bool:
     """True when today's stamina covers this ring's hoe swings *and* the
     watering the farm already owes.
 
     A new ring's own first watering may slip a day (a crop only stalls), but
     the standing crops are not starved to open another ring. Replanting after
     a Spring harvest leaves watered soil (0x08) and costs no hoe at all.
+    ``spa_refills`` soaks still allowed today add ``SPA_REFILL_STAMINA`` each.
     """
     from harvest.core.ram_catalog import read_ram_value
-    from harvest.tasks.crop_skills import HOED_OR_PLANTED, count_ring_tiles, PLOT_RING_SIZE
+    from harvest.tasks.crop_skills import HOED_OR_PLANTED, PLOT_RING_SIZE
 
-    stamina = int(read_ram_value(ram, "stamina") or 0)
-    unhoed = PLOT_RING_SIZE - count_ring_tiles(ram, center, HOED_OR_PLANTED)
+    stamina = int(read_ram_value(ram, "stamina") or 0) + max(0, spa_refills) * SPA_REFILL_STAMINA
+    unhoed = len(plot_crop_tiles(center, ram_year(ram))) - count_plot_tiles(ram, center, HOED_OR_PLANTED)
     need = max(0, unhoed) * STAMINA_PER_TOOL_USE + pocket_water_reserve(ram)
     return stamina >= need
 
@@ -381,12 +697,12 @@ def next_unplanted_pocket_center(ram) -> Optional[Tuple[int, int]]:
 
 def planted_pocket_centers(ram) -> Tuple[Tuple[int, int], ...]:
     """Every pocket center whose 8-ring is planted (water targets, in order)."""
-    from harvest.tasks.crop_skills import count_ring_planted
+    from harvest.tasks.crop_skills import PLANTED_OR_WET
 
     return tuple(
         center
-        for center in POCKET_PLANT_CENTERS
-        if count_ring_planted(ram, center) > 0
+        for center in active_plot_centers(ram_year(ram))
+        if count_plot_tiles(ram, center, PLANTED_OR_WET) > 0
     )
 
 

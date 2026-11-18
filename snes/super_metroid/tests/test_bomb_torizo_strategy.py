@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from super_metroid.combat.bomb_torizo import (
     ROOM_BOMB_TORIZO,
@@ -136,3 +137,52 @@ def test_bomb_torizo_boss_strategy_adapter_imports() -> None:
     assert strategy.boss_id == "bomb_torizo"
     assert strategy.catalog.room_id == ROOM_BOMB_TORIZO
     assert strategy.entry.room_id == ROOM_BOMB_TORIZO
+
+
+@pytest.mark.rom
+def test_search_rejects_dead_branch_and_replays_survivor_from_real_chain() -> None:
+    """The low-ammo power-on leave defeats the boss after a failed branch."""
+    from retro_harness.env import read_state_bytes
+    from super_metroid.combat.bomb_torizo import (
+        bomb_torizo_boss_bit_set,
+        search_bomb_torizo_fight,
+    )
+    from super_metroid.dev.common import make_dev_env
+    from super_metroid.paths import GAME_DIR
+    from super_metroid.ram import parse_env_state
+
+    source = GAME_DIR / "custom_integrations/SuperMetroid-Snes/human_prefix_s2_clean.state"
+    if not source.is_file():
+        pytest.skip("needs the natural human-tape power-on prefix checkpoint")
+    env = make_dev_env()
+    try:
+        env.reset()
+        env.em.set_state(read_state_bytes(source))
+
+        class Session:
+            frame = 0
+            state = parse_env_state(env, mode="nav")
+
+            def step(self, action, reason=""):
+                env.step(action)
+                self.frame += 1
+                self.state = parse_env_state(env, mode="nav")
+                return self.state
+
+        session = Session()
+        session.env = env
+        assert session.state.health == 94 and session.state.missiles == 3
+        result = search_bomb_torizo_fight(
+            session,
+            strategies=(
+                BombTorizoStrategy(),
+                BombTorizoStrategy(jump_hold_frames=12, jump_period=48),
+            ),
+        )
+        assert result.rollout_restores == 3
+        assert result.search_frames == 9160
+        assert result.fight.outcome == "bomb_torizo_defeated"
+        assert session.frame == 4823 and session.state.health == 28
+        assert session.state.enemy0_hp == 0 and bomb_torizo_boss_bit_set(env)
+    finally:
+        env.close()

@@ -1,29 +1,31 @@
 ---
 name: sm-session
 description: >
-  Super Metroid session gates: one spine bead, residual owns pin/checkbox/CLI,
-  one run per check. Never halt. Use when working in
+  Super Metroid session loop: census first, machine search for red rooms,
+  progress is rooms on the master tape. Use when working in
   snes/super_metroid, starting a hop, composing a tip, or running /sm-session.
 ---
 
 # SM session
 
 Planner owns `docs/STATUS.md`. Language: `snes/super_metroid/CONTEXT.md`.
-Never halt. After a red, keep the controller and change one knob.
 
 ## Loop
 
-1. Run once from the pin the residual names. Proof is leftover RAM on that
-   run. Run a second time only to compare against TAS or another skill
-   (`settled_gs8` hop clock), never to prove determinism.
-2. Overwrite the **living** residual
-3. Soft max ~1000 LOC: merge into the **Composer** or delete. No sibling
-   extract (`CODING_STANDARDS.md`). Gut sittings use `/gut-package`.
-4. User says watch / headed / autopilot: open a window **first**.
-   `--headed` is `retro_harness.headed`.
+Rules and commands: `snes/super_metroid/AGENTS.md`. Open work:
+`snes/super_metroid/docs/plan.md`.
+
+1. Run the census row for the room
+   (`scripts/tools/tape_census.py --rows N`). `as_recorded` or `retimed`
+   means there is nothing to tune.
+2. A red room gets a search or a rollout fight against the ROM: save,
+   try candidates, restore. Do not edit one constant and re-run by hand.
+3. A room counts when it clears from the previous room's real leave and
+   its buttons are on the master tape.
+4. Soft max ~1000 LOC: merge into the owner or delete
+   (`CODING_STANDARDS.md`).
+5. User says watch / headed: open a window first.
    `uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> --source <pin> --headed`
-   `./play <pin> --headed --assist-full`. The residual's dedicated probe
-   is one run.
 
 ## Skills
 

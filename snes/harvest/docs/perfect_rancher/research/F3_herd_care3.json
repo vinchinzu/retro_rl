@@ -1,0 +1,74 @@
+{
+  "bead": "PR-012",
+  "kind": "care",
+  "pin": "LN_mgr-f3_whatif_care3",
+  "result": "PROBE_CARE_FAIL chores",
+  "boot": {
+    "frame": 0,
+    "clock": {
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "weekday": 2,
+      "hour": 18,
+      "minute": 0,
+      "tilemap": 39,
+      "x": 113,
+      "y": 277,
+      "weather": 192,
+      "num_cows": 1,
+      "fed_cows_flags": 0,
+      "hay": 179
+    },
+    "cows": [
+      {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "name_hex": "1c2830b3",
+        "raw_hex": "0900270001000000a70016011c2830b3"
+      }
+    ]
+  },
+  "chores": {
+    "status": "failure",
+    "reason": "max steps exceeded",
+    "frame": 8000,
+    "clock": {
+      "year": 0,
+      "season": 0,
+      "day": 16,
+      "weekday": 2,
+      "hour": 18,
+      "minute": 0,
+      "tilemap": 39,
+      "x": 141,
+      "y": 185,
+      "weather": 192,
+      "num_cows": 1,
+      "fed_cows_flags": 0,
+      "hay": 150
+    },
+    "cows": [
+      {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "name_hex": "1c2830b3",
+        "raw_hex": "0900270001000000b80027011c2830b3"
+      }
+    ],
+    "talked": false,
+    "brushed": false,
+    "milked": 0,
+    "fed": 0,
+    "happiness": 1,
+    "flags": 0
+  }
+}

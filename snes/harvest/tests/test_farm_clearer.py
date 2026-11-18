@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pytest
 
 from harvest.core.carry import ADDR_TOOL_BACKPACK
 from harvest.core.animal_status import ADDR_HELD_ITEM
@@ -123,6 +124,40 @@ class TestDebrisClassification(unittest.TestCase):
         self.assertEqual(large.required_hits, 6)
         self.assertEqual(stump.required_hits, 6)
         self.assertEqual(damaged.required_hits, 6)
+
+
+class TestEveningWeedPhase(unittest.TestCase):
+    def _phase_task(self, ram):
+        from harvest.planner.day_phase_catalog import CLEAR_BUSHES_PHASE
+        from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+
+        world = WorldState(frame=0, ram=ram, info={})
+        task = build_phase_task(TaskBuildContext(), CLEAR_BUSHES_PHASE, world)
+        task.reset(world)
+        return world, task
+
+    def test_zero_stamina_weeds_are_lifted_with_tools_carried(self):
+        ram = _make_farm_ram(stamina=0)
+        ram[ADDR_TOOL_BACKPACK] = int(Tool.AXE)
+        _set_tile(ram, 11, 10, WEED)
+        world, task = self._phase_task(ram)
+        for _ in range(120):
+            result = task.step(world)
+            self.assertEqual(result.status, TaskStatus.RUNNING)
+            if result.action is not None and result.action.action[8]:  # A: lift
+                break
+        else:
+            self.fail("weed clear never pressed A at zero stamina")
+        self.assertFalse(task.clearer.stamina_exhausted)
+
+    def test_no_weeds_succeeds_with_unrelated_debris_and_tools_carried(self):
+        ram = _make_farm_ram()
+        ram[ADDR_TOOL_BACKPACK] = int(Tool.AXE)
+        _set_tile(ram, 12, 12, STONE)
+        _place_stump(ram, 20, 20)
+        world, task = self._phase_task(ram)
+        self.assertFalse(task.clearer.tools_missing)
+        self.assertEqual(task.step(world).status, TaskStatus.SUCCESS)
 
 
 class TestTileScanner(unittest.TestCase):
@@ -984,6 +1019,45 @@ class TestDayPlanClearField(unittest.TestCase):
         )
         kinds = [p.kind for p in phases]
         self.assertNotIn(PhaseKind.CLEAR_FIELD, kinds)
+
+
+@pytest.mark.rom
+def test_weed_phase_rom_lifts_at_zero_stamina_after_native_tool_use():
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.planner.day_phase_catalog import CLEAR_BUSHES_PHASE
+    from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.tasks.farm_clear_quota import count_debris
+    from harvest.tasks.nav import make_action
+    from retro_harness import AuditedEnv, AuditCapabilities
+
+    env = AuditedEnv(make_harvest_env("LN_y23_wood_y2s6", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.weed_phase_test"))
+    try:
+        env.reset()
+        # Spend stamina through ordinary axe swings, without RAM writes.
+        for _ in range(100):
+            if int(read_ram_value(env.get_ram(), "stamina")) == 0:
+                break
+            for action in use_tool(frames=20, cooldown=40):
+                env.step(action)
+        assert int(read_ram_value(env.get_ram(), "stamina")) == 0
+        before = count_debris(env.get_ram()).weeds
+        world = WorldState(frame=0, ram=env.get_ram(), info={})
+        task = build_phase_task(TaskBuildContext(), CLEAR_BUSHES_PHASE, world)
+        task.reset(world)
+        for frame in range(6000):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}))
+            assert result.status == TaskStatus.RUNNING
+            env.step(result.action.action if result.action else make_action())
+            if task.cleared_count >= 3:
+                break
+        assert task.cleared_count == 3
+        assert count_debris(env.get_ram()).weeds == before - 3
+        assert int(read_ram_value(env.get_ram(), "stamina")) == 0
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
 
 
 if __name__ == "__main__":

@@ -30,6 +30,30 @@ from retro_harness import TaskStatus
 class MultihopMainPondAfterGapTests(unittest.TestCase):
     """After y=31 gap open, commit multi-hop F0 even without full BFS."""
 
+    def test_cleared_farm_follows_the_full_route_around_growing_crops(self):
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0
+        for y in range(64):
+            for x in range(64):
+                _set_tile(ram, x, y, 0xA1)
+        # Summer D14: the densify hop east from (8,42) enters growing corn.
+        for y in range(30, 46):
+            for x in range(9, 18):
+                _set_tile(ram, x, y, 0x64)
+        player, goal = (8, 42), (33, 34)
+        _set_player_tile(ram, player)
+        task = CropWaterTask(work_mode="water")
+        task.reset(SimpleNamespace(ram=ram, info={}, obs=None))
+        task._navigator.update(ram)
+        task._plot_phase = "refill"
+        task._refill_multihop = True
+        full = task._pathfinder.find_path(ram, player, goal)
+        self.assertTrue(full)
+        path = task._find_nav_path(ram, player, goal)
+        self.assertTrue(path)
+        self.assertEqual(path, full[:len(path)])
+
+
     def test_gap_open_commits_multihop_when_pond_outside_viewport(self) -> None:
         """Simulates post-fence stall ~tile(25,30): gap open, pond far.
 
@@ -496,6 +520,7 @@ class MultihopMainPondAfterGapTests(unittest.TestCase):
         for ty in range(64):
             for tx in range(64):
                 _set_tile(ram, tx, ty, 0xA1)
+        _set_tile(ram, 11, 31, 0x05)  # legacy corridor still has opening fences
         world = SimpleNamespace(ram=ram, info={}, obs=None)
         task = CropWaterTask(work_mode="water")
         task.reset(world)

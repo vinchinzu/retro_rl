@@ -1,0 +1,7 @@
+{
+  "source_run": "whatif:EasternPalaceEntry poke $F34A=1 $F36E=128",
+  "frame": 0,
+  "git_sha": "8d6c36025378096c5291abc703e325a1ac8735a5",
+  "dirty": true,
+  "kind": "whatif"
+}

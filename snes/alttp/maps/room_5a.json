@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 90,
+  "roomHex": "0x5A",
+  "name": "Palace of Darkness Helmasaur King",
+  "measured": "2026-10-18",
+  "sourceState": "Scan_pod_boss",
+  "points": [
+    {
+      "label": "arena_floor",
+      "xy": [5456, 3008],
+      "role": "waypoint",
+      "notes": "Tile (42,56) layer 0 attr 0x00. Disclosed stand off the warp wall tile (31,59). Not a walked door."
+    }
+  ],
+  "doors": [
+    {
+      "label": "south_shutter",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x18 shutter pos $1D5C. Dest unknown. Poke warp, not walked."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x92", "xy": [5463, 2920], "notes": "helmasaur king slot 0 hp 48 ai 1 floor 0"}
+  ],
+  "notes": [
+    "Scan_pod_boss kind poke from Whatif_PalaceOfDarknessEntry_parallel, submodule 0x15. Not an entry pin.",
+    "No chests. Door-only plus the south floor stand. Approach xy omitted.",
+    "Isolated development. Not natural."
+  ]
+}

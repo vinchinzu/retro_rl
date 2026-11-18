@@ -96,6 +96,43 @@ class NpcCatalogTests(unittest.TestCase):
         self.assertEqual(objects[1].label, "cow")
         self.assertEqual(objects[1].kind, "animal")
 
+    def test_farm_dog_animation_frames_are_named_dog(self) -> None:
+        # Winter D13 of the y1a replay: the dog sat in the west corridor as sprite
+        # 0x01F6 and the nav pushed into it (pixel_stuck x4, a cow lost a week later).
+        from harvest.core.tile_catalog import ADDR_TILEMAP
+
+        for sprite in (0x01D9, 0x01DB, 0x01E1, 0x01F6):
+            ram = _blank_ram()
+            ram[ADDR_TILEMAP] = 0x00
+            _write_u16(ram, ADDR_PLAYER_GOBJ_INDEX, 0)
+            _write_gobj(ram, 0, 0x0005, 16 * 4, 16 * 5, [0, 1])
+            _write_gobj(ram, 1, sprite, 16 * 7, 16 * 26, [3])
+            dog = game_objects(ram)[1]
+            self.assertEqual((dog.label, dog.kind), ("dog", "animal"), hex(sprite))
+
+    def test_dog_frames_stay_the_old_labels_off_the_farm(self) -> None:
+        from harvest.core.tile_catalog import ADDR_TILEMAP
+
+        ram = _blank_ram()
+        ram[ADDR_TILEMAP] = 0x28  # the coop keeps 0x01E1 as a chicken
+        _write_u16(ram, ADDR_PLAYER_GOBJ_INDEX, 0)
+        _write_gobj(ram, 0, 0x0005, 16 * 4, 16 * 5, [0, 1])
+        _write_gobj(ram, 1, 0x01E1, 16 * 12, 16 * 11, [22])
+        self.assertEqual(game_objects(ram)[1].label, "chicken")
+
+    def test_farm_horse_blocks_navigation_through_every_animation_frame(self) -> None:
+        from harvest.planner.tasks.nav_corridor import entity_tiles
+
+        # barn_fuzz seed 1165: an unlabelled 0x01F9/0x01FF at (272,371)
+        # held the walk to the barn at (259,376), leaving slot 9 unfed.
+        for sprite in range(0x01F8, 0x0212):
+            ram = _blank_ram()
+            _write_gobj(ram, 0, 0x000E, 259, 376, [0])
+            _write_gobj(ram, 1, sprite, 272, 371, [3])
+            horse = game_objects(ram)[1]
+            self.assertEqual((horse.label, horse.kind), ("horse", "animal"), hex(sprite))
+            self.assertIn((17, 23), entity_tiles(ram, (16, 23)), hex(sprite))
+
     def test_relationship_status_decodes_hearts_marriage_and_event_flags(self) -> None:
         ram = _blank_ram()
         _write_u16(ram, field_spec("maria_hearts").address, 220)

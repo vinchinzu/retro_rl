@@ -47,6 +47,29 @@ from harvest.core.ram_catalog import field_spec
 import pytest
 
 
+@pytest.mark.parametrize("tilemap,px,py,direction", [
+    (0x10, 700, 726, "left"),
+    (0x0F, 137, 40, "down"),
+])
+def test_exit_to_farm_keeps_walking_through_outdoor_warps(tilemap, px, py, direction):
+    """Wood-trip exit needs held input while player_state has its warp bit."""
+    world = make_transition_world(tilemap)
+    set_player_pos(world.ram, px, py)
+    world.ram[field_spec("player_state").address] = 0x81
+    task = ExitToFarmTask()
+    task.reset(world)
+
+    expected = make_action(**{direction: True})
+    for _ in range(40):
+        result = task.step(world)
+        assert result.status == TaskStatus.RUNNING
+        assert result.action is not None
+        if (result.action.action[expected != 0] != 0).all():
+            break
+    else:
+        pytest.fail(f"return route never walked {direction} through the warp")
+
+
 class DayPlanSequenceHomeTests(unittest.TestCase):
     def test_day_plan_appends_return_home_after_late_optional_route_skip(self) -> None:
         class FailTask:
@@ -541,6 +564,7 @@ class DayPlanSequenceHomeTests(unittest.TestCase):
         self.assertEqual(task.step(intermediate).status, TaskStatus.RUNNING)
         target = make_world(0x00)
         set_player_pos(target.ram, 422, 489)
+        target.ram[0x0025] = 15  # farm faded in
         target.ram[field_spec("game_state").address + 1] = 0x40
         for _ in range(4):
             self.assertEqual(task.step(target).status, TaskStatus.RUNNING)
@@ -604,6 +628,87 @@ def test_farm_visitor_finishes_before_barn_navigation() -> None:
         assert read_ram_value(env.get_ram(), "tilemap") == 0x27, plan.phase_results
         assert all(row["status"] == "success" for row in plan.phase_results), plan.phase_results
         assert not plan.deferred_plans
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
+@pytest.mark.parametrize("state,origin", [
+    ("LN_y23_coop_hen_block", 0x28),
+    ("LN_care_exit_prep", 0x27),
+])
+def test_animal_building_exit_reaches_farm_without_recovery(state, origin):
+    """Replay actual stalled chores through the same exit used by DayPlanTask."""
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.planner.day_phase_cow import EXIT_BARN_PHASE
+    from harvest.planner.day_phase_chicken import EXIT_COOP_PHASE
+    from harvest.runtime.retro_setup import make_harvest_env, STATES_DIR, find_harvest_rom
+
+    if find_harvest_rom() is None or not (STATES_DIR / f"{state}.state").exists():
+        pytest.skip("needs the Harvest ROM and local animal exit predecessor")
+    env = AuditedEnv(make_harvest_env(state, lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.animal_exit_regression"))
+    try:
+        env.reset()
+        world = WorldState(frame=0, ram=env.get_ram(), info={}, obs=None)
+        assert int(world.ram[ADDR_TILEMAP]) == origin
+        spec = EXIT_BARN_PHASE if origin == 0x27 else EXIT_COOP_PHASE
+        plan = DayPlanTask(phase_sequence=[spec])
+        plan.reset(world)
+        for frame in range(spec.params["timeout"] + 2):
+            world = WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None)
+            result = plan.step(world)
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action is not None else make_action())
+        assert result.status == TaskStatus.SUCCESS, (frame, result.reason, plan.phase_results)
+        assert is_farm_tilemap(int(env.get_ram()[ADDR_TILEMAP]))
+        assert all(row["status"] == "success" for row in plan.phase_results)
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
+@pytest.mark.parametrize("state", ["PR_Y3_Summer_D1"])
+def test_barn_daily_care_feeds_brushes_and_milks_every_ready_cow(state):
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.core.animal_status import (
+        existing_cow_slots, read_cow_daily_flags, unfed_adult_cow_slots,
+        COW_DAILY_TALKED_FLAG, COW_DAILY_BRUSHED_FLAG, COW_DAILY_MILKED_FLAG,
+        cow_needs_milking,
+    )
+    from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE, COW_PHASES
+    from harvest.runtime.retro_setup import make_harvest_env, STATES_DIR, find_harvest_rom
+
+    if find_harvest_rom() is None or not (STATES_DIR / f"{state}.state").exists():
+        pytest.skip("needs the Harvest ROM and power-on seasonal predecessor")
+    env = AuditedEnv(make_harvest_env(state, lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.barn_care_regression"))
+    try:
+        env.reset()
+        world = WorldState(frame=0, ram=env.get_ram(), info={}, obs=None)
+        milk_slots = [s for s in existing_cow_slots(world.ram) if cow_needs_milking(world.ram, s)]
+        plan = DayPlanTask(phase_sequence=[EXIT_TO_FARM_PHASE, *COW_PHASES])
+        plan.reset(world)
+        for frame in range(18000):
+            world = WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None)
+            result = plan.step(world)
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action is not None else make_action())
+        ram = env.get_ram()
+        flags = {s: read_cow_daily_flags(ram, s) for s in existing_cow_slots(ram)}
+        assert not unfed_adult_cow_slots(ram), (frame, result.reason, flags)
+        for slot, value in flags.items():
+            needed = COW_DAILY_TALKED_FLAG | COW_DAILY_BRUSHED_FLAG
+            if slot in milk_slots:
+                needed |= COW_DAILY_MILKED_FLAG
+            assert value & needed == needed, (state, slot, hex(value), frame, plan.phase_results)
+        assert result.status == TaskStatus.SUCCESS, (frame, result.reason, plan.phase_results)
+        assert is_farm_tilemap(int(ram[ADDR_TILEMAP]))
+        assert all(row["status"] == "success" for row in plan.phase_results)
         assert env.audit().ram_writes == env.audit().mid_run_loads == 0
     finally:
         env.close()

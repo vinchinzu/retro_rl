@@ -35,6 +35,8 @@ __all__ = [
     "free_chest_stand",
     "heading_for",
     "open_free_chests",
+    "reach_cannonball_hall_clear",
+    "reach_cannonball_hall_exit",
     "room_origin",
     "room_step",
 ]
@@ -463,3 +465,227 @@ def _opened_bit(env: object, index: int) -> bool:
     from alttp.dungeon.rom_scan import closed_chests
 
     return all(slot[0] != index for slot in closed_chests(env))
+
+
+def reach_cannonball_hall_clear(env: object):
+    """Development B9 crossing from its south landing, with ROM lookahead.
+
+    Ends on the lower floor's clear area, before the unproved north exit.
+    Forecast restores must be disclosed. No item interaction or RAM writes.
+    ``stage_replay Play_eog9_7 alttp.dungeon.nav:reach_cannonball_hall_clear``
+    exercises this tactic; it is not a continuous-spine row yet.
+    """
+    from alttp.primitives import PrimitiveResult
+    from alttp.room_map import load_room_map
+    from alttp.startup import action_for, no_action, snapshot_env
+
+    before = snapshot_env(env)
+    frames = 0
+    geometry = load_room_map("room_b9")
+
+    def checked():
+        snap = snapshot_env(env)
+        if (not snap.indoors or snap.room_base_id != 0xB9 or snap.hp != before.hp
+                or snap.hp <= 0 or snap.sword_level != before.sword_level
+                or snap.lamp_level != before.lamp_level
+                or snap.follower != before.follower or snap.num_keys != before.num_keys):
+            raise ValueError("B9 entry invariant miss")
+        return snap
+
+    def step(action):
+        nonlocal frames
+        env.step(action)
+        frames += 1
+
+    def walk(label):
+        point = geometry.point(label)
+        if point is None:
+            raise ValueError(f"missing B9 map point {label}")
+        for _ in range(180):
+            snap = checked()
+            dx, dy = point.x - snap.link_x, point.y - snap.link_y
+            if max(abs(dx), abs(dy)) <= 1:
+                return
+            direction = (("RIGHT" if dx > 0 else "LEFT") if abs(dx) > abs(dy)
+                         else ("DOWN" if dy > 0 else "UP"))
+            step(action_for(direction))
+        raise ValueError(f"B9 entry waypoint timeout: {label}")
+
+    try:
+        checked()
+        landing = geometry.point("south_landing")
+        if (landing is None or before.layer != 0 or not before.has_control
+                or max(abs(before.link_x - landing.x), abs(before.link_y - landing.y)) > 3):
+            raise ValueError("B9 south landing required")
+        for label in ("drop_lineup", "drop_cross", "west_drop_mouth"):
+            walk(label)
+        for _ in range(180):
+            snap = checked()
+            if snap.layer == 1 and snap.has_control:
+                break
+            step(action_for("UP") if snap.has_control else no_action())
+        else:
+            raise ValueError("B9 west drop timeout")
+        for label in ("lower_cross", "channel_start"):
+            walk(label)
+        point = geometry.point("channel_clear")
+        if point is None:
+            raise ValueError("missing B9 channel_clear")
+        result = _forecast_walk(env, (point.x, point.y), max_frames=800)
+        frames += result["frames"]
+        return PrimitiveResult(result["ok"], result.get("blocker", "B9 lower channel cleared"),
+                               frames, snapshot_env(env))
+    except ValueError as exc:
+        return PrimitiveResult(False, str(exc), frames, snapshot_env(env))
+
+
+def reach_cannonball_hall_exit(env: object):
+    """B9 lower clear area → east stair → upper north door, development.
+
+    Also accepts the real south landing and composes the earned crossing.
+    Geometry lives in room_b9; stop at the first prediction miss.
+    """
+    from alttp.primitives import PrimitiveResult
+    from alttp.room_map import load_room_map
+    from alttp.startup import action_for, no_action, snapshot_env
+
+    before = snapshot_env(env)
+    geometry = load_room_map("room_b9")
+    frames = 0
+
+    def checked():
+        snap = snapshot_env(env)
+        if (not snap.indoors or snap.room_base_id not in (0xB9, 0xA9)
+                or snap.hp != before.hp or snap.hp <= 0
+                or snap.sword_level != before.sword_level
+                or snap.lamp_level != before.lamp_level
+                or snap.follower != before.follower or snap.num_keys != before.num_keys):
+            raise ValueError("B9 exit invariant miss")
+        return snap
+
+    def step(direction):
+        nonlocal frames
+        env.step(no_action() if direction is None else action_for(direction))
+        frames += 1
+
+    def walk(label, layer):
+        point = geometry.point(label)
+        if point is None:
+            raise ValueError(f"missing B9 map point {label}")
+        still = 0
+        previous = None
+        for _ in range(180):
+            snap = checked()
+            if snap.room_base_id != 0xB9:
+                raise ValueError(f"unexpected room before {label}")
+            dx, dy = point.x - snap.link_x, point.y - snap.link_y
+            if max(abs(dx), abs(dy)) <= 1 and snap.layer == layer and snap.has_control:
+                return
+            pose = (snap.link_x, snap.link_y, snap.layer, snap.submodule)
+            still = still + 1 if pose == previous else 0
+            previous = pose
+            if still >= 24:
+                raise ValueError(f"B9 first movement miss: {label} at {pose}")
+            direction = (("RIGHT" if dx > 0 else "LEFT") if abs(dx) > abs(dy)
+                         else ("DOWN" if dy > 0 else "UP"))
+            step(direction if snap.has_control else None)
+        raise ValueError(f"B9 waypoint timeout: {label}")
+
+    try:
+        checked()
+        if before.room_base_id != 0xB9 or not before.has_control:
+            raise ValueError("B9 control-ready predecessor required")
+        if before.layer == 0:
+            result = reach_cannonball_hall_clear(env)
+            frames += result.frames
+            if not result.ok:
+                return result
+        clear = geometry.point("channel_clear")
+        snap = checked()
+        if (clear is None or snap.layer != 1
+                or max(abs(snap.link_x - clear.x), abs(snap.link_y - clear.y)) > 3):
+            raise ValueError("B9 channel_clear required")
+        walk("north_east_clear", 1)
+        walk("north_east_bypass", 1)
+        walk("north_east_stair_foot", 1)
+        walk("north_east_stair_top", 0)
+        walk("north_upper_lineup", 0)
+        for _ in range(480):
+            snap = checked()
+            if snap.room_base_id == 0xA9 and snap.has_control:
+                return PrimitiveResult(True, "B9 north exit to A9", frames, snap)
+            step("UP" if snap.has_control else None)
+        raise ValueError("B9 north transition timeout")
+    except ValueError as exc:
+        return PrimitiveResult(False, str(exc), frames, snapshot_env(env))
+
+
+def _forecast_walk(env, goal, *, max_frames=1800, horizon=64, width=18):
+    """Beam over eight-frame cardinal holds; commit one checked hold."""
+    from alttp.startup import action_for, no_action, snapshot_env
+    from alttp.rollout import _restore
+    from alttp.spine.tape import ram_crc
+
+    start = snapshot_env(env)
+    room, layer, hp = start.room_base_id, start.layer, start.hp
+    actions = [action_for(d) for d in ('UP', 'LEFT', 'RIGHT', 'DOWN')] + [no_action()]
+    committed = 0
+    decisions = []
+    visits = {}
+    while committed < max_frames:
+        s = snapshot_env(env)
+        if max(abs(s.link_x-goal[0]), abs(s.link_y-goal[1])) <= 3:
+            return dict(ok=True, frames=committed, decisions=decisions)
+        live = bytes(env.em.get_state())
+        # (ranking, state, first input, first CRCs, endpoint)
+        beam = [(0, live, None, None, (s.link_x, s.link_y))]
+        try:
+            for depth in range(horizon // 8):
+                choices = {}
+                for _, blob, first, crcs, _ in beam:
+                    for ai, mask in enumerate(actions):
+                        _restore(env.em, blob)
+                        trace = []
+                        valid = True
+                        for _ in range(8):
+                            env.em.set_button_mask(mask, 0)
+                            env.em.step()
+                            end = snapshot_env(env)
+                            if (end.hp != hp or end.room_base_id != room or end.layer != layer
+                                    or not end.has_control or end.follower != start.follower
+                                    or end.sword_level != start.sword_level or end.lamp_level != start.lamp_level
+                                    or end.num_keys != start.num_keys):
+                                valid = False
+                                break
+                            if depth == 0:
+                                trace.append(ram_crc(env.get_ram()))
+                        if not valid:
+                            continue
+                        xy = (end.link_x, end.link_y)
+                        distance = abs(xy[0]-goal[0]) + abs(xy[1]-goal[1])
+                        score = distance + 0.15 * visits.get((xy[0]//4, xy[1]//4), 0)
+                        key = (xy[0]//2, xy[1]//2)
+                        node = (score, bytes(env.em.get_state()), ai if first is None else first,
+                                trace if first is None else crcs, xy)
+                        if key not in choices or score < choices[key][0]:
+                            choices[key] = node
+                if not choices:
+                    break
+                beam = sorted(choices.values(), key=lambda n:n[0])[:width]
+        finally:
+            _restore(env.em, live)
+        viable = [n for n in beam if n[2] is not None]
+        if not viable:
+            return dict(ok=False, frames=committed, blocker='no safe forecast', decisions=decisions)
+        best = min(viable, key=lambda n:n[0])
+        ai = best[2]
+        for crc in best[3]:
+            env.step(actions[ai])
+            committed += 1
+            if ram_crc(env.get_ram()) != crc:
+                return dict(ok=False, frames=committed, blocker='prediction CRC mismatch', decisions=decisions)
+        s = snapshot_env(env)
+        cell = (s.link_x//4, s.link_y//4)
+        visits[cell] = visits.get(cell,0)+1
+        decisions.append(dict(frame=committed, x=s.link_x, y=s.link_y, hp=s.hp, action=ai))
+    return dict(ok=False, frames=committed, blocker='frame cap', decisions=decisions)

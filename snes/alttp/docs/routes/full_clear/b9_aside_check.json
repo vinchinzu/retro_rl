@@ -1,0 +1,25 @@
+{
+  "aside_steps": 3,
+  "end_x": 4896,
+  "illegal_on_path": 0,
+  "goes_north": 0,
+  "path": [
+    [
+      4872,
+      5976
+    ],
+    [
+      4880,
+      5976
+    ],
+    [
+      4888,
+      5976
+    ],
+    [
+      4896,
+      5976
+    ]
+  ],
+  "note": "End is east. Unmasked row 14 bytes 0x1E are columns 25, 26, 43, 44. tile_kind unknown is not a stair; those cells are not on the path."
+}

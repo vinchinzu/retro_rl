@@ -24,6 +24,57 @@ SHIPPING_SCENE_HOUR = 17
 SHIPPING_DIALOG_TEXT_IDS = (0x031A, 0x031B)
 # $7F1F5A bit set when hour hits 17 on farm; UpdateTime freezes until cleared.
 SHIPPING_SCENE_PENDING_FLAG = 0x0400
+SHIPPED_CROP_FIELDS = {"corn": "shipped_corn", "tomato": "shipped_tomatoes",
+                       "turnip": "shipped_turnips", "potato": "shipped_potatoes"}
+
+
+class ShippingLedger:
+    """Read-only frame observer: count deposits once, across night resets.
+
+    Opening bin contents and lifetime crop counts belong to the predecessor,
+    so they establish the baseline. A bin decrease is a payout, not a sale;
+    a crop-counter decrease is an anomaly, never a wrapped positive sale.
+    """
+
+    def __init__(self) -> None:
+        self._previous: tuple[int, ...] | None = None
+        self._seasons: dict[tuple[int, int], dict[str, Any]] = {}
+        self.start: dict[str, int] | None = None
+        self.end: dict[str, int] | None = None
+        self.opening_bin_gold = 0
+        self.observations = 0
+        self.counter_decreases: list[dict[str, Any]] = []
+
+    def observe(self, ram) -> None:
+        date = {key: int(read_ram_value(ram, key)) for key in ("year", "season", "day")}
+        values = tuple(int(read_ram_value(ram, key)) for key in
+                       ("shipping_money", *SHIPPED_CROP_FIELDS.values()))
+        self.observations += 1
+        self.end = date
+        row = self._seasons.setdefault((date["year"], date["season"]), {
+            "year": date["year"], "season": date["season"], "bin_gold": 0,
+            "crop_shipped": dict.fromkeys(SHIPPED_CROP_FIELDS, 0),
+        })
+        if self._previous is None:
+            self.start, self.opening_bin_gold = date, values[0]
+        else:
+            row["bin_gold"] += max(0, values[0] - self._previous[0])
+            for index, kind in enumerate(SHIPPED_CROP_FIELDS, 1):
+                delta = values[index] - self._previous[index]
+                if delta < 0:
+                    self.counter_decreases.append({**date, "crop": kind, "delta": delta})
+                else:
+                    row["crop_shipped"][kind] += delta
+        self._previous = values
+
+    def report(self) -> dict[str, Any]:
+        return {
+            "source": "per_frame_ram", "start": self.start, "end": self.end,
+            "observations": self.observations, "opening_bin_gold": self.opening_bin_gold,
+            "counter_decreases": list(self.counter_decreases),
+            "seasons": [{**row, "crop_shipped": dict(row["crop_shipped"])}
+                        for row in self._seasons.values()],
+        }
 
 
 def shipping_scene_on_farm(tilemap: int) -> bool:
@@ -44,6 +95,12 @@ def shipping_scene_needs_dismiss(ram) -> bool:
     # Text_Daily_Shipping (0x031A) sticks in dialog_text_id after the box
     # closes. Only pulse while input is actually taken.
     if lock == 1:
+        return False
+    # lock 0 is the scene still starting (the pending flag is already up, the box is
+    # not): an A there sets game_state & 0x0800 for the rest of the day, the bed then
+    # ignores every press, and the 8 rescues that follow end the run (Y2 Spring D10).
+    # The scene opens its own box (lock 2) a few frames later and takes the A edge.
+    if lock == 0:
         return False
     text = int(read_ram_value(ram, "dialog_text_id", raw=True))
     if text in SHIPPING_DIALOG_TEXT_IDS:

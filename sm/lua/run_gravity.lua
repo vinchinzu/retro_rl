@@ -155,8 +155,33 @@ local function on_success()
   pause_emu()
 end
 
+local logged_room = nil
+
+local function note_room()
+  local st = session and session.state
+  if type(st) ~= "table" then
+    return
+  end
+  local room = tonumber(st.room_id) or 0
+  if room == logged_room then
+    return
+  end
+  logged_room = room
+  log(string.format(
+    "room 0x%04X gs=%s xy=(%s,%s) pose=%s health=%s frame=%s",
+    room,
+    tostring(st.game_state),
+    tostring(st.samus_x or st.x),
+    tostring(st.samus_y or st.y),
+    tostring(st.pose or st.samus_pose),
+    tostring(st.health),
+    tostring(session.frame)
+  ))
+end
+
 local function on_error(err)
   failed = true
+  note_room()
   log("error: " .. tostring(err))
   apply_joyset({})
   pause_emu()
@@ -178,12 +203,14 @@ local function on_script_input()
   end
   pending_names, pending_reason = extract_yield(a, b)
   apply_joyset(pending_names)
+  note_room()
 end
 
 local function on_script_frame()
   if session and session.refresh then
     session:refresh()
   end
+  note_room()
 end
 
 local function boot_emu()

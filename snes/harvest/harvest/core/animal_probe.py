@@ -78,6 +78,23 @@ def stray_hen_px(ram: np.ndarray) -> tuple[int, int] | None:
     return None
 
 
+YARD_HEN_MAPS = frozenset({0x04, 0x05})  # the town: the animal shop's yard (a bought hen spawns there)
+
+
+def stray_yard_hen_px(ram: np.ndarray) -> tuple[int, int] | None:
+    """Pixel of an adult hen waiting in the animal-shop yard, not one on the farm.
+
+    A hen carried out of the coop is set down on the farm (map byte 0x00): the shop
+    yard errand cannot fetch her, and chasing one sent Y2 Spring D29 to the yard for
+    20,000 frames and a rescue.
+    """
+    for row in chicken_slot_snapshots(ram, require_coop=False):
+        if row["stage"] == "adult" and int(row["map_raw"]) in YARD_HEN_MAPS:
+            x, y = row["pixel"]
+            return int(x), int(y)
+    return None
+
+
 def adult_chicken_tiles_from_slots(ram: np.ndarray, *, require_coop: bool = False) -> set[tuple[int, int]]:
     """Return only adult chicken tiles that should block navigation.
 

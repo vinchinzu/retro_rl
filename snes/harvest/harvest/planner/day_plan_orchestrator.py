@@ -1,16 +1,14 @@
 from __future__ import annotations
-
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import List, Optional, Sequence
-
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.recovery import PhaseFaultInjector, RecoveryTask
-from harvest.core.task_progress import ( GOAL_STALL_FRAMES, MOTION_STALL_FRAMES, ProgressSnapshot, stalled, task_progress_snapshot, )
+from harvest.core.task_progress import ( GOAL_STALL_FRAMES, MOTION_STALL_FRAMES, ProgressSnapshot, stalled, task_progress_snapshot, work_snapshot, work_receipt, )
 from harvest.core.world_context import WorldContext
 from harvest.tasks.nav import make_action
 from harvest.core.tile_catalog import ( ADDR_TILEMAP, Tool, )
 from harvest.tasks.water_refill import is_no_work_reason
-from harvest.planner.day_phase_types import ( ACQUIRE_TOOL_KINDS, PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS, tool_tags_from_ram, )
+from harvest.planner.day_phase_types import ( ACQUIRE_TOOL_KINDS, PhaseKind, PhaseSpec, SKIP_MAP_LOCK_KINDS, phase_backstop_frames, tool_tags_from_ram, )
 from harvest.planner.day_plan_phases import (
     DayPlannerPolicy,
     DAY1_PHASES,
@@ -23,16 +21,16 @@ from harvest.planner.day_plan_phases import (
 )
 from harvest.planner.day_plan_decision import DeferredPlan
 from harvest.planner.day_plan_status import ( TASKS_DIR, is_farm_tilemap, read_world_day_time, )
+from harvest.planner.day_phase_chicken import splice_coop_reentry
+from harvest.planner.day_phase_cow import MAX_BARN_RESETS, splice_barn_reentry, splice_barn_reset; from harvest.planner.day_phase_stamina import splice_water_retry
 from harvest.planner.day_phase_registry import TaskBuildContext, build_phase_task
 from harvest.planner.day_plan_tasks import ( EnsureCarryToolTask, ExitToFarmTask, )
 from harvest.core.scene import SceneGuard, unowned_scene_press
 from harvest.tasks.primitives import dismiss_dialogue_result
-
 _UNFETCHABLE_TOOL_TAGS = frozenset({"seed"})
 _STEP_BUDGET = 128
 _PHASE_WATCHDOG_KINDS = (PhaseKind.CROP, PhaseKind.HARVEST)
 _PHASE_WATCHDOG_FRAMES = 24_000
-
 def _phase_watchdog_frames(spec: PhaseSpec) -> int:
     explicit = spec.params.get("watchdog_frames")
     if explicit is not None:
@@ -41,32 +39,24 @@ def _phase_watchdog_frames(spec: PhaseSpec) -> int:
         return 0
     if isinstance(spec.kind, PhaseKind) and spec.kind in _PHASE_WATCHDOG_KINDS:
         return _PHASE_WATCHDOG_FRAMES
-    return 0
-
+    return phase_backstop_frames(spec)
 _ENV_FAULTS: list = []
-
 def _env_fault_injector() -> Optional[PhaseFaultInjector]:
     if not _ENV_FAULTS:
         _ENV_FAULTS.append(PhaseFaultInjector.from_env())
     return _ENV_FAULTS[0]
-
 def _tag_d2_spec(spec: PhaseSpec) -> PhaseSpec:
     params = dict(spec.params)
     params["d2_expanded"] = True
     return PhaseSpec( spec.phase, spec.kind, params, failure_policy=spec.failure_policy, contract=spec.contract, )
-
-# Rows later domains fill. Empty rows are not phases and do not change a day.
 COMPOSER_SEAMS = ("social", "family", "cover")
 _SEAM_ROWS: dict[str, tuple[PhaseSpec, ...]] = {name: () for name in COMPOSER_SEAMS}
-
 def register_composer_seam(name: str, phases: Sequence[PhaseSpec] | None = None) -> None:
     if name not in _SEAM_ROWS:
         raise KeyError(name)
     _SEAM_ROWS[name] = tuple(phases or ())
-
 def composer_seam_phases() -> tuple[PhaseSpec, ...]:
     return tuple(phase for name in COMPOSER_SEAMS for phase in _SEAM_ROWS[name])
-
 def _with_composer_seams(phases: Sequence[PhaseSpec]) -> Sequence[PhaseSpec]:
     extra = composer_seam_phases()
     if not extra:
@@ -74,7 +64,6 @@ def _with_composer_seams(phases: Sequence[PhaseSpec]) -> Sequence[PhaseSpec]:
     seq = list(phases)
     at = next((i for i, phase in enumerate(seq) if phase.phase in {"RETURN_HOME", "GO_TO_SLEEP"}), len(seq))
     return seq[:at] + list(extra) + seq[at:]
-
 @dataclass
 class PhaseSchedule:
 
@@ -99,6 +88,9 @@ class PhaseSchedule:
     def has_end_day_phases(self) -> bool:
         return any( phase.phase in {"RETURN_HOME", "GO_TO_SLEEP"} for phase in self.active )
 
+TOOL_STAMINA_PHASES = frozenset({"CLEAR_FIELD", "TILL_FIELD", "PLANT_PASTURE", "COVER_FIELD", "COVER_TILL", "CROP_WATER", "CUT_FODDER"})
+SKIP_AFTER_RECOVERY_PHASES = frozenset({"CROP_ESTABLISH", "ENSURE_ANIMAL_TOOLS"})  # a ring that will not plant must not cost the day's watering; a missed brush or milker must not cost the herd its feed (y1a Winter D13: a cow died a week later)
+
 @dataclass
 class DayPlanTask(Task):
 
@@ -122,6 +114,9 @@ class DayPlanTask(Task):
     _skip_map_lock: bool = field(default=False, init=False)
     _map_lock_exits: set = field(default_factory=set, init=False)
     _extra_establishes: int = field(default=0, init=False)
+    _spa_refreshes: int = field(default=0, init=False)
+    _barn_resets: int = field(default=0, init=False)
+    _refreshed_phases: set[str] = field(default_factory=set, init=False)
     _end_day_appended: bool = field(default=False, init=False)
     _ready_to_go_home: bool = field(default=False, init=False)
     _recovery_task: Optional[Task] = field(default=None, init=False)
@@ -147,6 +142,7 @@ class DayPlanTask(Task):
         self._reset_build_context()
         self._reset_d2_cursor()
     def reset(self, world: WorldState) -> None:
+        self._berry_pickup = None
         self._reset_phase_lists()
         self._reset_build_context()
         self._reset_d2_cursor()
@@ -162,6 +158,9 @@ class DayPlanTask(Task):
         self._recovery_attempted_phases.clear()
         self._map_lock_exits.clear()
         self._extra_establishes = 0
+        self._spa_refreshes = 0
+        self._barn_resets = 0
+        self._refreshed_phases.clear()
         self._deferred_plans.clear()
         self._phase_results.clear()
         self._intent_before.clear()
@@ -193,9 +192,6 @@ class DayPlanTask(Task):
         self._d2_status = None
     def can_start(self, world: WorldState) -> bool:
         return True
-    @property
-    def skip_map_lock(self) -> bool:
-        return self._skip_map_lock
     @property
     def phase_text(self) -> str:
         current = self._schedule.current_at(self._phase_index)
@@ -241,12 +237,13 @@ class DayPlanTask(Task):
         purchase = getattr(task, "purchase_receipt", None)
         if purchase:
             row["purchase_receipt"] = dict(purchase)
-        if task is not None and hasattr(task, "shipped_count"):
-            try:
-                row["shipped_count"] = int(getattr(task, "shipped_count"))
-                row["harvested_count"] = int(getattr(task, "harvested_count", 0))
-            except Exception:
-                pass
+        for key in ("shipped_count", "harvested_count", "planted_count", "watered_count", "skipped_water", "skipped_count"):
+            if task is not None and hasattr(task, key):
+                row[key] = int(getattr(task, key))
+        if getattr(task, "ship_log", None):  # per-crop pickup-to-ship frames (harvest_task.SHIP_LOG_SCHEMA)
+            row["ship_log"] = [dict(rec) for rec in task.ship_log]
+        if world is not None and self._phase_start_frame is not None:
+            row["work"] = work_receipt(getattr(self, "_work_before", {}), world.ram, task)
         if (
             world is not None
             and spec.kind == "mountain_berry"
@@ -259,21 +256,19 @@ class DayPlanTask(Task):
                 "day": int(read_ram_value(world.ram, "day") or 0),
                 "hour": int(read_ram_value(world.ram, "hour") or 0),
                 "minute": int(read_ram_value(world.ram, "minute") or 0),
-                "shipping_money_before": int(getattr(task, "_shipping_before", 0)),
+                "shipping_money_before": int(getattr(task, "phase_shipping_before", getattr(task, "_shipping_before", 0))),
                 "shipping_money_after": int(getattr(task, "_shipping_after", 0)),
             }
         if extra:
             row.update(extra)
         self._phase_results.append(row)
+        self._phase_start_frame = None
     @property
     def phases(self) -> tuple[PhaseSpec, ...]:
         return self._schedule.planned
     @property
     def runtime_phases(self) -> tuple[PhaseSpec, ...]:
         return tuple(self._schedule.active)
-    @property
-    def first_phase(self) -> Optional[PhaseSpec]:
-        return self._schedule.planned[0] if self._schedule.planned else None
     @property
     def current_phase(self) -> Optional[PhaseSpec]:
         return self._schedule.current_at(self._phase_index)
@@ -298,7 +293,16 @@ class DayPlanTask(Task):
         )
     def _make_task(self, spec: PhaseSpec, world: WorldState) -> Optional[Task]:
         self._world_context.bind(world)
-        return build_phase_task(self._build_ctx, spec, world)
+        if spec.kind == PhaseKind.CHICKEN_SALE_REQUEST and self._build_ctx.chicken_sale_baseline is None:
+            from harvest.core.ram_catalog import read_ram_value
+            # Capture before the request: farm re-entry can pay and take the hen
+            # before the event phase starts. Batch requests share this baseline.
+            baseline = (int(read_ram_value(world.ram, "num_chickens")), int(read_ram_value(world.ram, "money")))
+            self._build_ctx = replace(self._build_ctx, chicken_sale_baseline=baseline)
+        task = build_phase_task(self._build_ctx, spec, world)
+        if spec.kind == PhaseKind.CHICKEN_SALE_EVENT:
+            self._build_ctx = replace(self._build_ctx, chicken_sale_baseline=None)
+        return task
     def resume_after_hotswap(self, world: WorldState) -> None:
         task = self._recovery_task or self._current_task
         if task is None:
@@ -324,15 +328,11 @@ class DayPlanTask(Task):
         from harvest.planner.d2_work import d2_post_shop_work_phases, leftover_already_queued
         from harvest.planner.world_probe import WorldProbe
         remaining = [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]
-        if leftover_already_queued(remaining) or any( name in remaining for name in ("CROP_ESTABLISH", "CLEAR_PLOT", "D2_FARM_CLEAR") ):
-            return
-        if not self.policy.include_planting:
+        if leftover_already_queued(remaining) or any( name in remaining for name in ("CROP_ESTABLISH", "CLEAR_PLOT", "D2_FARM_CLEAR") ) or not self.policy.include_planting:
             return
         probe = WorldProbe.from_inputs(ram=world.ram, state_name=self.state_name)
         _day, hour, _minute = probe.day_time()
-        if hour >= self.policy.late_water_hour:
-            return
-        if not probe.has_seasonal_plantable_seeds():
+        if hour >= self.policy.late_water_hour or not probe.has_seasonal_plantable_seeds():
             return
         planted = [
             PhaseSpec( phase.phase, phase.kind, dict(phase.params), failure_policy=phase.failure_policy, contract=phase.contract, )
@@ -344,14 +344,11 @@ class DayPlanTask(Task):
         print(f"[DAY_PLAN] Spliced post-shop D2 work: {names}")
     def _splice_second_establish(self, world: WorldState) -> None:
         from harvest.core.ram_catalog import read_ram_value
-        from harvest.maps.farm_pond import ( POCKET_PLANT_CENTERS, pocket_plant_targets, )
+        from harvest.maps.farm_pond import ( active_plot_centers, pocket_plant_targets, ram_year, )
         from harvest.planner.day_phase_catalog import CROP_ESTABLISH_PHASE
-        if self._extra_establishes >= len(POCKET_PLANT_CENTERS) - 1:
+        if self._extra_establishes >= len(active_plot_centers(ram_year(world.ram), int(read_ram_value(world.ram, "season")))) - 1 or not self.policy.include_planting:
             return
-        if not self.policy.include_planting:
-            return
-        remaining = [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]
-        if "CROP_ESTABLISH" in remaining:
+        if "CROP_ESTABLISH" in [phase.phase for phase in self._schedule.active[self._phase_index + 1 :]]:
             return
         try:
             wanted = len(pocket_plant_targets(world.ram))
@@ -367,11 +364,32 @@ class DayPlanTask(Task):
             + self._schedule.active[self._phase_index + 1 :]
         )
         print( f"[DAY_PLAN] Spliced another CROP_ESTABLISH: " f"{wanted} ring(s) still want seed, {bags} bag(s) in the pocket" )
+    def _stamina_empty(self, ram: np.ndarray) -> bool:
+        from harvest.core.stamina import _read_u8
+        try:
+            return _read_u8(ram, "max_stamina") > 0 and _read_u8(ram, "stamina") <= 4
+        except Exception:
+            return False
+    def _try_stamina_spa_refresh(self, spec: PhaseSpec, world: WorldState, reason: str = "", result_reason: str = "") -> bool:
+        from harvest.planner.day_phase_stamina import full_restore_spa_phase, refresh_marks, spa_refresh_allowed
+        if spec.params.get("stop_hour") is not None:
+            return False  # bounded morning work must leave time for the dated festival
+        if not self.policy.include_spa or not spa_refresh_allowed(spec.phase, self._spa_refreshes, self._refreshed_phases, result_reason):
+            return False
+        self._schedule.active.insert(self._phase_index, full_restore_spa_phase())
+        self._spa_refreshes += 1
+        self._refreshed_phases.update(refresh_marks(spec.phase, self._refreshed_phases, result_reason))
+        self._current_task = None
+        print(f"[DAY_PLAN] Stamina low/empty for {spec.phase} ({reason}); spliced hot spring spa refresh")
+        return True
     def _advance(self, world: WorldState, reason: str) -> None:
         current = self._schedule.current_at(self._phase_index)
         phase_name = current.phase if current is not None else "?"
         print(f"[DAY_PLAN] {phase_name} -> {reason}")
         self._record_phase_result(current, "success", reason, world)
+        if current is not None and "stamina_low" in str(reason or "") and current.phase in TOOL_STAMINA_PHASES:
+            if self._try_stamina_spa_refresh(current, world, "stamina_low_advance", str(reason)):
+                return
         if current is not None and current.phase == "BUY_SEEDS":
             self._splice_plant_after_shop(world)
         if current is not None and current.phase == "CROP_ESTABLISH":
@@ -419,6 +437,7 @@ class DayPlanTask(Task):
         from harvest.planner.day_phase_catalog import (
             OPTIONAL_BERRY_PHASES,
             OPTIONAL_CHICKEN_SALE_PHASES,
+            OPTIONAL_WIFE_GIFT_PHASES,
             OPTIONAL_COW_PURCHASE_PHASES,
             OPTIONAL_SHOP_PHASES,
         )
@@ -428,6 +447,8 @@ class DayPlanTask(Task):
             return OPTIONAL_SHOP_PHASES
         if phase_name in OPTIONAL_CHICKEN_SALE_PHASES:
             return OPTIONAL_CHICKEN_SALE_PHASES
+        if phase_name in OPTIONAL_WIFE_GIFT_PHASES:
+            return OPTIONAL_WIFE_GIFT_PHASES
         if phase_name in OPTIONAL_COW_PURCHASE_PHASES:
             return OPTIONAL_COW_PURCHASE_PHASES
         return OPTIONAL_MONEY_PHASES
@@ -438,11 +459,24 @@ class DayPlanTask(Task):
         if route_group is None:
             route_group = OPTIONAL_MONEY_PHASES
         skipped: List[str] = []
-        while ( self._phase_index < len(self._schedule.active) and self._schedule.active[self._phase_index].phase in route_group ):
-            skipped_spec = self._schedule.active[self._phase_index]
-            skipped.append(skipped_spec.phase)
-            self._record_deferred_phase(skipped_spec, reason)
-            self._phase_index += 1
+        while self._phase_index < len(self._schedule.active):
+            current_phase = self._schedule.active[self._phase_index].phase
+            if current_phase in route_group:
+                skipped_spec = self._schedule.active[self._phase_index]
+                skipped.append(skipped_spec.phase)
+                self._record_deferred_phase(skipped_spec, reason)
+                self._phase_index += 1
+                continue
+            if (
+                current_phase == "EXIT_TO_FARM"
+                and self._phase_index + 1 < len(self._schedule.active)
+                and self._schedule.active[self._phase_index + 1].phase in route_group
+            ):
+                skipped_spec = self._schedule.active[self._phase_index]
+                skipped.append(skipped_spec.phase)
+                self._phase_index += 1
+                continue
+            break
         self._current_task = None
         self._skip_map_lock = False
         if skipped:
@@ -464,9 +498,14 @@ class DayPlanTask(Task):
         if spec.kind == PhaseKind.HARVEST:
             self._skip_optional_money_route(reason)
     def _failure_policy(self, spec: PhaseSpec) -> str:
+        policy = getattr(spec, "failure_policy", "required") or "required"
+        if policy != "required":
+            return policy
+        if spec.phase in {"ENSURE_ANIMAL_TOOLS", "ENSURE_BRUSH", "NAV_TO_BARN", "ENTER_BARN", "COW_CHORES", "EXIT_BARN"}:
+            return "required"
         if spec.phase in OPTIONAL_MONEY_PHASES:
             return "optional"
-        return getattr(spec, "failure_policy", "required") or "required"
+        return policy
     def _phase_map_mismatch(self, spec: PhaseSpec, world: WorldState) -> Optional[str]:
         contract = getattr(spec, "contract", None)
         required = tuple(getattr(contract, "required_maps", ()) or ())
@@ -489,7 +528,7 @@ class DayPlanTask(Task):
         if spec.phase in self._map_lock_exits:
             return False
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
-        if not is_house_tilemap(tilemap):
+        if not (is_house_tilemap(tilemap) or tilemap in {0x04, 0x05, 0x0C, 0x0F, 0x1C, 0x22, 0x23, 0x26, 0x27, 0x28}):
             return False
         self._map_lock_exits.add(spec.phase)
         print( f"[DAY_PLAN] Phase {spec.phase} map lock ({reason}); " f"exiting to farm and retrying once" )
@@ -565,6 +604,9 @@ class DayPlanTask(Task):
             print(f"[DAY_PLAN] Recovery complete for {phase_name}: {result.reason or 'success'}")
             if spec is not None and self._phase_target_satisfied_after_recovery(spec, world):
                 self._phase_index += 1
+            if spec is not None:
+                args = (self._schedule, self._phase_index, spec, int(world.ram[ADDR_TILEMAP]), self._map_lock_exits)
+                splice_coop_reentry(*args) or splice_barn_reentry(*args)
             self._clear_recovery()
             self._current_task = None
             self._skip_map_lock = False
@@ -578,6 +620,16 @@ class DayPlanTask(Task):
             ),
         )
     def _handle_failed_phase( self, spec: PhaseSpec, status: TaskStatus, reason: str, world: WorldState, ) -> TaskResult | None:
+        if spec.phase == "COW_CHORES" and self._barn_resets < MAX_BARN_RESETS and splice_barn_reset(self._schedule, self._phase_index, spec, reason):
+            self._barn_resets, self._current_task = self._barn_resets + 1, None
+            self._record_phase_result(spec, "retry", reason, world)
+            return None
+        if spec.phase == "COW_CHORES" and self._barn_resets >= MAX_BARN_RESETS:
+            return self._skip_failed_phase(spec, reason, world)  # never lose the fields to one unlucky cow
+        if "stamina_low" in str(reason or "") and spec.phase in TOOL_STAMINA_PHASES:
+            if self._try_stamina_spa_refresh(spec, world, "stamina_low_fail"):
+                return None
+        if splice_water_retry(self._schedule, self._phase_index, spec, reason, world.ram, self._map_lock_exits): self._current_task = None; self._record_phase_result(spec, "retry", reason, world); return None
         policy = self._failure_policy(spec)
         if policy in {"optional", "opportunistic"}:
             if spec.phase in OPTIONAL_MONEY_PHASES:
@@ -585,10 +637,12 @@ class DayPlanTask(Task):
             else:
                 self._skip_failed_phase(spec, reason, world)
             return None
+        self._record_phase_result(spec, status.value, reason, world)
         if reason != "no task":
             key = self._recovery_phase_key(spec)
             if key not in self._recovery_attempted_phases:
                 return self._start_recovery(spec, status, reason, world)
+            if spec.phase in SKIP_AFTER_RECOVERY_PHASES: return self._skip_failed_phase(spec, f"failed after recovery: {reason}", world)
             return TaskResult( status=status, reason=f"required phase {spec.phase} failed after recovery: {reason}", )
         return TaskResult( status=status, reason=f"required phase {spec.phase} failed: {reason}", )
     def _append_late_end_day_if_needed(self, world: WorldState) -> bool:
@@ -800,10 +854,14 @@ class DayPlanTask(Task):
                 self._record_phase_result(spec, "failure", reason, world)
                 return TaskResult( status=TaskStatus.FAILURE, reason=f"required phase {spec.phase} failed: {reason}", )
             return self._handle_failed_phase(spec, TaskStatus.FAILURE, reason, world)
+        if spec.phase in TOOL_STAMINA_PHASES - {"CROP_WATER"} and self._stamina_empty(world.ram):  # watering budgets itself
+            if self._try_stamina_spa_refresh(spec, world, "empty_before_start"):
+                return None
         task.reset(world)
         self._current_task = task
         self._phase_started_at = self._step_count
         self._phase_start_frame = getattr(world, "frame", None)
+        self._work_before = work_snapshot(world.ram, census=True)
         if spec.params.get("intent_id"):
             from harvest.planner.campaign_composer import intent_ram_snapshot
             self._intent_before = intent_ram_snapshot(world.ram)
@@ -811,6 +869,12 @@ class DayPlanTask(Task):
         print( f"[DAY_PLAN] Starting phase {self._phase_index + 1}/{len(self._schedule.active)}: " f"{spec.phase} ({spec.kind})" )
         return task  # type: ignore[return-value]
     def step(self, world: WorldState) -> TaskResult:
+        from harvest.tasks.power_berry import PowerBerryTask, collect_spawned_berry
+        # A scheduled berry phase owns its berry (the Kappa's cutscene sprite looks like a stray one to this hook).
+        if not isinstance(self._current_task, PowerBerryTask):
+            berry = collect_spawned_berry(self, world)
+            if berry is not None:
+                return berry
         expanded_d2 = False
         for _ in range(_STEP_BUDGET):
             self._step_count += 1
@@ -870,6 +934,8 @@ class DayPlanTask(Task):
                         if failed is None:
                             continue
                         return failed
+                if injector.jitter_wait(key, spec.kind, ram=world.ram):
+                    return TaskResult( status=TaskStatus.RUNNING, action=ActionResult(make_action()) )
                 if self._fault_mode == "stall":
                     budget = _phase_watchdog_frames(spec)
                     if budget and self._step_count - self._phase_started_at > budget:

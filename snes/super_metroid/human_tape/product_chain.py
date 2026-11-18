@@ -22,7 +22,7 @@ from super_metroid.human_tape.anchors import (
     parse_room_id,
     resolve_anchor_path,
 )
-from super_metroid.human_tape.hops import hop_items_int, load_room_names
+from super_metroid.human_tape.hops import hop_items_int, load_room_hops, load_room_names
 from super_metroid.human_tape.rta_clock import product_chain_segments
 from super_metroid.paths import GAME_DIR
 from super_metroid.human_tape.trim import COMBAT_ROOM_IDS
@@ -389,4 +389,173 @@ def write_product_chain_board(
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(board, indent=2) + "\n", encoding="utf-8")
     board["written"] = str(dest)
+    return board
+
+
+def build_clean_chain_board(task_path: Path | str = DEFAULT_TASK) -> dict[str, Any]:
+    """Fresh tape visits for the Clean solver, with explicit seam diagnostics.
+
+    Extract JSONs can outlive the tape they describe. This inventory reads
+    actual traces, retains healthy same-room tails (which collect items), and
+    removes failed terminal fight attempts when a later take replaces them.
+    It describes candidates, never a verified chain or repaired inventory.
+    ``source_start`` / ``source_end`` are inclusive input-array indices.
+    """
+    path = Path(task_path).resolve()
+    chain, notes = product_chain_segments(path)
+    sources: list[dict[str, Any]] = []
+    for segment in chain:
+        tape = _segment_tape(segment, path)
+        if tape is not None:
+            sources.append({"segment": segment["source"], "path": tape,
+                            "data": segment["tape"]})
+    # The live tape is frequently the last archived tape. Append only a new
+    # recording, rather than adding a second copy of its room visits.
+    live = _safe_json(path)
+    if live and live.get("frames") and (
+        not sources or live.get("frames") != sources[-1]["data"].get("frames")
+    ):
+        sources.append({"segment": "live", "path": path, "data": live})
+    for name in ("g4_tourian_human", "g4_tourian_human_bb", "g4_tourian_human_mb"):
+        tape = path.parent / f"{name}.json"
+        data = _safe_json(tape)
+        if data and data.get("trace") and data.get("frames"):
+            sources.append({"segment": name, "path": tape, "data": data})
+        else:
+            notes.append(f"{name}: missing tape; credits coverage is incomplete")
+
+    for source in sources:
+        source["hops"] = load_room_hops(task_data=source["data"])
+        source["end"] = len(source["data"]["frames"]) - 1
+    sources = [source for source in sources if source["hops"]]
+    seams: list[dict[str, Any]] = []
+    for previous, following in zip(sources, sources[1:]):
+        before, after = previous["hops"], following["hops"]
+        entry_room = int(after[0]["room_id"])
+        end_room = int(before[-1]["room_id"])
+        trace = previous["data"]["trace"]
+        end = trace[-1]
+        failed = "death" in str(end.get("phase", "")) or int(end.get("energy", 1)) <= 0
+        # A retake may start one room before the old end. Replace that suffix
+        # at its real entry instead of inventing a backwards doorway.
+        matches = [hop for hop in before if int(hop["room_id"]) == entry_room]
+        replace_tail = (entry_room != end_room and bool(matches)) or failed
+        if replace_tail and matches:
+            match = matches[-1]
+            previous["end"] = int(match["start_index"])
+            notes.append(f"{previous['segment']}: replaced suffix at {match['room']} "
+                         f"with {following['segment']}")
+            end_room = entry_room
+        seam = {"from_segment": previous["segment"], "to_segment": following["segment"],
+                "from_room": f"0x{end_room:04X}", "to_room": f"0x{entry_room:04X}",
+                "room_matches": end_room == entry_room}
+        prior_sample = trace[min(int(previous["end"]), len(trace) - 1)]
+        next_sample = following["data"]["trace"][int(after[0]["start_index"])]
+        prior_items = parse_items_value(prior_sample.get("items"))
+        next_items = parse_items_value(next_sample.get("items"))
+        if prior_items is not None and next_items is not None:
+            seam["source_item_bits_added"] = f"0x{next_items & ~prior_items:04X}"
+            seam["source_item_bits_removed"] = f"0x{prior_items & ~next_items:04X}"
+        seam["source_resource_changes"] = {
+            key: [prior_sample[key], next_sample[key]]
+            for key in ("energy", "missiles", "supers", "pbs")
+            if key in prior_sample and key in next_sample and prior_sample[key] != next_sample[key]
+        }
+        seams.append(seam)
+
+    rows: list[dict[str, Any]] = []
+    gaps: list[dict[str, Any]] = []
+    names = load_room_names()
+    for source_i, source in enumerate(sources):
+        hops = source["hops"]
+        cutoff = int(source["end"])
+        anchors = load_anchors_index(source["path"])
+        for hop_i, hop in enumerate(hops):
+            start = int(hop["start_index"])
+            if start > cutoff:
+                break
+            room = int(hop["room_id"])
+            nxt = hops[hop_i + 1] if hop_i + 1 < len(hops) else None
+            target = int(nxt["room_id"]) if nxt is not None else None
+            # Keep the recorded transition inputs through the successor's
+            # first settled sample; id-change alone cuts a door too early.
+            stop = min(int(nxt["start_index"]) if nxt is not None else cutoff, cutoff)
+            input_start = start + 1
+            if source_i == 0 and hop_i < 2:
+                # Boot row zero is metadata; row one owns the power-on prefix.
+                input_start = 0
+            if input_start > stop:
+                # A segment can end on the first room-id-change sample, with
+                # no controllable input at all in that new room.
+                continue
+            hit = match_anchor(anchors, start, room, task_path=source["path"])
+            if hit and (hit.get("frame") != start or parse_room_id(hit.get("room")) != room):
+                hit = None  # Slicing from start+1 requires that exact entry frame.
+            continuation = nxt is None
+            terminal = source_i + 1 == len(sources) and continuation
+            row = {"segment": source["segment"], "hop_index": hop_i,
+                   "room_id": room, "room": f"0x{room:04X}",
+                   "name": hop.get("name", names.get(room, "?")),
+                   "to_room_id": target,
+                   "to_room": f"0x{target:04X}" if target is not None else None,
+                   "tape": _rel(source["path"]), "dwell": stop - start + 1,
+                   "source_start": input_start, "source_end": stop,
+                   "source_settled_frame": start,
+                   "mode": "combat" if room in COMBAT_ROOM_IDS else "traversal",
+                   "items": hop_items_int(hop), "continuation": continuation,
+                   "anchor_path": _rel(hit["path"]) if hit else None,
+                   "has_anchor": bool(hit), "anchor_kind": hit.get("kind") if hit else None}
+            if continuation:
+                final = source["data"]["trace"][stop]
+                row["end_xy"] = [int(final.get("x", 0)), int(final.get("y", 0))]
+                row["end_items"] = parse_items_value(final.get("items"))
+                if terminal:
+                    row["goal_phase"] = str(final.get("phase", ""))
+            rows.append(row)
+
+        if source_i + 1 >= len(sources):
+            continue
+        following = sources[source_i + 1]
+        seam = seams[source_i]
+        seam["after_row"] = len(rows) - 1
+        if seam["room_matches"]:
+            continue
+        gap = dict(seam)
+        if seam["from_room"] == "0x95FF" and seam["to_room"] == "0xCA08":
+            # These are existing production skills, not guessed tape links.
+            for controller, room, target in (("moat_cross", 0x95FF, 0x93FE),
+                                             ("west_ocean_to_ws", 0x93FE, 0xCA08)):
+                rows.append({"segment": "controller_gap", "hop_index": 0,
+                             "controller_id": controller, "room_id": room,
+                             "room": f"0x{room:04X}", "to_room_id": target,
+                             "to_room": f"0x{target:04X}", "name": names.get(room, "?"),
+                             "mode": "controller", "continuation": False})
+            gap["candidates"] = ["moat_cross", "west_ocean_to_ws"]
+        else:
+            gap["candidates"] = []
+            # An unresolved seam must stop the chain, never silently jump.
+            rows.append({"segment": "missing_gap", "hop_index": 0,
+                         "room": seam["from_room"], "to_room": seam["to_room"],
+                         "name": "missing tape or controller", "mode": "missing"})
+        gaps.append(gap)
+    for i, row in enumerate(rows):
+        row["row"] = i
+    return {"kind": "super_metroid_clean_chain_candidates", "schemaVersion": 1,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "task": _rel(path), "hops": rows, "seams": seams, "gaps": gaps,
+            "counts": {"hops": len(rows), "sources": len(sources), "gaps": len(gaps),
+                       "unresolved_gaps": sum(not gap["candidates"] for gap in gaps)},
+            "notes": notes + ["Candidate inventory only; source states used refills. "
+                              "No natural-entry or Clean claim is made by this board."]}
+
+
+def write_clean_chain_board(
+    task_path: Path | str = DEFAULT_TASK,
+    *,
+    out: Path | str = GAME_DIR / "recordings" / "chain_board_clean.json",
+) -> dict[str, Any]:
+    board = build_clean_chain_board(task_path)
+    destination = Path(out)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(board, indent=2) + "\n", encoding="utf-8")
     return board

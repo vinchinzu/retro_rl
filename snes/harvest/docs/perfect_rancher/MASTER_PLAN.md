@@ -25,6 +25,11 @@ is accepted. Exact-ten, clock, full-scale native care/arbiter and contract
 reconciliation remain open. Short structure A/B is identical at 17,538
 frames; full-ending timing acceptance remains open.
 
+ROM-verified score contract, 2026-11-02: every term, window edge and the final night's drift (wife -2,
+shipping credit, 2,950-tile development edge) is poked and judged by the ROM's calculator in
+`tests/test_perfect_ending.py` (details in the [handoff](../tasks/rr-20w-run16-defects.md)). It pins what the
+ROM rewards, not that the bot can reach it.
+
 Evidence tags used below:
 
 - **[ROM]**: read from the decomp (`HM-Decomp/src/code_banks/*`).

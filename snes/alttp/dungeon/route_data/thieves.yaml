@@ -1,0 +1,245 @@
+schema_version: 1
+slug: thieves
+name: Thieves Town (Entrance)
+z3_id: 171
+room_type: Dungeon
+source_file: regions/dungeons/thieves/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+note: Also requires access to Northwest Dark World
+regions:
+- name: Thieves Town (Entrance)
+  nodes:
+  - Thieves Town Big Key Door
+  - Thieves Town Exit
+  - Thieves' Town - Big Key Chest
+  - Thieves' Town - Map Chest
+  - Thieves' Town - Compass Chest
+  - Thieves' Town - Ambush Chest
+- name: Thieves Town (Deep)
+  nodes:
+  - Blind Fight
+  - Thieves' Town - Attic
+  - Thieves' Town - Big Chest
+  - Thieves' Town - Blind's Cell
+- name: Blind Fight
+  nodes:
+  - Thieves Town - Blind
+  - Thieves Town - Prize
+locations:
+- id: 3
+  name: Thieves' Town - Big Key Chest
+  region: Thieves Town (Entrance)
+  node_type: item
+  item: BigKeyD4
+  address: '0xEA04'
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 4
+  name: Thieves' Town - Map Chest
+  region: Thieves Town (Entrance)
+  node_type: item
+  item: MapD4
+  address: '0xEA01'
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 5
+  name: Thieves' Town - Compass Chest
+  region: Thieves Town (Entrance)
+  node_type: item
+  item: CompassD4
+  address: '0xEA07'
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 6
+  name: Thieves' Town - Ambush Chest
+  region: Thieves Town (Entrance)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEA0A'
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 8
+  name: Thieves' Town - Attic
+  region: Thieves Town (Deep)
+  node_type: item
+  item: ThreeBombs
+  address: '0xEA0D'
+  requires:
+  - BigKeyD4
+  - KeyD4
+  keys:
+  - name: BigKeyD4
+    count: 1
+  - name: KeyD4
+    count: 1
+  items: []
+- id: 9
+  name: Thieves' Town - Big Chest
+  region: Thieves Town (Deep)
+  node_type: item
+  item: TitansMitt
+  address: '0xEA10'
+  requires:
+  - Hammer
+  - BigKeyD4
+  - KeyD4
+  keys:
+  - name: BigKeyD4
+    count: 1
+  - name: KeyD4
+    count: 1
+  items:
+  - Hammer
+  note: 'FIXME: Changes based on key placement'
+- id: 10
+  name: Thieves' Town - Blind's Cell
+  region: Thieves Town (Deep)
+  node_type: item
+  item: KeyD4
+  address: '0xEA13'
+  requires:
+  - BigKeyD4
+  keys:
+  - name: BigKeyD4
+    count: 1
+  items: []
+- id: 11
+  name: Thieves Town - Blind
+  region: Blind Fight
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180156'
+  requires:
+  - BigKeyD4
+  - KeyD4
+  keys:
+  - name: BigKeyD4
+    count: 1
+  - name: KeyD4
+    count: 1
+  items: []
+- id: 12
+  name: Thieves Town - Prize
+  region: Blind Fight
+  node_type: item
+  item: Crystal4
+  address:
+  - '0x120A6'
+  - '0x53F36'
+  - '0x53F37'
+  - '0x18005B'
+  - '0x180077'
+  - '0xC707'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Thieves Town Big Key Door
+  region: Thieves Town (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 2
+  name: Thieves Town Exit
+  region: Thieves Town (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - isDarkLink
+  keys: []
+  items:
+  - RescueZelda
+  - isDarkLink
+- id: 7
+  name: Blind Fight
+  region: Thieves Town (Deep)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD4
+    count: 1
+    nodes:
+    - Thieves' Town - Attic
+    - Thieves' Town - Big Chest
+    - Thieves' Town - Blind's Cell
+    - Thieves Town - Blind
+  - name: KeyD4
+    count: 1
+    nodes:
+    - Thieves' Town - Attic
+    - Thieves' Town - Big Chest
+    - Thieves Town - Blind
+  items:
+  - name: Hammer
+    nodes:
+    - Thieves' Town - Big Chest
+  - name: RescueZelda
+    nodes:
+    - Thieves Town Big Key Door
+    - Thieves Town Exit
+    - Thieves' Town - Big Key Chest
+    - Thieves' Town - Map Chest
+    - Thieves' Town - Compass Chest
+    - Thieves' Town - Ambush Chest
+  - name: isDarkLink
+    nodes:
+    - Thieves Town Big Key Door
+    - Thieves Town Exit
+    - Thieves' Town - Big Key Chest
+    - Thieves' Town - Map Chest
+    - Thieves' Town - Compass Chest
+    - Thieves' Town - Ambush Chest
+connections:
+- connection_type: Door
+  description: Door connection between Thieves Town Big Key Door and Thieves Town (Deep)
+  origin: Thieves Town Big Key Door
+  destination: Thieves Town (Deep)
+  internal: true
+- connection_type: Door
+  description: Door connection between Blind Fight and Blind Fight
+  origin: Blind Fight
+  destination: Blind Fight
+  internal: true
+- connection_type: Door
+  description: Door connection between Thieves Town and Thieves Town (Entrance)
+  origin: Thieves Town
+  destination: Thieves Town (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Thieves Town Exit and West Dark World
+  origin: Thieves Town Exit
+  destination: West Dark World
+  internal: false
+strats: []
+notes: []

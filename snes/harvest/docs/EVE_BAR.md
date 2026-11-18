@@ -39,8 +39,8 @@ The autoplay day then walks home and sleeps.
   6,000G (the order plus the feather), request the cabin sign, pay the next
   morning, sleep four nights. The cabin's first visit is an introduction: leave
   and re-enter for the sign. After remodeling, finish the carpenter scene and
-  walk off the steps to (136,376) before BFS. A marriage in Fall or Winter
-  leaves a first-house order that does not arm the clock.
+  walk off the steps to (136,376) before BFS. A first-house quote delayed until Fall or Winter
+  cannot arm the clock.
 
 ## What the ROM does
 
@@ -164,6 +164,23 @@ The Spring chain that reaches 250 is a bar night until hearts are at least
 first total of 108 or more. The festival adds 42. Summer and Fall pay
 nothing. Winter pays +2.
 
+## Clock deadline policy
+
+The clock arm is independent of the house payment. From Y1 Summer D4, the
+planner requests the first carpenter quote on the first available weekday,
+even without 250 wood, money, Eve's proposal hearts or cows. The carpenter's
+following-morning visit sets `$7F1F70 & 0x0004` **before** checking lumber
+(`bank_81.asm`, `$81F14C`). Request by Summer D29 so that visit can happen by
+D30; a pending visit still runs on D30. Starting another request on D30 is too
+late. The task requires that native arm bit to call the clock armed.
+
+If lumber and money are ready when he arrives, the existing dialogue accepts
+the payment and starts construction immediately. Otherwise the arm persists
+while normal farming and herd purchases continue. The first completed-house
+scene turns the arm into clock-owned `$7F1F6E & 0x4000`; finishing a house
+without the earlier arm does not recover the clock. Ordinary first-house
+lumber/order scheduling retains its two-cow gate after the early quote.
+
 ## Native composition and evidence
 
 Verified 2026-10-15 with controller input from natural predecessors. The
@@ -196,9 +213,9 @@ remains a historical run.
 
 `build_day_phases_from_ram` schedules the bar, Flower Festival, first house,
 Sunday buy, shed fetch and Saturday proposal. `GatherHouseWoodTask` and
-`HouseUpgradeTask` live in `planner/tasks/home.py`. First-house planning
-still pays 6,000G (5,000G order plus the 1,000G feather) once a cow is
-already owned. Pasture and the 5,300G cow buy stay on the calendar when
+`HouseUpgradeTask` live in `planner/tasks/home.py`. In this historical continuation, first-house planning
+required 6,000G (5,000G order plus the 1,000G feather) once a cow was
+already owned; the independent early clock quote above now takes priority. Pasture and the 5,300G cow buy stay on the calendar when
 Eve is at 250. Marriage can land in Fall or Winter. Farm stumps pay six wood;
 the mountain stump provides renewable fallback. The cabin closes on
 weekends; its first visit is the introduction, so leave and re-enter for
@@ -222,6 +239,25 @@ QT_QPA_PLATFORM=offscreen HEADLESS=1 uv run --with pytest python -m pytest \
 The six ROM checks cover lumber, the cabin request, corn planting, all four
 construction nights, the natural Sunday sale, and the complete wedding.
 The receipts depend on the local natural checkpoints above.
+
+The score strategies' morning egg policy now targets **654** until the
+second-child flag is retained, using both laid eggs while below that target.
+Afterwards it returns to **506**, with a dated ceiling that reserves future
+festival gains and the +50 wife-heart answer at either child's age-60 birth
+scene. Excess affection requests one native fish gift (-8), bounded to a
+clear non-festival morning; it carries the catch home and waits outside until
+15:00 if Eve's midday script is closed. The last three Summer mornings in
+Year 3 keep ripe uncapped crops ahead of this correction. Failed trips drop
+the carried fish before ordinary work resumes.
+
+`tests/test_eve_gift.py` proves the complete catch/gift controller from the
+natural `PR_e2es4_Y3_Spring_D3` pin: Eve 390→382, empty hands back on the farm,
+9,251 frames, zero RAM writes or mid-run loads. Its separate **research**
+threshold case sets only starting hearts to 646 and child 1's age to 90
+(four declared setup byte writes), then uses two native eggs and sleep:
+646→654→652 after the house-entry loss, second-child flag set and age 1.
+That case proves the threshold and gift policy, not an earned family timeline.
+Logs: `recordings/berries/family_{fish,threshold,all}_20261112.log`.
 
 Second house, measured from `LN_house_married_natural` (Fall D18 06:00,
 2 wood, 680G, Eve 234, wife bit still `0x0010`, `num_cows` 0,

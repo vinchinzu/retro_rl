@@ -465,17 +465,19 @@ def test_last_stage_before_room_50_is_castle_dungeon_prefix() -> None:
     assert last_stage("sanctuary_heart") == "sanctuary_heart"
     assert last_stage("sanctuary_exit") == "sanctuary_exit"
     assert last_stage("kakariko") == "sanctuary_to_kakariko"
+    assert last_stage("eastern_entry") == "eastern_approach"
     assert save_point_name("Full", "castle_dungeon_prefix") == (
         "Full_castle_dungeon_prefix"
     )
 
 
 def test_spine_hops_sanctuary_to_kakariko() -> None:
-    from alttp.spine.hops import SPINE_THROUGH, hop_for
+    from alttp.spine.hops import SPINE_THROUGH, hop_for, hops_through
     from alttp.opening_route.escape_graph import (
         N_SANCTUARY_HEART,
         N_SANCTUARY_EXIT,
         N_KAKARIKO,
+        N_ROOM_C9,
     )
 
     assert "sanctuary_heart" in SPINE_THROUGH
@@ -496,6 +498,85 @@ def test_spine_hops_sanctuary_to_kakariko() -> None:
     assert hop_kak is not None
     assert hop_kak.stages == ("sanctuary_to_kakariko",)
     assert hop_kak.success == N_KAKARIKO
+
+    assert "eastern_entry" in SPINE_THROUGH
+    hop_east = hop_for("eastern_entry")
+    assert hop_east is not None
+    assert hop_east.stages == ("eastern_grounds", "sahasrahla_hut", "eastern_approach")
+    assert hop_east.success == N_ROOM_C9
+    eastern = tuple(s for hop in hops_through("eastern_entry") for s in hop.stages)
+    assert "sanctuary_to_kakariko" not in eastern
+    assert eastern[-3:] == hop_east.stages
+    assert "sanctuary_heart" in eastern and "sanctuary_exit" in eastern
+    kakariko = tuple(s for hop in hops_through("kakariko") for s in hop.stages)
+    assert "eastern_grounds" not in kakariko and kakariko[-1] == "sanctuary_to_kakariko"
+
+
+def test_eastern_entry_dispatch_stops_after_the_door_hop() -> None:
+    """--through eastern_entry plays the lobby stages and does not take Kakariko."""
+    seen: dict[str, object] = {}
+
+    def fake(env: object, **kwargs: object) -> FullTipResult:
+        seen.update(kwargs)
+        tip = _tip()
+        tip.tip_node = "room_c9"
+        return tip
+
+    payload = cli.run_opening_spine(
+        "eastern_entry", env=object(), close=False, run_tip_fn=fake,
+    )
+    stages = seen["segment_ids"]
+    assert isinstance(stages, tuple)
+    assert stages[-3:] == ("eastern_grounds", "sahasrahla_hut", "eastern_approach")
+    assert "sanctuary_heart" in stages and "sanctuary_exit" in stages
+    assert "sanctuary_to_kakariko" not in stages
+    assert seen["success"] == "room_c9"
+    assert payload["ok"] is True
+    assert payload["through"] == "eastern_entry"
+    assert payload["tip_node"] == "room_c9"
+
+
+def test_eastern_entry_power_on_replay_lands_lobby_with_heart() -> None:
+    """The landed eastern_entry tape is room 0xC9 with the heart taken in play."""
+    from alttp.room_map import load_room_map
+    from alttp.scripts.audit_power_on import replay_goal_accepted
+
+    path = RECORDINGS_DIR / "eog9_spine_20261023" / "eog9_spine_replay.json"
+    controller = RECORDINGS_DIR / "eog9_spine_20261023" / "eog9_spine.json"
+    if not path.is_file() or not controller.is_file():
+        pytest.skip("requires the eastern_entry power-on replay")
+    report = json.loads(path.read_text(encoding="utf-8"))
+    played = json.loads(controller.read_text(encoding="utf-8"))
+    door = load_room_map("screen_1e_eastern").door("eastern_door_to_0xc9")
+    assert door is not None and door.landing_xy is not None
+    final, story = report["final"], report["story"]
+    assert report["through"] == "eastern_entry" and report["start"] == "NONE"
+    assert report["desynced"] == 0
+    assert report["audit"]["set_state"] == report["audit"]["writes"] == 0
+    assert report["survival"]["enabled"] is False and report["survival"]["write_count"] == 0
+    assert final["game_mode"] == 0x07 and final["submodule"] == 0
+    assert final["indoors"] and final["has_control"] and final["room_base_id"] == 0xC9
+    assert final["follower"] == 0 and final["has_fighter_sword"] and final["has_lamp"]
+    assert story["max_hp"] == 32 and final["hp"] == 28
+    assert max(
+        abs(final["link_x"] - door.landing_xy[0]),
+        abs(final["link_y"] - door.landing_xy[1]),
+    ) <= 4
+    heart = [row for row in report["in_game_health_gains"] if row["room"] == 0x12]
+    assert [row["hp_gained"] for row in heart] == [8, 8, 6]
+    assert replay_goal_accepted(
+        {"through": "eastern_entry", "source_ok": True}, final, story,
+    )
+    assert replay_goal_accepted(
+        {"through": "eastern_entry", "source_ok": False}, final, story,
+    ) is False
+    row = next(
+        item for item in played["segments"] if item["segmentId"] == "eastern_approach"
+    )
+    assert row["acceptance"]["eastern_lobby"] is True
+    assert row["acceptance"]["inventory_preserved"] is True
+    assert row["ok"] is True and played["ok"] is True
+    assert report["route_goal_ok"] is True
 
 
 @pytest.mark.rom

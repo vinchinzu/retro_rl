@@ -1,0 +1,24 @@
+game: chrono_trigger
+title: "Chrono Trigger"
+directory: snes/chrono_trigger
+genre_tracks:
+  - structured_campaign_rpg
+capability_phase: 5
+project_state: segmenting
+maturity: M1
+runtime_class: bronze
+intervention_class: clean
+popularity: high
+engineering_effort: high
+transfer_value: high
+ending_definition: Lavos defeated and credits reached (detector pending)
+start_contract: power_on_new_game
+completion_contract: lavos_clear_credits
+best_manifest: null
+best_video: null
+assist_contract: null
+status_doc: snes/chrono_trigger/docs/STATUS.md
+plan_doc: snes/chrono_trigger/docs/plan.md
+last_verified: 2026-11-16
+blocker: Lab 32, Proto Dome and Factory; full-game completion detector pending
+notes: Continuous power-on through Yakra, Dragon Tank and Guardian to the Arris Dome Bike Key; 190 rows, 326577 frames, zero state loads or RAM writes; exact replay verified; M2 completion instrumentation incomplete.

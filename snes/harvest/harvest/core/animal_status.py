@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -41,8 +41,25 @@ COW_DAILY_ATTENTION_FLAGS = COW_DAILY_BRUSHED_FLAG | COW_DAILY_TALKED_FLAG
 COW_STATUS_BABY_FLAG = 0x02
 COW_STATUS_YOUNG_FLAG = 0x04
 COW_STATUS_ADULT_FLAG = 0x08
+COW_STATUS_CRANKY_FLAG = 0x10
 COW_STATUS_SICK_FLAG = 0x20
 COW_STATUS_PREGNANT_FLAG = 0x40
+
+# ROM sickness and overnight health mechanics (bank_83.asm:6723 CowFeedingandStatus)
+ITEM_COW_MEDICINE = 0x09
+COW_MEDICINE_PRICE_G = 1000
+COW_SICKNESS_START_TIMER = 7          # Byte +3 initialized to 7 on contracting sickness
+COW_UNFED_HAPPINESS_PENALTY = -8      # bank_83.asm:6816 LDA #$FFF8
+COW_SICK_HAPPINESS_PENALTY = -12      # bank_83.asm:6875 LDA #$FFF4
+COW_UNFED_SICK_OVERNIGHT_DELTA = -20  # Total overnight drop when an unfed cow rolls sick (-8 + -12)
+COW_SICK_ROLL_DENOMINATOR = 4         # RNGReturn0toA with Y=4 -> 1 in 4 (25%) chance of sickness
+
+# ROM cranky and outside pasture overnight mechanics (bank_83.asm:6881 CowFeedingandStatus)
+COW_CRANKY_START_TIMER = 3              # Byte +3 initialized to 3 on becoming cranky (bank_83.asm:6938 LDA #$03)
+COW_CRANKY_HAPPINESS_PENALTY = -8       # bank_83.asm:6902 LDA #$FFF8
+COW_CRANKY_OUTSIDE_ROLL_DENOMINATOR = 16 # bank_83.asm:6898 LDA #$10 -> 1 in 16 (6.25%) chance when outdoors with $7F1F5A:1000
+WEATHER_WILD_DOG_BREACH_FLAG = 0x0400   # $0196 bit 0x0400 set by broken fence overnight check (bank_82.asm:2499)
+EVENT_FLAG_WILD_DOG_BREACH = 0x0200     # $7F1F6E bit 0x0200
 
 
 def read_hay_count(ram: np.ndarray) -> int:
@@ -94,6 +111,62 @@ def read_cow_happiness(ram: np.ndarray, slot: int) -> int:
     return read_animal_slot_field(ram, "cow", slot, "happiness")
 
 
+def read_cow_timer(ram: np.ndarray, slot: int) -> int:
+    """Read byte +3 (pregnancy countdown 21..0, sick countdown 7..0, or age 0..21)."""
+    return read_animal_slot_field(ram, "cow", slot, "pregnancy_raw")
+
+
+def cow_is_sick(ram: np.ndarray, slot: int) -> bool:
+    """True if cow exists and has the sickness bit set (0x20)."""
+    status = read_cow_status(ram, slot)
+    return bool((status & 0x01) and (status & COW_STATUS_SICK_FLAG))
+
+
+def sick_cow_slots(ram: np.ndarray) -> list[int]:
+    """Extant cow slots that currently have the sick flag set."""
+    return [slot for slot in existing_cow_slots(ram) if cow_is_sick(ram, slot)]
+
+
+def cow_days_until_death(ram: np.ndarray, slot: int) -> Optional[int]:
+    """Days left until sick cow dies (decrements 7 down to 0). None if not sick."""
+    if not cow_is_sick(ram, slot):
+        return None
+    return read_cow_timer(ram, slot)
+
+
+def ram_has_sick_cows(ram: np.ndarray) -> bool:
+    """True if any cow on the farm is currently sick."""
+    return bool(sick_cow_slots(ram))
+
+
+def ram_needs_cow_medicine(ram: np.ndarray) -> bool:
+    """True if any cow is sick and needs medicine (item 0x09)."""
+    return ram_has_sick_cows(ram)
+
+
+def cow_is_cranky(ram: np.ndarray, slot: int) -> bool:
+    """True if cow exists and has the cranky bit set (0x10)."""
+    status = read_cow_status(ram, slot)
+    return bool((status & 0x01) and (status & COW_STATUS_CRANKY_FLAG))
+
+
+def cranky_cow_slots(ram: np.ndarray) -> list[int]:
+    """Extant cow slots that currently have the cranky flag set."""
+    return [slot for slot in existing_cow_slots(ram) if cow_is_cranky(ram, slot)]
+
+
+def read_cow_cranky_timer(ram: np.ndarray, slot: int) -> Optional[int]:
+    """Countdown days remaining for cranky cow (3 down to 0). None if not cranky."""
+    if not cow_is_cranky(ram, slot):
+        return None
+    return read_cow_timer(ram, slot)
+
+
+def ram_has_cranky_cows(ram: np.ndarray) -> bool:
+    """True if any cow on the farm is currently cranky."""
+    return bool(cranky_cow_slots(ram))
+
+
 def cow_slot_exists(ram: np.ndarray, slot: int) -> bool:
     return bool(read_cow_status(ram, slot) & 0x01)
 
@@ -109,6 +182,37 @@ def existing_cow_slots(ram: np.ndarray) -> list[int]:
     return slots
 
 
+# CowFeedingandStatus ($83BC5A): a barn adult tests fed_cows_flags at its slot
+# bit, a pregnant one at 0x1000. A clear bit costs happiness -8 and a sick roll;
+# a sick cow dies seven nights later.
+COW_BARN_MAP = 0x27
+PREGNANT_COW_FEED_FLAG = 0x1000
+
+
+def cows_outside(ram: np.ndarray) -> list[int]:
+    """Cows that walked out of the barn door: the ROM stores the season number as their home map.
+
+    A cow outside gets no talk, brush or milk from the barn chores, and rain costs her happiness at night.
+    """
+    return [slot for slot in existing_cow_slots(ram) if read_animal_slot_field(ram, "cow", slot, "home_map_raw") < 4]
+
+
+def unfed_adult_cow_slots(ram: np.ndarray) -> list[int]:
+    """Barn adults the night pass will count as unfed."""
+    fed = read_fed_cows_flags(ram)
+    unfed: list[int] = []
+    for slot in existing_cow_slots(ram):
+        status = read_cow_status(ram, slot)
+        if not status & COW_STATUS_ADULT_FLAG:
+            continue
+        if read_animal_slot_field(ram, "cow", slot, "home_map_raw") != COW_BARN_MAP:
+            continue
+        mask = PREGNANT_COW_FEED_FLAG if status & COW_STATUS_PREGNANT_FLAG else 1 << slot
+        if not fed & mask:
+            unfed.append(slot)
+    return unfed
+
+
 def cow_needs_daily_attention(ram: np.ndarray, slot: int) -> bool:
     flags = read_cow_daily_flags(ram, slot)
     return (flags & COW_DAILY_ATTENTION_FLAGS) != COW_DAILY_ATTENTION_FLAGS
@@ -118,7 +222,8 @@ def cow_is_milk_ready(ram: np.ndarray, slot: int) -> bool:
     status = read_cow_status(ram, slot)
     if not (status & COW_STATUS_ADULT_FLAG):
         return False
-    return not bool(status & (COW_STATUS_SICK_FLAG | COW_STATUS_PREGNANT_FLAG))
+    # The milk script refuses status bits 0x70 ($849E0B): cranky, sick, pregnant.
+    return not bool(status & (COW_STATUS_CRANKY_FLAG | COW_STATUS_SICK_FLAG | COW_STATUS_PREGNANT_FLAG))
 
 
 def cow_needs_milking(ram: np.ndarray, slot: int) -> bool:
@@ -222,16 +327,18 @@ def ram_needs_chicken_chores(ram: np.ndarray) -> bool:
 
 
 def ram_needs_cow_chores(ram: np.ndarray) -> bool:
-    """Return True when any cow still needs feed, talk, or brushing today."""
+    """Return True when any cow still needs feed, talk, brushing, or medicine today."""
     slots = existing_cow_slots(ram)
     cows = max(read_ram_u8(ram, ADDR_COW_COUNT), len(slots))
     if cows <= 0:
         return read_ram_u8(ram, ADDR_ITEM_ON_HAND) == ITEM_FODDER
-    fed = read_ram_u8(ram, ADDR_FED_COWS_N)
-    needs_feed = fed < cows and (read_hay_count(ram) > 0 or read_ram_u8(ram, ADDR_ITEM_ON_HAND) == ITEM_FODDER)
+    has_fodder = read_hay_count(ram) > 0 or read_ram_u8(ram, ADDR_ITEM_ON_HAND) == ITEM_FODDER
+    unfed = unfed_adult_cow_slots(ram)
+    needs_feed = (bool(unfed) or read_ram_u8(ram, ADDR_FED_COWS_N) < cows) and has_fodder
     needs_attention = any(cow_needs_daily_attention(ram, slot) for slot in slots)
     needs_milk = any(cow_needs_milking(ram, slot) for slot in slots)
-    return needs_feed or needs_attention or needs_milk
+    needs_medicine = any(cow_is_sick(ram, slot) for slot in slots)
+    return needs_feed or needs_attention or needs_milk or needs_medicine
 
 
 __all__ = [
@@ -251,6 +358,18 @@ __all__ = [
     "ITEM_EGG",
     "ITEM_FODDER",
     "ITEM_CHICKEN_FEED",
+    "ITEM_COW_MEDICINE",
+    "COW_MEDICINE_PRICE_G",
+    "COW_SICKNESS_START_TIMER",
+    "COW_UNFED_HAPPINESS_PENALTY",
+    "COW_SICK_HAPPINESS_PENALTY",
+    "COW_UNFED_SICK_OVERNIGHT_DELTA",
+    "COW_SICK_ROLL_DENOMINATOR",
+    "COW_CRANKY_START_TIMER",
+    "COW_CRANKY_HAPPINESS_PENALTY",
+    "COW_CRANKY_OUTSIDE_ROLL_DENOMINATOR",
+    "WEATHER_WILD_DOG_BREACH_FLAG",
+    "EVENT_FLAG_WILD_DOG_BREACH",
     "CHICKEN_SLOT_BASE",
     "CHICKEN_SLOT_SIZE",
     "CHICKEN_SLOT_COUNT",
@@ -264,6 +383,7 @@ __all__ = [
     "COW_STATUS_BABY_FLAG",
     "COW_STATUS_YOUNG_FLAG",
     "COW_STATUS_ADULT_FLAG",
+    "COW_STATUS_CRANKY_FLAG",
     "COW_STATUS_SICK_FLAG",
     "COW_STATUS_PREGNANT_FLAG",
     "read_hay_count",
@@ -278,8 +398,19 @@ __all__ = [
     "read_cow_status",
     "read_cow_daily_flags",
     "read_cow_happiness",
+    "read_cow_timer",
+    "cow_is_sick",
+    "sick_cow_slots",
+    "cow_days_until_death",
+    "ram_has_sick_cows",
+    "ram_needs_cow_medicine",
+    "cow_is_cranky",
+    "cranky_cow_slots",
+    "read_cow_cranky_timer",
+    "ram_has_cranky_cows",
     "cow_slot_exists",
     "existing_cow_slots",
+    "unfed_adult_cow_slots",
     "cow_needs_daily_attention",
     "cow_is_milk_ready",
     "cow_needs_milking",

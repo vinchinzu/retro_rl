@@ -32,6 +32,14 @@ from harvest.tasks.water_refill import (
 
 
 class RefillSelectionTests(unittest.TestCase):
+    def test_south_lip_prefers_the_reliable_adjacent_stand(self):
+        def find_path(start, goal):
+            if goal[1] != 34:
+                return None
+            return [start] * (abs(goal[0] - start[0]) + abs(goal[1] - start[1])) + [goal]
+        hit = select_main_pond_refill((8, 42), find_path)
+        self.assertEqual(hit.stand, (33, 34))
+
     def test_select_main_pond_prefers_pathable_stand(self) -> None:
         def find_path(start, goal):
             if goal == (33, 30):

@@ -31,7 +31,7 @@ from harvest.tasks.pond_hop import (
     decide_after_south_lip_charge,
     evaluate_corridor_thrash,
 )
-from harvest.tasks.crop_geometry import is_main_pond_stand
+from harvest.tasks.crop_geometry import is_main_pond_stand, pond_access_blocking_fences
 
 
 
@@ -58,8 +58,10 @@ def _find_nav_path(
         # fence residue was never cleared the east crawl dead-ends at
         # (30,28) while the y=31 gap at x~15 leads to the south lip in ~30
         # steps.  Walk that route in viewport-sized chunks.
-        # Only after the heuristics have already failed once this refill.
-        if getattr(self, "_refill_nav_failures", 0) >= 1:
+        # Once the opening fences are gone, crops are real obstacles: a
+        # corridor crumb can land inside them. Follow the full path even when
+        # its first steps move away from the pond.
+        if getattr(self, "_refill_nav_failures", 0) >= 1 or not pond_access_blocking_fences(ram):
             full = self._pathfinder.find_path(ram, start, goal)
             if full:
                 return full[:hop]

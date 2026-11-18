@@ -126,3 +126,25 @@ setsid nohup env HEADLESS=1 SDL_VIDEODRIVER=dummy QT_QPA_PLATFORM=offscreen \
 ```
 
 Try 1 was the same script from the repo root, before the hour-17 edit. Frames: try 1 ended at 24001; try 2 changed the day at 1868 and finished the morning at 1973.
+
+## The birth morning (2026-11-01, e2e `v1n`, pin `PR_e2ev1n_Y2_Winter_D24`)
+
+The morning `kid1_age` is 60 (and `$7F1F6E & 0x0010`) the house plays event group `0x1F` (`event_dis group 31
+--event 0/1`), and it is a scene the farmer must finish: it is not the cosmetic naming above.
+
+- **Event 0 (labour, wake-up).** The wife lies at (281,99) (`cc[1]`), a doctor stands at (128,200) in the
+  doorway (`cc[3]`, "You are going to have a baby pretty soon", never moves), villagers at (296,120) and
+  (328,104). A on the wife from the east stand (296,102), facing left, opens `$01AA` "I'm OK, honey. Please go
+  to work." with a menu that is live when `$019B & 0x10` is set (~180 frames of text first). Row 1 "Really?"
+  (`$01AB`) walks the doctor to (96,176) and the baby comes when the farmer next enters. Row 2 "No, no, no"
+  (`$01AC` "Are you with me? Thank you.") adds 50 to the wife's hearts (`ADD16 [7F1F27] += 50` for Eve) and
+  starts the birth: about 3,800 idle frames later the cutscene plays on its own.
+- **Event 1 (birth).** `SetPlayerPosition (136,184)`; the baby (sprite 0x301) in the crib at (264,96), the
+  doctor back at the door ("Congratulations!", `$027F`), a villager at (296,120) (`$01B9`, solid) and one at
+  (312,104) (`$0281`/`$01B4` "Ho-ho, look at this baby"; after one chat his script walks him east to (360,104)).
+  Until he leaves, the wife's east stand (294,106) is sealed (a flood fill by real movement finds no route
+  and 60 random walks never get within 37 pixels). The wife, from the east stand, says `$01BA` "Darling,
+  please name him." (`$099F` 5/6, name grid tilemap `0x5F`), then `$01BB`/`$01BC`, a night fade, and the
+  ROM ends the day with the room empty (wife standing at (328,120), baby at (390,152)).
+- The house clock does not tick in the room, so no timer clears the crowd (checked with the farmer outdoors
+  from 06:00 to 16:00). Sleeping needs the same east stand. See `planner/tasks/labor.py`.

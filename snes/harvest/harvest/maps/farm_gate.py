@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from harvest.maps.farm_pond import EAST_SPUR_FA_SOUTH_OPEN_X, FARM_TILEMAP_IDS
+from harvest.maps.farm_pond import EAST_SPUR_FA_SOUTH_OPEN_X, FARM_TILEMAP_IDS, is_packed_layout
 from harvest.maps.map_types import Waypoint
 
-# Dirt row between the D2 leftover stump belts (y=36–38 and y=40–43).
-SOUTH_FIELD_CLEAR_ROW_Y_PX = 39 * 16 + 8
+# Dirt row between the D2 leftover stump belts (y=36–38 and y=40–43). The packed lattice puts a ring row
+# on y=38-40 and keeps y=37 as its lane, so the east-west walk uses that lane instead.
+_PACKED_RINGS = is_packed_layout()
+SOUTH_FIELD_CLEAR_ROW_Y_PX = (37 if _PACKED_RINGS else 39) * 16 + 8
 # South-field join column (13, 37) / (216, 600).
 SOUTH_FIELD_DIRT_COL_X_PX = 13 * 16 + 8
 # House-column dirt row. y=25 x=9-10 is A6; LEFT from (11,25) hugs the pond.
@@ -70,12 +72,14 @@ def farm_to_west_gate_waypoints(
             + [routes._PATH_PLAZA_FROM_FARM]
         )
     if py >= routes.SOUTH_FIELD_MIN_Y_PX:
+        # West of x=13 the steps are nearer; east starts join them on the y=38
+        # lane. Neither climbs x=13 through the (13,28) ring.
+        hops = [farm_wp(px, py, 16)]
         if px >= SOUTH_FIELD_DIRT_COL_X_PX:
-            return routes.densify_waypoints(
-                _south_east_to_dirt_column(px, py)
-                + list(routes._FARM_SOUTH_FIELD_TO_WEST_GATE[2:])
-            )
-        return list(routes._FARM_SOUTH_FIELD_TO_WEST_GATE)
+            hops = _south_east_to_dirt_column(px, py) + [
+                farm_wp(12 * 16 + 8, (37 if _PACKED_RINGS else 38) * 16 + 8, 8)
+            ]
+        return routes.densify_waypoints(hops + list(routes._FARM_SOUTH_WEST_TO_WEST_GATE))
     if py < routes.NORTH_FARM_MAX_Y_PX and px >= routes.EAST_FARM_MIN_X_PX:
         # Skip house-south (137,375): NE prefix already joins at (136,392).
         return routes.densify_waypoints(
@@ -111,6 +115,9 @@ def farm_exit_waypoints(
     from harvest.maps import map_routes as routes
 
     if tilemap in FARM_TILEMAP_IDS and py >= routes.SOUTH_FIELD_MIN_Y_PX:
+        if px < SOUTH_FIELD_DIRT_COL_X_PX:
+            # The route below cuts through the west-strip ring (9,35) at (8,35).
+            return [farm_wp(px, py, 16)] + list(routes._FARM_SOUTH_WEST_TO_WEST_GATE[:-1])
         return list(routes.ROUTES["farm_south_to_west_gate"])
     route = farm_to_west_gate_waypoints(px, py, tilemap)
     out: List[Waypoint] = []

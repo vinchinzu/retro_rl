@@ -16,6 +16,9 @@ from harvest.tasks.primitives import dismiss_dialogue_result
 
 TaskFactory = Callable[[], Task]
 
+FAR_RECOVERY_TIMEOUT = 6000
+_FAR_LOCATIONS = frozenset({SceneLocation.MOUNTAIN, SceneLocation.PATH, SceneLocation.TOWN, SceneLocation.SHOP})
+
 
 @dataclass
 class RecoveryTask(Task):
@@ -29,6 +32,7 @@ class RecoveryTask(Task):
     route_to_target_factory: Optional[TaskFactory] = None
     dismiss_buttons: Sequence[str] = ("b", "a")
 
+    _budget: int = field(default=0, init=False)
     _step_count: int = field(default=0, init=False)
     _stable_count: int = field(default=0, init=False)
     _cutscene_mash_count: int = field(default=0, init=False)
@@ -37,6 +41,10 @@ class RecoveryTask(Task):
     _last_scene: str = field(default="", init=False)
 
     def reset(self, world: WorldState) -> None:
+        # A route home from the mountain, path or town is several map walks
+        # (~3,000 frames); 900 timed out one map short of the farm (Y1 Summer D14).
+        far = classify_scene_from_ram(world.ram).location in _FAR_LOCATIONS
+        self._budget = max(self.timeout, FAR_RECOVERY_TIMEOUT) if far else self.timeout
         self._step_count = 0
         self._stable_count = 0
         self._cutscene_mash_count = 0
@@ -60,7 +68,7 @@ class RecoveryTask(Task):
             return self._idle(f"stabilizing {scene.summary()}")
 
         self._stable_count = 0
-        if self._step_count > self.timeout:
+        if self._step_count > (self._budget or self.timeout):
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"recovery timeout, last scene {self._last_scene}",
@@ -156,10 +164,20 @@ def _enum_text(value: SceneLocation | str) -> str:
 # hour is frozen), and CROP/HARVEST phases have their own 24k watchdog. At
 # 24k/3k it cut watering on 8 of 28 spring days ($4,630 vs $5,540, D3 pin);
 # at 48k/15k it never trips there and spring ends at $5,150 (rr-bu62.16).
-DAY_WORK_FRAME_BUDGET = 48_000
+# Owner, 2026-11-02: no per-day time cap. A day may run an hour of play (216,000
+# frames at 60 fps) if the work is real; only a stall, glitch or clip ends it, and
+# those are caught by the per-phase watchdogs and ``MAX_RESCUES_PER_DAY``. The 48k
+# floor cut the packed ring lattice's planting and watering days short (28-32 trips
+# in two Day-3-pin runs against 5 for nine rings). Override with
+# ``HARVEST_DAY_FRAME_BUDGET`` / ``HARVEST_DAY_CLOCK_GRACE`` (0 / -1 disable).
+DAY_WORK_FRAME_BUDGET = 0
 DAY_CLOCK_HOUR = 18
-DAY_CLOCK_GRACE_FRAMES = 15_000
+DAY_CLOCK_GRACE_FRAMES = -1
 MAX_RESCUES_PER_DAY = 8
+# Phases that renew the 18:00 grace while they run (the hard budget still
+# applies): the Eve talk loop, and watering with its hot-spring refill, which a
+# field larger than one stamina bar finishes after dark.
+LATE_WORK_PHASES = frozenset({"EVE_TALK_LOOP", "CROP_WATER", "HOT_SPRING_STAMINA"})
 
 
 @dataclass
@@ -181,6 +199,7 @@ class DayFloor:
     _started_at: int = field(default=0, init=False)
     _late_since: Optional[int] = field(default=None, init=False)
     _tripped: bool = field(default=False, init=False)
+    _bad: bool = field(default=False, init=False)
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "DayFloor":
@@ -198,17 +217,18 @@ class DayFloor:
         self._started_at = int(step)
         self._late_since = None
         self._tripped = False
+        self._bad = False
         self.rescues = 0
 
-    def check(self, step: int, hour: int) -> Optional[str]:
-        """Reason to abandon the day's work, or None. Fires once per day."""
+    def check(self, step: int, hour: int, *, allow_late_work: bool = False) -> Optional[str]:
+        """Evening skills may renew clock grace, never the hard frame budget."""
         if self._tripped:
             return None
         elapsed = int(step) - self._started_at
         if self.frame_budget > 0 and elapsed > self.frame_budget:
             return self._trip(f"day frame budget {self.frame_budget} exceeded")
         if hour >= self.clock_hour:
-            if self._late_since is None:
+            if self._late_since is None or allow_late_work:
                 self._late_since = int(step)
             if self.clock_grace >= 0 and step - self._late_since > self.clock_grace:
                 return self._trip(
@@ -222,15 +242,20 @@ class DayFloor:
 
     def end_day(self, *, clean: bool) -> None:
         """Roll the consecutive-bad-day counter (reporting only)."""
-        if clean and not self._tripped and self.rescues == 0:
+        if clean and not self._tripped and not self._bad and self.rescues == 0:
             self.bad_days = 0
         else:
             self.bad_days += 1
             self.total_bad_days += 1
 
     def note_bad(self) -> None:
-        """Mark today bad (a failure was recorded) without aborting."""
-        self._tripped = True
+        """Mark today bad (a failure was recorded) without aborting.
+
+        This must not disarm :meth:`check`: ``y3a`` recorded an optional ``CLEAR_FIELD``
+        failure, the floor then never tripped again, and a stall at 17:00 hung the
+        planner for 1.6M frames (Y3 Spring D20).
+        """
+        self._bad = True
 
     def next_rescue(self) -> bool:
         """Spend one rescue. False when the farmer is provably wedged."""
@@ -243,7 +268,7 @@ _FAULT_MODES = ("fail", "stall")
 
 @dataclass
 class PhaseFaultInjector:
-    """Test hook: force chosen phase kinds to fail or stall.
+    """Test hook: force chosen phase kinds to fail or stall, or jitter phase starts.
 
     ``HARVEST_FAULT_PHASES="crop:fail,harvest:stall,nav:fail"`` (kind names, as
     in ``PhaseKind``); ``HARVEST_FAULT_RATE`` (0..1, default 1) fails only that
@@ -254,31 +279,62 @@ class PhaseFaultInjector:
     faults: dict[str, str] = field(default_factory=dict)
     rate: float = 1.0
     seed: int = 0
+    jitter: int = 0
+    # Jitter only phases of this 0-based game year on (``HARVEST_PHASE_JITTER_FROM_YEAR``): a power-on run keeps Years 1-2
+    # exactly as the deterministic campaign plays them and seeds only the Year 3 draws.
+    jitter_from_year: int = 0
     _rng: random.Random = field(init=False, repr=False)
+    _jitter_rng: random.Random = field(init=False, repr=False)
+    _jitter_key: object = field(default=None, init=False, repr=False)
+    _jitter_left: int = field(default=0, init=False, repr=False)
     fired: list[tuple[str, str]] = field(default_factory=list, init=False)
 
     def __post_init__(self) -> None:
         self._rng = random.Random(self.seed)
+        self._jitter_rng = random.Random(self.seed * 7919 + 13)
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> Optional["PhaseFaultInjector"]:
         env = os.environ if env is None else env
         raw = env.get("HARVEST_FAULT_PHASES", "").strip()
-        if not raw:
-            return None
         faults: dict[str, str] = {}
-        for item in raw.split(","):
+        for item in raw.split(",") if raw else ():
             kind, _, mode = item.strip().partition(":")
             mode = mode or "fail"
             if kind and mode in _FAULT_MODES:
                 faults[kind.lower()] = mode
-        if not faults:
+        jitter = int(env.get("HARVEST_PHASE_JITTER", "0") or 0)
+        if not faults and jitter <= 0:
             return None
         return cls(
             faults=faults,
             rate=float(env.get("HARVEST_FAULT_RATE", "1") or 1),
             seed=int(env.get("HARVEST_FAULT_SEED", "0") or 0),
+            jitter=max(0, jitter),
+            jitter_from_year=int(env.get("HARVEST_PHASE_JITTER_FROM_YEAR", "0") or 0),
         )
+
+    def jitter_wait(self, key: object, kind: object, year: Optional[int] = None, ram=None) -> bool:
+        """True while idling before a new phase starts (0..``jitter`` frames, seeded).
+
+        ``HARVEST_PHASE_JITTER=<max frames>`` shifts sprite, animal and ROM RNG
+        timing run to run without any RAM write, so a repeatability sweep sees
+        different draws; end-of-day phases are left alone.
+        """
+        if self.jitter <= 0 or str(getattr(kind, "value", kind)).lower() in {"return_home", "sleep"}:
+            return False
+        if year is None and ram is not None and self.jitter_from_year:
+            from harvest.maps.farm_pond import ram_year
+
+            year = ram_year(ram)
+        if year is not None and int(year) < self.jitter_from_year:
+            return False
+        if self._jitter_key != key:
+            self._jitter_key, self._jitter_left = key, self._jitter_rng.randint(0, self.jitter)
+        if self._jitter_left <= 0:
+            return False
+        self._jitter_left -= 1
+        return True
 
     def decide(self, kind: object, phase: str) -> Optional[str]:
         """Fault mode for a phase start, or None. Never touches end-of-day."""

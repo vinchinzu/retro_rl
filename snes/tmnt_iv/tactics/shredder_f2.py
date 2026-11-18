@@ -14,7 +14,7 @@ from __future__ import annotations
 from retro_harness.actions import buttons, idle_action
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import GameState
-from tmnt_iv.grind_knobs import active_knobs
+from tmnt_iv.tactics.knobs import active_knobs
 
 _SUPER_SHREDDER_F2 = 0xAE
 _FORM2_STAGE = 9

@@ -1,0 +1,9 @@
+{
+  "north_steps": 0,
+  "end_x": -1,
+  "end_y": -1,
+  "illegal_on_path": 0,
+  "exposed_poses": 0,
+  "path": [],
+  "note": "End pose is (-1, -1). No 0x1E cell touches the end pose. Start 4896,5977 is the legal unexposed pose at that point. The northernmost pose a monotone unexposed find_path reaches is (4896, 5977), 0px north, which is not 16px. No 0x1E cell is on the path."
+}

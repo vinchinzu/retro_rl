@@ -92,7 +92,9 @@ def select_main_pond_refill(
             # Real path length, not Manhattan: on a wild farm the fence walls
             # make the north-lip stand (33,30) look 24 away while its route is
             # 65+ steps around the south field; a south-lip stand is nearer.
-            dist = len(path)
+            # The corner at (32,34) catches sprites and starts corridor
+            # recovery; the adjacent south stand filled 65/67 attempts.
+            dist = len(path) + (2 if stand == (32, 34) else 0)
             hits.append(
                 (
                     dist,

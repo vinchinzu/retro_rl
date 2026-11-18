@@ -25,9 +25,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Iterator, Mapping, Optional, Sequence, Tuple
 
+import numpy as np
+
 
 MOTION_STALL_FRAMES = 360
 GOAL_STALL_FRAMES = 24_000
+# A no-button, no-movement stretch this long is listed in the work report (2 s).
+DEAD_RUN_MIN_FRAMES = 120
 _TICK_DETAIL_KEYS = frozenset({"step_count"})
 
 
@@ -91,6 +95,50 @@ def goal_progress_key(
 def stalled(last_frame: int, now: int, window: int) -> bool:
     """True when ``now - last_frame`` has reached a positive ``window``."""
     return window > 0 and now - last_frame >= window
+
+
+# A walking task that has not left a 24 px box for 10 s is wedged: a walk covers 1-2 px a frame. The
+# corridor's own recoveries (close-range stall, yield, pixel-stuck) finish by about 400 f, so this never pre-empts them.
+NAV_WEDGE_BOX_PX = 24
+NAV_WEDGE_FRAMES = 600
+# Never closer to the target by NAV_PROGRESS_PX for 20 s: pacing, not a detour (the whole farm is ~1,000 px, a
+# long detour 750 f). Within NAV_NEAR_PX of the target it is 10 s: that is the farmer circling a plot centre it
+# cannot reach (rec1 Y1 D12: 30-38 px out for 9,000 f, never in one 24 px box, so the box alone missed it).
+NAV_PROGRESS_PX = 8
+NAV_NEAR_PX = 64
+NAV_NO_PROGRESS_FRAMES = 1200
+NAV_NO_PROGRESS_NEAR_FRAMES = 600
+# A multi-map leg that gets no closer to its waypoint (8 px) for this long fails, however far the farmer wobbles:
+# fdet_20261115 swung 50 px up and down inside the fishing camp for 11,001 f, outside any 24 px box.
+NAV_WAYPOINT_NO_PROGRESS_FRAMES = 2400
+
+
+class MotionBox:
+    """Frames a walking task has stayed inside a small box on one map.
+
+    ``observe`` returns 0 whenever the farmer leaves the box or changes map, so a wedge of any
+    shape (pushing a wall, a two-pixel wiggle, a dead pad) reads as one rising number.
+    """
+
+    def __init__(self, box_px: int = NAV_WEDGE_BOX_PX) -> None:
+        self.box_px = box_px
+        self.anchor: tuple[int, int, int] | None = None
+        self.since = 0
+
+    def observe(self, step: int, tilemap: int, x: int, y: int) -> int:
+        a = self.anchor
+        if a is None or a[0] != tilemap or max(abs(x - a[1]), abs(y - a[2])) > self.box_px:
+            self.anchor = (tilemap, x, y)
+            self.since = step
+            return 0
+        return step - self.since
+
+    def restart(self, step: int) -> None:
+        self.since = step
+
+    def clear(self) -> None:
+        self.anchor = None
+        self.since = 0
 
 
 def _read_attr(task: object, name: str) -> Any:
@@ -209,10 +257,153 @@ def walk_task_tree(task: object) -> Iterator[object]:
             "_inner",
             "_task",
             "_nav",
+            "_sub",
         ):
             child = getattr(current, attr, None)
             if child is not None and child is not current:
                 stack.append(child)
+
+
+def work_snapshot(ram, *, census: bool = False) -> dict[str, Any]:
+    """Read-only work receipt. Crop gates require a settled, loaded farm."""
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.tasks.farm_clear_quota import farm_map_loaded
+    from harvest.tasks.crop_geometry import count_crop_survival
+
+    keys = ("year", "season", "day", "hour", "minute", "tilemap", "player_x",
+            "player_y", "stamina", "watering_can", "money", "shipping_money",
+            "potato_seeds", "turnip_seeds", "corn_seeds", "tomato_seeds")
+    row = {key: int(read_ram_value(ram, key) or 0) for key in keys}
+    if census:
+        loaded = farm_map_loaded(ram)
+        row["crops"] = count_crop_survival(ram) if loaded else None
+        row["gates"] = {"farm_loaded": loaded, "all_growing_crops_wet":
+                        row["crops"]["dry"] == 0 if loaded else None}
+    return row
+
+
+def work_receipt(before: Mapping, ram, task: object) -> dict[str, Any]:
+    """Structured counters and RAM deltas, including partial failed work."""
+    after = work_snapshot(ram, census=True)
+    counts = {key: int(getattr(task, key)) for key in
+              ("planted_count", "watered_count", "skipped_water", "harvested_count",
+               "shipped_count", "skipped_count") if hasattr(task, key)}
+    return {"before": dict(before), "after": after, "counts": counts,
+            "delta": {key: after[key] - before[key] for key in
+                      ("stamina", "watering_can", "money", "shipping_money",
+                       "potato_seeds", "turnip_seeds", "corn_seeds", "tomato_seeds")
+                      if key in before}}
+
+
+class WorkFrameLedger:
+    """Passive frame attribution through the existing Composer, never a driver.
+
+    ``observe`` runs immediately before each emulator step, after the task has
+    chosen its action. Intervals are [start_frame, end_frame); no emulator step
+    means no charged frame. Targets and task states, not changing positions or
+    counters, delimit intervals. A/B comparisons retain the exact visit order.
+
+    With ``action`` it also counts idle time. A frame is *dead* when no button
+    is held and the map and pixel position equal the previous frame's: the run
+    asked for nothing and nothing moved. ``input_frames`` / ``dead_frames`` sit
+    on each segment, and ``report()["idle"]`` lists every dead run of
+    ``DEAD_RUN_MIN_FRAMES`` or more with its phase and date.
+    """
+
+    def __init__(self) -> None:
+        self.segments: list[dict[str, Any]] = []
+        self._key: tuple | None = None
+        self._nodes: tuple = ()
+        self._pose: tuple | None = None
+        self._dead: dict[str, Any] | None = None
+        self.dead_runs: list[dict[str, Any]] = []
+        self.idle_totals = {"input_frames": 0, "idle_frames": 0, "dead_frames": 0}
+
+    def observe(self, *, frame: int, ram, task: object, action=None) -> None:
+        from harvest.planner.day_plan_status import read_world_ymd
+
+        nodes = tuple(walk_task_tree(task))
+        composer = next((n for n in nodes if hasattr(n, "runtime_phases")), task)
+        phase = str(getattr(composer, "phase_text", getattr(composer, "_phase", "")))
+        context = []
+        for node in nodes:
+            if not type(node).__module__.startswith("harvest."):
+                continue
+            state = getattr(node, "_phase", getattr(node, "_state", ""))
+            target = getattr(node, "target_tile", None) or getattr(node, "_target_tile", None)
+            current = getattr(node, "_current", None)
+            target = target or getattr(current, "target", None)
+            px = getattr(node, "target_px", None)
+            if hasattr(px, "x"):
+                px = (px.x, px.y)
+            context.append((type(node).__name__, str(getattr(node, "name", "")),
+                            str(state), tuple(target) if target is not None else None,
+                            tuple(px) if px is not None else None))
+        key = (read_world_ymd(ram), phase, tuple(context))
+        if key != self._key:
+            snap = work_snapshot(ram)
+            if self.segments:
+                self._close(snap)
+            self.segments.append({"date": list(key[0]), "phase": phase,
+                                  "context": jsonable(context), "start_frame": int(frame),
+                                  "end_frame": int(frame), "frames": 0, "before": snap})
+            self._key = key
+        self._nodes = nodes
+        row = self.segments[-1]
+        row["end_frame"] = int(frame) + 1
+        row["frames"] += 1
+        if action is not None:
+            self._count_idle(frame, ram, action, row, phase, key[0])
+
+    def _count_idle(self, frame: int, ram, action, row: dict, phase: str, date) -> None:
+        from harvest.core.ram_catalog import read_ram_value
+
+        pressed = bool(np.any(action))
+        pose = (read_ram_value(ram, "tilemap"), read_ram_value(ram, "player_x"),
+                read_ram_value(ram, "player_y"))
+        dead = not pressed and pose == self._pose
+        self._pose = pose
+        totals = self.idle_totals
+        totals["input_frames" if pressed else "idle_frames"] += 1
+        row["input_frames"] = row.get("input_frames", 0) + int(pressed)
+        if not dead:
+            self._close_dead()
+            return
+        totals["dead_frames"] += 1
+        row["dead_frames"] = row.get("dead_frames", 0) + 1
+        if self._dead is None:
+            self._dead = {"start_frame": int(frame), "frames": 0, "phase": phase,
+                          "date": list(date), "tilemap": int(pose[0])}
+        self._dead["frames"] += 1
+
+    def _close_dead(self) -> None:
+        if self._dead is not None and self._dead["frames"] >= DEAD_RUN_MIN_FRAMES:
+            self.dead_runs.append(self._dead)
+        self._dead = None
+
+    def _close(self, snapshot: dict) -> None:
+        row = self.segments[-1]
+        row["after"] = snapshot
+        row["counts"] = {str(getattr(n, "name", type(n).__name__)): {
+            key: int(getattr(n, key)) for key in
+            ("planted_count", "watered_count", "harvested_count", "shipped_count",
+             "skipped_count", "skipped_water") if hasattr(n, key)} for n in self._nodes
+            if any(hasattr(n, key) for key in ("planted_count", "harvested_count"))}
+
+    def report(self, ram) -> dict[str, Any]:
+        if self.segments:
+            self._close(work_snapshot(ram))
+        totals: dict[str, int] = {}
+        for row in self.segments:
+            totals[row["phase"]] = totals.get(row["phase"], 0) + row["frames"]
+        report = {"schema_version": 1, "source": "emulator_step_intervals",
+                  "frames": sum(totals.values()), "phase_frames": totals,
+                  "segments": self.segments}
+        if any(self.idle_totals.values()):
+            self._close_dead()
+            report["idle"] = {**self.idle_totals, "dead_run_min_frames": DEAD_RUN_MIN_FRAMES,
+                              "dead_runs": list(self.dead_runs)}
+        return report
 
 
 def watchdog_counters(task: object) -> dict[str, Any]:
@@ -356,6 +547,7 @@ def checkpoint_progress_key(record: Mapping[str, Any]) -> Tuple[Any, ...]:
         date.get("season"),
         date.get("day"),
         record.get("phase"),
+        ((record.get("task") or {}).get("child") or {}).get("phase_text"),
         debris.get("weeds", d2.get("weeds")),
         debris.get("fences", d2.get("fences")),
         debris.get("stones", d2.get("stones")),

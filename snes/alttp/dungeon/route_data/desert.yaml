@@ -1,0 +1,549 @@
+schema_version: 1
+slug: desert
+name: Desert Palace
+z3_id: 74
+room_type: Dungeon
+source_file: regions/dungeons/desert/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Desert Palace Main (Outer)
+  nodes:
+  - Desert Palace Pots (Outer)
+  - Desert Palace Exit (West)
+  - Desert Palace Exit (East)
+  - Desert Palace East Wing
+  - Desert Palace - Big Chest
+  - Desert Palace - Torch
+  - Desert Palace - Map Chest
+- name: Desert Palace Main (Inner)
+  nodes:
+  - Desert Palace Exit (South)
+  - Desert Palace Pots (Inner)
+- name: Desert Palace East
+  nodes:
+  - Desert Palace - Compass Chest
+  - Desert Palace - Big Key Chest
+- name: Desert Palace North
+  nodes:
+  - Desert Palace Exit (North)
+  - Desert Palace - Lanmolas
+  - Desert Palace - Prize
+locations:
+- id: 5
+  name: Desert Palace - Big Chest
+  region: Desert Palace Main (Outer)
+  node_type: item
+  item: PowerGlove
+  address: '0xE98F'
+  requires:
+  - BigKeyP2
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys:
+  - name: BigKeyP2
+    count: 1
+  items:
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 6
+  name: Desert Palace - Torch
+  region: Desert Palace Main (Outer)
+  node_type: item
+  item: KeyP2
+  address: '0x180160'
+  requires:
+  - canDash
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys: []
+  items:
+  - canDash
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 7
+  name: Desert Palace - Map Chest
+  region: Desert Palace Main (Outer)
+  node_type: item
+  item: MapP2
+  address: '0xE9B6'
+  requires:
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys: []
+  items:
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 10
+  name: Desert Palace - Compass Chest
+  region: Desert Palace East
+  node_type: item
+  item: CompassP2
+  address: '0xE9CB'
+  requires:
+  - KeyP2
+  keys:
+  - name: KeyP2
+    count: 1
+  items: []
+- id: 11
+  name: Desert Palace - Big Key Chest
+  region: Desert Palace East
+  node_type: item
+  item: BigKeyP2
+  address: '0xE9C2'
+  requires:
+  - KeyP2
+  keys:
+  - name: KeyP2
+    count: 1
+  items: []
+- id: 13
+  name: Desert Palace - Lanmolas
+  region: Desert Palace North
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180151'
+  requires:
+  - canLiftRocks
+  - canLightTorches
+  - BigKeyP2
+  - KeyP2
+  keys:
+  - name: BigKeyP2
+    count: 1
+  - name: KeyP2
+    count: 1
+  items:
+  - canLiftRocks
+  - canLightTorches
+- id: 14
+  name: Desert Palace - Prize
+  region: Desert Palace North
+  node_type: item
+  item: PendantOfWisdom
+  address:
+  - '0x1209E'
+  - '0x53F1C'
+  - '0x53F1D'
+  - '0x180053'
+  - '0x180078'
+  - '0xC6FF'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Desert Palace Pots (Outer)
+  region: Desert Palace Main (Outer)
+  node_type: door
+  requires:
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys: []
+  items:
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 2
+  name: Desert Palace Exit (West)
+  region: Desert Palace Main (Outer)
+  node_type: door
+  requires:
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys: []
+  items:
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 3
+  name: Desert Palace Exit (East)
+  region: Desert Palace Main (Outer)
+  node_type: door
+  requires:
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys: []
+  items:
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 4
+  name: Desert Palace East Wing
+  region: Desert Palace Main (Outer)
+  node_type: door
+  requires:
+  - RescueZelda
+  - or:
+    - canRead
+    - and:
+      - canLiftDarkRocks
+      - canFly
+      - canMirror
+  keys: []
+  items:
+  - RescueZelda
+  - canRead
+  - canLiftDarkRocks
+  - canFly
+  - canMirror
+- id: 8
+  name: Desert Palace Exit (South)
+  region: Desert Palace Main (Inner)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Desert Palace Pots (Inner)
+  region: Desert Palace Main (Inner)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 12
+  name: Desert Palace Exit (North)
+  region: Desert Palace North
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyP2
+    count: 1
+    nodes:
+    - Desert Palace - Big Chest
+    - Desert Palace - Lanmolas
+  - name: KeyP2
+    count: 1
+    nodes:
+    - Desert Palace - Compass Chest
+    - Desert Palace - Big Key Chest
+    - Desert Palace - Lanmolas
+  items:
+  - name: RescueZelda
+    nodes:
+    - Desert Palace Pots (Outer)
+    - Desert Palace Exit (West)
+    - Desert Palace Exit (East)
+    - Desert Palace East Wing
+    - Desert Palace - Big Chest
+    - Desert Palace - Torch
+    - Desert Palace - Map Chest
+  - name: canDash
+    nodes:
+    - Desert Palace - Torch
+  - name: canFly
+    nodes:
+    - Desert Palace Pots (Outer)
+    - Desert Palace Exit (West)
+    - Desert Palace Exit (East)
+    - Desert Palace East Wing
+    - Desert Palace - Big Chest
+    - Desert Palace - Torch
+    - Desert Palace - Map Chest
+  - name: canLiftDarkRocks
+    nodes:
+    - Desert Palace Pots (Outer)
+    - Desert Palace Exit (West)
+    - Desert Palace Exit (East)
+    - Desert Palace East Wing
+    - Desert Palace - Big Chest
+    - Desert Palace - Torch
+    - Desert Palace - Map Chest
+  - name: canLiftRocks
+    nodes:
+    - Desert Palace - Lanmolas
+  - name: canLightTorches
+    nodes:
+    - Desert Palace - Lanmolas
+  - name: canMirror
+    nodes:
+    - Desert Palace Pots (Outer)
+    - Desert Palace Exit (West)
+    - Desert Palace Exit (East)
+    - Desert Palace East Wing
+    - Desert Palace - Big Chest
+    - Desert Palace - Torch
+    - Desert Palace - Map Chest
+  - name: canRead
+    nodes:
+    - Desert Palace Pots (Outer)
+    - Desert Palace Exit (West)
+    - Desert Palace Exit (East)
+    - Desert Palace East Wing
+    - Desert Palace - Big Chest
+    - Desert Palace - Torch
+    - Desert Palace - Map Chest
+connections:
+- connection_type: Door
+  description: Door connection between Desert Palace East Wing and Desert Palace East
+  origin: Desert Palace East Wing
+  destination: Desert Palace East
+  internal: true
+- connection_type: Door
+  description: Door connection between Desert Palace Pots (Outer) and Desert Palace Main (Inner)
+  origin: Desert Palace Pots (Outer)
+  destination: Desert Palace Main (Inner)
+  internal: true
+- connection_type: Door
+  description: Door connection between Desert Palace Pots (Inner) and Desert Palace Main (Outer)
+  origin: Desert Palace Pots (Inner)
+  destination: Desert Palace Main (Outer)
+  internal: true
+- connection_type: Door
+  description: Door connection between Desert Palace Entrance (South) and Desert Palace Main (Inner)
+  origin: Desert Palace Entrance (South)
+  destination: Desert Palace Main (Inner)
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Entrance (West) and Desert Palace Main (Outer)
+  origin: Desert Palace Entrance (West)
+  destination: Desert Palace Main (Outer)
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Entrance (North) and Desert Palace North
+  origin: Desert Palace Entrance (North)
+  destination: Desert Palace North
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Entrance (East) and Desert Palace Main (Outer)
+  origin: Desert Palace Entrance (East)
+  destination: Desert Palace Main (Outer)
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Exit (South) and Desert Palace Stairs
+  origin: Desert Palace Exit (South)
+  destination: Desert Palace Stairs
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Exit (West) and Desert Ledge
+  origin: Desert Palace Exit (West)
+  destination: Desert Ledge
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Exit (East) and Desert Palace Lone Stairs
+  origin: Desert Palace Exit (East)
+  destination: Desert Palace Lone Stairs
+  internal: false
+- connection_type: Door
+  description: Door connection between Desert Palace Exit (North) and Desert Palace Entrance (North) Spot
+  origin: Desert Palace Exit (North)
+  destination: Desert Palace Entrance (North) Spot
+  internal: false
+strats:
+- name: Lanmolas - Sword
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - L1Sword
+  - or:
+    - enemyDamage:
+        enemy: Lanmolas
+        type: particle
+        hits: 4
+    - and:
+      - bossProficiency: 2
+      - enemyDamage:
+          enemy: Lanmolas
+          type: particle
+          hits: 2
+    - and:
+      - L2Sword
+      - enemyDamage:
+          enemy: Lanmolas
+          type: particle
+          hits: 2
+    - hasSwordSparkles
+    - L3Sword
+    - bossProficiency: 3
+- name: Lanmolas - Blue Cane
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - magic:
+      type: BlueCane
+      count: 192
+  - bossProficiency: 2
+- name: Lanmolas - Red Cane
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - magic:
+      type: RedCane
+      count: 5
+  - bossProficiency: 2
+  - or:
+    - bossProficiency: 3
+    - enemyDamage:
+        enemy: Lanmolas
+        type: particle
+        hits: 2
+- name: Lanmolas - Fire or Ice Rod
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - or:
+    - magic:
+        type: Rod
+        count: 12
+    - and:
+      - magic:
+          type: Rod
+          count: 8
+      - bossProficiency: 3
+    - and:
+      - magic:
+          type: Rod
+          count: 6
+      - bossProficiency: 4
+- name: Lanmolas - Bow
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - bossProficiency: 3
+  - or:
+    - ammo:
+        type: SilverArrows
+        count: 15
+    - and:
+      - ammo:
+          type: SilverArrows
+          count: 10
+      - bossProficiency: 4
+    - and:
+      - ammo:
+          type: Arrows
+          count: 40
+      - bossProficiency: 4
+  note:
+  - Lanmolas can be very difficult to hit with arrows.
+- name: Lanmolas - Hammer
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - Hammer
+  - bossProficiency: 3
+  - enemyDamage:
+      enemy: Lanmolas
+      type: contact
+      hits: 1
+  - or:
+    - bossProficiency: 4
+    - enemyDamage:
+        enemy: Lanmolas
+        type: contact
+        hits: 2
+- name: Lanmolas - Bombs
+  link:
+  - 13
+  - 13
+  collectsItems:
+  - 13
+  - 14
+  setsFlags:
+  - f_DefeatedLanmolas
+  requires:
+  - bossProficiency: 3
+  - or:
+    - and:
+      - ammo:
+          type: Bombs
+          count: 15
+      - enemyDamage:
+          enemy: Lanmolas
+          type: particle
+          hits: 2
+    - and:
+      - bossProficiency: 4
+      - ammo:
+          type: Bombs
+          count: 10
+  note:
+  - When multiple are still alive, center the bomb in the room and time it to explode when the Lanmolas will be vulnerable.
+  - When only one is remaining, throw the Bombs at the Lanmola.
+notes: []

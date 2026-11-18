@@ -1,4 +1,4 @@
-"""``python -m super_metroid.splice`` — preflight, cards, prepare, grade, assemble, range, credits (no emulator)."""
+"""Splice planning and the explicit ``chain`` ROM search/replay command."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m super_metroid.splice",
         description=(
-            "Planning/verification over tips.play_hops. "
+            "Planning/verification and Clean chain search over tips.play_hops. "
             "Artifact digest preflight, read-only task cards, fail-closed "
             "prepare, grade, assemble, the Attic→Gravity Scaffold range, "
             "and the development-only Scaffold credits chain "
@@ -59,6 +59,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
+    chain = sub.add_parser("chain", help="Search room tapes from their real predecessor, then replay from power-on")
+    chain.add_argument("--board", type=Path, default=DEFAULT_BOARD.parents[1] / "recordings" / "chain_board_clean.json")
+    chain.add_argument("--stem", type=Path, default=DEFAULT_BOARD.parents[1] / "recordings" / "master_tape_clean")
+    chain.add_argument("--through-row", type=int, help="Require the replay to reach this board row")
+    chain.add_argument("--require-credits", action="store_true", help="Require a verified end-of-credits replay")
+    chain.add_argument("--max-delay", type=int, default=12)
+    chain.add_argument("--fresh", action="store_true", help="Start a new master tape instead of replaying the existing prefix")
+    chain.add_argument("--rebuild-board", action="store_true", help="Rebuild candidate rows from the actual archived and Tourian traces")
+    chain.add_argument("--replay", action="store_true", help="Only prove the saved master tape from power-on")
+    chain.add_argument("--proof-json", action="store_true", help="Include the full replay proof and its ordered room transitions")
+    chain.add_argument("--override", action="append", default=[], metavar="ROW=NPZ", help="Try a searched actions array for one board row")
     pre = sub.add_parser(
         "preflight",
         help="Snapshot artifact digests and report gaps (default: report-only)",
@@ -334,6 +345,36 @@ def _run_credits(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if args.cmd == "chain":
+        from super_metroid.splice.assemble import replay_tape_chain, solve_tape_chain
+        if args.replay:
+            report = replay_tape_chain(stem=args.stem)
+        else:
+            if args.rebuild_board or not args.board.is_file():
+                from super_metroid.human_tape.product_chain import write_clean_chain_board
+                write_clean_chain_board(out=args.board)
+            overrides = {int(value.split("=", 1)[0]): Path(value.split("=", 1)[1]) for value in args.override}
+            report = solve_tape_chain(
+                board=args.board, stem=args.stem,
+                through_row=9999 if args.through_row is None else args.through_row,
+                max_delay=args.max_delay, resume=not args.fresh, overrides=overrides,
+            )
+        proof = report.get("proof") or report
+        last_row = proof["last_row"]
+        reached = args.through_row is None or (last_row is not None and last_row >= args.through_row)
+        accepted = bool(proof["success"] and reached and (not args.require_credits or proof["credits_complete"]))
+        print(json.dumps({
+            "total_frames": report["total_frames"], "rooms_cleared": report["rooms_cleared"],
+            "last_row": last_row, "requested_row": args.through_row, "accepted": accepted,
+            "stopped": report.get("stopped"),
+            "proof": proof if args.proof_json else {key: proof.get(key) for key in (
+                "success", "rom_vanilla", "state_loads", "ram_writes", "deaths", "endpoint_matches",
+                "all_planned_crossings_match", "transition_timeline_matches",
+                "observed_transition_count", "detour_rows",
+                "credits_complete", "credits_tail_frames",
+            )},
+        }, indent=2))
+        return 0 if accepted else 1
     if args.cmd == "preflight":
         return _run_preflight(args)
     if args.cmd == "cards":

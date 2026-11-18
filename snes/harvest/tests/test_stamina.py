@@ -301,6 +301,45 @@ class SpaFullRestoreTests(unittest.TestCase):
         self.assertEqual(spec.params["min_stamina"], "full")
         self.assertTrue(spec.params["return_to_farm"])
 
+    def test_evening_spring_includes_weed_and_till(self) -> None:
+        phases = evening_clear_phases(
+            has_debris=True,
+            late_day=True,
+            policy=DayPlannerPolicy(include_end_day=False),
+            stamina=Stamina(current=100, maximum=100),
+            season=0,
+            day=3,
+        )
+        names = [p.phase for p in phases]
+        self.assertEqual(names, ["CLEAR_BUSHES", "CLEAR_FIELD", "TILL_FIELD"])
+        # Early spring weeding timeout
+        self.assertEqual(phases[0].params.get("timeout"), 18000)
+
+    def test_evening_fall_reclears_bushes(self) -> None:
+        phases = evening_clear_phases(
+            has_debris=True,
+            late_day=True,
+            policy=DayPlannerPolicy(include_end_day=False),
+            stamina=Stamina(current=100, maximum=100),
+            season=2,
+            day=5,
+        )
+        names = [p.phase for p in phases]
+        self.assertEqual(names, ["CLEAR_BUSHES", "CLEAR_FIELD"])
+        # Fall bush clear timeout
+        self.assertEqual(phases[0].params.get("timeout"), 16000)
+
+    def test_evening_winter_skips_clear(self) -> None:
+        phases = evening_clear_phases(
+            has_debris=True,
+            late_day=True,
+            policy=DayPlannerPolicy(include_end_day=False),
+            stamina=Stamina(current=100, maximum=100),
+            season=3,
+            day=5,
+        )
+        self.assertEqual(phases, [])
+
 
 if __name__ == "__main__":
     unittest.main()

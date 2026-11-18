@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 88,
+  "roomHex": "0x58",
+  "name": "Skull Woods first-section lobby",
+  "measured": "2026-09-30",
+  "sourceState": "SkullWoodsEntry",
+  "points": [
+    {
+      "label": "entry_spawn",
+      "xy": [4216, 3032],
+      "role": "spawn",
+      "notes": "SkullWoodsEntry load. Tile (15,59) attr 0x8E, the south entrance mouth. Facing the overworld door."
+    }
+  ],
+  "doors": [
+    {
+      "label": "south_to_0x40",
+      "direction": "DOWN",
+      "toRoom": null,
+      "outdoors": true,
+      "screenId": 64,
+      "approachXy": [4216, 3032],
+      "landingXy": [744, 603],
+      "role": "backtrack",
+      "path": ["entry_spawn"],
+      "pathTolerances": {"default": 8},
+      "pushFrames": 60,
+      "notes": "Slot 4 type 0x0A pos $1D1C. DOWN from the spawn leaves room 0x58 for overworld screen 0x40. Not the forward indoor door. Not natural."
+    },
+    {
+      "label": "north_slot0",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 0 type 0x30 pos $0D9E anchor tile (15,27). Explosion door. bombs=0. Not contacted. Stopping lock."
+    },
+    {
+      "label": "west_key_slot1",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 1 type 0x1C pos $1784. Mouths attr 0xF1 cols 3-4 rows 48-49. keys=0. Not pushed. Stopping lock."
+    },
+    {
+      "label": "south_key_slot2",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 2 type 0x1C pos $1D5C. Mouths attr 0xF2 cols 47-48 rows 59-60. East-floor walk stalled at (4484,3008) tile (48,56) attr 0x00 still room 0x58. Stopping lock."
+    },
+    {
+      "label": "west_upper_slot3",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 3 type 0x2E pos $07C4. Mouths attr 0xF3 cols 35-36 rows 16-17. Not reached. Stopping lock."
+    },
+    {
+      "label": "internal_west_slot5",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Door-only. Slot 5 type 0x00 pos $17C4. Mouths attr 0x81 cols 32-36 rows 48-49. Walked east through the mouth and stayed in room 0x58."
+    }
+  ],
+  "walkBbox": [4200, 3000, 4232, 3072],
+  "hostilesAtEntry": [
+    {"type": "0x23", "xy": [4256, 2975], "notes": "red bari on the north side of the entrance corridor"}
+  ],
+  "z3Label": "Skull Woods First Section",
+  "notes": [
+    "SkullWoodsEntry kind poke. Room 0x58 module 0x07 dungeon 0x10. dark_world flag was 0. Follower 5 was not written.",
+    "Live exit is screen 0x40, not a boss-hut room. Quoted entrance 0x29 is not this measurement.",
+    "Other slots are door-only. No approach. They were not room changes.",
+    "Authority: maps/room_58.json."
+  ]
+}

@@ -40,6 +40,27 @@ from harvest.tasks.travel_walk import (
     read_player_action,
     read_player_direction,
 )
+from harvest.core.ram_catalog import live_wram_base, read_ram_value
+
+# Consecutive centring frames, under free control, that leave the farmer on the same pixel (matching the 30-frame
+# `stasis` valve, which replans keep resetting) before the path
+# takes over (a solid on the centring side holds the farmer short of the tile centre for good).
+CENTER_STALL_FRAMES = 30
+_ADDR_FADE_BRIGHTNESS = 0x0025   # WRAM; the pad is dead until it reaches 15 after a map change
+_PAD_STATES = frozenset({0, 1, 3})   # walking, plus carrying; every other player_state is an animation
+
+
+def _pad_is_live(ram: np.ndarray) -> bool:
+    """True when a held direction should move the farmer: control free, screen faded in, walking or carrying.
+
+    Counting dead-pad frames as a stalled centre skipped centring before the one-tile house walkway on Y1
+    Spring D2 (the farm fade-in lasts ~70 frames) and ended the run there.
+    """
+    idx = _ADDR_FADE_BRIGHTNESS + live_wram_base(ram)
+    if idx < len(ram) and int(ram[idx]) < 15:
+        return False
+    return (int(read_ram_value(ram, "input_lock") or 0) == 1
+            and int(read_ram_value(ram, "player_state") or 0) in _PAD_STATES)
 
 # Re-export map constants used by nav consumers.
 __all__ = [
@@ -489,6 +510,11 @@ class Navigator:
         self.stasis = 0
         self._center_dir: Optional[str] = None
         self._center_flips: int = 0
+        # Centring pressed against a solid never moves the farmer (7 px short of a tile centre, wall below).
+        # Opt-in (``MultiMapNavTask(center_stall_frames=...)``): None keeps the original behaviour byte for byte.
+        self.center_stall_limit: Optional[int] = None
+        self._center_px: Optional[Tuple[int, int]] = None
+        self._center_stall: int = 0
         self._push_tile: Optional[Tuple[int, int]] = None
         self._push_px: Optional[Tuple[int, int]] = None
         self._push_hold: int = 0
@@ -515,6 +541,7 @@ class Navigator:
             self.stasis = 0
             self._center_dir = None
             self._center_flips = 0
+            self._center_px, self._center_stall = None, 0
         else:
             self.stasis += 1
         self.current_pos = new_pos
@@ -603,6 +630,22 @@ class Navigator:
             self._center_flips = 0
         self._center_dir = direction
 
+    def _counted_centering(self, ram: np.ndarray, action: Optional[np.ndarray]) -> Optional[np.ndarray]:
+        """Pass a centring action through, counting frames that leave the farmer on one pixel (opt-in).
+
+        ``stasis`` yields centring at 30, but every replan resets it and the 48-frame pixel-stuck replan came
+        first (Y1 Fall D12: a solid below stopped the farmer 7 px short, four replans failed the festival walk).
+        With ``center_stall_limit`` set, centring that does not move the farmer under a live pad gives way.
+        """
+        if action is None or self.center_stall_limit is None:
+            return action
+        px = (self.current_pos.x, self.current_pos.y)
+        if px != self._center_px:
+            self._center_px, self._center_stall = px, 0
+        elif _pad_is_live(ram):
+            self._center_stall += 1
+        return action
+
     def follow_path(self, ram: np.ndarray) -> Optional[np.ndarray]:
         while self.path and self.current_tile == self.path[0]:
             self.path.pop(0)
@@ -637,11 +680,12 @@ class Navigator:
         # in-place L/R glitch against a fence/stump.
         CENTER_TOL = 3
         CENTER_FLIP_LIMIT = 4
-        if self.stasis < 30 and self._center_flips < CENTER_FLIP_LIMIT:
+        if (self.stasis < 30 and self._center_flips < CENTER_FLIP_LIMIT
+                and (self.center_stall_limit is None or self._center_stall < self.center_stall_limit)):
             if dx_next != 0 and abs(self.current_pos.y - tgt_y) >= CENTER_TOL:
-                return self.center_on_tile(curr_tile, tolerance=CENTER_TOL)
+                return self._counted_centering(ram, self.center_on_tile(curr_tile, tolerance=CENTER_TOL))
             if dy_next != 0 and abs(self.current_pos.x - tgt_x) >= CENTER_TOL:
-                return self.center_on_tile(curr_tile, tolerance=CENTER_TOL)
+                return self._counted_centering(ram, self.center_on_tile(curr_tile, tolerance=CENTER_TOL))
 
         if not self.pathfinder.is_walkable(ram, *next_tile, current_pos=curr_tile):
             val = get_tile_at(ram, *next_tile)
@@ -658,9 +702,14 @@ class Navigator:
 
         direction = 'right' if dx_next > 0 else 'left' if dx_next < 0 else 'down' if dy_next > 0 else 'up'
         if self.note_push_facing(ram, next_tile):
+            from harvest.core.npc_catalog import game_objects
+
+            near = [f"{o.label}@{o.tile}" for o in game_objects(ram)
+                    if not o.is_player and abs(o.tile[0] - next_tile[0]) + abs(o.tile[1] - next_tile[1]) <= 1]
             print(
-                f"[NAVIGATOR] Push-facing block tile={next_tile} "
-                f"action={read_player_action(ram)}"
+                f"[NAVIGATOR] Push-facing block tile={next_tile} id=0x{int(get_tile_at(ram, *next_tile)):02X} "
+                f"action={read_player_action(ram)} pos=({self.current_pos.x},{self.current_pos.y})"
+                + (f" objects={near}" if near else "")
             )
             self.path = []
             self.stasis = 0

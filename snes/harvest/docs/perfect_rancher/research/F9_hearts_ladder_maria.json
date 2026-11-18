@@ -1,0 +1,179 @@
+{
+  "girl": "maria",
+  "pin": "LN_mgr-hearts_whatif_maria_flower",
+  "whatif": true,
+  "route_evidence": false,
+  "ram_writes": "cc script pointer and item 0x091E on the what-if pin",
+  "target_pc": 11769301,
+  "expect_delta": 5,
+  "expect_text": 946,
+  "chosen_index": 1,
+  "chosen_ptr_before": 11792196,
+  "live": [
+    {
+      "i": 0,
+      "base": 46470,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11792178
+    },
+    {
+      "i": 1,
+      "base": 46534,
+      "used": 1,
+      "delay": 1,
+      "ptr": 11792196
+    },
+    {
+      "i": 2,
+      "base": 46598,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11790918
+    },
+    {
+      "i": 3,
+      "base": 46662,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11790959
+    },
+    {
+      "i": 4,
+      "base": 46726,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11790980
+    },
+    {
+      "i": 5,
+      "base": 46790,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11791021
+    },
+    {
+      "i": 6,
+      "base": 46854,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11791060
+    },
+    {
+      "i": 7,
+      "base": 46918,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11791081
+    },
+    {
+      "i": 8,
+      "base": 46982,
+      "used": 0,
+      "delay": 1,
+      "ptr": 11791107
+    },
+    {
+      "i": 21,
+      "base": 47814,
+      "used": 0,
+      "delay": 11,
+      "ptr": 11768446
+    }
+  ],
+  "log": [
+    {
+      "phase": "boot",
+      "f": 0,
+      "maria": 0,
+      "ann": 0,
+      "nina": 0,
+      "ellen": 0,
+      "eve": 0,
+      "hap": 0,
+      "text": 249,
+      "held": 5,
+      "old": 5,
+      "lock": 1,
+      "x": 108,
+      "y": 409,
+      "tm": 27,
+      "ptr": 11792196,
+      "delay": 1,
+      "chosen_ptr": 11792196
+    },
+    {
+      "phase": "armed",
+      "f": 0,
+      "maria": 0,
+      "ann": 0,
+      "nina": 0,
+      "ellen": 0,
+      "eve": 0,
+      "hap": 0,
+      "text": 249,
+      "held": 5,
+      "old": 5,
+      "lock": 1,
+      "x": 108,
+      "y": 409,
+      "tm": 27,
+      "ptr": 11769301,
+      "delay": 0
+    },
+    {
+      "f": 1,
+      "maria": 0,
+      "ann": 0,
+      "nina": 0,
+      "ellen": 0,
+      "eve": 0,
+      "hap": 0,
+      "text": 946,
+      "held": 5,
+      "old": 5,
+      "lock": 2,
+      "x": 108,
+      "y": 409,
+      "tm": 27,
+      "ptr": 11769403,
+      "delay": 1
+    },
+    {
+      "f": 109,
+      "maria": 5,
+      "ann": 0,
+      "nina": 0,
+      "ellen": 0,
+      "eve": 0,
+      "hap": 0,
+      "text": 946,
+      "held": 5,
+      "old": 5,
+      "lock": 1,
+      "x": 108,
+      "y": 409,
+      "tm": 27,
+      "ptr": 11769265,
+      "delay": 1
+    }
+  ],
+  "end": {
+    "f": 109,
+    "maria": 5,
+    "ann": 0,
+    "nina": 0,
+    "ellen": 0,
+    "eve": 0,
+    "hap": 0,
+    "text": 946,
+    "held": 5,
+    "old": 5,
+    "lock": 1,
+    "x": 108,
+    "y": 409,
+    "tm": 27,
+    "ptr": 11769265,
+    "delay": 1
+  }
+}

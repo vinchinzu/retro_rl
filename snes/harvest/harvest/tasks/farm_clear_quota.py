@@ -13,6 +13,7 @@ from typing import Any, Mapping, Optional, Set
 
 from harvest.core.tile_catalog import (
     FENCE,
+    is_path_tilemap,
     LARGE_ROCK_DAMAGE_TILES,
     LARGE_ROCK_TILES,
     ROCK as SMALL_ROCK_TILE,
@@ -193,29 +194,64 @@ def unmet_debris_types(
     return unmet
 
 
+# The whole-field cover (score family from Year 2) sows grass across the field, not only the pasture.
+COVER_FIELD_BOUNDS = (2, 3, 62, 60)
+
+
+def _grass_bounds() -> tuple:
+    """Where grass stages (0x72/0x75/0x76) are legitimate tiles: the pasture, or the whole field under the cover."""
+    from harvest.planner import run_strategy
+    from harvest.tasks.grass_planter import PASTURE_BOUNDS
+
+    return COVER_FIELD_BOUNDS if run_strategy.field_cover() else PASTURE_BOUNDS
+
+
+def _in_pasture(tile) -> bool:
+    x0, y0, x1, y1 = _grass_bounds()
+    return x0 <= tile[0] <= x1 and y0 <= tile[1] <= y1
+
+
+def stale_under_player(ram) -> bool:
+    """The farmer's tile reads a stale viewport id; pasture grass shares those ids."""
+    from harvest.tasks.nav import get_pos_from_ram, get_tile_at, TILE_SIZE
+
+    pos = get_pos_from_ram(ram)
+    tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
+    return not _in_pasture(tile) and int(get_tile_at(ram, *tile)) in STALE_TILE_IDS
+
+
 def farm_map_loaded(ram) -> bool:
     """False off the farm, on shed-door 0xFF, or viewport unload.
 
     Shed ``0x26`` has a real metatile map, so an FF-stale check alone treats
     it as a wiped farm and CLEAR_ROCKS no-ops. Standing on a8 next to the
     door still unloads distant farm metatiles to 0xFF.
+
+    0x72/0x75/0x76 are also pasture grass stages, so tiles inside
+    ``PASTURE_BOUNDS`` are not counted: a Year 2 Summer pasture held 57 tiles of
+    0x76 and the stump clearer walked north-west into the barn for good. Under
+    the whole-field cover the grass bounds are the whole field (``COVER_FIELD_BOUNDS``):
+    389 young-grass tiles read as an unloaded map all of Y2 Spring D8 and wedged
+    ``ENSURE_ANIMAL_TOOLS`` for 2M frames. ``0xFF`` still counts everywhere.
     """
     from harvest.core.tile_catalog import ADDR_MAP, ADDR_TILEMAP, MAP_WIDTH
-    from harvest.tasks.nav import get_pos_from_ram, get_tile_at, TILE_SIZE
 
     if ADDR_TILEMAP < len(ram) and int(ram[ADDR_TILEMAP]) != 0x00:
         return False
-    pos = get_pos_from_ram(ram)
-    tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
-    if int(get_tile_at(ram, *tile)) in STALE_TILE_IDS:
+    if stale_under_player(ram):
         return False
+    x0, y0, x1, y1 = _grass_bounds()
     end = min(ADDR_MAP + MAP_WIDTH * MAP_WIDTH, len(ram))
     if end <= ADDR_MAP:
         return False
     import numpy as np
 
-    chunk = np.asarray(ram[ADDR_MAP:end], dtype=np.uint8)
-    stale = int(np.isin(chunk, list(STALE_TILE_IDS)).sum())
+    chunk = np.zeros(MAP_WIDTH * MAP_WIDTH, dtype=np.uint8)
+    chunk[: end - ADDR_MAP] = np.asarray(ram[ADDR_MAP:end], dtype=np.uint8)
+    grid = chunk.reshape(MAP_WIDTH, MAP_WIDTH).copy()
+    inside_unloaded = int((grid[y0 : y1 + 1, x0 : x1 + 1] == 0xFF).sum()) if (x0, y0, x1, y1) == COVER_FIELD_BOUNDS else 0
+    grid[y0 : y1 + 1, x0 : x1 + 1] = 0
+    stale = int(np.isin(grid, list(STALE_TILE_IDS)).sum()) + inside_unloaded   # 0xFF is never grass
     return stale < 64
 
 
@@ -223,32 +259,36 @@ def needs_shed_door_step_off(ram) -> bool:
     """True on the shed warp or while the farm map is still unloaded.
 
     Adjacent a8 is walkable but still unloads distant metatiles — keep
-    walking toward (25,28) a1 until :func:`farm_map_loaded`.
+    walking toward the open yard until :func:`farm_map_loaded`.
     """
     from harvest.tasks.farm_ops import SHED_DOOR_TILE
-    from harvest.tasks.nav import get_pos_from_ram, get_tile_at, TILE_SIZE
+    from harvest.tasks.nav import get_pos_from_ram, TILE_SIZE
 
     pos = get_pos_from_ram(ram)
     tile = (pos.x // TILE_SIZE, pos.y // TILE_SIZE)
     if tile == SHED_DOOR_TILE:
         return True
-    if int(get_tile_at(ram, *tile)) in STALE_TILE_IDS:
+    if stale_under_player(ram):
         return True
     return not farm_map_loaded(ram)
 
 
-YARD_LOAD_TILE = (25, 28)
+YARD_LOAD_TILE = (25, 32)
 
 
 def yard_load_action(ram):
-    """Run toward (25,28) a1 until the farm viewport loads.
+    """Run toward open ground south of the shed until the farm map loads.
 
     Shed-door stale is west of that tile; west-gate FF (spa return) is east.
-    Do not reuse shed_door_step_off_actions (always left) from the west gate.
+    Choose the direction from the live position at either entrance.
     """
     from harvest.tasks.nav import TILE_SIZE, get_pos_from_ram, make_action
 
     pos = get_pos_from_ram(ram)
+    # The shed has a solid facade beside its door. Leave south before aiming
+    # west; an upward correction at the threshold enters the shed again.
+    if pos.x // TILE_SIZE == 26 and pos.y // TILE_SIZE == 30:
+        return make_action(down=True, b=True)
     tx, ty = YARD_LOAD_TILE
     dx = tx * TILE_SIZE + 8 - pos.x
     dy = ty * TILE_SIZE + 8 - pos.y
@@ -499,7 +539,7 @@ def _make_pocket_approach(self, world: WorldState) -> Task:
             )
         else:
             hops = list(ROUTES.get("mountain_to_farm", []))
-    elif tilemap == 0x0C:
+    elif is_path_tilemap(tilemap):
         hops = path_return_to_farm(int(pos.x), int(pos.y), tilemap=tilemap)
     else:
         hops = list(SEGMENTS.get("path_to_farm", []))
@@ -815,10 +855,10 @@ def _finish_idle(self, world: WorldState, remaining) -> TaskResult:
 
 def step(self, world: WorldState) -> TaskResult:
     self._step_count += 1
-    # Whole-farm clear has no off-farm recovery. run12 walked into the house,
+    # Field clear has no off-farm recovery. run12 walked into the house,
     # the clock froze, and every later farm phase map-locked. Bail on frame 1.
     from harvest.planner.tasks.transitions import hands_are_clear
-    if self.farm_bounds is None and self.startup_done and not self._on_farm(world):
+    if self.startup_done and not self._uses_pocket_approach() and not self._on_farm(world):
         ram = world.ram
         tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
         return TaskResult(
@@ -853,9 +893,9 @@ def step(self, world: WorldState) -> TaskResult:
         )
     if self._quota_met(world.ram):
         noop = " no-op" if int(self.cleared_count or 0) <= 0 else ""
-        return TaskResult(
+        return self._finish_or_drop(
+            world, f"field_clear quota_met{noop} cleared={self.cleared_count} quota={self.quota}",
             status=TaskStatus.SUCCESS,
-            reason=f"field_clear quota_met{noop} cleared={self.cleared_count} quota={self.quota}",
         )
     if self.timeout > 0 and self._step_count > self.timeout:
         remaining = self._remaining_debris(world.ram)

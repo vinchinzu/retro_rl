@@ -128,6 +128,21 @@ from harvest.core.ram_catalog import COW_SLOT_BASE, COW_SLOT_SIZE, field_spec
 
 
 class DayPlanSequencePowerOnTests(unittest.TestCase):
+    def test_evening_clear_preserves_day_work_and_does_not_duplicate_receipts(self):
+        planner = MultiDayPlannerTask()
+        morning = DayPlanTask(phase_sequence=[])
+        morning._phase_results = [{"phase": "CROP_WATER", "status": "success", "watered_count": 8, "start_frame": 20}]
+        planner._current_task = morning
+        planner._capture_day_plan_outcomes()
+        planner._capture_day_plan_outcomes()
+        evening = DayPlanTask(phase_sequence=[])
+        evening._phase_results = [{"phase": "CLEAR_FIELD", "status": "success", "start_frame": 300}]
+        planner._current_task = evening
+        planner._capture_day_plan_outcomes()
+        self.assertEqual([r["phase"] for r in planner._last_day_phase_results], ["CROP_WATER", "CLEAR_FIELD"])
+        planner._activate("plan_day", DayPlanTask(phase_sequence=[]), make_date_world(0, season=0, day=4))
+        self.assertEqual(planner._last_day_phase_results, [])
+
     def test_boot_to_day2_sequence_chains_macros_and_sleep(self) -> None:
         phases = PHASE_SEQUENCES["boot_to_day2"]
         names = [phase.phase for phase in phases]
@@ -375,8 +390,11 @@ class SleepAndPlannerTests(unittest.TestCase):
         self.assertEqual(result.reason, "ending reached")
 
     def test_go_to_sleep_dismisses_during_sleep_transition(self) -> None:
+        # The overnight fade: tilemap 0x0F with the clock byte at 6. The Winter
+        # path is 0x0F too, with the byte at 0 or 1.
         task = GoToSleepTask()
         world = make_date_world(0x0F, season=0, day=12)
+        world.ram[0x4000 + field_spec("time_running").address] = 6
         task.reset(world)
 
         result = task.step(world)

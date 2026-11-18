@@ -495,3 +495,131 @@ def test_assemble_requires_manifest() -> None:
     with pytest.raises(AssembleError) as exc:
         assemble("tiny", {"ceres_elev": "tape:a0"}, play_hops=_play_recorder([]), session=_FakeSession())
     assert exc.value.code == "assemble.manifest"
+
+
+def test_clean_guards_count_attempted_loads_and_writes() -> None:
+    from super_metroid.splice.assemble import _guard_loads, _guard_writes
+
+    sess = _FakeSession()
+    loads = [0]
+    restore_loads = _guard_loads(sess, loads)
+    try:
+        with pytest.raises(AssembleError) as exc:
+            sess.env.em.set_state(b"x")
+        assert exc.value.code == "assemble.load"
+        assert loads == [1]
+    finally:
+        restore_loads()
+
+    class _Mem:
+        blocks = {0: bytearray(8)}
+
+        def assign(self, *args: Any) -> None:
+            pass
+
+    class _Data:
+        memory = _Mem()
+
+        def set_value(self, *args: Any) -> None:
+            pass
+
+    env = SimpleNamespace(data=_Data(), em=SimpleNamespace(set_ram=lambda *a: None), set_ram=lambda *a: None, set_value=lambda *a: None)
+    writes = [0]
+    restore_writes = _guard_writes(env, writes)
+    try:
+        for fn in (lambda: env.data.set_value("health", 99), lambda: env.data.memory.assign(0, "u8", 1), lambda: env.set_value("health", 99)):
+            with pytest.raises(RuntimeError, match="forbids RAM writes"):
+                fn()
+        assert writes == [3]
+    finally:
+        restore_writes()
+
+
+def test_clean_chain_rejects_non_vanilla_rom(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from super_metroid import paths as sm_paths
+    from super_metroid.splice.assemble import replay_tape_chain, solve_tape_chain
+
+    fake_rom = tmp_path / "rom.sfc"
+    fake_rom.write_bytes(b"not-vanilla-rom")
+    monkeypatch.setattr(sm_paths, "SHARED_ROM", fake_rom)
+    stem = tmp_path / "bad_clean"
+    stem.with_suffix(".json").write_text("{}\n")
+    with pytest.raises(ValueError, match="vanilla ROM"):
+        replay_tape_chain(stem=stem)
+    with pytest.raises(ValueError, match="vanilla ROM"):
+        solve_tape_chain(board=tmp_path / "board.json", stem=stem, resume=False)
+
+
+@pytest.mark.rom
+def test_clean_write_guard_blocks_actual_emulator_writers() -> None:
+    from retro_harness.actions import idle_action
+    from super_metroid.dev.common import make_dev_env
+    from super_metroid.ram import write_wram_u16
+    from super_metroid.splice.assemble import _guard_writes
+
+    env = make_dev_env()
+    env.reset()
+    restore = _guard_writes(env)
+    try:
+        with pytest.raises(RuntimeError, match="forbids RAM writes"):
+            write_wram_u16(env, 0x09C2, 77)
+        with pytest.raises(RuntimeError, match="forbids RAM writes"):
+            env.set_value("health", 77)
+        block = next(iter(env.data.memory.blocks.values()))
+        assert memoryview(block).readonly
+        env.step(idle_action())  # The emulator itself must still update RAM.
+    finally:
+        restore()
+        env.close()
+
+
+@pytest.mark.rom
+def test_clean_chain_keeps_pickup_tail_and_replays_from_power_on(tmp_path: Path) -> None:
+    from super_metroid.human_tape.product_chain import write_clean_chain_board
+    from super_metroid.splice.assemble import solve_tape_chain
+
+    board = tmp_path / "board.json"
+    write_clean_chain_board(out=board)
+    report = solve_tape_chain(
+        board=board, stem=tmp_path / "acceptance_clean",
+        through_row=19, max_delay=0, resume=False,
+    )
+    assert report["stopped"] is None
+    assert report["total_frames"] == 26_734
+    assert report["final_state"]["room_id"] == 0x9F11
+    assert report["final_state"]["collected_items"] & 4
+    assert report["proof"]["success"]
+    assert report["proof"]["all_leaves_match"]
+    assert report["proof"]["all_planned_crossings_match"]
+    assert report["proof"]["observed_transition_count"] == report["rooms_cleared"]
+    assert report["proof"]["transitions"][0]["source_room_id"] == CERES
+    assert report["proof"]["detour_rows"] == []
+    assert report["proof"]["state_loads"] == report["proof"]["ram_writes"] == 0
+
+
+@pytest.mark.rom
+def test_failed_chain_commit_keeps_last_replayable_prefix(tmp_path: Path, monkeypatch) -> None:
+    from super_metroid.human_tape.product_chain import write_clean_chain_board
+    from super_metroid.routes import tips
+    from super_metroid.splice.assemble import solve_tape_chain
+
+    original = tips.play_hops
+
+    def fail_after_play(session, splits, hops, segments=None):
+        result = original(session, splits, hops, segments)
+        if hops[0].hop_id == "chain:3":
+            raise RuntimeError("injected commit failure")
+        return result
+
+    monkeypatch.setattr(tips, "play_hops", fail_after_play)
+    board = tmp_path / "board.json"
+    write_clean_chain_board(out=board)
+    report = solve_tape_chain(
+        board=board, stem=tmp_path / "rollback_clean",
+        through_row=3, max_delay=0, resume=False,
+    )
+    assert report["stopped"]["row"] == 3
+    assert [row["row"] for row in report["rows"]] == [1, 2]
+    assert report["total_frames"] == 12_096
+    assert report["final_state"]["room_id"] == 0xDF8D
+    assert report["proof"]["success"]

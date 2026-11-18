@@ -35,6 +35,7 @@ from harvest.planner.day_plan_status import (
     BARN_TILEMAP,
     COOP_TILEMAP,
     is_farm_tilemap,
+    is_path_tilemap,
     is_house_tilemap,
 )
 from harvest.core.scene import (
@@ -276,7 +277,7 @@ class CompleteOutdoorMorningIntroTask(Task):
 
 
 # Maps with a known pure exit / return route to farm.
-_EXIT_ROUTE_TILEMAPS = frozenset({0x0C, 0x04, 0x05, 0x10, 0x1C, 0x22, 0x23})
+_EXIT_ROUTE_TILEMAPS = frozenset({0x0C, 0x0F, 0x04, 0x05, 0x10, 0x1C, 0x22, 0x23})
 _BUILDING_EXIT_TILEMAPS = frozenset({SHED_TILEMAP, BARN_TILEMAP, COOP_TILEMAP})
 
 
@@ -396,8 +397,13 @@ class ExitToFarmTask(Task):
     _fade_wait: int = field(default=0, init=False)
     _farm_control_wait: int = field(default=0, init=False)
     _name_press_step: int = field(default=-(10**9), init=False)
+    # The child-naming morning: a person in the doorway that only the wife clears.
+    _labor: Optional[Task] = field(default=None, init=False)
+    _labor_done: bool = field(default=False, init=False)
+    _leaving_cave: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
+        self._labor, self._labor_done = None, False
         self._blocked_reason = ""
         self._step_count = 0
         self._cutscene_mash_count = 0
@@ -407,6 +413,7 @@ class ExitToFarmTask(Task):
         self._farm_control_wait = 0
         self._name_press_step = -(10**9)
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        self._leaving_cave = tilemap in (0x29, 0x34)
         self._warped = not is_farm_tilemap(tilemap)
         if is_farm_tilemap(tilemap):
             self._task = None
@@ -415,7 +422,28 @@ class ExitToFarmTask(Task):
             # Not a route. Naming from (0, 0) must not become MultiMapNav.
             self._task = None
             return
-        if is_house_tilemap(tilemap):
+        if tilemap == 0x34:
+            from harvest.tasks.power_berry import CaveWalkTask
+            from harvest.tasks.skills import sequence_skills
+            from harvest.core.tile_catalog import MOUNTAIN_WALKABLE
+            self._task = sequence_skills("leave_winter_summit",
+                CaveWalkTask(target=(8, 28), mid_tol=3),
+                DirectionalTransitionTask(direction="down", origin_tilemap=0x34,
+                                          target_tilemap=0x10, timeout=1800, settle_frames=240),
+                CaveWalkTask(target=(27, 16), radius=8, mid_tol=3, timeout=12000,
+                             walkable=(MOUNTAIN_WALKABLE | {0xFF})-frozenset({0xA1,0xA7,0x35})))
+        elif self._leaving_cave:
+            from harvest.tasks.power_berry import CaveWalkTask
+            from harvest.tasks.skills import sequence_skills
+
+            # The berry chamber drops south onto the lower corridor. Walk round
+            # the east tunnel to the entrance; A4 is a downward cliff face.
+            self._task = sequence_skills("leave_mountain_cave",
+                CaveWalkTask(target=(23, 7), mid_tol=5, lane_align=2,
+                             walkable=frozenset({0xA0, 0xA4, 0xA7, 0xFF, 0xC5})),
+                DirectionalTransitionTask(direction="down", origin_tilemap=0x29,
+                                          target_tilemap=0x10, timeout=600, settle_frames=90))
+        elif is_house_tilemap(tilemap):
             self._task = ExitBuildingTask(
                 target_tilemap=FARM_TILEMAP,
                 dialog_frames=120,
@@ -441,6 +469,7 @@ class ExitToFarmTask(Task):
         elif tilemap in _EXIT_ROUTE_TILEMAPS:
             route_name = {
                 0x0C: "path_to_farm",
+                0x0F: "path_to_farm",
                 0x04: "town_to_farm",
                 0x05: "event_town_to_farm",
                 0x10: "mountain_to_farm",
@@ -462,7 +491,7 @@ class ExitToFarmTask(Task):
                         )
                     )
                     route_name = "grape_downhill"
-            elif tilemap == 0x0C:
+            elif is_path_tilemap(tilemap):
                 waypoints = path_return_to_farm(
                     int(pos.x), int(pos.y), tilemap=tilemap
                 )
@@ -561,6 +590,29 @@ class ExitToFarmTask(Task):
     def can_start(self, world: WorldState) -> bool:
         return True
 
+    def _labor_result(self, world: WorldState, tilemap: int) -> Optional[TaskResult]:
+        """Talk the wife through the crowded child-naming morning, then exit as usual.
+
+        The house exit is a scripted walk from the wake-up spot, so the labor task also walks
+        back there; only then does the normal ExitBuildingTask get its frames.
+        """
+        from harvest.planner.tasks.labor import LaborMorningTask, labor_morning_due
+
+        if self._labor is None and (
+            self._labor_done or not is_house_tilemap(tilemap) or not labor_morning_due(world.ram)
+        ):
+            return None
+        if self._labor is None:
+            self._labor = LaborMorningTask()
+            self._labor.reset(world)
+        result = self._labor.step(world)
+        if result.status == TaskStatus.RUNNING:
+            return result
+        self._labor, self._labor_done = None, True
+        if self._task is not None:
+            self._task.reset(world)
+        return None
+
     def _farm_fade_wait(self) -> Optional[TaskResult]:
         """Neutral frames while the warp fade-in still drops buttons."""
         if not self._warped or self._fade_wait >= FARM_FADE_IN_FRAMES:
@@ -628,6 +680,16 @@ class ExitToFarmTask(Task):
         if named is not None:
             return named
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
+        labor = self._labor_result(world, tilemap)
+        if labor is not None:
+            return labor
+        if self._leaving_cave:
+            result = self._task.step(world)
+            if result.status != TaskStatus.SUCCESS:
+                return result
+            # Build the ordinary mountain return from the settled landing.
+            self.reset(world)
+            return TaskResult(TaskStatus.RUNNING, action=ActionResult(make_action()), reason="mountain interior exited")
         scene = classify_scene_from_ram(world.ram)
         if scene_indicates_ending(scene):
             return TaskResult(
@@ -667,6 +729,14 @@ class ExitToFarmTask(Task):
             self._task = None
 
         if scene.is_transient:
+            # Mountain/path warps need the exit direction held until the map
+            # flips. Neutral waiting froze the Winter lumber return at
+            # (328,730), then timed out every later farm errand. Keep the
+            # bounded route running; sleep transitions still wait below.
+            if (scene.mode == SceneMode.MAP_TRANSITION
+                    and (tilemap == 0x10 or is_path_tilemap(tilemap))
+                    and isinstance(self._task, MultiMapNavTask)):
+                return self._task.step(world)
             # The town-to-path exit still needs its direction while map and
             # coordinates flip; neutral waiting interrupts that transition.
             if isinstance(self._task, _ToolShopExitTask) and self._task._route is not None:

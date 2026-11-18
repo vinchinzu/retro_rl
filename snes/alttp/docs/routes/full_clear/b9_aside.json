@@ -1,0 +1,25 @@
+{
+  "aside_steps": 3,
+  "end_x": 4896,
+  "illegal_on_path": 0,
+  "goes_north": 0,
+  "path": [
+    [
+      4872,
+      5976
+    ],
+    [
+      4880,
+      5976
+    ],
+    [
+      4888,
+      5976
+    ],
+    [
+      4896,
+      5976
+    ]
+  ],
+  "note": "East end at x=4896. No west end: no legal pose with x at least 16px west of 4872 has y within 8px of the start. Unmasked row 14 bytes 0x1E: 25 0x1E, 26 0x1E, 43 0x1E, 44 0x1E. tile_kind unknown is not a stair and those cells are not on the path."
+}

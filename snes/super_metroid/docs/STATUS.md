@@ -22,8 +22,8 @@ Glossary: [`CONTEXT.md`](../CONTEXT.md). Working board: [plan.md](plan.md).
 | Video | `recordings/phantoon.mp4` (Ceres on tape; frames match) |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
-| Ready work | `bd ready -l super_metroid -l spine` |
-| Clean track (parallel) | Morph prefix clean @ **26,824f**; bombs/Torizo Clean **GREEN 49,321f** ×2. [CLEAN_TRACK.md](CLEAN_TRACK.md). Does **not** change this gate. |
+| Ready work | [Exit Space Jump Room on row 212 and continue to Plasma Beam](plan.md#start-here-next-session) |
+| Clean track | Defeated Draygon (`$7E:D82C` bit 0) and collected Space Jump (`0x7325`) in Space Jump Room (`0xD9AA`) after row 211. **62.1% of the 340-row board**. Both guarded harness replay and the zero-harness-import `audit_master_tape.py` verified 219 transitions and matched the final emulator snapshot on the vanilla ROM after 261,300 frames with zero loads, RAM writes, or deaths. [CLEAN_TRACK.md](CLEAN_TRACK.md) |
 
 ## Current verified tip: Phantoon (K6)
 
@@ -109,7 +109,7 @@ Secondary only. Does **not** change the program gate above.
 | Clean bombs tip | **GREEN** **49,321f** ×2 (2026-08-06). Parlor `0x92FD`, items `0x1004`. |
 | Clean integrity | 0 energy/ammo writes; 0 loads/progression/capacity; dual reverify |
 | Evidence | `recordings/bombs_clean*.json`. Residual purged. |
-| Next | Spore clean is parked. Not a Clean primary claim. |
+| Next | Farm Power Bombs for the Fireflea Room door in Red Tower. |
 
 Contract: [CLEAN_TRACK.md](CLEAN_TRACK.md) · [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
 No Clean dual / STATUS primary claim.

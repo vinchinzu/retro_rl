@@ -21,10 +21,10 @@ from harvest.core.tile_catalog import (
     ADDR_INPUT_LOCK,
 )
 from harvest.tasks.farm_ops import TileScanner
-
+from harvest.tasks.cow_geometry import BARN_DOOR_PX, BarnWalker, barn_cow_pixels
 from harvest.tasks.primitives import dismiss_dialogue_result
 from harvest.core.animal_status import read_held_item
-from harvest.core.ram_catalog import field_spec, live_wram_base, read_ram_u8
+from harvest.core.ram_catalog import field_spec, live_wram_base, read_ram_u8, read_ram_value
 from harvest.planner.day_plan_status import (
     BARN_TILEMAP,
     COOP_TILEMAP,
@@ -35,6 +35,18 @@ from harvest.planner.day_plan_status import (
     is_house_tilemap,
     tilemaps_match,
 )
+
+# $0025 fade_current_brightness. ScreenFadein ($8087CE) steps it to 15 after a
+# door warp, and the pad ignores input until then: about 70 frames after a coop
+# exit lands at (456, 360), and the tilemap already reads the farm well before.
+ADDR_FADE_BRIGHTNESS = 0x0025
+FULL_BRIGHTNESS = 0x0F
+
+
+def screen_faded_in(ram: np.ndarray) -> bool:
+    idx = ADDR_FADE_BRIGHTNESS + live_wram_base(ram)
+    return idx >= len(ram) or int(ram[idx]) >= FULL_BRIGHTNESS
+
 
 # ── ExitBuildingTask ──────────────────────────────────────────────
 
@@ -51,6 +63,9 @@ HOUSE_EXIT_PATH: List[Tuple[str, int]] = [
 ]
 HOUSE_EXIT_TILE: Tuple[int, int] = (8, 12)
 HOUSE_EXIT_RIGHT_X = 216
+HOUSE_EXIT_UNSTICK_FROM_YEAR = 2     # 0-based: Year 3 only, so Years 1-2 keep their frames
+HOUSE_EXIT_STILL_FRAMES = 30
+HOUSE_EXIT_SIDESTEP_FRAMES = 24
 HOUSE_EXIT_LOWER_Y = 201
 HOUSE_EXIT_DOOR_X = 136
 # Outdoor house threshold — stand here, then walk up into the doorway.
@@ -67,12 +82,6 @@ SHED_ENTER_OVERSHOOT_Y = 440
 ADDR_PLAYER_STATE = field_spec("player_state").address
 PLAYER_STATE_TRANSITION_BIT = 0x80
 PLAYER_STATE_CARRYING_BIT = 0x02
-BARN_EXIT_TROUGH_X = 113
-BARN_EXIT_TROUGH_MAX_X = 130
-BARN_EXIT_RIGHT_AISLE_X = 204
-BARN_EXIT_BYPASS_X = 216
-BARN_EXIT_LOWER_Y = 20 * 16 + 8
-BARN_EXIT_DOOR_X = 8 * 16 + 8
 # Coop door stand is (8,12). The tilemap's false-open vertical strip around
 # x=5 traps generic BFS between the left service lane and the door.
 COOP_EXIT_DOOR_X = 8 * 16 + 8
@@ -81,6 +90,14 @@ COOP_EXIT_LEFT_LANE_X = 2 * 16 + 8
 COOP_EXIT_FALSE_OPEN_X = 5 * 16 + 8
 # Tiles with y >= 8 around x=5 are false-open; stay above y=7 while crossing.
 COOP_EXIT_SAFE_CROSS_MAX_Y = 7 * 16 + 8
+# A hen parked on the crossing row blocks the run east for good (pin
+# LN_y23_coop_hen_block: one at (8,7) held the farmer at (7,7) through the
+# whole timeout). Past the false-open strip the door takes the farmer from
+# x=126, so a stalled crossing goes down instead.
+COOP_EXIT_DESCEND_MIN_X = COOP_EXIT_FALSE_OPEN_X + 16
+# Frames without a pixel of movement before a barn or coop exit changes lane.
+EXIT_STALL_FRAMES = 45
+_BARN_DOOR_NUDGE_XS = (120, 136, 128)  # the doorway spans x=113..143
 
 
 def hands_are_clear(ram: np.ndarray) -> bool:
@@ -147,6 +164,10 @@ class ExitBuildingTask(Task):
     _exit_down_left: int = field(default=0, init=False)
     _path_frame: int = field(default=0, init=False)
     _target_seen_frames: int = field(default=0, init=False)
+    _still_at: Tuple[int, int] = field(default=(-1, -1), init=False)
+    _still: int = field(default=0, init=False)
+    _side_dir: int = field(default=1, init=False)
+    _side_left: int = field(default=0, init=False)
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
     _pathfinder: Pathfinder = field(init=False)
     _navigator: Navigator = field(init=False)
@@ -156,6 +177,7 @@ class ExitBuildingTask(Task):
         self._navigator = Navigator(self._pathfinder)
 
     def reset(self, world: WorldState) -> None:
+        self._still_at, self._still, self._side_dir, self._side_left = (-1, -1), 0, 1, 0
         self._exit_last_x = -1
         self._exit_stall = 0
         self._exit_down_left = 0
@@ -219,6 +241,27 @@ class ExitBuildingTask(Task):
             return self._fallback_action(goal)
         return action
 
+    def _sidestep_if_blocked(self, ram: np.ndarray, action: np.ndarray) -> np.ndarray:
+        """Year 3: step round whatever stands in the way of the blind exit walk.
+
+        The walk only presses down and left/right, so a child or the dog on the farmer's column holds it for good (D r45 Summer D18:
+        farmer (327,156), Eve (328,120), an NPC at (328,169); the exit timed out, the herd stayed unfed, cow happiness -25).
+        After ``HOUSE_EXIT_STILL_FRAMES`` without moving it sidesteps for ``HOUSE_EXIT_SIDESTEP_FRAMES``, left first, then right.
+        """
+
+        pos = self._navigator.current_pos
+        self._still = self._still + 1 if (pos.x, pos.y) == self._still_at else 0
+        self._still_at = (pos.x, pos.y)
+        if int(read_ram_value(ram, "year", raw=True) or 0) < HOUSE_EXIT_UNSTICK_FROM_YEAR:
+            return action
+        if self._side_left > 0:
+            self._side_left -= 1
+            return make_action(left=self._side_dir < 0, right=self._side_dir > 0)
+        if self._still >= HOUSE_EXIT_STILL_FRAMES:
+            self._still, self._side_dir, self._side_left = 0, -self._side_dir, HOUSE_EXIT_SIDESTEP_FRAMES
+            return make_action(left=self._side_dir < 0, right=self._side_dir > 0)
+        return action
+
     def _house_exit_action(self) -> np.ndarray:
         pos = self._navigator.current_pos
         if pos.y < HOUSE_EXIT_LOWER_Y - 10:
@@ -276,7 +319,12 @@ class ExitBuildingTask(Task):
         self._navigator.update(world.ram)
 
         if self._step_count > self.timeout:
-            return TaskResult(status=TaskStatus.FAILURE, reason="exit timeout")
+            from harvest.core.npc_catalog import game_objects
+            from harvest.tasks.nav import get_pos_from_ram
+
+            pos = get_pos_from_ram(world.ram)
+            others = [(o.kind, tuple(o.pixel)) for o in game_objects(world.ram) if not o.is_player][:6]
+            return TaskResult(status=TaskStatus.FAILURE, reason=f"exit timeout pos=({pos.x},{pos.y}) tilemap=0x{int(world.ram[ADDR_TILEMAP]):02X} others={others}")
 
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         if tilemaps_match(tilemap, self.target_tilemap) and self._step_count > 30:
@@ -305,7 +353,7 @@ class ExitBuildingTask(Task):
             return dismiss_dialogue_result(self._step_count, buttons=("b", "a"), pulse_every=1)
 
         if is_house_tilemap(tilemap):
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._house_exit_action()))
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._sidestep_if_blocked(world.ram, self._house_exit_action())))
 
         # At the exit tile, or in another farm building fallback, walk through
         # the south-facing doorway.
@@ -348,7 +396,16 @@ class DirectionalTransitionTask(Task):
     _step_count: int = field(default=0, init=False)
     _target_seen_frames: int = field(default=0, init=False)
     _stand_reached: bool = field(default=False, init=False)
-    _barn_exit_bypass: bool = field(default=False, init=False)
+    _door_nudge: int = field(default=0, init=False)
+    _barn_walker: BarnWalker = field(default_factory=BarnWalker, init=False)
+    _exit_last: Tuple[int, int] = field(default=(-1, -1), init=False)
+    _exit_stall: int = field(default=0, init=False)
+    _coop_descend: bool = field(default=False, init=False)
+    _coop_detour_clear_y: int = field(default=0, init=False)
+    _coop_detour_idx: int = field(default=-1, init=False)
+    _coop_cross_y: int = field(default=0, init=False)
+    _coop_cross_idx: int = field(default=0, init=False)
+    _coop_climb_x: int = field(default=0, init=False)
     _hands_attempts: int = field(default=0, init=False)
     _action_queue: Deque[np.ndarray] = field(default_factory=deque, init=False)
     _scanner: TileScanner = field(default_factory=TileScanner, init=False)
@@ -359,11 +416,24 @@ class DirectionalTransitionTask(Task):
         self._pathfinder = Pathfinder(self._scanner)
         self._navigator = Navigator(self._pathfinder)
 
+    @staticmethod
+    def _objects_near(ram: np.ndarray, radius: int = 48) -> list:
+        """Sprites within ``radius`` px of the farmer: what a door that will not open has in front of it."""
+        from harvest.core.npc_catalog import game_objects
+        from harvest.tasks.nav import get_pos_from_ram
+
+        pos = get_pos_from_ram(ram)
+        return [(o.kind, tuple(o.pixel)) for o in game_objects(ram)
+                if not o.is_player and abs(o.pixel[0] - pos.x) <= radius and abs(o.pixel[1] - pos.y) <= radius][:5]
+
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
         self._target_seen_frames = 0
         self._stand_reached = False
-        self._barn_exit_bypass = False
+        self._barn_walker.clear()
+        self._exit_last, self._exit_stall, self._coop_descend = (-1, -1), 0, False
+        self._coop_detour_clear_y, self._coop_detour_idx = 0, -1
+        self._coop_cross_y, self._coop_cross_idx, self._coop_climb_x = 0, 0, 0
         self._hands_attempts = 0
         self._action_queue.clear()
         self._navigator.path = []
@@ -374,7 +444,9 @@ class DirectionalTransitionTask(Task):
     def resume_after_hotswap(self, world: WorldState) -> None:
         self._target_seen_frames = 0
         self._stand_reached = False
-        self._barn_exit_bypass = False
+        self._barn_walker.clear()
+        self._coop_detour_clear_y, self._coop_detour_idx = 0, -1
+        self._coop_cross_y, self._coop_cross_idx, self._coop_climb_x = 0, 0, 0
         self._action_queue.clear()
         self._navigator.update(world.ram)
         self._navigator.path = []
@@ -490,46 +562,37 @@ class DirectionalTransitionTask(Task):
         use_run = (self._step_count % 4) == 0
         return make_action(**{self.direction: True, "b": use_run})
 
-    def _barn_exit_action(self) -> np.ndarray:
+    def _note_exit_stall(self) -> None:
         pos = self._navigator.current_pos
-        if self._barn_exit_bypass:
-            if pos.y >= BARN_EXIT_LOWER_Y - 2:
-                self._barn_exit_bypass = False
-            elif pos.x < BARN_EXIT_BYPASS_X - 3:
-                return make_action(right=True, b=True)
-            elif pos.x > BARN_EXIT_BYPASS_X + 3:
-                return make_action(left=True, b=True)
-            else:
-                return make_action(down=True, b=True)
+        here = (pos.x, pos.y)
+        # A push into a body jitters one pixel (y 347 <-> 348), so that counts as still.
+        still = abs(here[0] - self._exit_last[0]) + abs(here[1] - self._exit_last[1]) <= 1
+        self._exit_stall = self._exit_stall + 1 if still else 0
+        self._exit_last = here
 
-        if pos.y < BARN_EXIT_LOWER_Y - 2:
-            # Tile (11, 18) is the cow talk pin (~188, 299). The right aisle
-            # is the cow body, so slide south to the door lane before east.
-            if pos.y >= 18 * 16 and 11 * 16 <= pos.x < BARN_EXIT_RIGHT_AISLE_X - 8:
-                return make_action(down=True, b=True)
-            if pos.x <= BARN_EXIT_TROUGH_MAX_X:
-                if abs(pos.x - BARN_EXIT_TROUGH_X) > 2:
-                    return make_action(right=pos.x < BARN_EXIT_TROUGH_X, left=pos.x > BARN_EXIT_TROUGH_X, b=True)
-                return make_action(down=True, b=True)
-            # Cow stalls between the right aisle and the door frequently pin
-            # exit nav with little tile-stasis growth. Bypass sooner and with
-            # a wider aisle band so EXIT_BARN does not burn the day timeout.
-            near_right_aisle = abs(pos.x - BARN_EXIT_RIGHT_AISLE_X) <= 16
-            if self._navigator.stasis > 45 and near_right_aisle:
-                self._barn_exit_bypass = True
-                return make_action(right=True, b=True)
-            if abs(pos.x - BARN_EXIT_RIGHT_AISLE_X) > 3:
-                return make_action(
-                    right=pos.x < BARN_EXIT_RIGHT_AISLE_X,
-                    left=pos.x > BARN_EXIT_RIGHT_AISLE_X,
-                    b=True,
-                )
-            return make_action(down=True, b=True)
-        if pos.x > BARN_EXIT_DOOR_X + 4:
-            return make_action(left=True, b=True)
-        if pos.x < BARN_EXIT_DOOR_X - 4:
-            return make_action(right=True, b=True)
-        return make_action(down=True, b=True)
+    def _barn_exit_action(self, ram: np.ndarray) -> np.ndarray:
+        """Walk the barn map to the door, then push down through it.
+
+        A calf parked in the doorway overlaps the door column (Y2 Spring D30, a rescue): a push that stands
+        still sidesteps along the doorway, which spans x=113..143.
+        """
+        pos = self._navigator.current_pos
+        if abs(pos.x - BARN_DOOR_PX[0]) > 15 or pos.y < BARN_DOOR_PX[1] - 4:
+            self._exit_stall, self._door_nudge = 0, 0
+            action = self._barn_walker.step((pos.x, pos.y), BARN_DOOR_PX, tolerance=4, cows=barn_cow_pixels(ram))
+            if action is not None:
+                return action
+        self._note_exit_stall()
+        if self._exit_stall >= EXIT_STALL_FRAMES:
+            self._door_nudge, self._exit_stall = self._door_nudge + 1, 0
+        if self._door_nudge:
+            tx = _BARN_DOOR_NUDGE_XS[(self._door_nudge - 1) % len(_BARN_DOOR_NUDGE_XS)]
+            if abs(pos.x - tx) > 2:
+                return make_action(left=pos.x > tx, right=pos.x < tx)
+            return make_action(down=True)
+        if self.door_align_px is not None and abs(pos.x - self.door_align_px) > self.door_align_tolerance:
+            return make_action(left=pos.x > self.door_align_px, right=pos.x < self.door_align_px)
+        return make_action(down=True)  # a run pulse here can shove a cow through the door
 
     def _coop_exit_action(self) -> np.ndarray:
         """Exit via top-of-false-open bypass, then the door column.
@@ -539,23 +602,104 @@ class DirectionalTransitionTask(Task):
         route: climb above y=128, run east to the door x, then press down.
         """
         pos = self._navigator.current_pos
+        self._note_exit_stall()
         # Shipping-bin interact pocket.
         if pos.x <= 50 and pos.y >= 165:
             if abs(pos.x - 38) > 2:
                 return make_action(right=pos.x < 38, left=pos.x > 38, b=True)
             return make_action(up=True, b=True)
+
+        detour_xs = (164, 108, 188, 92)
+        cross_ys = (62, 98, 76, 114)
+
+        if self._coop_detour_clear_y > 0:
+            if pos.y >= self._coop_detour_clear_y:
+                self._coop_detour_clear_y = 0
+            else:
+                target_x = detour_xs[self._coop_detour_idx % len(detour_xs)]
+                if self._exit_stall >= EXIT_STALL_FRAMES:
+                    self._coop_detour_idx += 1
+                    self._exit_stall = 0
+                    target_x = detour_xs[self._coop_detour_idx % len(detour_xs)]
+                if abs(pos.x - target_x) > 3:
+                    return make_action(right=pos.x < target_x, left=pos.x > target_x, b=True)
+                return make_action(down=True, b=True)
+
+        if (
+            self._exit_stall >= EXIT_STALL_FRAMES
+            and COOP_EXIT_DESCEND_MIN_X <= pos.x < COOP_EXIT_DOOR_X - 4
+        ):
+            self._coop_descend, self._exit_stall = not self._coop_descend, 0
+        if self._coop_descend and pos.x >= COOP_EXIT_DESCEND_MIN_X:
+            return make_action(down=True, b=True)
+
         # Climb above the false-open band before crossing east.
         if pos.x < COOP_EXIT_DOOR_X - 4 and pos.y > COOP_EXIT_SAFE_CROSS_MAX_Y:
+            if self._coop_climb_x > 0:
+                if abs(pos.x - self._coop_climb_x) <= 3 or self._exit_stall >= EXIT_STALL_FRAMES:
+                    self._coop_climb_x = 0
+                    self._exit_stall = 0
+                else:
+                    return make_action(
+                        right=pos.x < self._coop_climb_x,
+                        left=pos.x > self._coop_climb_x,
+                        b=True,
+                    )
+            if self._exit_stall >= EXIT_STALL_FRAMES:
+                self._coop_climb_x = 92 if pos.x < 70 else 42
+                self._exit_stall = 0
+                return make_action(
+                    right=pos.x < self._coop_climb_x,
+                    left=pos.x > self._coop_climb_x,
+                    b=True,
+                )
             return make_action(up=True, b=True)
+
         if abs(pos.x - COOP_EXIT_DOOR_X) > 4:
+            if self._coop_cross_y > 0:
+                if abs(pos.y - self._coop_cross_y) <= 3:
+                    self._coop_cross_y = 0
+                elif self._exit_stall >= EXIT_STALL_FRAMES:
+                    self._coop_cross_idx += 1
+                    self._coop_cross_y = cross_ys[self._coop_cross_idx % len(cross_ys)]
+                    self._exit_stall = 0
+                    return make_action(
+                        down=pos.y < self._coop_cross_y,
+                        up=pos.y > self._coop_cross_y,
+                        b=True,
+                    )
+                else:
+                    return make_action(
+                        down=pos.y < self._coop_cross_y,
+                        up=pos.y > self._coop_cross_y,
+                        b=True,
+                    )
+            if self._exit_stall >= EXIT_STALL_FRAMES:
+                self._coop_cross_y = cross_ys[self._coop_cross_idx % len(cross_ys)]
+                if abs(pos.y - self._coop_cross_y) <= 4:
+                    self._coop_cross_idx += 1
+                    self._coop_cross_y = cross_ys[self._coop_cross_idx % len(cross_ys)]
+                self._exit_stall = 0
+                return make_action(
+                    down=pos.y < self._coop_cross_y,
+                    up=pos.y > self._coop_cross_y,
+                    b=True,
+                )
             return make_action(
                 right=pos.x < COOP_EXIT_DOOR_X,
                 left=pos.x > COOP_EXIT_DOOR_X,
                 b=True,
             )
+
+        if self._exit_stall >= EXIT_STALL_FRAMES:
+            self._coop_detour_clear_y = min(196, pos.y + 28)
+            self._coop_detour_idx += 1
+            self._exit_stall = 0
+            target_x = detour_xs[self._coop_detour_idx % len(detour_xs)]
+            return make_action(right=pos.x < target_x, left=pos.x > target_x, b=True)
         return make_action(down=True, b=True)
 
-    def _target_ready(self, tilemap: int) -> bool:
+    def _target_ready(self, tilemap: int, ram: np.ndarray) -> bool:
         if not self._is_target_tilemap(tilemap):
             return False
         if self.target_stand_tile is not None:
@@ -573,6 +717,8 @@ class DirectionalTransitionTask(Task):
             # coordinates in from some building exits. Do not hand off to the
             # next nav phase while the player still has indoor-local coords.
             if pos.x < 250 or pos.y < 300:
+                return False
+            if not screen_faded_in(ram):
                 return False
         return True
 
@@ -601,20 +747,23 @@ class DirectionalTransitionTask(Task):
                 status=TaskStatus.FAILURE,
                 reason=(
                     f"directional transition timeout pos=({pos.x},{pos.y}) "
-                    f"tile={self._navigator.current_tile} tilemap=0x{tilemap:02X}"
+                    f"tile={self._navigator.current_tile} tilemap=0x{tilemap:02X} "
+                    f"held=0x{int(read_ram_value(world.ram, 'held_item')):02X} lock={int(world.ram[ADDR_INPUT_LOCK])} "
+                    f"near={self._objects_near(world.ram)}"
                 ),
             )
         if (
             self.origin_tilemap is not None
             and self._step_count == 1
             and not tilemaps_match(tilemap, self.origin_tilemap)
+            and not self._is_target_tilemap(tilemap)
         ):
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"expected origin 0x{self.origin_tilemap:02X}, got 0x{tilemap:02X}",
             )
         if self._is_target_tilemap(tilemap) and self._step_count >= self.min_frames_before_success:
-            if self._target_ready(tilemap):
+            if self._target_ready(tilemap, world.ram):
                 self._target_seen_frames += 1
                 if self._target_seen_frames >= self.settle_frames:
                     return TaskResult(status=TaskStatus.SUCCESS, reason=f"tilemap=0x{tilemap:02X}")
@@ -661,7 +810,7 @@ class DirectionalTransitionTask(Task):
             and is_farm_tilemap(self.target_tilemap)
             and tilemap == BARN_TILEMAP
         ):
-            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._barn_exit_action()))
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._barn_exit_action(world.ram)))
         if (
             self.origin_tilemap == COOP_TILEMAP
             and is_farm_tilemap(self.target_tilemap)

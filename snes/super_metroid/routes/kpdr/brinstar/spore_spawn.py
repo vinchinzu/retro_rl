@@ -9,6 +9,7 @@ This module never loads emulator state or writes RAM.
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass
 
 from super_metroid.combat.spore_spawn import play_spore_spawn_floor_bounce
@@ -269,16 +270,7 @@ def play_main_shaft_to_spore_spawn(session: ControllerSession) -> SporeSpawnEvid
     _require_room(session, ROOM_SPORE_SPAWN, "Spore Spawn entry")
     fight = play_spore_spawn_floor_bounce(session)
 
-    hold(session, 600, reason="spore_spawn_death_settle")
-    for names in _SPORE_EXIT_CLIMB:
-        hold(session, 16, *names, reason="spore_exit_map_guided_climb")
-    if not (session.state.samus_y <= 150 and session.state.samus_x >= 170):
-        raise RuntimeError(f"Spore exit climb missed upper-right door: {session.state}")
-    for _ in range(20):
-        hold(session, 2, "RIGHT", "X", reason="open_spore_exit_door")
-        hold(session, 8, "RIGHT", reason="open_spore_exit_door")
-    hold(session, 300, reason="spore_spawn_exit_settle")
-    _require_room(session, ROOM_SUPER, "Spore Spawn natural exit")
+    play_spore_spawn_exit(session)
 
     return SporeSpawnEvidence(
         entry_frame=fight.entry_frame,
@@ -290,6 +282,46 @@ def play_main_shaft_to_spore_spawn(session: ControllerSession) -> SporeSpawnEvid
         brinstar_boss_bits_before=fight.brinstar_boss_bits_before,
         brinstar_boss_bits_after=session.state.boss_bits[1],
         vulnerable_spritemaps=fight.vulnerable_spritemaps,
+    )
+
+
+def play_spore_spawn_exit(
+    session: ControllerSession, *, deselect_weapon: bool = False
+) -> None:
+    """Climb to the Super room after either fight strategy; buttons only."""
+    if deselect_weapon and session.state.selected_item != 0:
+        hold(session, 1, "SELECT", reason="spore_spawn_deselect_weapon")
+        hold(session, 599, reason="spore_spawn_death_settle")
+    else:
+        hold(session, 600, reason="spore_spawn_death_settle")
+    for names in _SPORE_EXIT_CLIMB:
+        hold(session, 16, *names, reason="spore_exit_map_guided_climb")
+    if not (session.state.samus_y <= 150 and session.state.samus_x >= 170):
+        raise RuntimeError(f"Spore exit climb missed upper-right door: {session.state}")
+    for _ in range(20):
+        hold(session, 2, "RIGHT", "X", reason="open_spore_exit_door")
+        hold(session, 8, "RIGHT", reason="open_spore_exit_door")
+    hold(session, 300, reason="spore_spawn_exit_settle")
+    _require_room(session, ROOM_SUPER, "Spore Spawn natural exit")
+
+
+def play_clean_spore_spawn_leave(session: ControllerSession) -> SimpleNamespace:
+    """Search for a survivable Spore Spawn kill, then climb to 0x9B5B."""
+    from types import SimpleNamespace
+    from super_metroid.combat.spore_spawn import play_spore_spawn_rollout
+
+    # The Clean entry needs time to farm droplets. Keep a small energy budget
+    # for the late attack if the hit-free search runs out of moves.
+    report = play_spore_spawn_rollout(
+        session, workers=min(24, os.cpu_count() or 8), max_frames=24_000,
+        damage_budget=24,
+    )
+    if report.get("outcome") != "spore_spawn_defeated":
+        raise RuntimeError(f"Clean Spore Spawn rollout did not defeat boss: {report}")
+    play_spore_spawn_exit(session, deselect_weapon=True)
+    return SimpleNamespace(
+        fight=SimpleNamespace(rollout_restores=int(report.get("rollout_restores", 0))),
+        report=report,
     )
 
 

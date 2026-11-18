@@ -20,6 +20,7 @@ import yaml
 
 from harvest.core.animal_status import COW_SLOT_COUNT, count_chicken_slots, existing_cow_slots
 from harvest.core.carry import carry_pair_items
+from harvest.core.shipping_credit import SHIPPED_CROP_FIELDS as SHIPPED_COUNTERS
 from harvest.core.harvest_state import (
     CURRENT_MAP_ARRAY_ADDR,
     FARM_MAP_ARRAY_ADDR,
@@ -59,8 +60,6 @@ DAYS_PER_SEASON = 30
 SEASONS_PER_YEAR = 4
 
 SEED_BAGS = ("grass", "corn", "tomato", "potato", "turnip")
-SHIPPED_COUNTERS = {"corn": "shipped_corn", "tomato": "shipped_tomatoes",
-                    "turnip": "shipped_turnips", "potato": "shipped_potatoes"}
 
 # Designed one-shots. The three duplication edges have no flag of their own.
 DESIGNED_BERRY_FLAGS = {
@@ -207,6 +206,12 @@ def development_census(ram: np.ndarray) -> dict[str, Any]:
         }
         for todo in todos
     ]
+    ledger = layout.terrain_ledger(
+        tiles,
+        cover=target.cover,
+        planted_grass=int(read_ram_value(ram, "planted_grass")),
+        need=minimum,
+    )
     return {
         "counted_tiles": counted,
         "minimum_tiles": minimum,
@@ -216,6 +221,8 @@ def development_census(ram: np.ndarray) -> dict[str, Any]:
         "source": source,
         "tilemap": tilemap,
         "linter": "harvest.maps.farm_final_layout",
+        "ledger": ledger.as_dict(),
+        "ledger_line": ledger.line(),
     }
 
 
@@ -264,7 +271,9 @@ def economy_snapshot(ram: np.ndarray) -> dict[str, Any]:
 
     carried = carry_pair_items(ram)
     shelf = read_ram_u8(ram, SHED_ROW_2_ADDR)
+    from harvest.planner.power_berry_calendar import berry_receipts
     return {
+        "power_berries": berry_receipts(ram),
         "money": int(read_ram_value(ram, "money")),
         "bin_gold": int(read_ram_value(ram, "shipping_money")),
         "cows": int(read_ram_value(ram, "num_cows")),
@@ -768,6 +777,8 @@ def format_report(report: Mapping[str, Any]) -> str:
             f"development census  counted={census['counted_tiles']} "
             f"gap_to_2950={census['gap_to_2950']} uncovered={census['uncovered_count']}"
         )
+        if census.get("ledger_line"):
+            lines.append(f"  {census['ledger_line']}")
     return "\n".join(lines) + "\n"
 
 
@@ -804,6 +815,9 @@ def _date_fields(ram) -> dict[str, int]:
         "house_build_nights": int(read_ram_value(ram, "development_rate")),
         "ann_hearts": int(read_ram_value(ram, "ann_hearts")),
         "eve_hearts": int(read_ram_value(ram, "eve_hearts")),
+        "maria_hearts": int(read_ram_value(ram, "maria_hearts")),
+        "nina_hearts": int(read_ram_value(ram, "nina_hearts")),
+        "ellen_hearts": int(read_ram_value(ram, "ellen_hearts")),
         "wife_pregnancy": int(read_ram_value(ram, "wife_pregnancy")),
         "tool_selected": int(read_ram_value(ram, "tool_selected")),
         "shed_row_3": read_ram_u8(ram, 0x11F02),

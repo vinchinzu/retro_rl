@@ -89,6 +89,58 @@ def _make_farm_ram(*, player_tile=(10, 10), stamina=100, tool=int(Tool.HAMMER)):
     return ram
 
 
+class D2EarlyGrowthTests(unittest.TestCase):
+    def test_missing_grass_prevents_a_perfect_day_two(self):
+        from harvest.core.ram_catalog import field_spec
+        from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
+        from harvest.tasks.crop_geometry import plot_tiles
+        from harvest.tasks.crop_skills import PLANTED_WET
+
+        ram = _make_farm_ram()
+        ram[field_spec("day").address] = 2
+        for tx, ty in plot_tiles(WEST_POCKET_PLANT_CENTER, include_center=False):
+            _set_tile(ram, tx, ty, PLANTED_WET)
+        shipping = [{"shipping_deposit": {"season": 0, "day": 2, "hour": 8, "minute": 0,
+                     "shipping_money_before": 0, "shipping_money_after": 150}}]
+        self.assertFalse(observe_d2_farm(ram, shipping).is_complete)
+        ram[field_spec("planted_grass").address] = 9
+        self.assertTrue(observe_d2_farm(ram, shipping).is_complete)
+
+    def test_clear_farm_still_requires_the_free_grass_bag(self):
+        from harvest.core.ram_catalog import field_spec
+
+        ram = _make_farm_ram()
+        ram[field_spec("day").address] = 2
+        ram[field_spec("grass_seeds").address] = 1
+        status = observe_d2_farm(ram)
+        spec = next_d2_spec(status)
+        self.assertIsNotNone(spec)
+        self.assertEqual(spec.phase, "PLANT_PASTURE")
+        self.assertEqual(spec.params["target_tiles"], 9)
+        self.assertEqual(spec.params["bag_limit"], 1)
+
+    def test_bounded_clear_rejects_the_shed(self):
+        ram = _make_farm_ram()
+        ram[ADDR_TILEMAP] = 0x26
+        task = FarmClearTask(fetch_tools=False, farm_bounds=FARM_CHUNK_BOUNDS["nw"], handoff="quota")
+        world = WorldState(frame=0, ram=ram, info={}, obs=None)
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("off_farm", result.reason)
+
+    def test_spa_gate_stale_clear_moves_into_the_farm(self):
+        from harvest.tasks.nav import make_action
+
+        ram = _make_farm_ram(player_tile=(1, 28))
+        _set_tile(ram, 1, 28, 0xFF)
+        task = FarmClearTask(fetch_tools=False, farm_bounds=FARM_CHUNK_BOUNDS["ne"])
+        task.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        task.clearer.navigator.update(ram)
+        self.assertTrue(task.clearer._step_off_stale(ram))
+        np.testing.assert_array_equal(task.clearer.action_queue[0], make_action(right=True, b=True))
+
+
 def _world(ram) -> WorldState:
     return WorldState(frame=0, ram=ram, info={}, obs=None)
 
@@ -196,15 +248,15 @@ def _leftover(ram, **kwargs):
     return next_d2_spec(observe_d2_farm(ram), plot_attempted=True, **kwargs)
 
 
-class SectionFirstLiftTests(unittest.TestCase):
-    def test_local_stones_beat_distant_bushes(self) -> None:
+class LiftOrderTests(unittest.TestCase):
+    def test_distant_bushes_open_the_dump_route_before_local_stones(self) -> None:
         ram = _make_farm_ram()
         _set_tile(ram, 11, 10, STONE)
         _set_tile(ram, 40, 40, WEED)
         spec = _leftover(ram)
-        self.assertEqual(spec.phase, "CLEAR_STONES")
-        self.assertEqual(spec.params["chunk"], "nw")
-        self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS["nw"])
+        self.assertEqual(spec.phase, "CLEAR_BUSHES")
+        self.assertEqual(spec.params["chunk"], "se")
+        self.assertEqual(spec.params["farm_bounds"], FARM_CHUNK_BOUNDS["se"])
 
     def test_same_chunk_weeds_before_stones_and_fences(self) -> None:
         ram = _make_farm_ram()

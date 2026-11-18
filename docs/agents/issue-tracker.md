@@ -17,14 +17,14 @@ bd update <id> --status in_progress
 bd close <id> --reason "…"
 bd create "Title" -t task -p 0 -l <game> --json
 bd dep add <blocked> <blocker>   # blocker must finish first
-bd export -o .beads/issues.jsonl
+bd export -o .beads/issues.jsonl   # local only; do not commit
 ```
 
 - One bead per tracer-bullet slice. Do not invent a parallel tracker
   (no `.scratch/` issues, no GitHub Issues) unless the user asks.
 - Blocking edges are `bd dep add <blocked> <blocker>`.
-- Commit `.beads/issues.jsonl` with the matching code. Push only if asked.
-  Do not add `.beads/embeddeddolt/` or `.beads/backup/`.
+- Do not commit `.beads/` or backups. The archive is
+  `/home/v/01_projects/11_games/archive/retro_rl-beads-2026-10-15`. Push only if asked.
 - Closing a bead is not a STATUS promote.
 
 ## When a skill says "publish to the issue tracker"

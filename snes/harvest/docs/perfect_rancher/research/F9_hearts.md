@@ -121,3 +121,56 @@ Power-on, `HEADLESS=1`, `SDL_VIDEODRIVER=dummy`, `QT_QPA_PLATFORM=offscreen`, `-
 | Ann flower ladder | same pin, CC index 1 set to `$B3A2A7`, item `0x05`. Frame 1: text `0x03B2`, PC on `41 21 1F 7F 06 00`. Frame 109: Ann 6, Maria still 0, PC `$B3A27D` (exit `0x4D` then the idle `0x2D`) | Ann 0→6 | 109 |
 
 Decoded flower deltas and the live deltas are the same: Maria +5, Ann +6, text `0x03B2`. Intro talks are +0, and the live intros were +0. Probe JSON: `F9_hearts_probe.json`, `F9_hearts_ann_try.json`, `F9_hearts_gift_try.json`, `F9_hearts_gift_try2.json`, `F9_hearts_ladder_maria.json`, `F9_hearts_ladder_ann.json`.
+
+## Native bought flowers and gradual errand stops (2026-11-06)
+
+`tests/test_relationships.py` now buys a seed bag, buys a flower, walks to each
+woman and gives it, without RAM writes or mid-run loads. This is native gift
+evidence from the real shopping predecessor, rather than the earlier ladder
+pointer experiment. The source is `PR_spring_check_Y1_Spring_D15`; Eve is met
+at the bar after 17:00, Ann in the general store after 09:00, and the other
+three in weekday town.
+
+**A bought flower is item `0x19`, not wild flower `0x05`.** The shop shelf
+preview is `0x49`; it has not been paid for yet. ROM table `$81BEEF` entry 6
+puts shelf `$BC` at `(224,336)`. Stand `(217,344)` facing right, pay 300G,
+and require held item `0x19` plus `input_lock == 1` after the box closes.
+The seed bag and the flower together cost exactly 500G. Measured deltas:
+
+| Recipient | Bought flower | G per affection point | Current cheaper approach |
+| --- | ---: | ---: | --- |
+| Maria | +4 | 75 | Free daytime question can give +8 |
+| Ann | +2 | 150 | Spring grape gives +5/+6 in the existing court task |
+| Nina | +6 | 50 | Buy on an existing seed trip when surplus funds it |
+| Ellen | +5 | 60 | Free daytime question; egg ladder gives +8 |
+| Eve | +8 at the bar | 37.5 | Existing bar courtship and married egg routine |
+
+The isolated tests verify the named heart counter increased, every other
+woman's counter stayed unchanged, the gift left the hand and the wallet
+lost exactly 300G beyond the seed purchase. Nina's ordinary Spring lines
+`0x00AE`/`0x00B5` measured +0: do not count those conversations as progress.
+
+`tasks/relationships.py` supplies the interaction and optional shopping hook:
+
+- `HARVEST_SOCIAL=off` (default): existing route, for the economy control.
+- `HARVEST_SOCIAL=talk`: short Maria/Ellen opportunities on town errands,
+  including a westward Maria detour on the seed-shop return.
+- `HARVEST_SOCIAL=gifts`: those conversations plus one funded flower for
+  Nina on a seed visit. Keep 5,000G after the flower in Years 1–2; in Year 3
+  keep the final money floor of 99,840G. Buy after all planned seed bags and
+  before 14:00. The initial noon gate skipped a native D7 grass trip that
+  arrived at 12:09 after chores; the buy's indoor time is frozen.
+
+The composer shares a daily visit ledger across shop tasks. The hook skips
+the wife, counters already at 496+, weekends, festivals, opening D1–D2 gift
+buys, rain/snow flower buys, late trips and hands already carrying something.
+It currently enables the measured **Spring weekday** schedule only. Each
+interaction logs actual before/after hearts, item, text and frames; a dialog
+with zero gain remains a zero-gain receipt. Failed optional stops resume the
+errand. A paid gift must not inflate the seed-bag receipt counter.
+
+The composer test starts at native `PR_e2es4_Y2_Spring_D4` and verifies the
+seed/flower/delivery/farm-return chain against `off` and `talk`. The final
+hook also talks to Maria; her measured branch on this pin gives zero, so the
+test makes no guaranteed +8 claim. Existing wife gift ROM tests remain green.
+These are checkpoint/component results, not a perfect-ranch campaign proof.

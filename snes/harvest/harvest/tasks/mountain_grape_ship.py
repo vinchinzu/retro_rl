@@ -1,4 +1,4 @@
-"""Mountain grape or normal mushroom pickup, return, and verified shipping."""
+"""Mountain grape, green fruit or normal mushroom pickup, return, and verified shipping."""
 
 from __future__ import annotations
 
@@ -24,19 +24,19 @@ from harvest.maps.map_config import (
 from harvest.planner.day_plan_status import is_mountain_tilemap
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.tasks.harvest_task import read_shipping_money
-from harvest.tasks.mountain_berry import MountainBerryTask, is_mountain_forage
+from harvest.tasks.mountain_berry import FORAGE_STANDS, MountainBerryTask, is_mountain_forage
 from harvest.tasks.nav import get_pos_from_ram, make_action
 from harvest.tasks.primitives import drain_action_queue, press_a_sequence
 
-ROUTE_NAME = "first_mountain_berry_to_shipping_bin"
-MUSHROOM_ROUTE_NAME = "first_mushroom_to_shipping_bin"
+ROUTE_NAME = FORAGE_STANDS["grape"].ship_route
+MUSHROOM_ROUTE_NAME = FORAGE_STANDS["mushroom"].ship_route
 VERIFY_WAIT_FRAMES = 120
 DROP_RETRY_LIMIT = 2
 
 
 @dataclass
 class MountainGrapeShipTask(Task):
-    """Pick a seasonal forage item, carry it home, and ship it.
+    """Pick a seasonal forage item ("grape", "green_fruit", "mushroom"), carry it home, and ship it.
 
     The postcondition is domain-visible: the held forage is gone and the
     same-day shipping accumulator increased.  Wallet money is intentionally
@@ -82,6 +82,9 @@ class MountainGrapeShipTask(Task):
     _shipped: int = field(default=0, init=False)
     _shipping_before: int = field(default=0, init=False)
     _shipping_after: int = field(default=0, init=False)
+    # The bin total when the phase began. ``_shipping_before`` is rebased for every loop, so a two-trip day
+    # recorded only its last trip in the journal's ``shipping_deposit`` (the bench undercounted forage).
+    phase_shipping_before: int = field(default=0, init=False)
     _verify_frames: int = field(default=0, init=False)
     _drop_attempts: int = field(default=0, init=False)
     _drop_queue: deque[np.ndarray] = field(default_factory=deque, init=False, repr=False)
@@ -116,6 +119,7 @@ class MountainGrapeShipTask(Task):
     def reset(self, world: WorldState) -> None:
         self._step_count = 0
         self._shipping_before = int(read_shipping_money(world.ram))
+        self.phase_shipping_before = self._shipping_before
         self._shipping_after = self._shipping_before
         self._verify_frames = 0
         self._drop_attempts = 0
@@ -131,25 +135,24 @@ class MountainGrapeShipTask(Task):
             self._start_pick(world)
 
     def _start_pick(self, world: WorldState) -> None:
-        from harvest.tasks.mountain_berry import BERRY_NAV_SEGMENTS
-
-        mushroom = self.forage == "mushroom"
+        stand = FORAGE_STANDS[self.forage]
         self._child = MountainBerryTask(
             name=f"{self.name}_pick",
             timeout=self.pick_timeout,
             nav_timeout=min(self.nav_timeout, 6_000),
             approach_only=False,
             pick_attempts=self.pick_attempts,
-            stand_px=(662, 633) if mushroom else (326, 409),
-            expected_items=frozenset({1}) if mushroom else frozenset({3, 8}),
-            segments=(*BERRY_NAV_SEGMENTS[:2], "mountain_entry_to_first_mushroom") if mushroom else BERRY_NAV_SEGMENTS,
+            stand_px=stand.stand_px,
+            expected_items=stand.items,
+            segments=stand.segments,
+            face=stand.face,
+            push_frames=stand.push_frames,
         )
         self._child.reset(world)
         self._phase = "pick"
 
     def can_start(self, world: WorldState) -> bool:
-        route_name = MUSHROOM_ROUTE_NAME if self.forage == "mushroom" else ROUTE_NAME
-        return bool(ROUTES.get(route_name))
+        return bool(ROUTES.get(FORAGE_STANDS[self.forage].ship_route))
 
     def _start_nav_home(
         self, world: WorldState, *, downhill: bool, phase: str, require_forage: bool
@@ -158,15 +161,14 @@ class MountainGrapeShipTask(Task):
             self._child = None
             self._phase = "missing_forage"
             return
-        route_name = MUSHROOM_ROUTE_NAME if self.forage == "mushroom" else ROUTE_NAME
-        route = list(ROUTES.get(route_name, []))
+        route = list(ROUTES.get(FORAGE_STANDS[self.forage].ship_route, []))
         pos = get_pos_from_ram(world.ram)
         tilemap = int(read_ram_value(world.ram, "tilemap"))
         if downhill and is_mountain_tilemap(tilemap):
             hops = (
-                [wp for wp in route if is_mountain_tilemap(wp.tilemap)]
-                if self.forage == "mushroom"
-                else None
+                None
+                if self.forage == "grape"
+                else [wp for wp in route if is_mountain_tilemap(wp.tilemap)]
             )
             mountain = mountain_downhill_escape(
                 int(pos.x), int(pos.y), tilemap=tilemap, hops=hops

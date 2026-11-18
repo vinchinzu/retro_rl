@@ -15,11 +15,11 @@ from tmnt_iv.ram import (
     NPC_CHAR_IDS,
     parse_game_state,
 )
-from tmnt_iv.scripts.record_full_hard_run import (
+from tmnt_iv.run.metrics import (
+    FINAL_CREDITS_EVENT as _FINAL_CREDITS_EVENT,
+    FINAL_SCENE_SETTLE_FRAMES as _FINAL_SCENE_SETTLE_FRAMES,
     CreditsTracker,
     RunMetrics,
-    _FINAL_CREDITS_EVENT,
-    _FINAL_SCENE_SETTLE_FRAMES,
 )
 from tmnt_iv.tests._state import A, B, Y, enemy, playing, ram, write_enemy
 

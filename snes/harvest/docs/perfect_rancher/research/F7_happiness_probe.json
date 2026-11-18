@@ -1,0 +1,951 @@
+{
+  "bead": "PR-016",
+  "date": "2026-09-29",
+  "lane": "mgr-happy",
+  "frames": 0,
+  "kind": "static_rom_table",
+  "rom": "roms/Harvest Moon.smc headerless LoROM",
+  "pattern": "41 33 1F 7F",
+  "happiness_wram": "7F1F33",
+  "add_player_happiness": "83B282",
+  "opcode_0x41": "84B5A9",
+  "site_count": 99,
+  "histogram": {
+    "-100": 1,
+    "-50": 1,
+    "-30": 1,
+    "-20": 3,
+    "-10": 2,
+    "-5": 1,
+    "5": 28,
+    "10": 17,
+    "20": 4,
+    "30": 38,
+    "50": 3
+  },
+  "entry_walk": {
+    "scripts": 1288,
+    "reached_ops": 57,
+    "walker_desync_scripts": 925,
+    "note": "Reached means the entry graph hit the opcode. A desync is an unparsed opcode in some other script. It does not add a delta."
+  },
+  "score": {
+    "formula": "happiness >> 5",
+    "max_points": 31,
+    "min_for_31": 992,
+    "clamp": 999,
+    "slack_at_999": 7,
+    "deadline": "Y3 Summer D29 evening",
+    "target": 999
+  },
+  "plan": {
+    "births": 9,
+    "weak_case": {
+      "berries": 100,
+      "house_both_scenes_see_bit_clear": 100,
+      "child_age_60": 150,
+      "first_cow": 20,
+      "first_chicken": 10,
+      "paint": 40,
+      "saturday_cursor_1": -20,
+      "subtotal": 400,
+      "nine_births": 630,
+      "total_before_clamp": 1030,
+      "stored": 999
+    },
+    "eight_births_weak_total": 960,
+    "eight_births_weak_score": 30,
+    "bought_cows_in_the_12": 3,
+    "collapse_0d_01": 10
+  },
+  "code_callers": [
+    {
+      "jsl": "83C969",
+      "delta": 70,
+      "name": "AddNewCow calf",
+      "repeat": "per SetCowNameBorn, barn cap 12"
+    },
+    {
+      "jsl": "81CABB",
+      "delta": 10,
+      "name": "power berry",
+      "repeat": "once per berry, ten on the route"
+    },
+    {
+      "jsl": "81F315",
+      "delta": 50,
+      "name": "house completion, f64 bit 0x80 clear",
+      "repeat": "that scene"
+    },
+    {
+      "jsl": "81F325",
+      "delta": 100,
+      "name": "house completion, f64 bit 0x80 set",
+      "repeat": "that scene"
+    },
+    {
+      "jsl": "828952",
+      "delta": 50,
+      "name": "kid1_age becomes 60",
+      "repeat": "once"
+    },
+    {
+      "jsl": "8289A9",
+      "delta": 100,
+      "name": "kid2_age becomes 60",
+      "repeat": "once"
+    },
+    {
+      "jsl": "81E0C6",
+      "delta": 20,
+      "name": "first cow payment",
+      "repeat": "one scene, f5A bits 0x0022"
+    },
+    {
+      "jsl": "81E1FA",
+      "delta": 10,
+      "name": "first chicken",
+      "repeat": "once, f5A bit 0x0020"
+    },
+    {
+      "jsl": "819538",
+      "delta": 5,
+      "name": "incubator",
+      "repeat": "while f6E bit 0x2000 is clear"
+    },
+    {
+      "jsl": "829BFA",
+      "delta": 10,
+      "name": "paint, f66 bit 0x0200",
+      "repeat": "once"
+    },
+    {
+      "jsl": "829C2E",
+      "delta": 10,
+      "name": "paint, f66 bit 0x0400",
+      "repeat": "once"
+    },
+    {
+      "jsl": "829C5E",
+      "delta": 10,
+      "name": "paint, f66 bit 0x0800",
+      "repeat": "once"
+    },
+    {
+      "jsl": "829C8E",
+      "delta": 10,
+      "name": "paint, f66 bit 0x1000",
+      "repeat": "once"
+    },
+    {
+      "jsl": "82943F",
+      "delta": 2,
+      "name": "summer sickle frog",
+      "repeat": "once, shares f5A bit 0x2000 with 829E5D"
+    },
+    {
+      "jsl": "829E5D",
+      "delta": 2,
+      "name": "summer sickle frog, second path",
+      "repeat": "same flag as 82943F"
+    },
+    {
+      "jsl": "81F68E",
+      "delta": 1,
+      "name": "shop food 200G",
+      "repeat": "no flag in the handler"
+    },
+    {
+      "jsl": "81F7B6",
+      "delta": 3,
+      "name": "shop food 300G",
+      "repeat": "no flag in the handler"
+    },
+    {
+      "jsl": "81DCBD",
+      "delta": -1,
+      "name": "Maria diary cursor 0",
+      "repeat": "each cursor-0 answer"
+    },
+    {
+      "jsl": "81DE0B",
+      "delta": -1,
+      "name": "Nina diary cursor 0",
+      "repeat": "each cursor-0 answer"
+    },
+    {
+      "jsl": "81E338",
+      "delta": -1,
+      "name": "Ellen diary cursor 0",
+      "repeat": "each cursor-0 answer"
+    },
+    {
+      "jsl": "81E3F3",
+      "delta": -1,
+      "name": "Ann diary cursor 0",
+      "repeat": "each cursor-0 answer"
+    },
+    {
+      "jsl": "81E58B",
+      "delta": -1,
+      "name": "Eve diary cursor 0",
+      "repeat": "each cursor-0 answer"
+    },
+    {
+      "jsl": "83BD9A",
+      "delta": -30,
+      "name": "cow sick",
+      "repeat": "each sick proc"
+    },
+    {
+      "jsl": "83C080",
+      "delta": -30,
+      "name": "chicken night pass",
+      "repeat": "each such chicken"
+    },
+    {
+      "jsl": "81E9DB",
+      "delta": -50,
+      "name": "cow removal",
+      "repeat": "the scene"
+    },
+    {
+      "jsl": "81EB7B",
+      "delta": -50,
+      "name": "cow removal, other branch",
+      "repeat": "the scene"
+    },
+    {
+      "jsl": "81ED9E",
+      "delta": -20,
+      "name": "chicken removal",
+      "repeat": "the scene"
+    },
+    {
+      "jsl": "81EF53",
+      "delta": -20,
+      "name": "chicken removal, other branch",
+      "repeat": "the scene"
+    },
+    {
+      "jsl": "81C317",
+      "delta": 2,
+      "name": "action index, $0901 == $008B",
+      "repeat": "not in the floor"
+    },
+    {
+      "jsl": "83D2DA",
+      "delta": 2,
+      "name": "clear 6:00, weather $0196 & $001A == 0, RNG 1/8, loads group 23/00",
+      "repeat": "no one-shot in the block, not in the floor"
+    }
+  ],
+  "loaders": {
+    "16/00": "83D163, JSL 83D1C9. Saturday. Cursor 0 is +20 at B48DEA. Cursor 1 is -20 at B48DFC.",
+    "26/00": "JSL 83D409. Season 2, day 0x0C, hour below 0x0F. Delta +10 at B4A868. Not reached from the script entry.",
+    "27/00": "JSL 83D435. Season 3, day 0x0A, hour below 0x11. Four +10s. Compare with the paint flags before counting both.",
+    "27/01": "No LDX #$0027 / LDY #$0001 pair in the ROM. +10 at B4B9A6. Not reached from the script entry.",
+    "27/02": "JSL 83D63A. Season 3, day 0x0A, hour below 0x11. +10 at B4BA75. Not reached from the script entry.",
+    "28/01": "JSL 83E6AD. Season 0, day 1. The +30/+10/-20 at B4BC06, B4BC15, B4BC24 sit on three JumpIfEqualsRNG arms. The entry walk does not reach them.",
+    "28/02": "JSL 83D3B3. +50 at B4BFE5, not on the entry fall-through.",
+    "28/03": "JSL 83E6BF. +30 at B4C407 when $8009A2 == 5.",
+    "20/00": "83E0DB when f6E bit 0x0040 is set. -100 at B49EB8.",
+    "22/00": "83E1F1. Hearts below 200 at 6:00:00. -50 at B4A00B.",
+    "0D/01": "83E4BD. +10 at B3F0BB. No collapse penalty."
+  },
+  "sites": [
+    {
+      "addr": "B3958F",
+      "delta": 5,
+      "script": "01/00",
+      "script_start": "B39379",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B39E00",
+      "delta": 5,
+      "script": "01/01",
+      "script_start": "B39D05",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B39F14",
+      "delta": 5,
+      "script": "01/01",
+      "script_start": "B39D05",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3A06B",
+      "delta": 5,
+      "script": "01/02",
+      "script_start": "B39F3E",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3A14E",
+      "delta": 5,
+      "script": "01/03",
+      "script_start": "B3A086",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3A23D",
+      "delta": 5,
+      "script": "01/04",
+      "script_start": "B3A162",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3A50A",
+      "delta": 5,
+      "script": "01/05",
+      "script_start": "B3A438",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3A59A",
+      "delta": 5,
+      "script": "01/05",
+      "script_start": "B3A438",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3A7F6",
+      "delta": 5,
+      "script": "01/07",
+      "script_start": "B3A727",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3AA8D",
+      "delta": 5,
+      "script": "01/08",
+      "script_start": "B3A81B",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3AB70",
+      "delta": 5,
+      "script": "01/08",
+      "script_start": "B3A81B",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3AC44",
+      "delta": 5,
+      "script": "01/08",
+      "script_start": "B3A81B",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3AD0D",
+      "delta": 5,
+      "script": "01/08",
+      "script_start": "B3A81B",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3CD68",
+      "delta": 5,
+      "script": "05/00",
+      "script_start": "B3CC91",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3CE82",
+      "delta": 5,
+      "script": "05/00",
+      "script_start": "B3CC91",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B3D0DF",
+      "delta": 5,
+      "script": "05/00",
+      "script_start": "B3CC91",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B3D192",
+      "delta": 5,
+      "script": "05/00",
+      "script_start": "B3CC91",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B3DA8D",
+      "delta": 5,
+      "script": "07/00",
+      "script_start": "B3DA17",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DAE5",
+      "delta": 5,
+      "script": "07/00",
+      "script_start": "B3DA17",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DBCC",
+      "delta": 5,
+      "script": "07/01",
+      "script_start": "B3DB72",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DC41",
+      "delta": 5,
+      "script": "07/02",
+      "script_start": "B3DBD5",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DD36",
+      "delta": 5,
+      "script": "07/03",
+      "script_start": "B3DCD1",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DE4C",
+      "delta": 5,
+      "script": "07/04",
+      "script_start": "B3DDC7",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DE88",
+      "delta": 5,
+      "script": "07/04",
+      "script_start": "B3DDC7",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3DFC5",
+      "delta": 5,
+      "script": "07/05",
+      "script_start": "B3DF0F",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3E02E",
+      "delta": 5,
+      "script": "07/06",
+      "script_start": "B3DFCE",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3E079",
+      "delta": 5,
+      "script": "07/07",
+      "script_start": "B3E037",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3E0B6",
+      "delta": 5,
+      "script": "07/07",
+      "script_start": "B3E037",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B3EFA9",
+      "delta": 10,
+      "script": "0C/00",
+      "script_start": "B3EF7A",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B3F0BB",
+      "delta": 10,
+      "script": "0D/01",
+      "script_start": "B3F0A9",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B48CBE",
+      "delta": 20,
+      "script": "15/00",
+      "script_start": "B48C45",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B48CD2",
+      "delta": -10,
+      "script": "15/00",
+      "script_start": "B48C45",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B48DEA",
+      "delta": 20,
+      "script": "16/00",
+      "script_start": "B48D58",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B48DFC",
+      "delta": -20,
+      "script": "16/00",
+      "script_start": "B48D58",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B48E69",
+      "delta": -30,
+      "script": "17/00",
+      "script_start": "B48E25",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B48E80",
+      "delta": 20,
+      "script": "17/00",
+      "script_start": "B48E25",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B48F51",
+      "delta": 20,
+      "script": "18/00",
+      "script_start": "B48EE5",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B48F5E",
+      "delta": -20,
+      "script": "18/00",
+      "script_start": "B48EE5",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B49726",
+      "delta": 50,
+      "script": "1E/00",
+      "script_start": "B4969A",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B49EB8",
+      "delta": -100,
+      "script": "20/00",
+      "script_start": "B49E51",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B49F72",
+      "delta": -10,
+      "script": "21/00",
+      "script_start": "B49F33",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B49F7F",
+      "delta": 50,
+      "script": "21/00",
+      "script_start": "B49F33",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4A00B",
+      "delta": -50,
+      "script": "22/00",
+      "script_start": "B49FF8",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B4A868",
+      "delta": 10,
+      "script": "26/00",
+      "script_start": "B4A62D",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4B80D",
+      "delta": 10,
+      "script": "27/00",
+      "script_start": "B4B67E",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4B86A",
+      "delta": 10,
+      "script": "27/00",
+      "script_start": "B4B67E",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4B8C7",
+      "delta": 10,
+      "script": "27/00",
+      "script_start": "B4B67E",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4B924",
+      "delta": 10,
+      "script": "27/00",
+      "script_start": "B4B67E",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4B9A6",
+      "delta": 10,
+      "script": "27/01",
+      "script_start": "B4B947",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4BA75",
+      "delta": 10,
+      "script": "27/02",
+      "script_start": "B4B9C2",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4BC06",
+      "delta": 30,
+      "script": "28/01",
+      "script_start": "B4BB06",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4BC15",
+      "delta": 10,
+      "script": "28/01",
+      "script_start": "B4BB06",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4BC24",
+      "delta": -20,
+      "script": "28/01",
+      "script_start": "B4BB06",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4BFE5",
+      "delta": 50,
+      "script": "28/02",
+      "script_start": "B4BD19",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B4C407",
+      "delta": 30,
+      "script": "28/03",
+      "script_start": "B4C3AC",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B4C485",
+      "delta": -5,
+      "script": "29/00",
+      "script_start": "B4C447",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B4C499",
+      "delta": 30,
+      "script": "29/00",
+      "script_start": "B4C447",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B4C4FD",
+      "delta": 10,
+      "script": "2A/00",
+      "script_start": "B4C4D8",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B4C541",
+      "delta": 10,
+      "script": "2B/00",
+      "script_start": "B4C524",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B4C57D",
+      "delta": 10,
+      "script": "2C/00",
+      "script_start": "B4C568",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58146",
+      "delta": 30,
+      "script": "43/00",
+      "script_start": "B58020",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58153",
+      "delta": 30,
+      "script": "43/00",
+      "script_start": "B58020",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58160",
+      "delta": 30,
+      "script": "43/00",
+      "script_start": "B58020",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5842C",
+      "delta": 30,
+      "script": "43/00",
+      "script_start": "B58020",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B585F9",
+      "delta": 30,
+      "script": "43/01",
+      "script_start": "B584DA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58606",
+      "delta": 30,
+      "script": "43/01",
+      "script_start": "B584DA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58613",
+      "delta": 30,
+      "script": "43/01",
+      "script_start": "B584DA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B588E2",
+      "delta": 30,
+      "script": "43/01",
+      "script_start": "B584DA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58AAF",
+      "delta": 30,
+      "script": "43/02",
+      "script_start": "B58990",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58ABC",
+      "delta": 30,
+      "script": "43/02",
+      "script_start": "B58990",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58AC9",
+      "delta": 30,
+      "script": "43/02",
+      "script_start": "B58990",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58DA0",
+      "delta": 30,
+      "script": "43/02",
+      "script_start": "B58990",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58F7C",
+      "delta": 30,
+      "script": "43/03",
+      "script_start": "B58E4E",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58F89",
+      "delta": 30,
+      "script": "43/03",
+      "script_start": "B58E4E",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B58F96",
+      "delta": 30,
+      "script": "43/03",
+      "script_start": "B58E4E",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59265",
+      "delta": 30,
+      "script": "43/03",
+      "script_start": "B58E4E",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59439",
+      "delta": 30,
+      "script": "43/04",
+      "script_start": "B59313",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59446",
+      "delta": 30,
+      "script": "43/04",
+      "script_start": "B59313",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59453",
+      "delta": 30,
+      "script": "43/04",
+      "script_start": "B59313",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5971F",
+      "delta": 30,
+      "script": "43/04",
+      "script_start": "B59313",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B598E8",
+      "delta": 30,
+      "script": "44/00",
+      "script_start": "B597F1",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B598F5",
+      "delta": 30,
+      "script": "44/00",
+      "script_start": "B597F1",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59902",
+      "delta": 30,
+      "script": "44/00",
+      "script_start": "B597F1",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59AD2",
+      "delta": 30,
+      "script": "44/01",
+      "script_start": "B599EB",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59ADF",
+      "delta": 30,
+      "script": "44/01",
+      "script_start": "B599EB",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59AEC",
+      "delta": 30,
+      "script": "44/01",
+      "script_start": "B599EB",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59CD3",
+      "delta": 30,
+      "script": "44/02",
+      "script_start": "B59BE3",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59CE0",
+      "delta": 30,
+      "script": "44/02",
+      "script_start": "B59BE3",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59CED",
+      "delta": 30,
+      "script": "44/02",
+      "script_start": "B59BE3",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59ECA",
+      "delta": 30,
+      "script": "44/03",
+      "script_start": "B59DD3",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59ED7",
+      "delta": 30,
+      "script": "44/03",
+      "script_start": "B59DD3",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B59EE4",
+      "delta": 30,
+      "script": "44/03",
+      "script_start": "B59DD3",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5A0C9",
+      "delta": 30,
+      "script": "44/04",
+      "script_start": "B59FCA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5A0D6",
+      "delta": 30,
+      "script": "44/04",
+      "script_start": "B59FCA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5A0E3",
+      "delta": 30,
+      "script": "44/04",
+      "script_start": "B59FCA",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5A27C",
+      "delta": 10,
+      "script": "45/00",
+      "script_start": "B5A205",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5A289",
+      "delta": 10,
+      "script": "45/00",
+      "script_start": "B5A205",
+      "reached_from_entry": false
+    },
+    {
+      "addr": "B5A4FB",
+      "delta": 10,
+      "script": "45/03",
+      "script_start": "B5A484",
+      "reached_from_entry": true
+    },
+    {
+      "addr": "B5A508",
+      "delta": 10,
+      "script": "45/03",
+      "script_start": "B5A484",
+      "reached_from_entry": false
+    }
+  ]
+}

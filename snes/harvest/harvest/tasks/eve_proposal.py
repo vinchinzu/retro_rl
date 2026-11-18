@@ -22,7 +22,7 @@ import numpy as np
 from harvest.core.carry import ADDR_TOOL_BACKPACK, ADDR_TOOL_SELECTED
 from harvest.core.npc_catalog import current_dialogue_registers, game_objects
 from harvest.core.ram_catalog import read_ram_u16, read_ram_u8, read_ram_value
-from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.core.tile_catalog import ADDR_TILEMAP, is_path_tilemap
 from harvest.maps.map_routes import segment_waypoints
 from harvest.maps.map_types import Waypoint
 from harvest.planner.tasks.multi_nav import MultiMapNavTask
@@ -145,7 +145,7 @@ class EveProposalTask(Task):
         route = [Waypoint(MOUNTAIN_TILEMAP, px, radius=6) for px in MOUNTAIN_TO_EVE]
         if tilemap == MOUNTAIN_TILEMAP:
             return route
-        if tilemap == PATH_TILEMAP:
+        if is_path_tilemap(tilemap):
             return segment_waypoints("path_to_mountain") + route
         if tilemap in FARM_TILEMAPS:
             return segment_waypoints("farm_to_path", "path_to_mountain") + route

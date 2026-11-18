@@ -560,7 +560,8 @@ class GoToSleepTask(Task):
         tilemap = int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0
         # Only the real overnight transition (tilemap 0x0F / time_running), not
         # the morning-wake coordinate heuristic used by the scene classifier.
-        if tilemap == HOUSE_SLEEP_TRANSITION_TILEMAP or scene.reason == "sleep/wake transition":
+        # The Winter path is 0x0F too: ``scene`` checks the clock byte.
+        if scene.reason == "sleep/wake transition":
             self._morning_settle_frames = 0
             return dismiss_dialogue_result(
                 self._step_count,

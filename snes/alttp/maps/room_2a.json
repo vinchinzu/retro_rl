@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 42,
+  "roomHex": "0x2A",
+  "name": "Palace of Darkness west-north of the lobby key room",
+  "measured": "2026-10-18",
+  "sourceState": "Whatif_PalaceOfDarknessEntry_parallel",
+  "points": [],
+  "doors": [
+    {
+      "label": "north_east_shutter",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x18 pos $025C tile (46,4). No path from the landing (5240,1496). Stopping lock. Approach xy omitted."
+    },
+    {
+      "label": "north_west_small_key",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x1C pos $021C tile (14,4). No path from the landing. Keys were already 0. Stopping lock."
+    },
+    {
+      "label": "east_untyped",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 2 type 0x2E pos $17F4 tile (58,47). 0x2E is not in the rom_scan door-type table. No path from the landing. Stopping lock."
+    },
+    {
+      "label": "east_regular",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x02 regular pos $0FEE tile (55,31). No path from the landing. Stopping lock."
+    },
+    {
+      "label": "south_west_to_0x3a",
+      "direction": "DOWN",
+      "toRoom": 58,
+      "toRoomHex": "0x3A",
+      "role": "backtrack",
+      "notes": "Slot 4 type 0x00 pos $1D1C tile (14,58). The entry from 0x3A landed at (5240,1496). The reverse stand had no path. Not an isolated edge."
+    },
+    {
+      "label": "south_east_regular",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 5 type 0x00 pos $1D5C tile (46,58). No path from the landing. Stopping lock."
+    }
+  ],
+  "hostilesAtEntry": [
+    {"type": "0x1E", "xy": [5376, 1392], "notes": "crystal switch hp 0"},
+    {"type": "0x93", "xy": [5368, 1272], "notes": "bumper hp 255"},
+    {"type": "0x26", "xy": [5328, 1152], "notes": "hardhat beetle hp 6"}
+  ],
+  "notes": [
+    "Entered from room 0x3A by pushing UP at tile (14,24). Landing (5240,1496), module 0x07, layer 0, floor 0, keys 0, big key 512, hammer 0, follower 5.",
+    "Chest 0 KeyD1 z3=0xEA3A tile (56,45) and chest 1 KeyD1 z3=0xEA3D tile (46,44), both layer 0 opened=0. open_free_chests: no path, before and after hit_switch.",
+    "hit_switch on the crystal left $C172 at 0. Not a saved Scan pin. Isolated development. Not natural."
+  ]
+}

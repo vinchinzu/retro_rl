@@ -1,41 +1,71 @@
 # Agent instructions: tmnt_iv
 
-SNES TMNT IV. Shared combat helpers: `retro_harness.combat` /
-`segment_runner`. Docs: `CONTEXT.md`, `docs/ARCHITECTURE.md`,
-`docs/STATUS.md`, `docs/plan.md`, `docs/ASSIST_CONTRACT.md`,
-`docs/ram_map.md`. Tracker: `bd ready -l tmnt_iv`.
+SNES TMNT IV: Turtles in Time. The target is a **Clean** Hard clear from
+power-on through the staff credits: zero life losses, zero RAM writes, zero
+state loads, no A-special. Words: [CONTEXT.md](CONTEXT.md). How the guard
+works and what each file owns: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Verified results: [docs/STATUS.md](docs/STATUS.md). Next work:
+[docs/plan.md](docs/plan.md). What counts as Clean:
+[docs/ASSIST_CONTRACT.md](docs/ASSIST_CONTRACT.md).
+
+## Method
+
+The ROM is the enemy model. `GuardedPolicy` (`lookahead.py`) commits a frame
+only after the emulator has played the next 64 frames hit-free. On a
+predicted hit it branches macros from snapshots inside that uncommitted
+window and splices in the best hit-free future. `Stage1Policy` and
+`tactics/` exist to make **progress**; **safety** is the guard's job.
+
+Work a death as a **first-failure loop**: find the guard's `forced` lines
+(stdout and the report's `lookahead`), reproduce from the natural pin
+before it (`--from Clean<Turtle>Stage<N>`), fix by widening the search
+(`MACROS`, `LookaheadConfig`) or by giving the base policy a better approach
+to that spot, then re-run from power-on.
 
 ## Commands
 
+Run from the repo root. Prefix `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy`
+when headless.
+
 ```bash
-uv run python -m tmnt_iv.scripts.setup_rom
-uv run python -m tmnt_iv.scripts.boot_probe
-
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
-  uv run python -m tmnt_iv.scripts.probe_clean --stage 1 --suite
-
-uv run python -m tmnt_iv.scripts.record_full_hard_run --dry-run
-uv run python -m tmnt_iv.scripts.record_full_hard_run
-uv run python -m tmnt_iv.scripts.record_full_hard_run --clean --dry-run
-
-uv run pytest tmnt_iv/tests -q -m rom
+uv run python -m tmnt_iv.scripts.setup_rom          # relink the ROM (after a clone or repo move)
+uv run python -m tmnt_iv.scripts.run --save-points CleanLeo   # power-on -> credits; JSON + tape; pins <prefix>Stage<N>
+uv run python -m tmnt_iv.scripts.run --from CleanLeoStage5 --until-stage 6   # one stage from a natural pin
+uv run python -m tmnt_iv.scripts.run --replay snes/tmnt_iv/recordings/<tag>.tape.npz --video   # the publishable mp4
+uv run python -m tmnt_iv.scripts.run --no-lookahead --from <pin> --until-stage N   # bare-policy A/B arm
+QT_QPA_PLATFORM=offscreen uv run pytest snes/tmnt_iv/tests -q   # no ROM needed
 ```
-
-Segment and bridge entry points are `run_segment --stage N` and
-`run_bridge --to {2,3}`. Clean artifacts use
-`retro_harness.artifacts.clean_artifact_stem` and must not overwrite
-assisted `tmnt_iv_full_hard_*` files.
 
 ## Traps
 
-- START after the Stage 1 HUD pauses the game.
-- Special (A) drains HP. Do not use it.
-- Global pizza seek soft-locks Skull and Crossbones. Big Apple may seek. Other stages take underfoot or between-wave pizza only.
-- Blind `RIGHT+Y` stutters. `pickup_every=0`. Pizza seek owns boxes.
-- Stage 1 hazard jump-dodge stays offline. It caused Clean mid-wave deaths.
-- Slash spin dodge stays at adx 52. Porting 40 regressed the continuous run.
-- A KEEP trace is not production. Do not rewrite Slash from one.
-- Sewer dumpster skip and Starbase right-rail skip are different stalls. Starbase holds RIGHT. Do not skip x=126.
-- `raph_starbase_close_gap` period below 4 times out.
-- One trial loop: `run/trial.py` `run_trial`. Add a spec. Do not clone `run_stageN_segment.py`.
-- The default continuous CLI stays assisted. Clean is parallel and is not the STATUS gate.
+- `scripts/run.py` is the only CLI; `run/trial.py` `run_trial` is the only
+  live loop. New behavior is a tactic, a macro row, or a `LookaheadConfig`
+  knob.
+- The guard reaches the core only through `GuardedPolicy.bind`, and every
+  restore lands on the live frame or its future. A restore to an earlier
+  frame is a rewind and voids the run.
+- Rollouts pass the real frame number to `parse_game_state`: Baxter, pizza,
+  and Raph tactics key off `state.frame % N`.
+- A run that stops progressing: read the report's `lookahead` (`accepted`,
+  `searches`, `unstuck`) and the enemy list at the stall. Guard vetoes are
+  solved by the stall budget, policy deadlocks by unstick; fix the tactic
+  only when neither moves it.
+- A grab (turtle frozen beside a Foot, hit every ~33 frames) breaks only to
+  a d-pad mash: UP/DOWN alternating every frame frees in 7 frames, 0 HP.
+  Held directions, jumps, and pokes never do. Keep the `mash_*` macros.
+- Nine enemy slots (`0x08D0` + i*0x70, i=0..8), not the 7 the PAR codes
+  list. A frozen "empty" screen means an enemy the parser cannot see; dump
+  the raw slots before tuning a stall tactic.
+- `0x003A` is a frame clock (+1 per frame), not camera progress.
+- A stage clear zeroes the player entity (HP 0, X 0). The guard treats HP 0
+  as a KO only with the turtle on screen outside a fade event.
+- Default `--turtle leo`: the base policy's reach was tuned on Leo. Mike
+  has 96 HP to Leo's 80 (hit sizes match) but trades hits at Metalhead.
+- Publish a replayed tape (`--replay ... --video`); the replay checks RAM
+  CRC every 600 frames. Live-search runs write JSON + tape only.
+- After boot, START (pause) is stripped. A (special) drains HP; the trial
+  stops on it.
+- Clean artifacts use `*_clean` / `clean_poweron_*` names and leave the
+  assisted baseline `tmnt_iv_full_hard_credits*` in place.
+- Prefer `Clean<Turtle>Stage<N>` pins. The 400+ legacy pins in
+  `custom_integrations/` mix turtles and assisted HP.

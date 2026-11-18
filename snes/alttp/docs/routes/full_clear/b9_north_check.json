@@ -1,0 +1,7 @@
+{
+  "strict_steps": 0,
+  "illegal_on_path": 0,
+  "goes_south": 0,
+  "path": [],
+  "note": "No path on masked layer 1 from (4808, 6008) to (4856, 5672). Stair bytes 0x1c, 0x3e replaced with wall 0x01. One body-north of the start is row 45. Masked cells columns 20-40: 20:0x2a ledge, 21:0x01 wall, 22:0x04 wall, 23:0x04 wall, 24:0x04 wall, 25:0x04 wall, 26:0x04 wall, 27:0x04 wall, 28:0x04 wall, 29:0x04 wall, 30:0x04 wall, 31:0x27 unknown, 32:0x27 unknown, 33:0x00 floor, 34:0x00 floor, 35:0x00 floor, 36:0x00 floor, 37:0x00 floor, 38:0x00 floor, 39:0x04 wall, 40:0x04 wall."
+}

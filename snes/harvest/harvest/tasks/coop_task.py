@@ -133,6 +133,7 @@ class CoopChoresTask(Task):
     _left_top_route_points: Tuple[Tuple[int, int], ...] = field(default_factory=tuple, init=False)
     _left_top_route_index: int = field(default=0, init=False)
     _exit_prep_started_step: int = field(default=0, init=False)
+    _hen_drops: int = field(default=0, init=False)
     _exit_prep_route_index: int = field(default=0, init=False)
     _egg_nav_started_step: int = field(default=0, init=False)
     _current_egg_flag: int = field(default=0, init=False)
@@ -172,6 +173,7 @@ class CoopChoresTask(Task):
         self._left_top_route_points = ()
         self._left_top_route_index = 0
         self._exit_prep_started_step = 0
+        self._hen_drops = 0
         self._exit_prep_route_index = 0
         self._egg_nav_started_step = 0
         self._current_egg_flag = 0
@@ -196,6 +198,9 @@ class CoopChoresTask(Task):
         feed_goal = adults
         if self.max_feed_adults is not None:
             feed_goal = min(feed_goal, max(0, int(self.max_feed_adults)))
+        from harvest.planner.livestock_econ import hens_to_feed
+
+        feed_goal = min(feed_goal, hens_to_feed(world.ram))
         fed_now = min(self._fed_count_now(world.ram), feed_goal)
         self._adult_count = feed_goal
         self.fed_count = fed_now
@@ -465,6 +470,12 @@ class CoopChoresTask(Task):
                 self._left_top_route_index += 1
                 self._navigator.path = []
                 continue
+            if waypoint != goal and waypoint in self._chicken_tiles(ram):
+                # A hen parked on a via-point never moves: waiting for her idled the
+                # walk to the feed bin for its whole timeout, twice (Y2 Spring D22).
+                self._left_top_route_index += 1
+                self._navigator.path = []
+                continue
             action = self._navigate_to_tile(ram, waypoint)
             if action is not None:
                 return action
@@ -522,6 +533,22 @@ class CoopChoresTask(Task):
         if action is not None:
             return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
 
+        # An A pulse at the feed bin or an egg with a hen in front lifts her. Left in
+        # the hands she blocks every egg ("held_item_block") and EXIT_COOP carries her
+        # onto the farm, where `stray_hen_px` reads her as a bought hen in the shop
+        # yard and HEN_DELIVERY burns the next day there (Y2 Spring D28-D29).
+        if self._phase != "done" and read_item_on_hand(world.ram) == _ITEM_CHICKEN and self._hen_drops < len(_HEN_DROP_WALK):
+            # A drop needs open floor in front (probe: down and right of the left aisle
+            # take her; left, up and the spot she was lifted from do not), so each retry
+            # first steps toward open ground.
+            walk = _HEN_DROP_WALK[self._hen_drops]
+            self._hen_drops += 1
+            print(f"[COOP] Lifted a hen in phase {self._phase}; putting her down ({self._hen_drops}/{len(_HEN_DROP_WALK)})")
+            if walk:
+                self._action_queue.extend(make_action(**{walk: True}) for _ in range(24))
+            self._action_queue.extend(press_a_sequence(None, face_frames=0, pre_press_settle_frames=4, hold_frames=12, settle_frames=30))
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(self._action_queue.popleft()))
+
         if self._phase == "done":
             return TaskResult(
                 status=TaskStatus.SUCCESS,
@@ -558,6 +585,7 @@ _bind_coop_feed(CoopChoresTask)
 _bind_coop_egg(CoopChoresTask)
 
 _ITEM_CHICKEN = 0x25
+_HEN_DROP_WALK = ("", "down", "right", "down")
 _ANIMAL_SHOP_TILEMAP = 0x24
 _TOWN_TILEMAP = 0x04
 # Fenced yard behind the animal shop (town map 0x04). Free ground is the strip
@@ -565,6 +593,12 @@ _TOWN_TILEMAP = 0x04
 # (cols 32-34 down to row 53); the right edge is a one-tile corridor.
 _YARD_STRIP = (518, 770, 655, 815)
 _YARD_LEFT = (518, 770, 559, 862)
+# Everything inside the yard fence (cols 31-41, rows 47-54), the right strip
+# beside the building and the fence-hugging x=510 included. The only way out
+# is the shop's back door at (36,51): a farmer anywhere in here must leave by
+# ``animal_yard_to_farm``; a town route pixel-sticks on the fence (Summer D7,
+# pin LN_hen_whatif_yard_strand_FAIL at (649,845)) and RETURN_HOME wedged.
+ANIMAL_YARD_BOUNDS = (500, 760, 664, 868)
 _YARD_LANE_Y = 792
 _COOP_DROP_MAX_Y = 184
 # The shop shuts at 17:00 and its back door shuts with it, which seals the yard.
@@ -579,6 +613,11 @@ def _in_rect(rect: tuple[int, int, int, int], x: int, y: int) -> bool:
 
 def yard_free(x: int, y: int) -> bool:
     return _in_rect(_YARD_STRIP, x, y) or _in_rect(_YARD_LEFT, x, y)
+
+
+def in_animal_yard(tilemap: int, x: int, y: int) -> bool:
+    """True inside the fenced yard behind the animal shop (town 0x04/0x05)."""
+    return tilemap in (_TOWN_TILEMAP, _TOWN_TILEMAP + 1) and _in_rect(ANIMAL_YARD_BOUNDS, x, y)
 
 
 def hen_stand(bird: tuple[int, int], player: tuple[int, int]) -> tuple[tuple[int, int], str]:
@@ -645,9 +684,11 @@ class HenDeliveryTask(Task):
     _stand: Optional[tuple[int, int]] = field(default=None, init=False)
     _face: str = field(default="left", init=False)
     _action_queue: Deque[np.ndarray] = field(default_factory=deque, init=False)
+    _to_farm_retried: bool = field(default=False, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "boot"
+        self._to_farm_retried = False
         self._child = None
         self.deferred = False
         self._step_count = 0
@@ -675,6 +716,12 @@ class HenDeliveryTask(Task):
         if result.status == TaskStatus.RUNNING:
             return result
         if result.status != TaskStatus.SUCCESS:
+            if self._phase == "to_farm" and not self._to_farm_retried:
+                # A walk out of the shop door can step back in (Summer D6: the
+                # route was past its shop hops). Re-arm once from where we are.
+                self._to_farm_retried = True
+                self._log(world, f"to_farm retry after: {result.reason}")
+                return self._carry_on(world, self._tilemap(world.ram))
             return self._fail(f"{self._phase} failed: {result.reason}")
         return self._advance(world)
 
@@ -688,6 +735,8 @@ class HenDeliveryTask(Task):
                 self.deferred = True  # nothing to carry (the buy failed): just walk home
                 return self._carry_on(world, tilemap)
             return self._finish("no hen outside the coop")
+        if self._is_farm(tilemap):
+            return self._begin_chase(world)
         if tilemap == _TOWN_TILEMAP and yard_free(*self._player_px(ram)):
             return self._begin_chase(world)
         if tilemap != _ANIMAL_SHOP_TILEMAP:
@@ -709,8 +758,9 @@ class HenDeliveryTask(Task):
             return self._finish("hen in coop")
         if tilemap == _ANIMAL_SHOP_TILEMAP:
             route = ("animal_shop_to_town", "animal_shop_town_to_farm")
-        elif tilemap == _TOWN_TILEMAP:
-            route = ("animal_yard_to_farm",) if yard_free(*self._player_px(world.ram)) else ("animal_shop_town_to_farm",)
+        elif tilemap in (_TOWN_TILEMAP, _TOWN_TILEMAP + 1):
+            in_yard = in_animal_yard(tilemap, *self._player_px(world.ram))
+            route = ("animal_yard_to_farm",) if in_yard else ("animal_shop_town_to_farm",)
         elif self._is_farm(tilemap):
             return self._after_farm(world)
         else:
@@ -783,7 +833,7 @@ class HenDeliveryTask(Task):
         if self._phase in ("chase", "pickup_press"):
             if held == _ITEM_CHICKEN:
                 return self._carry_on(world, tilemap)
-            if tilemap != _TOWN_TILEMAP:
+            if tilemap != _TOWN_TILEMAP and not self._is_farm(tilemap):
                 return self._fail(f"left the yard map=0x{tilemap:02X} held=0x{held:02X}")
         if self._phase == "drop":
             if held != _ITEM_CHICKEN and self._stray_bird(ram) is None:
@@ -799,7 +849,8 @@ class HenDeliveryTask(Task):
         if self._phase == "drop":
             return self._drop_press(world, held)
         self._chase_frames += 1
-        if self._clock_min(ram) > YARD_LEAVE_DEADLINE_MIN or self._chase_frames > self.chase_budget:
+        if ((not self._is_farm(tilemap) and self._clock_min(ram) > YARD_LEAVE_DEADLINE_MIN)
+                or self._chase_frames > (8000 if self._is_farm(tilemap) else self.chase_budget)):
             return self._defer(world, "pickup ran past the closing deadline")
         if self._phase == "pickup_press":
             if self._pickup_tries >= self.pickup_tries_max:
@@ -814,6 +865,22 @@ class HenDeliveryTask(Task):
         if bird is None:
             return self._defer(world, "hen vanished from the yard")
         player = self._player_px(ram)
+        if self._is_farm(self._tilemap(ram)):
+            from harvest.tasks.skills import NavSkill
+            dx, dy = bird[0] - player[0], bird[1] - player[1]
+            if abs(dx) + abs(dy) > 28:
+                if self._child is None or self._stand is None or self._step_count % 60 == 0:
+                    self._stand = bird
+                    self._child = NavSkill(target_px=bird, radius=20, timeout=8000)
+                    self._child.reset(world)
+                result = self._child.step(world)
+                if result.status == TaskStatus.SUCCESS:
+                    self._child = None
+                return result if result.status == TaskStatus.RUNNING else TaskResult(
+                    TaskStatus.RUNNING, action=ActionResult(make_action()))
+            self._face = ("right" if dx > 0 else "left") if abs(dx) > abs(dy) else ("down" if dy > 0 else "up")
+            self._child = None
+            return self._begin_press(world)
         if self._stand is None or self._step_count % 30 == 0:
             self._stand, self._face = hen_stand(bird, player)
         direction = yard_step(player, self._stand)

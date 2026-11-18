@@ -382,6 +382,58 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertEqual(plan.phase_attempts, 2)
         self.assertEqual(plan.recovery_attempts, 1)
 
+    def test_establish_that_fails_after_recovery_is_skipped_not_fatal(self) -> None:
+        """rings_d3 Spring D19-D24: one ring that would not plant cost the day's watering."""
+
+        class FailTask:
+            def reset(self, world) -> None:
+                return None
+
+            def can_start(self, world) -> bool:
+                return True
+
+            def step(self, world) -> TaskResult:
+                return TaskResult(status=TaskStatus.FAILURE, reason="nav_pocket_plant: nav timeout")
+
+        class ActionTask(FailTask):
+            def step(self, world) -> TaskResult:
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(right=True)))
+
+        class RecoverySuccessTask(FailTask):
+            def step(self, world) -> TaskResult:
+                return TaskResult(status=TaskStatus.SUCCESS, reason="recovered")
+
+        class TestPlan(DayPlanTask):
+            def __init__(self) -> None:
+                super().__init__(
+                    phase_sequence=[
+                        PhaseSpec("CROP_ESTABLISH", "crop", {"work_mode": "establish"}),
+                        PhaseSpec("CROP_WATER", "crop", {"work_mode": "water"}),
+                    ]
+                )
+                self.recovery_attempts = 0
+
+            def _make_task(self, spec, world):
+                return FailTask() if spec.phase == "CROP_ESTABLISH" else ActionTask()
+
+            def _make_recovery_task(self, spec, status, reason, world):
+                self.recovery_attempts += 1
+                return RecoverySuccessTask()
+
+        plan = TestPlan()
+        world = make_world(0x00)
+        plan.reset(world)
+
+        result = None
+        for _ in range(6):
+            result = plan.step(world)
+            if plan.phase_text == "CROP_WATER":
+                break
+
+        self.assertEqual(plan.recovery_attempts, 1)
+        self.assertEqual(plan.phase_text, "CROP_WATER")
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+
     def test_day_plan_aborts_required_blocked_phase_after_recovery_blocks(self) -> None:
         class BlockedTask:
             def reset(self, world) -> None:
@@ -480,7 +532,9 @@ class DayPlanSequenceCommonTests(unittest.TestCase):
         self.assertIn(status, (TaskStatus.FAILURE, TaskStatus.BLOCKED))
         self.assertIn("phase watchdog", result.reason)
         self.assertEqual(orch._phase_watchdog_frames(PhaseSpec("CROP_WATER", "crop")), 24_000)
-        self.assertEqual(orch._phase_watchdog_frames(PhaseSpec("NAV_CROP", "nav")), 0)
+        # Every other phase gets the 120k stall backstop (the day floor is off), so nothing can loop for millions of frames.
+        from harvest.planner.day_phase_types import PHASE_BACKSTOP_FRAMES
+        self.assertEqual(orch._phase_watchdog_frames(PhaseSpec("NAV_CROP", "nav")), PHASE_BACKSTOP_FRAMES)
 
     def test_day_plan_defers_the_animal_block_instead_of_losing_the_day(self) -> None:
         """run16 D26/D27: the cow-purchase day replaced the income plan with

@@ -23,9 +23,9 @@
       "landingXy": [4985, 55],
       "role": "primary",
       "path": ["east_lane", "east_green", "east_cage", "east_stair_approach"],
-      "pathTolerances": {"east_lane": 16, "east_green": 16, "east_cage": 16, "default": 12},
+      "pathTolerances": {"east_lane": 8, "east_green": 8, "east_cage": 8, "default": 8},
       "pushFrames": 360,
-      "notes": "First indoor hop. Isolated 2026-09-21 from PalaceOfDarknessEntry. Stair anim; dest 0x09 shooter room B1. Mini-helmasaurs on the east cage are not CASTLE_HOSTILE_TYPES."
+      "notes": "First indoor hop. Isolated 2026-09-21 from PalaceOfDarknessEntry. Re-isolated 2026-10-18 from Whatif_PalaceOfDarknessEntry_parallel, 2/2, landing (4985,55) room 0x09. Tolerance 16 clips the green-door jamb (stuck 5496,2232); 8 lines up. Stair anim; dest 0x09 shooter room. Mini-helmasaurs on the east cage are not CASTLE_HOSTILE_TYPES. room_engine still rejects dark_world."
     },
     {
       "label": "south_to_overworld",

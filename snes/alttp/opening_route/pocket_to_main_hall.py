@@ -3,18 +3,16 @@
 Measured 2026-07-30 headless from continuous tip ``courtyard_secret_pocket``
 (after ``secret_entrance_clear`` stairs exit / FighterSword predecessor):
 
-1. **Route** — bush-cut south-west out of the hedge pocket into the open
-   courtyard (flower gardens ~x≤2216, y≥1900). Pure walking stays in a
-   ~48×64 box; sword swings are required to clear bushes.
-2. **Approach** — hard south (cut) to y≈2024, west to x≈2040, north to
-   door approach ~(2040, 1790).
+1. **Route** — lift the two bushes that close the hedge pocket, then walk
+   south-west into the open courtyard. Sword swings are not used here.
+2. **Approach** — overworld walk to the door column. Bushes off that walk
+   stay put.
 3. **Trigger** — align x≈2040, hold UP → indoors main hall room ``0x61``.
 
 Geometry authority: ``maps/screen_1b_courtyard.json`` door
-``main_door_to_0x61``. Bush-cut locomotion remains here (room_engine
-walk-only cannot clear hedges); approach/trigger coords and corridor
-waypoints load from the map. Do not grow ``enter_main_door`` special
-cases or redeclare door xy in Python.
+``main_door_to_0x61``. The pocket lifts are play input from the landing;
+approach and trigger coords load from the map. Do not grow
+``enter_main_door`` special cases or redeclare door xy in Python.
 
 Do not claim Zelda / Sanctuary from this hop alone.
 """
@@ -75,32 +73,64 @@ COURTYARD_SECRET_POCKET_X, COURTYARD_SECRET_POCKET_Y = _map_point_xy(
 COURTYARD_SECRET_POCKET_TOLERANCE = 48
 MAIN_DOOR_APPROACH_X, MAIN_DOOR_APPROACH_Y = main_door().approach_xy
 MAIN_DOOR_APPROACH_TOLERANCE = main_door().tolerance_for("main_door_approach", 24)
-COURTYARD_SOUTH_CORRIDOR_Y = _map_point_xy("south_corridor", (2100, 2024))[1]
-# Hedge is approach_x+8. Climb only from this column (map point door_column).
-DOOR_COLUMN_X = _map_point_xy(
-    "door_column", (MAIN_DOOR_APPROACH_X, COURTYARD_SOUTH_CORRIDOR_Y)
-)[0]
-DOOR_COLUMN_SLACK = main_door().tolerance_for("door_column", 4)
 
 
-def cut_push(
-    env: BootEnv,
-    face: str,
-    *,
-    walk: int = 12,
-    swings: int = 2,
-) -> int:
-    """Face, swing sword (cut bushes), then walk. Returns frames used."""
+# $0308 bit 0x80. Same byte ``primitives.lift`` treats as the carry flag.
+_CARRY_ADDR = 0x0308
+_CARRY_BIT = 0x80
+
+
+def _carrying(env: BootEnv) -> bool:
+    return bool(int(env.get_ram()[_CARRY_ADDR]) & _CARRY_BIT)
+
+
+def _until_still(env: BootEnv, face: str, limit: int) -> int:
+    """Hold ``face`` until Link stops, goes indoors, or the limit hits."""
     frames = 0
-    step_frames(env, action_for(face), 2)
-    frames += 2
-    for _ in range(swings):
-        step_frames(env, action_for("B"), 4)
-        step_frames(env, no_action(), 4)
-        frames += 8
-    step_frames(env, action_for(face), walk)
-    frames += walk
+    still = 0
+    previous: tuple[int, int] | None = None
+    for _ in range(limit):
+        snap = snapshot_env(env)
+        if snap.indoors or in_main_hall(snap):
+            return frames
+        step_frames(env, action_for(face), 1)
+        frames += 1
+        xy = (snapshot_env(env).link_x, snapshot_env(env).link_y)
+        still = still + 1 if xy == previous else 0
+        previous = xy
+        if still >= 6:
+            return frames
     return frames
+
+
+def _step_until_x(env: BootEnv, x_max: int, *, limit: int = 24) -> int:
+    frames = 0
+    for _ in range(limit):
+        snap = snapshot_env(env)
+        if snap.indoors or snap.link_x <= x_max:
+            return frames
+        step_frames(env, action_for("LEFT"), 1)
+        frames += 1
+    return frames
+
+
+def _lift_down(env: BootEnv) -> tuple[int, bool]:
+    """Pick up the bush to the south and throw it. Returns frames, connected."""
+    frames = 0
+    step_frames(env, action_for("DOWN"), 2)
+    frames += 2
+    lifted = primitives.lift(env)
+    frames += lifted.frames
+    if not lifted.ok:
+        return frames, False
+    thrown = primitives.throw(env)
+    frames += thrown.frames
+    for _ in range(30):
+        if not _carrying(env):
+            break
+        step_frames(env, no_action(), 1)
+        frames += 1
+    return frames, True
 
 
 def _reentered_secret(snap: AlttpSnapshot) -> bool:
@@ -174,8 +204,81 @@ def _settle_transition(env: BootEnv, *, max_frames: int = 120) -> tuple[int, Alt
     return frames, snapshot_env(env)
 
 
+def _leave_pocket(env: BootEnv) -> tuple[int, int]:
+    """Lift the pocket bush, walk around the next row, lift one garden bush.
+
+    Returns frames and how many lifts connected. The pocket column is one
+    body wide; the grab reaches the bush after an 8px step left of the
+    landing x from ``secret_stairs_pocket``.
+    """
+    frames = 0
+    lifts = 0
+    frames += _until_still(env, "DOWN", 48)
+    frames += _step_until_x(env, COURTYARD_SECRET_POCKET_X - 8)
+    used, ok = _lift_down(env)
+    frames += used
+    if ok:
+        lifts += 1
+    frames += _until_still(env, "DOWN", 48)
+    mark = snapshot_env(env).link_x
+    frames += _step_until_x(env, mark - 16)
+    frames += _until_still(env, "DOWN", 80)
+    if lifts < 2 and not snapshot_env(env).indoors:
+        used, ok = _lift_down(env)
+        frames += used
+        if ok:
+            lifts += 1
+    return frames, lifts
+
+
+def _walk_to_door(env: BootEnv) -> tuple[int, bool]:
+    """Follow the live overworld grid to the map door approach."""
+    from alttp.overworld import find_overworld_path, read_overworld_tiles
+
+    frames = 0
+    snap = snapshot_env(env)
+    path = find_overworld_path(
+        read_overworld_tiles(env.get_ram()),
+        (snap.link_x, snap.link_y),
+        (MAIN_DOOR_APPROACH_X, MAIN_DOOR_APPROACH_Y),
+    )
+    if not path:
+        return frames, False
+    still = 0
+    previous: tuple[int, int] | None = None
+    for px, py in path:
+        for _ in range(16):
+            snap = snapshot_env(env)
+            if snap.indoors or in_main_hall(snap) or near_main_door(snap):
+                return frames, True
+            if abs(snap.link_x - px) <= 2 and abs(snap.link_y - py) <= 2:
+                break
+            if abs(snap.link_x - px) >= abs(snap.link_y - py):
+                face = "RIGHT" if px > snap.link_x else "LEFT"
+            else:
+                face = "DOWN" if py > snap.link_y else "UP"
+            step_frames(env, action_for(face), 1)
+            frames += 1
+            xy = (snapshot_env(env).link_x, snapshot_env(env).link_y)
+            still = still + 1 if xy == previous else 0
+            previous = xy
+            if still < 6:
+                continue
+            snap = snapshot_env(env)
+            if abs(snap.link_x - MAIN_DOOR_APPROACH_X) > 3 and not snap.indoors:
+                face = "RIGHT" if snap.link_x < MAIN_DOOR_APPROACH_X else "LEFT"
+                step_frames(env, action_for(face), 4)
+                frames += 4
+                still = 0
+                previous = None
+                continue
+            return frames, near_main_door(snap) or in_main_hall(snap)
+    snap = snapshot_env(env)
+    return frames, near_main_door(snap) or in_main_hall(snap)
+
+
 def escape_hedge_pocket(env: BootEnv) -> RoutePhaseResult:
-    """Route tier: bush-cut south/west out of secret-stairs hedge pocket."""
+    """Route tier: lift two bushes and walk out of the secret-stairs pocket."""
     frames = 0
     settle = primitives.settle_control(env)
     frames += settle.frames
@@ -210,41 +313,8 @@ def escape_hedge_pocket(env: BootEnv) -> RoutePhaseResult:
             diag=snapshot_to_diag(start),
         )
 
-    # Off the stairs pad south.
-    step_frames(env, action_for("DOWN"), 28)
-    frames += 28
-
-    # Cut south-west until open-courtyard window.
-    for i in range(28):
-        snap = snapshot_env(env)
-        if _reentered_secret(snap):
-            step_frames(env, action_for("DOWN"), 40)
-            frames += 40
-            sc = primitives.settle_control(env, max_frames=60)
-            frames += sc.frames
-            continue
-        if in_open_courtyard(snap) or in_main_hall(snap):
-            break
-        frames += cut_push(env, "DOWN", walk=10, swings=3)
-        if i % 2 == 1:
-            frames += cut_push(env, "LEFT", walk=8, swings=2)
-
-    for _ in range(12):
-        snap = snapshot_env(env)
-        if in_open_courtyard(snap) or in_main_hall(snap) or snap.link_x <= 2180:
-            break
-        frames += cut_push(env, "LEFT", walk=10, swings=2)
-
-    # Light skirmish if soldiers nearby.
-    fight = primitives.fight_nearby(
-        env,
-        max_distance=120,
-        attack_distance=40,
-        max_cycles=200,
-        stop_when=lambda e: in_main_hall(snapshot_env(e)),
-    )
-    frames += fight.frames
-
+    used, lifts = _leave_pocket(env)
+    frames += used
     snap = snapshot_env(env)
     ok = in_open_courtyard(snap) or in_main_hall(snap)
     return RoutePhaseResult(
@@ -253,11 +323,11 @@ def escape_hedge_pocket(env: BootEnv) -> RoutePhaseResult:
         frames=frames,
         snapshot=snap,
         detail=(
-            f"open courtyard xy=({snap.link_x},{snap.link_y})"
+            f"open courtyard xy=({snap.link_x},{snap.link_y}) lifts={lifts}"
             if ok
             else (
                 f"still pocket/hedge xy=({snap.link_x},{snap.link_y}) "
-                f"indoors={snap.indoors}"
+                f"indoors={snap.indoors} lifts={lifts}"
             )
         ),
         diag=snapshot_to_diag(snap),
@@ -265,7 +335,7 @@ def escape_hedge_pocket(env: BootEnv) -> RoutePhaseResult:
 
 
 def approach_main_door(env: BootEnv) -> RoutePhaseResult:
-    """Approach tier: south corridor → west to door x → north to door y."""
+    """Approach tier: walk the overworld grid to the map door approach."""
     frames = 0
     settle = primitives.settle_control(env)
     frames += settle.frames
@@ -289,102 +359,18 @@ def approach_main_door(env: BootEnv) -> RoutePhaseResult:
             diag=snapshot_to_diag(start),
         )
 
-    # Hard south (bush-cut) to connecting corridor y≈2024.
-    for i in range(200):
-        snap = snapshot_env(env)
-        if in_main_hall(snap) or near_main_door(snap):
-            break
-        if _reentered_secret(snap):
-            step_frames(env, action_for("DOWN"), 40)
-            frames += 40
-            continue
-        if snap.link_y >= COURTYARD_SOUTH_CORRIDOR_Y:
-            break
-        before = (snap.link_x, snap.link_y)
-        frames += cut_push(env, "DOWN", walk=12, swings=3)
-        if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
-            for face in ("LEFT", "RIGHT"):
-                frames += cut_push(env, face, walk=10, swings=2)
-                frames += cut_push(env, "DOWN", walk=12, swings=3)
-                if snapshot_env(env).link_y > before[1]:
-                    break
-
-    # West onto the door column. approach_x+8 (2048) is hedge; north from
-    # there stalls near y=1955. UP is not a wiggle — it enters that hedge.
-    for _ in range(160):
-        snap = snapshot_env(env)
-        if in_main_hall(snap) or near_main_door(snap):
-            break
-        on_column = snap.link_x <= DOOR_COLUMN_X + DOOR_COLUMN_SLACK
-        on_row = snap.link_y >= COURTYARD_SOUTH_CORRIDOR_Y - 12
-        if on_column and on_row:
-            break
-        before = (snap.link_x, snap.link_y)
-        if not on_row:
-            frames += cut_push(env, "DOWN", walk=10, swings=1)
-        else:
-            face = "LEFT" if snap.link_x > DOOR_COLUMN_X else "RIGHT"
-            frames += cut_push(env, face, walk=14, swings=2)
-        if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
-            fight = primitives.fight_nearby(
-                env,
-                max_distance=96,
-                attack_distance=40,
-                max_cycles=30,
-                stop_when=lambda e: (
-                    in_main_hall(snapshot_env(e)) or near_main_door(snapshot_env(e))
-                ),
-            )
-            frames += fight.frames
-
-    # North only while still on the door column.
-    for _ in range(160):
-        snap = snapshot_env(env)
-        if in_main_hall(snap) or near_main_door(snap):
-            break
-        if _reentered_secret(snap):
-            step_frames(env, action_for("DOWN"), 40)
-            frames += 40
-            continue
-        dx = MAIN_DOOR_APPROACH_X - snap.link_x
-        dy = MAIN_DOOR_APPROACH_Y - snap.link_y
-        if abs(dx) <= 16 and abs(dy) <= 16:
-            break
-        before = (snap.link_x, snap.link_y)
-        if abs(dx) > DOOR_COLUMN_SLACK:
-            if snap.link_y < COURTYARD_SOUTH_CORRIDOR_Y - 12:
-                frames += cut_push(env, "DOWN", walk=10, swings=1)
-            else:
-                face = "RIGHT" if dx > 0 else "LEFT"
-                frames += cut_push(env, face, walk=10, swings=2)
-        elif abs(dy) > 6:
-            face = "DOWN" if dy > 0 else "UP"
-            frames += cut_push(env, face, walk=10, swings=1)
-        if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
-            fight = primitives.fight_nearby(
-                env,
-                max_distance=96,
-                attack_distance=40,
-                max_cycles=30,
-                stop_when=lambda e: (
-                    in_main_hall(snapshot_env(e)) or near_main_door(snapshot_env(e))
-                ),
-            )
-            frames += fight.frames
-            if (snapshot_env(env).link_x, snapshot_env(env).link_y) == before:
-                frames += cut_push(env, "DOWN", walk=8, swings=1)
-
-    # Clear nearby soldiers before trigger. Do not chase once the door is in reach.
-    fight = primitives.fight_nearby(
-        env,
-        max_distance=100,
-        max_cycles=150,
-        stop_when=lambda e: (
-            in_main_hall(snapshot_env(e)) or near_main_door(snapshot_env(e))
-        ),
-    )
-    frames += fight.frames
-
+    used, reached = _walk_to_door(env)
+    frames += used
+    snap = snapshot_env(env)
+    if not reached and not in_main_hall(snap) and not near_main_door(snap):
+        return RoutePhaseResult(
+            phase="approach_main_door",
+            ok=False,
+            frames=frames,
+            snapshot=snap,
+            detail=f"no walk to the door xy=({snap.link_x},{snap.link_y})",
+            diag=snapshot_to_diag(snap),
+        )
     snap = snapshot_env(env)
     ok = near_main_door(snap) or in_main_hall(snap)
     return RoutePhaseResult(
@@ -499,9 +485,9 @@ POCKET_PHASES = (
 )
 
 _POCKET_NOTES = (
-    "Pocket escape requires bush-cutting (walk-only stays boxed).",
+    "Pocket escape lifts two bushes, then walks. No courtyard sword.",
     f"Geometry: maps/{MAP_ID}.json door {MAIN_DOOR_LABEL}.",
-    "South corridor + door approach/push from map; bush-cut locomotion only.",
+    "Door approach and push come from the map.",
     "Do not claim Zelda until follower_indicator==1.",
 )
 

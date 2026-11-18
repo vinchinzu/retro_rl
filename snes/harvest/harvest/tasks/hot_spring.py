@@ -32,11 +32,12 @@ import numpy as np
 
 from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 
-from harvest.core.ram_catalog import field_spec
+from harvest.core.ram_catalog import field_spec, read_ram_value
 from harvest.core.stamina import Stamina
-from harvest.core.scene import classify_scene_from_ram
+from harvest.core.scene import SPA_POOL_TILE_BOX, classify_scene_from_ram
 from harvest.maps.map_config import (
     ROUTES,
+    Waypoint,
     farm_to_spa_waypoints,
     slice_route_from_position,
 )
@@ -81,7 +82,6 @@ PLAYER_ACTION_JUMP = 3
 # Recording: Right+A into F7 ~13f, coast, Left+A back ~14f.
 ENTER_HOLD_FRAMES = 14
 COAST_FRAMES = 20
-SETTLE_FRAMES = 12
 
 
 def _read_u16(ram: np.ndarray, addr: int) -> int:
@@ -104,6 +104,55 @@ def near_outdoor_spa(ram: np.ndarray, radius: int = SPA_ARRIVAL_RADIUS_PX) -> bo
     return abs(px - sx) + abs(py - sy) <= radius
 
 
+# The pool box starts at tile x=38, which is the dry lip (SPA_OUTDOOR_STAND_PX);
+# the water begins at x=39, so a farmer east of x=624 is in the pond.
+SPA_WATER_MIN_X_PX = 624
+SPA_WATER_MAX_X_PX = 640   # the 0xF7 strip is one tile wide; the farmer lands on the dry shelf east of it
+
+# Closed-loop bath (ROM probe, 2026-11-08): the old fixed-length button script slipped when the clock phase moved. A left
+# jump overshot the west lip, the walk back pressed A before the farmer stood flush against the water, the press became a tool
+# swing, and every later cycle repeated it: stamina stuck at 132/160 for 3,600 frames in 4 of ~170 sweep soaks, farmer in the pond.
+# Now the farmer walks flush to the edge, holds A only there until ``player_action`` reads 3, rides the jump, and picks the next
+# direction from where it landed.
+BATH_STILL_FRAMES = 3      # an unchanged x this long means the water blocks the walk: flush against the edge
+BATH_APPROACH_MAX = 90     # frames of walking toward the edge before the press goes ahead anyway
+BATH_PRESS_MAX = 40        # frames of A at the edge without a jump before it counts as a miss
+BATH_COAST_MAX = 90        # a jump lasts ~40 frames; this only guards a stuck animation
+BATH_BACKOFF_FRAMES = 14   # walk away from the edge after a miss so the next press starts from a fresh approach
+BATH_SETTLE_FRAMES = 4
+BATH_MAX_MISSES = 4        # misses in a row before the soak gives up and walks home
+
+
+def in_spa_pond(ram: np.ndarray) -> bool:
+    """True when the farmer stands in the upper-pond water, not on the lip."""
+    tilemap = int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
+    if tilemap != MOUNTAIN_TILEMAP:
+        return False
+    px, py = read_player_xy(ram)
+    x0, y0, x1, y1 = SPA_POOL_TILE_BOX
+    return px >= SPA_WATER_MIN_X_PX and x0 <= px // 16 <= x1 and y0 <= py // 16 <= y1
+
+
+def spa_pond_exit_actions() -> list:
+    """Pad frames that leave the pond westward and stop on solid ground.
+
+    Plain left walking collides with water ``0xF7``; re-cross it twice with a
+    Left+A jump (the same input that entered), then push west so the return
+    route starts on the path. Shared by the post-soak settle and ``return_home``
+    (a day floor that fires mid-soak strands the farmer in the water, where the
+    mountain route's first waypoint is unreachable: Y2 Spring D19).
+    """
+    actions = [make_action() for _ in range(6)]
+    for _attempt in range(2):
+        actions += [make_action(left=True, b=True) for _ in range(4)]
+        actions += [make_action(left=True, b=True, a=True) for _ in range(ENTER_HOLD_FRAMES + 8)]
+        actions += [make_action(left=True, b=True) for _ in range(COAST_FRAMES)]
+        actions += [make_action() for _ in range(6)]
+    actions += [make_action(left=True, b=True) for _ in range(28)]
+    actions += [make_action() for _ in range(12)]
+    return actions
+
+
 def read_stamina(ram: np.ndarray) -> int:
     return Stamina.from_ram(ram).current
 
@@ -122,31 +171,100 @@ def read_player_action(ram: np.ndarray) -> int:
     return int(ram[ADDR_PLAYER_ACTION])
 
 
-def _queue_a_bath_cycle(queue: deque, *, enter_right: bool = True) -> None:
-    """One human-style bath pass into 0xF7 water, coast, return.
+_OPPOSITE = {"left": "right", "right": "left"}
 
-    ``tasks/hot_spring_bath.json`` holds **B+direction+A** while crossing
-    0xF7 (tool was brush 0x0F). A+dir alone with watering can selected does
-    not enter water (edge collision, no ``player_action=3``). Alternating
-    right/left matches the five bath runs in the capture.
+
+def _bath_miss_state(ram: np.ndarray) -> str:
+    """What the farmer and its neighbours were doing when a flush A press never jumped (Y3 Summer D14: 4 misses, no cause in the log)."""
+    from harvest.core.npc_catalog import game_objects
+    from harvest.core.ram_catalog import read_ram_value
+
+    px, py = read_player_xy(ram)
+    near = sorted(
+        (abs(o.pixel[0] - px) + abs(o.pixel[1] - py), o.sprite_table_idx, o.pixel)
+        for o in game_objects(ram) if not o.is_player
+    )[:4]
+    fields = ("player_state", "held_item", "input_lock", "player_direction", "stamina", "hour")
+    state = " ".join(f"{k}={read_ram_value(ram, k)}" for k in fields)
+    return f"pos={(px, py)} act={read_player_action(ram)} {state} near={[(d, hex(i), p) for d, i, p in near]}"
+
+
+
+class BathCrossing:
+    """Closed-loop crossing of the one-tile 0xF7 strip: walk flush to the edge, hold A there, ride the jump, settle.
+
+    ``tasks/hot_spring_bath.json`` holds **B+direction+A** while crossing 0xF7 (tool was brush 0x0F). A+dir alone with the
+    watering can selected does not enter water (edge collision, no ``player_action=3``). One jump pays +12 stamina and carries
+    the farmer to the far shelf, so every crossing flips the side. The direction comes from the farmer's x on each start, never
+    from a counter: a jump that overshoots a lip, or a soak resumed anywhere, still walks back to the edge it needs.
     """
-    into = "right" if enter_right else "left"
-    back = "left" if enter_right else "right"
-    # Brief face + run without A so direction sticks before interact.
-    for _ in range(4):
-        queue.append(make_action(**{into: True, "b": True}))
-    for _ in range(ENTER_HOLD_FRAMES):
-        queue.append(make_action(**{into: True, "b": True, "a": True}))
-    for _ in range(COAST_FRAMES):
-        queue.append(make_action(**{into: True, "b": True}))
-    for _ in range(4):
-        queue.append(make_action())
-    for _ in range(ENTER_HOLD_FRAMES):
-        queue.append(make_action(**{back: True, "b": True, "a": True}))
-    for _ in range(COAST_FRAMES):
-        queue.append(make_action(**{back: True, "b": True}))
-    for _ in range(SETTLE_FRAMES):
-        queue.append(make_action())
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self.stage = ""            # "" idle, then approach / press / coast / backoff / settle
+        self.n = 0
+        self.dir = "right"
+        self.x: Optional[int] = None
+        self.still = 0
+        self.misses = 0            # presses in a row that never produced a jump
+        self.crossings = 0         # crossings started
+
+    def start(self, px: int, *, to_west: bool = False) -> None:
+        if to_west or px >= SPA_WATER_MAX_X_PX:
+            self.dir = "left"
+        elif px < SPA_WATER_MIN_X_PX:
+            self.dir = "right"
+        self.stage, self.n, self.x, self.still = "approach", 0, None, 0
+        self.crossings += 1
+
+    def action(self, ram: np.ndarray, *, to_west: bool = False):
+        """The pad for this frame."""
+        px, _py = read_player_xy(ram)
+        jumping = read_player_action(ram) == PLAYER_ACTION_JUMP
+        if not self.stage:
+            self.start(px, to_west=to_west)
+        self.n += 1
+        d = self.dir
+        if self.stage == "approach":
+            self.still = self.still + 1 if px == self.x else 0
+            self.x = px
+            if self.still < BATH_STILL_FRAMES and self.n <= BATH_APPROACH_MAX:
+                return make_action(**{d: True, "b": True})
+            self.stage, self.n = "press", 0     # A before the farmer is flush became a tool swing, not a jump
+        if self.stage == "press":
+            if jumping:
+                self.stage, self.n, self.misses = "coast", 0, 0
+            elif self.n <= BATH_PRESS_MAX:
+                return make_action(**{d: True, "b": True, "a": True})
+            else:
+                self.misses += 1
+                print(f"[SPA] press {self.misses} never jumped: {_bath_miss_state(ram)}")
+                self.stage, self.n = "backoff", 0
+        if self.stage == "coast":
+            if jumping and self.n <= BATH_COAST_MAX:
+                return make_action(**{d: True, "b": True})
+            self.stage, self.n = "settle", 0
+        if self.stage == "backoff":
+            if self.n <= BATH_BACKOFF_FRAMES:
+                return make_action(**{_OPPOSITE[d]: True, "b": True})
+            self.start(px, to_west=to_west)
+            return make_action()
+        if self.n <= BATH_SETTLE_FRAMES:
+            return make_action()
+        self.start(px, to_west=to_west)
+        return make_action()
+
+
+# A sprite (the farm dog) can park in the narrow west corridor and seal the walk to the spa. A cover evening soaks sixty times,
+# so one blocked walk must not end it: leave, wait for the dog to move, then walk again (ROM probes: 2 of 9 evening soaks blocked; one 12-start
+# sample needed ~15,000f of waiting).
+GATE_RETRIES = 8
+GATE_WAIT_FRAMES = 600              # by day the clock runs through a wait
+GATE_WAIT_NIGHT_FRAMES = 3000       # after 18:00 it is frozen, and the dog moves a tile every few thousand frames (ROM: freed at ~15,000f)
+GATE_RETREAT_PX = (232, 392)        # the open yard east of the corridor: the farmer leaves so the dog can wander off
+GATE_BLOCKS = ("pixel_stuck", "no_path", "exit_walk timeout")
 
 
 @dataclass
@@ -172,8 +290,8 @@ class HotSpringStaminaTask(Task):
     # Farm → path → full mountain corridor needs ~2–4k frames when clear;
     # return is similar length. Budget headroom for stasis recovery.
     nav_timeout: int = 20000
-    # Live fill is ~5–6 jump-exits of 0xF7. This is a queue budget, not a
-    # "leave now" cap — full restore keeps bathing until current == max.
+    # A bath cycle is two crossings (one jump, +12 stamina, each). A numeric ``min_stamina`` gives up after this many cycles with no
+    # gain, or ends at the plateau; a full restore keeps bathing until current == max or ``soak_timeout``.
     max_jump_cycles: int = 10
 
     _phase: str = field(default="start", init=False)
@@ -185,10 +303,14 @@ class HotSpringStaminaTask(Task):
     _plateau: int = field(default=0, init=False)
     _action_queue: deque = field(default_factory=deque, init=False)
     _stam_before_trip: int = field(default=0, init=False)
-    _jump_cycles: int = field(default=0, init=False)
+    _bath: BathCrossing = field(default_factory=BathCrossing, init=False)
+    _soak_failure: str = field(default="", init=False)
+    _exit_tail: bool = field(default=False, init=False)
     _jumps_seen: int = field(default=0, init=False)
     _was_jumping: bool = field(default=False, init=False)
     _soak_done_reason: str = field(default="", init=False)
+    _route_retries: int = field(default=0, init=False)
+    _gate_wait: int = field(default=0, init=False)
 
     def reset(self, world: WorldState) -> None:
         self._phase = "start"
@@ -200,10 +322,19 @@ class HotSpringStaminaTask(Task):
         self._plateau = 0
         self._action_queue.clear()
         self._stam_before_trip = int(read_stamina(world.ram))
-        self._jump_cycles = 0
+        self._bath.reset()
+        self._soak_failure = ""
+        self._exit_tail = False
         self._jumps_seen = 0
         self._was_jumping = False
         self._soak_done_reason = ""
+        self._route_retries = 0
+        self._gate_wait = 0
+
+    @property
+    def _jump_cycles(self) -> int:
+        """Crossings started this soak (one jump each, +12 stamina)."""
+        return self._bath.crossings
 
     def can_start(self, world: WorldState) -> bool:
         return True
@@ -250,7 +381,9 @@ class HotSpringStaminaTask(Task):
         self._soak_start = read_stamina(world.ram)
         self._last_stamina = self._soak_start
         self._plateau = 0
-        self._jump_cycles = 0
+        self._bath.reset()
+        self._soak_failure = ""
+        self._exit_tail = False
         self._jumps_seen = 0
         self._was_jumping = False
         self._action_queue.clear()
@@ -298,7 +431,7 @@ class HotSpringStaminaTask(Task):
         return sliced
 
     def _start_return_or_done(self, world: WorldState, reason: str) -> TaskResult:
-        if not self._stamina_ok(world.ram):
+        if not self._stamina_ok(world.ram) and not self._soak_failure:
             stam = Stamina.from_ram(world.ram)
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -449,11 +582,27 @@ class HotSpringStaminaTask(Task):
         if self._phase == "soak":
             return self._step_soak(world)
 
+        if self._phase == "gate_wait":
+            # The farm dog parks in the west corridor (3,26) for a while; idle frames move it. Then walk the route again.
+            self._gate_wait -= 1
+            if self._gate_wait % 200 == 0:
+                from harvest.planner.tasks.home_recover import dog_position
+
+                print(f"[SPA] gate wait {self._gate_wait}f left: farmer={read_player_xy(world.ram)} dog={dog_position(world.ram)}")
+            if self._gate_wait > 0:
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            self._phase = "start"
+            return self._start_next(world)
+
         queued = drain_action_queue(self._action_queue)
         if queued is not None:
             return queued
 
         if self._phase == "post_soak_settle":
+            if not self._exit_tail:
+                exiting = self._exit_pond_step(world)
+                if exiting is not None:
+                    return exiting
             px, _py = read_player_xy(world.ram)
             # Still east of pond — keep pushing west before multi-nav.
             if px > 600:
@@ -500,10 +649,39 @@ class HotSpringStaminaTask(Task):
 
         if result.status == TaskStatus.FAILURE:
             reason = result.reason or "unknown"
+            if self._phase == "gate_retreat":
+                self._task = None                      # no matter how far it got: wait where it stands
+                self._phase = "gate_wait"
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+            if (
+                self._phase == "route_mountain"
+                and is_farm_tilemap(int(world.ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(world.ram) else 0)
+                and any(block in reason for block in GATE_BLOCKS)
+                and self._route_retries < GATE_RETRIES
+            ):
+                from harvest.planner.tasks.home_recover import dog_position
+
+                from harvest.core.ram_catalog import read_ram_value
+
+                self._route_retries += 1
+                night = int(read_ram_value(world.ram, "hour")) >= 18
+                self._gate_wait = GATE_WAIT_NIGHT_FRAMES if night else GATE_WAIT_FRAMES
+                print(f"[SPA] Walk to the spa blocked ({reason}) dog={dog_position(world.ram)}; "
+                      f"retreat and wait {self._gate_wait}f, try {self._route_retries}/{GATE_RETRIES}")
+                retreat = MultiMapNavTask(
+                    name="spa_gate_retreat", waypoints=[Waypoint(0x00, GATE_RETREAT_PX, radius=16)],
+                    timeout=1500, initial_settle_frames=0,
+                )
+                return self._activate("gate_retreat", retreat, world)
             return TaskResult(
                 status=TaskStatus.FAILURE,
                 reason=f"{self._phase} failed: {reason}",
             )
+
+        if self._phase == "gate_retreat":
+            self._task = None
+            self._phase = "gate_wait"
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
 
         if self._phase == "exit_to_farm":
             self._task = None
@@ -531,7 +709,7 @@ class HotSpringStaminaTask(Task):
                 stam = Stamina.from_ram(world.ram)
                 return TaskResult(
                     status=TaskStatus.FAILURE,
-                    reason=f"returned unrestored; {stam}",
+                    reason=f"{self._soak_failure}; walked home" if self._soak_failure else f"returned unrestored; {stam}",
                 )
             return self._finish_success(world, "soaked; returned to farm")
 
@@ -543,45 +721,50 @@ class HotSpringStaminaTask(Task):
         print(
             f"[SPA] Soak done ({reason}) {stam} "
             f"(start={self._soak_start}) frames={self._soak_steps} "
-            f"jumps_seen={self._jumps_seen} jump_cycles={self._jump_cycles}"
+            f"jumps_seen={self._jumps_seen} crossings={self._jump_cycles}"
         )
         self._task = None
         if not self._stamina_ok(world.ram):
-            return TaskResult(
-                status=TaskStatus.FAILURE,
-                reason=f"soak ended unrestored ({reason}); {stam}",
-            )
+            failure = f"soak ended unrestored ({reason}); {stam}"
+            if not self.return_to_farm:
+                return TaskResult(status=TaskStatus.FAILURE, reason=failure)
+            # An optional phase that fails in the water leaves the farmer on the mountain, where every later phase fails its
+            # map lock (have=0x10 need=0x00, Y3 Spring D12): leave the pond and walk home first, then report the failure.
+            self._soak_failure = failure
         # A caller that does not need to return has reached its contract as
         # soon as stamina is restored.  The east-to-west pond crossing below
         # only prepares a safe starting point for the return navigation.
-        if not self.return_to_farm:
+        elif not self.return_to_farm:
             return self._finish_success(world, f"soaked ({reason})")
 
         self._phase = "post_soak_settle"
         self._action_queue.clear()
-        # Bath often ends on the *east* lip (x~640+). Plain left walk collides
-        # with 0xF7. Re-cross water (B+A+left) up to twice, then push west to
-        # ~x560 so return multi-nav starts on solid A0 path.
-        for _ in range(6):
-            self._action_queue.append(make_action())
-        for _attempt in range(2):
-            for _ in range(4):
-                self._action_queue.append(make_action(left=True, b=True))
-            for _ in range(ENTER_HOLD_FRAMES + 8):
-                self._action_queue.append(make_action(left=True, b=True, a=True))
-            for _ in range(COAST_FRAMES):
-                self._action_queue.append(make_action(left=True, b=True))
-            for _ in range(6):
-                self._action_queue.append(make_action())
-        for _ in range(28):
-            self._action_queue.append(make_action(left=True, b=True))
-        for _ in range(12):
-            self._action_queue.append(make_action())
+        self._bath.reset()
+        self._exit_tail = False
         self._soak_done_reason = reason
-        queued = drain_action_queue(self._action_queue)
-        if queued is not None:
-            return queued
         return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+
+    def _exit_pond_step(self, world: WorldState) -> Optional[TaskResult]:
+        """Cross back to the west lip with the closed-loop bath, then queue the walk clear of the water.
+
+        The bath often ends on the east shelf (x~646), where a plain walk west collides with 0xF7. None once the farmer is
+        west of the water and the clear-the-lip walk has been queued and drained.
+        """
+        ram = world.ram
+        px, _py = read_player_xy(ram)
+        in_water = px >= SPA_WATER_MIN_X_PX or read_player_action(ram) == PLAYER_ACTION_JUMP
+        if in_water and not self._exit_tail:
+            if self._bath.misses < BATH_MAX_MISSES:
+                action = self._bath.action(ram, to_west=True)
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(action))
+            print(f"[SPA] exit stalled at {read_player_xy(ram)}; pad fallback")
+            self._action_queue.extend(spa_pond_exit_actions())
+            self._exit_tail = True
+        elif not self._exit_tail:
+            self._action_queue.extend(make_action(left=True, b=True) for _ in range(28))
+            self._action_queue.extend(make_action() for _ in range(12))
+            self._exit_tail = True
+        return drain_action_queue(self._action_queue)
 
     def _step_soak(self, world: WorldState) -> TaskResult:
         ram = world.ram
@@ -625,12 +808,13 @@ class HotSpringStaminaTask(Task):
             and (target_hit or not fill_to_max)
         )
         timed_out = self._soak_steps >= self.soak_timeout
-        cycles_done = self._jump_cycles >= self.max_jump_cycles and not self._action_queue
-        # Full restore needs ~5–6 jump-exits. Do not treat the cycle budget
+        cycles_done = self._jump_cycles >= 2 * self.max_jump_cycles and not self._action_queue
+        stalled = self._bath.misses >= BATH_MAX_MISSES
+        # Full restore needs ~14 jumps at 160 max stamina. Do not treat the cycle budget
         # as "done enough" while current < max.
         cycles_complete_partial = cycles_done and gained and not fill_to_max
 
-        if target_hit or plateau_done or timed_out or cycles_complete_partial:
+        if target_hit or plateau_done or timed_out or cycles_complete_partial or stalled:
             reason = (
                 "target reached"
                 if target_hit
@@ -638,6 +822,8 @@ class HotSpringStaminaTask(Task):
                 if plateau_done
                 else "cycles done"
                 if cycles_complete_partial
+                else "bath stalled"
+                if stalled
                 else "soak timeout"
             )
             self._action_queue.clear()
@@ -646,36 +832,23 @@ class HotSpringStaminaTask(Task):
         if cycles_done and not gained:
             self._action_queue.clear()
             reason = (
-                f"no restore after {self._jump_cycles} A-bath cycles "
+                f"no restore after {self._jump_cycles} crossings "
                 f"(jumps_seen={self._jumps_seen})"
             )
-            if fill_to_max or not target_hit:
-                stam_now = Stamina.from_ram(ram)
-                print(f"[SPA] FAIL {reason}; {stam_now}")
-                return TaskResult(
-                    status=TaskStatus.FAILURE,
-                    reason=f"{reason}; stamina={stam_now}",
-                )
+            print(f"[SPA] FAIL {reason}; {Stamina.from_ram(ram)}")
             return self._finish_soak(world, reason)
 
-        keep_bathing = self._jump_cycles < self.max_jump_cycles or (
-            fill_to_max and not target_hit and not timed_out
-        )
-        if not self._action_queue and keep_bathing:
-            enter_right = self._jump_cycles % 2 == 0
-            _queue_a_bath_cycle(self._action_queue, enter_right=enter_right)
-            self._jump_cycles += 1
-            if self._jump_cycles == 1 or self._jump_cycles % 2 == 0:
-                cap = self.max_jump_cycles
-                print(
-                    f"[SPA] A-bath cycle {self._jump_cycles}/{cap} "
-                    f"enter={'right' if enter_right else 'left'} stam={stam}"
-                )
-
-        queued = drain_action_queue(self._action_queue)
+        queued = drain_action_queue(self._action_queue)    # the walk to the lip that _begin_soak queued
         if queued is not None:
             return queued
-        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))
+        before = self._bath.crossings
+        pad = self._bath.action(ram)
+        if self._bath.crossings != before and (self._bath.crossings == 1 or self._bath.crossings % 4 == 0):
+            print(
+                f"[SPA] crossing {self._bath.crossings} dir={self._bath.dir} stam={stam} "
+                f"pos={read_player_xy(ram)} act={action} hour={read_ram_value(ram, 'hour')}"
+            )
+        return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(pad))
 
     @property
     def phase_text(self) -> str:

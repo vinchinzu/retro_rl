@@ -30,6 +30,7 @@ from harvest.core.tile_catalog import (
     COOP_WALKABLE,
     FARM_WALKABLE,
     MOUNTAIN_TILEMAP_IDS,
+    PATH_TILEMAP_IDS,
     MOUNTAIN_WALKABLE,
     PATH_WALKABLE,
     SHOP_WALKABLE,
@@ -469,6 +470,8 @@ def _config_for_tilemap(tilemap_id: int) -> Optional[MapConfig]:
         return MAP_REGISTRY.get(0x00)
     if tilemap_id in MOUNTAIN_TILEMAP_IDS:
         return MAP_REGISTRY.get(0x10)
+    if tilemap_id in PATH_TILEMAP_IDS:
+        return MAP_REGISTRY.get(0x0C)
     return MAP_REGISTRY.get(tilemap_id)
 
 

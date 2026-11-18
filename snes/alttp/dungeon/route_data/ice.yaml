@@ -1,0 +1,322 @@
+schema_version: 1
+slug: ice
+name: Ice Palace (Entrance)
+z3_id: 182
+room_type: Dungeon
+source_file: regions/dungeons/ice/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Ice Palace (Entrance)
+  nodes:
+  - Ice Palace Entrance Room
+  - Ice Palace Exit
+- name: Ice Palace (Main)
+  nodes:
+  - Ice Palace (East)
+  - Ice Palace (Kholdstare)
+  - Ice Palace - Compass Chest
+  - Ice Palace - Freezor Chest
+  - Ice Palace - Big Chest
+  - Ice Palace - Iced T Room
+- name: Ice Palace (East)
+  nodes:
+  - Ice Palace (East Top)
+  - Ice Palace - Spike Room
+- name: Ice Palace (East Top)
+  nodes:
+  - Ice Palace - Big Key Chest
+  - Ice Palace - Map Chest
+- name: Ice Palace (Kholdstare)
+  nodes:
+  - Ice Palace - Kholdstare
+  - Ice Palace - Prize
+locations:
+- id: 5
+  name: Ice Palace - Compass Chest
+  region: Ice Palace (Main)
+  node_type: item
+  item: CompassD5
+  address: '0xE9D4'
+  requires: []
+  keys: []
+  items: []
+- id: 6
+  name: Ice Palace - Freezor Chest
+  region: Ice Palace (Main)
+  node_type: item
+  item: ThreeBombs
+  address: '0xE995'
+  requires:
+  - canMeltThings
+  keys: []
+  items:
+  - canMeltThings
+- id: 7
+  name: Ice Palace - Big Chest
+  region: Ice Palace (Main)
+  node_type: item
+  item: BlueMail
+  address: '0xE9AA'
+  requires:
+  - BigKeyD5
+  keys:
+  - name: BigKeyD5
+    count: 1
+  items: []
+- id: 8
+  name: Ice Palace - Iced T Room
+  region: Ice Palace (Main)
+  node_type: item
+  item: KeyD5
+  address: '0xE9E3'
+  requires: []
+  keys: []
+  items: []
+- id: 10
+  name: Ice Palace - Spike Room
+  region: Ice Palace (East)
+  node_type: item
+  item: KeyD5
+  address: '0xE9E0'
+  requires:
+  - or:
+    - not:
+      - mods.ohko
+    - canGrapple
+    - canInvul
+  keys: []
+  items:
+  - mods.ohko
+  - canGrapple
+  - canInvul
+  note: 'FIXME: Changes based on key placement'
+- id: 11
+  name: Ice Palace - Big Key Chest
+  region: Ice Palace (East Top)
+  node_type: item
+  item: BigKeyD5
+  address: '0xE9A4'
+  requires:
+  - Hammer
+  - canLiftRocks
+  - or:
+    - not:
+      - mods.ohko
+    - canGrapple
+    - canInvul
+  keys: []
+  items:
+  - Hammer
+  - canLiftRocks
+  - mods.ohko
+  - canGrapple
+  - canInvul
+- id: 12
+  name: Ice Palace - Map Chest
+  region: Ice Palace (East Top)
+  node_type: item
+  item: MapD5
+  address: '0xE9DD'
+  requires:
+  - Hammer
+  - canLiftRocks
+  - or:
+    - not:
+      - mods.ohko
+    - canGrapple
+    - canInvul
+  keys: []
+  items:
+  - Hammer
+  - canLiftRocks
+  - mods.ohko
+  - canGrapple
+  - canInvul
+- id: 1
+  name: Ice Palace - Kholdstare
+  region: Ice Palace (Kholdstare)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180157'
+  requires: []
+  keys: []
+  items: []
+- id: 2
+  name: Ice Palace - Prize
+  region: Ice Palace (Kholdstare)
+  node_type: item
+  item: Crystal5
+  address:
+  - '0x120A4'
+  - '0x53F5A'
+  - '0x53F5B'
+  - '0x180059'
+  - '0x180073'
+  - '0xC705'
+  requires:
+  - Hammer
+  - canMeltThings
+  - canLiftRocks
+  - BigKeyD5
+  - or:
+    - and:
+      - CaneOfSomaria
+      - KeyD5
+    - KeyD5:2
+  keys:
+  - name: BigKeyD5
+    count: 1
+  - name: KeyD5
+    count: 1
+  - name: KeyD5
+    count: 2
+  items:
+  - Hammer
+  - canMeltThings
+  - canLiftRocks
+  - CaneOfSomaria
+gates:
+- id: 1
+  name: Ice Palace Entrance Room
+  region: Ice Palace (Entrance)
+  node_type: door
+  requires:
+  - canLiftDarkRocks
+  - canMeltThings
+  - canSwim
+  - RescueZelda
+  keys: []
+  items:
+  - canLiftDarkRocks
+  - canMeltThings
+  - canSwim
+  - RescueZelda
+- id: 2
+  name: Ice Palace Exit
+  region: Ice Palace (Entrance)
+  node_type: door
+  requires:
+  - canLiftDarkRocks
+  - canMeltThings
+  - canSwim
+  - RescueZelda
+  keys: []
+  items:
+  - canLiftDarkRocks
+  - canMeltThings
+  - canSwim
+  - RescueZelda
+- id: 3
+  name: Ice Palace (East)
+  region: Ice Palace (Main)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 4
+  name: Ice Palace (Kholdstare)
+  region: Ice Palace (Main)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Ice Palace (East Top)
+  region: Ice Palace (East)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD5
+    count: 1
+    nodes:
+    - Ice Palace - Big Chest
+    - Ice Palace - Prize
+  - name: KeyD5
+    count: 2
+    nodes:
+    - Ice Palace - Prize
+  items:
+  - name: CaneOfSomaria
+    nodes:
+    - Ice Palace - Prize
+  - name: Hammer
+    nodes:
+    - Ice Palace - Big Key Chest
+    - Ice Palace - Map Chest
+    - Ice Palace - Prize
+  - name: RescueZelda
+    nodes:
+    - Ice Palace Entrance Room
+    - Ice Palace Exit
+  - name: canGrapple
+    nodes:
+    - Ice Palace - Spike Room
+    - Ice Palace - Big Key Chest
+    - Ice Palace - Map Chest
+  - name: canInvul
+    nodes:
+    - Ice Palace - Spike Room
+    - Ice Palace - Big Key Chest
+    - Ice Palace - Map Chest
+  - name: canLiftDarkRocks
+    nodes:
+    - Ice Palace Entrance Room
+    - Ice Palace Exit
+  - name: canLiftRocks
+    nodes:
+    - Ice Palace - Big Key Chest
+    - Ice Palace - Map Chest
+    - Ice Palace - Prize
+  - name: canMeltThings
+    nodes:
+    - Ice Palace Entrance Room
+    - Ice Palace Exit
+    - Ice Palace - Freezor Chest
+    - Ice Palace - Prize
+  - name: canSwim
+    nodes:
+    - Ice Palace Entrance Room
+    - Ice Palace Exit
+  - name: mods.ohko
+    nodes:
+    - Ice Palace - Spike Room
+    - Ice Palace - Big Key Chest
+    - Ice Palace - Map Chest
+connections:
+- connection_type: Door
+  description: Door connection between Ice Palace Entrance Room and Ice Palace (Main)
+  origin: Ice Palace Entrance Room
+  destination: Ice Palace (Main)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ice Palace (East) and Ice Palace (East)
+  origin: Ice Palace (East)
+  destination: Ice Palace (East)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ice Palace (East Top) and Ice Palace (East Top)
+  origin: Ice Palace (East Top)
+  destination: Ice Palace (East Top)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ice Palace (Kholdstare) and Ice Palace (Kholdstare)
+  origin: Ice Palace (Kholdstare)
+  destination: Ice Palace (Kholdstare)
+  internal: true
+- connection_type: Door
+  description: Door connection between Ice Palace and Ice Palace (Entrance)
+  origin: Ice Palace
+  destination: Ice Palace (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Ice Palace Exit and Dark Lake Hylia Central Island
+  origin: Ice Palace Exit
+  destination: Dark Lake Hylia Central Island
+  internal: false
+strats: []
+notes: []

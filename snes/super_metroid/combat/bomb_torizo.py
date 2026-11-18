@@ -14,14 +14,20 @@ Clean-track economy: defaults hold a slightly wider kite band so natural
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from itertools import product
 from typing import Any
 
 from super_metroid.combat.features import (
     bomb_torizo_catalog,
     features_from_state,
 )
-from super_metroid.ram import SuperMetroidState, read_bank7e_wram
+from super_metroid.ram import (
+    GameplayPhase,
+    SuperMetroidState,
+    parse_env_state,
+    read_bank7e_wram,
+)
 from super_metroid.routes.controller_common import select_weapon
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -83,6 +89,176 @@ class BombTorizoEvidence:
             "final_enemy_hp": self.final_enemy_hp,
             "outcome": self.outcome,
         }
+
+
+@dataclass(frozen=True)
+class BombTorizoSearchEvidence:
+    """Development lookahead; only the resulting buttons belong on a Clean tape."""
+
+    fight: BombTorizoEvidence
+    strategy: BombTorizoStrategy
+    candidates: int
+    rollout_restores: int
+    search_frames: int
+
+
+class BombTorizoSearchError(RuntimeError):
+    def __init__(self, candidates: int, search_frames: int, rollout_restores: int) -> None:
+        self.candidates = candidates
+        self.search_frames = search_frames
+        self.rollout_restores = rollout_restores
+        super().__init__(
+            f"Bomb Torizo search found no survivor in {candidates} candidates "
+            f"({search_frames} frames, {rollout_restores} restores)"
+        )
+
+
+@dataclass(frozen=True)
+class BombTorizoLeaveEvidence:
+    fight: BombTorizoSearchEvidence
+    recovery_frames: int
+    exit_frames: int
+    final_health: int
+    final_missiles: int
+
+
+def play_clean_bomb_torizo_leave(
+    session: ControllerSession,
+) -> BombTorizoLeaveEvidence:
+    """Search the live low-ammo fight, collect natural drops, leave for Flyway.
+
+    The short fan tries the two survivors measured on the power-on human
+    chain. If that entry has drifted enough that neither survives, expand to
+    the full fan from the same entry. No resource or selected-weapon writes
+    occur: every interaction, including selection, uses controller buttons.
+    """
+    proven = tuple(
+        BombTorizoStrategy(jump_hold_frames=12, jump_period=period)
+        for period in (48, 32)
+    )
+    try:
+        fight = search_bomb_torizo_fight(session, strategies=proven)
+    except BombTorizoSearchError as failed:
+        expanded = search_bomb_torizo_fight(session)
+        fight = replace(
+            expanded,
+            candidates=expanded.candidates + failed.candidates,
+            search_frames=expanded.search_frames + failed.search_frames,
+            rollout_restores=expanded.rollout_restores + failed.rollout_restores,
+        )
+
+    # Dead Torizo and destroyed eggs release ordinary game pickups. Sweep
+    # under their fall before leaving; the measured entry heals 28 -> 99.
+    recovery_start = session.frame
+    for index in range(900):
+        state = session.state
+        names = ["LEFT"]
+        if index % 2 == 0:
+            names.append("X")
+        if state.samus_x < 120 and state.samus_y > 150 and index % 50 < 18:
+            names.append("A")
+        hold(session, 1, *names, reason="clean_bomb_torizo_natural_drops")
+    recovery_frames = session.frame - recovery_start
+
+    # Hold the jump through its ascent. Releasing A as soon as y<150 makes
+    # the hop too short to shoot and enter this raised left doorway.
+    exit_start = session.frame
+    for index in range(600):
+        state = session.state
+        if state.room_id == 0x9879 and state.game_state == 8 and not state.door_transition:
+            return BombTorizoLeaveEvidence(
+                fight=fight,
+                recovery_frames=recovery_frames,
+                exit_frames=session.frame - exit_start,
+                final_health=state.health,
+                final_missiles=state.missiles,
+            )
+        names = ["LEFT"]
+        if index < 28:
+            names.append("A")
+        if index % 2 == 0:
+            names.append("X")
+        hold(session, 1, *names, reason="clean_bomb_torizo_flyway_exit")
+    raise RuntimeError(f"Clean Bomb Torizo missed settled Flyway: {session.state}")
+
+
+def search_bomb_torizo_fight(
+    session: ControllerSession,
+    *,
+    strategies: tuple[BombTorizoStrategy, ...] | None = None,
+) -> BombTorizoSearchEvidence:
+    """Try a strategy fan from the live frame, then play the winning buttons.
+
+    Every branch uses the same real entry, natural energy/ammo, and the ROM.
+    Branches never run through the caller's assist or recording callbacks.
+    Prefer surviving energy, then ammo, then time; failed branches cannot
+    modify the caller's state. A loadless replay of the recorded buttons is
+    the proof, rather than this development search.
+
+    The fan includes the 2026-11-16 winner from the human power-on chain's
+    94-energy, three-missile entry: range 100, jump hold 12, period 48.
+    """
+    env = getattr(session, "env", None)
+    if env is None:
+        raise TypeError("Bomb Torizo search needs a live emulator session")
+    if strategies is None:
+        strategies = tuple(
+            BombTorizoStrategy(
+                min_range=minimum,
+                jump_range=jump_range,
+                jump_hold_frames=hold_frames,
+                jump_period=period,
+                max_fight_frames=7000,
+            )
+            for minimum, jump_range, hold_frames, period in product(
+                (60, 100, 140), (100, 160), (12, 28), (32, 48)
+            )
+        )
+    saved = env.em.get_state()
+    search_frames = 0
+    restores = 0
+    best: tuple[tuple[int, int, int], BombTorizoStrategy] | None = None
+
+    class Branch:
+        def __init__(self) -> None:
+            self.env = env
+            self.frame = 0
+            self.state = parse_env_state(env, mode="nav")
+
+        def step(self, action: Any, reason: str = "") -> SuperMetroidState:
+            env.step(action)
+            self.frame += 1
+            self.state = parse_env_state(env, mode="nav")
+            return self.state
+
+    try:
+        for strategy in strategies:
+            env.em.set_state(saved)
+            restores += 1
+            branch = Branch()
+            evidence = play_bomb_torizo_fight(branch, strategy=strategy)
+            search_frames += branch.frame
+            if evidence.outcome != "bomb_torizo_defeated":
+                continue
+            score = (branch.state.health, branch.state.missiles, -branch.frame)
+            if best is None or score > best[0]:
+                best = score, strategy
+    finally:
+        env.em.set_state(saved)
+        restores += 1
+    if best is None:
+        raise BombTorizoSearchError(len(strategies), search_frames, restores)
+
+    # The winning policy is deterministic from the restored entry. Play it
+    # through the owner to preserve the caller's frame/transition telemetry.
+    evidence = play_bomb_torizo_fight(session, strategy=best[1])
+    return BombTorizoSearchEvidence(
+        fight=evidence,
+        strategy=best[1],
+        candidates=len(strategies),
+        rollout_restores=restores,
+        search_frames=search_frames,
+    )
 
 
 def crateria_boss_bits(env: Any) -> int:
@@ -164,7 +340,7 @@ def play_bomb_torizo_fight(
             f"got 0x{session.state.room_id:04X}"
         )
 
-    if session.state.selected_item != 1 and session.state.max_missiles > 0:
+    if session.state.selected_item != 1 and session.state.missiles > 0:
         select_weapon(session, 1)
 
     peak_hp = session.state.enemy0_hp
@@ -177,6 +353,8 @@ def play_bomb_torizo_fight(
 
     for index in range(strategy.max_fight_frames):
         state = session.state
+        if state.health == 0 or state.phase is GameplayPhase.DEATH_OR_GAME_OVER:
+            break
         peak_hp = max(peak_hp, state.enemy0_hp)
         min_hp = min(min_hp, state.enemy0_hp)
         feat = features_from_state(state, catalog)
@@ -226,6 +404,8 @@ def play_bomb_torizo_fight(
         if boss_bit_frame is None and env is not None and bomb_torizo_boss_bit_set(env):
             boss_bit_frame = session.frame
         outcome = "bomb_torizo_defeated"
+    elif session.state.health == 0 or session.state.phase is GameplayPhase.DEATH_OR_GAME_OVER:
+        outcome = "death"
     elif require_active and not activation_seen:
         outcome = "torizo_inactive_statue"
     elif defeat_frame is not None and require_boss_bit:

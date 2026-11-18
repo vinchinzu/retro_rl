@@ -1,0 +1,119 @@
+{
+  "pin": "LN_mgr-hearts_whatif_maria_flower",
+  "whatif": true,
+  "route_evidence": false,
+  "ram_writes": 0,
+  "boot": {
+    "frame": 0,
+    "hearts": {
+      "maria": 0,
+      "ann": 0,
+      "nina": 0,
+      "ellen": 0,
+      "eve": 0
+    },
+    "happiness": 0,
+    "text_id": 249,
+    "choice": 0,
+    "tilemap": 27,
+    "x": 108,
+    "y": 409,
+    "hour": 7,
+    "minute": 0,
+    "mask": 32,
+    "lock": 1
+  },
+  "nav": {
+    "status": "success",
+    "reason": "to_ann complete",
+    "frame": 1268,
+    "at": {
+      "frame": 1268,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 249,
+      "choice": 0,
+      "tilemap": 4,
+      "x": 410,
+      "y": 906,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "lock": 1
+    }
+  },
+  "talk": {
+    "status": "success",
+    "reason": "bit 0x01 set",
+    "before": {
+      "frame": 1268,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 249,
+      "choice": 0,
+      "tilemap": 4,
+      "x": 410,
+      "y": 906,
+      "hour": 7,
+      "minute": 0,
+      "mask": 32,
+      "lock": 1
+    },
+    "after": {
+      "frame": 1508,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text_id": 259,
+      "choice": 0,
+      "tilemap": 4,
+      "x": 378,
+      "y": 906,
+      "hour": 7,
+      "minute": 0,
+      "mask": 33,
+      "lock": 1
+    },
+    "changes": [
+      {
+        "frame": 1309,
+        "hearts": {
+          "maria": 0,
+          "ann": 0,
+          "nina": 0,
+          "ellen": 0,
+          "eve": 0
+        },
+        "happiness": 0,
+        "text_id": 259,
+        "choice": 0,
+        "tilemap": 4,
+        "x": 378,
+        "y": 906,
+        "hour": 7,
+        "minute": 0,
+        "mask": 33,
+        "lock": 2
+      }
+    ],
+    "delta": 0,
+    "frames": 240
+  }
+}

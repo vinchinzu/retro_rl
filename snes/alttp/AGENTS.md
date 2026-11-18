@@ -34,6 +34,7 @@ uv run python alttp/scripts/audit_power_on.py replay \
 
 uv run python alttp/scripts/room_engine.py list
 uv run python alttp/scripts/room_engine.py show room_61
+PYTHONPATH="..:.:../nes" uv run python -m alttp.scripts.dungeon_board
 SDL_VIDEODRIVER=dummy uv run python alttp/scripts/room_engine.py run room_61 \
   --edge west_to_0x60 --state CastleMain
 
@@ -66,4 +67,5 @@ uv run pytest alttp/tests -q
 - Stair destination settle is `DEST_SETTLE_MAX_FRAMES` (480). Do not change the global `settle_control` default (240).
 - Clean claims need `--natural` from the real predecessor. Work-queue pins are dev only.
 - Geometry stays in `maps/`. Do not copy approach xy into Python.
+- A named sitting is one room controller and one predecessor replay, then stop. Budget is in the session skill. `bd` has no local database.
 - State-name meanings: `opening_route.anchors.STATE_SEMANTICS`.

@@ -40,6 +40,38 @@ from harvest.core.ram_catalog import field_spec
 
 
 @pytest.mark.rom
+def test_grown_corn_east_return_clears_the_well_and_reaches_home():
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.tasks.nav import get_pos_from_ram, get_tile_at, make_action
+    from harvest.planner.day_plan_status import is_house_tilemap
+    from retro_harness import AuditedEnv, AuditCapabilities, WorldState
+
+    env = AuditedEnv(make_harvest_env("LN_y23_east_natural", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.east_home_test"))
+    try:
+        env.reset()
+        ram = env.get_ram()
+        pos = get_pos_from_ram(ram)
+        assert read_ram_value(ram, "season") == 1
+        assert read_ram_value(ram, "day") == 21
+        assert pos.x > 560 and pos.y >= 504
+        assert get_tile_at(ram, 12, 28) == 0x52  # grown west-ring corn
+        task = ReturnHomeTask()
+        task.reset(WorldState(frame=0, ram=ram, info={}, obs=None))
+        for frame in range(6000):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action else make_action())
+        assert result.status == TaskStatus.SUCCESS, result.reason
+        assert is_house_tilemap(read_ram_value(env.get_ram(), "tilemap"))
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
+@pytest.mark.rom
 @pytest.mark.parametrize("state,tilemap", [("LN_marriage_after_propose_FAIL", 0x16), ("LN_marriage_propose_candidate_FAIL", 0x16), ("LN_marriage_propose_verified_candidate_FAIL", 0x17)])
 def test_storm_remodeled_house_sleeps_from_diary_or_near_bed(state, tilemap):
     from harvest.runtime.retro_setup import make_harvest_env
@@ -107,6 +139,103 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         exit_i = hops.index((312, 744))
         self.assertEqual(hops[exit_i + 1], (137, 40))
 
+    def test_return_home_jumps_out_of_the_spa_pond_before_the_mountain_route(self) -> None:
+        # Y2 Spring D19: the day floor fired mid-soak, the farmer stood in the
+        # water at (655,198) and the route's first waypoint (west of the lip)
+        # was unreachable, so return_home timed out 11k frames, three rescues.
+        world = make_date_world(0x10, season=0, day=19, hour=18)
+        set_player_pos(world.ram, 655, 198)
+        task = ReturnHomeTask()
+        task.reset(world)
+        result = task.step(world)
+        self.assertEqual(result.status, TaskStatus.RUNNING)
+        self.assertEqual(task._phase, "spa_pond_exit")
+        self.assertIsNone(task._task)
+        # The queue holds the Left+A re-crossing, then re-evaluates from the lip.
+        self.assertGreater(len(task._action_queue), 100)
+        task._action_queue.clear()
+        set_player_pos(world.ram, 590, 201)
+        after = task.step(world)
+        self.assertEqual(after.status, TaskStatus.RUNNING)
+        self.assertIsInstance(task._task, MultiMapNavTask)
+
+    def test_return_home_walks_the_mountain_route_from_the_dry_lip(self) -> None:
+        world = make_date_world(0x10, season=0, day=19, hour=18)
+        set_player_pos(world.ram, 619, 201)
+        task = ReturnHomeTask()
+        task.reset(world)
+        task.step(world)
+        self.assertNotEqual(task._phase, "spa_pond_exit")
+        self.assertIsInstance(task._task, MultiMapNavTask)
+
+    def test_a_blind_charge_never_steps_onto_the_well_pit(self) -> None:
+        # Y2 Summer D4: the far-east escape's "up 80" from x=805 walked onto the
+        # well hole (50,55), the Harvest Sprites' cave, and never came back.
+        from harvest.core.tile_catalog import set_tile_at
+        from harvest.planner.tasks.home_recover import FARM_PIT_TILE, hold_back_from_pit, sanitize_action
+        from harvest.tasks.nav import make_action
+
+        world = make_date_world(0x00, season=1, day=4, hour=18)
+        set_tile_at(world.ram, 50, 55, FARM_PIT_TILE)
+        up = make_action(up=True, b=True)
+        set_player_pos(world.ram, 806, 930)  # far below: free to walk
+        self.assertIs(hold_back_from_pit(up, world.ram), up)
+        set_player_pos(world.ram, 806, 902)  # the next 12px reach the pit tile
+        held = hold_back_from_pit(up, world.ram)
+        self.assertFalse(held.any())
+        self.assertFalse(sanitize_action(up, world.ram).any())
+        # Walking away from it, sideways around it and standing still are untouched.
+        down = make_action(down=True)
+        self.assertIs(hold_back_from_pit(down, world.ram), down)
+        left = make_action(left=True)
+        self.assertIs(hold_back_from_pit(left, world.ram), left)
+        idle = make_action()
+        self.assertIs(hold_back_from_pit(idle, world.ram), idle)
+        # The second hole, (37,48) tile 0xC8, is held the same way (Y2 Summer D16).
+        set_tile_at(world.ram, 37, 48, 0xC8)
+        set_player_pos(world.ram, 598, 790)
+        self.assertFalse(hold_back_from_pit(up, world.ram).any())
+        # Off the farm map the filter does nothing.
+        mountain = make_date_world(0x10, season=1, day=4, hour=18)
+        set_tile_at(mountain.ram, 50, 55, FARM_PIT_TILE)
+        set_player_pos(mountain.ram, 806, 902)
+        self.assertIs(hold_back_from_pit(up, mountain.ram), up)
+
+    def test_a_rider_dismounts_with_an_a_pulse_only_at_the_door_stand(self) -> None:
+        # Y2 Spring D19 (jitter run): on the horse at the stand (134,425), the enter push
+        # timed out three times. A held A anywhere else is a regression: it froze the walk
+        # (Y2 Fall D23) and starved the 17:00 shipping scene of its A edge (Y3 Spring D20).
+        from harvest.core.ram_catalog import LIVE_RAM_WRAM_OFFSET, field_spec
+        from harvest.planner.tasks.home_recover import PLAYER_STATE_RIDING, dismount_horse, sanitize_action
+        from harvest.tasks.nav import make_action
+
+        world = make_date_world(0x00, season=0, day=19, hour=18)
+        live = LIVE_RAM_WRAM_OFFSET if len(world.ram) > 0x20000 else 0
+        a_idx = int(make_action(a=True).argmax())
+        up = make_action(up=True)
+
+        def ride(x: int, y: int, *, lock: int = 1, action: int = 0) -> None:
+            set_player_pos(world.ram, x, y)
+            world.ram[field_spec("player_state").address + live] = PLAYER_STATE_RIDING
+            world.ram[field_spec("input_lock").address] = lock
+            world.ram[field_spec("player_action").address + live] = action
+
+        set_player_pos(world.ram, 134, 425)
+        self.assertIs(dismount_horse(up, world.ram), up)  # walking: untouched
+        ride(134, 425)
+        self.assertTrue(dismount_horse(up, world.ram)[a_idx])
+        self.assertTrue(sanitize_action(up, world.ram)[a_idx])
+        ride(134, 425, action=5)  # the dismount animation plays on neutral frames
+        self.assertFalse(dismount_horse(up, world.ram).any())
+        ride(134, 425, lock=2)  # a dialogue or the 5pm scene owns the pad
+        self.assertIs(dismount_horse(up, world.ram), up)
+        ride(259, 376)  # mounted elsewhere: walking works, leave the pad alone
+        self.assertIs(dismount_horse(up, world.ram), up)
+        mountain = make_date_world(0x10, season=0, day=19, hour=18)
+        set_player_pos(mountain.ram, 134, 425)
+        mountain.ram[field_spec("player_state").address + live] = PLAYER_STATE_RIDING
+        self.assertIs(dismount_horse(up, mountain.ram), up)
+
     def test_return_home_enters_when_already_at_house_front(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=18)
         set_player_pos(world.ram, 136, 424)
@@ -120,6 +249,22 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         self.assertEqual(task._task.stand_tile, (8, 26))
         self.assertEqual(task._task.overshoot_limit_px, 328)
         self.assertTrue(task._task.require_empty_hands)
+
+    def test_return_home_from_inside_the_animal_shop_walks_out_through_town(self) -> None:
+        """Y2 Spring D16 (compose7): a failed walk home from the animal shop re-entered the shop, and the generic
+        ExitToFarm (farm buildings only) timed out three times per rescue until the run wedged after 8 rescues."""
+        for tilemap, pos, first_wp in ((0x24, (62, 201), 0x24), (0x04, (600, 888), 0x04)):
+            world = make_date_world(tilemap, season=0, day=16, hour=8)
+            set_player_pos(world.ram, *pos)
+            task = ReturnHomeTask()
+            task.reset(world)
+
+            task.step(world)
+
+            self.assertIsInstance(task._task, MultiMapNavTask, hex(tilemap))
+            self.assertEqual(task._task.waypoints[0].tilemap, first_wp)
+            self.assertEqual(task._task.waypoints[-1].tilemap, 0x00)   # ends back on the farm
+            self.assertEqual(task._phase, "exit_to_farm")
 
     def test_return_home_timeout_fails_cleanly(self) -> None:
         """Outer budget prevents multi-day hang when enter/nav never terminates."""
@@ -283,9 +428,9 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         self.assertIn("phase=nav_house_front", result.reason or "")
 
     def test_return_home_renavs_when_stuck_north_of_door_stand(self) -> None:
-        """Mid-door tiles (~y=389) must walk south before pushing up."""
+        """North of the stand but off the door's walkway column: walk south first."""
         world = make_date_world(0x00, season=0, day=13, hour=18)
-        set_player_pos(world.ram, 137, 389)
+        set_player_pos(world.ram, 155, 389)
         task = ReturnHomeTask()
         task.reset(world)
 
@@ -297,6 +442,50 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
             (task._task.target_px.x, task._task.target_px.y),
             (136, 424),
         )
+
+    def _horse(self, world, x: int, y: int, *, sprite: int = 0x1FB, slot: int = 2) -> None:
+        from harvest.core.npc_catalog import GOBJ_INITIALIZED, GOBJ_STRUCT_BASE, GOBJ_STRUCT_STRIDE
+
+        offset = GOBJ_STRUCT_BASE + slot * GOBJ_STRUCT_STRIDE
+        for at, value in ((0, GOBJ_INITIALIZED), (2, sprite), (8, x), (10, y)):
+            world.ram[offset + at] = value & 0xFF
+            world.ram[offset + at + 1] = (value >> 8) & 0xFF
+
+    def test_a_horse_beside_the_door_line_shifts_the_push_away_from_it(self) -> None:
+        """e2e s2 Y3 Summer D27: horse 0x1FB at (126,358), farmer at (136,371); x=141 entered, x=136 never did."""
+        world = make_date_world(0x00, season=1, day=27, hour=18)
+        set_player_pos(world.ram, 136, 371)
+        task = ReturnHomeTask()
+        self.assertEqual(task._house_enter_task(world).door_align_px, 136)
+        self.assertEqual(task._house_enter_task(world).door_align_tolerance, 4)
+
+        self._horse(world, 126, 358)
+        enter = task._house_enter_task(world)
+        self.assertEqual((enter.door_align_px, enter.door_align_tolerance), (141, 1))
+
+        world = make_date_world(0x00, season=1, day=27, hour=18)
+        set_player_pos(world.ram, 136, 371)
+        self._horse(world, 146, 358)                         # on the right: shift left
+        self.assertEqual(task._house_enter_task(world).door_align_px, 131)
+
+    def test_the_farm_dog_in_the_corridor_is_sidestepped_too(self) -> None:
+        """e2e s3 Y2 Summer D22: the same spot (126,358) held by a dog frame (0x1E3)."""
+        world = make_date_world(0x00, season=1, day=22, hour=18)
+        set_player_pos(world.ram, 136, 371)
+        self._horse(world, 126, 358, sprite=0x1E3)
+        enter = ReturnHomeTask()._house_enter_task(world)
+        self.assertEqual((enter.door_align_px, enter.door_align_tolerance), (141, 1))
+
+    def test_an_animal_away_from_the_door_line_or_a_non_animal_changes_nothing(self) -> None:
+        world = make_date_world(0x00, season=1, day=27, hour=18)
+        set_player_pos(world.ram, 136, 371)
+        task = ReturnHomeTask()
+        self._horse(world, 200, 358)                         # beside, not in, the corridor
+        self.assertEqual(task._house_enter_task(world).door_align_px, 136)
+        self._horse(world, 126, 358, sprite=0x0100)          # not a farm animal sprite
+        self.assertEqual(task._house_enter_task(world).door_align_px, 136)
+        self._horse(world, 126, 250)                         # an animal far above the door
+        self.assertEqual(task._house_enter_task(world).door_align_px, 136)
 
     def test_return_home_enter_uses_catalog_stand_not_overshoot_tile(self) -> None:
         world = make_date_world(0x00, season=0, day=13, hour=18)
@@ -435,8 +624,11 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         for x in up_xs:
             self.assertGreaterEqual(x, 576)
             self.assertLessEqual(x, 640)
-        # Eventually slides west above fence.
-        self.assertTrue(any(wp.run_direction == "left" for wp in wps))
+        # Cross west above the well's north edge (y=416), with room for the
+        # waypoint radius. The old y=440 slide crossed the well and corn.
+        west = [wp for wp in wps if wp.run_direction == "left"]
+        self.assertTrue(west)
+        self.assertTrue(all(wp.target_px[1] + wp.radius < 416 for wp in west))
 
     def test_return_home_south_escape_on_fence_latitude_timeout(self) -> None:
         """South-of-fence but not deep_south (y=527) still escapes on multi_nav fail."""
@@ -598,14 +790,14 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         self.assertEqual(task._drop_attempts, 1)
         self.assertTrue(task._action_queue)
 
-    def test_return_home_wanders_once_when_drop_spot_refuses(self) -> None:
-        """Fixed spot ringed by debris: one WanderDropTask, not a deep relocate."""
+    def test_return_home_carries_debris_to_the_pond_when_drop_spot_refuses(self) -> None:
+        """Summer D27: the spot and every face refused a stone; the pond takes it."""
         from harvest.core.animal_status import ADDR_HELD_ITEM
         from harvest.core.ram_catalog import live_wram_base
-        from harvest.planner.tasks.home_recover import WanderDropTask
+        from harvest.planner.tasks.home_recover import PondTossTask, WanderDropTask
 
-        world = make_date_world(0x00, season=0, day=7, hour=17)
-        set_player_pos(world.ram, 136, 480)
+        world = make_date_world(0x00, season=1, day=27, hour=18)
+        set_player_pos(world.ram, 121, 486)
         base = live_wram_base(world.ram)
         world.ram[ADDR_HELD_ITEM + base] = 0x0D
         world.ram[field_spec("player_state").address + base] = 0x03
@@ -614,12 +806,90 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
         task._drop_spot_visited = True
         task._drop_attempts = 1
 
-        result = task.step(world)
+        task.step(world)
+        self.assertIsInstance(task._task, PondTossTask)
+        self.assertTrue(task._pond_tossed)
+        self.assertFalse(task._drop_wandered)
 
-        self.assertEqual(result.status, TaskStatus.RUNNING)
+        # The pond walk failed too: one wander, then the existing failure.
+        task._task = None
+        task._phase = "start"
+        result = task.step(world)
         self.assertIsInstance(task._task, WanderDropTask)
         self.assertTrue(task._drop_wandered)
         self.assertIn("wander", (result.reason or "").lower())
+
+    def test_return_home_tosses_at_the_pond_first_when_it_is_nearer(self) -> None:
+        """D27: the far-east escape lifted a stone beside the pond, then walked it home."""
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+        from harvest.planner.tasks.home_recover import PondTossTask
+
+        world = make_date_world(0x00, season=1, day=27, hour=18)
+        set_player_pos(world.ram, 582, 502)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = 0x0D
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask()
+        task.reset(world)
+        task._phase = "start"
+
+        task._start_next_phase(world)
+
+        self.assertIsInstance(task._task, PondTossTask)
+        self.assertFalse(task._drop_spot_visited)
+
+    def test_house_approach_may_use_the_bin_lane(self) -> None:
+        """Summer D17/D24: the strip east of the grown west ring had no other way home."""
+        from harvest.maps.farm_pond import SHIP_BIN_LANE_TILES
+
+        world = make_date_world(0x00, season=1, day=24, hour=18)
+        set_player_pos(world.ram, 250, 454)
+        task = ReturnHomeTask()
+        task.reset(world)
+
+        task._start_house_approach(world, task._house_front_px(world.ram))
+
+        self.assertEqual(task._task.name, "nav_house_front")
+        self.assertTrue(SHIP_BIN_LANE_TILES <= set(task._task.allow_tiles))
+
+    def test_return_home_pushes_up_from_the_door_walkway(self) -> None:
+        """Y2 Spring D8: a sprite parked on the stand (8,26); the walkway leads to the door."""
+        from harvest.planner.tasks.home_approach import in_house_walkway
+        from harvest.tasks.nav import Point
+
+        front = Point(136, 424)
+        self.assertTrue(in_house_walkway(Point(135, 409), front))
+        self.assertFalse(in_house_walkway(Point(160, 409), front))
+        self.assertFalse(in_house_walkway(Point(136, 340), front))
+        world = make_date_world(0x00, season=0, day=8, hour=18)
+        set_player_pos(world.ram, 135, 409)
+        task = ReturnHomeTask()
+        task.reset(world)
+
+        task._start_next_phase(world)
+
+        self.assertEqual(task._phase, "enter_house")
+        self.assertEqual(task._task.stand_tile, (8, 25))
+
+    def test_return_home_never_takes_a_hen_to_the_pond(self) -> None:
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+        from harvest.planner.tasks.home_recover import WanderDropTask
+
+        world = make_date_world(0x00, season=0, day=7, hour=17)
+        set_player_pos(world.ram, 136, 480)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = 0x25
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask(drop_attempt_limit=2)
+        task.reset(world)
+        task._drop_spot_visited = True
+        task._drop_attempts = 1
+
+        task.step(world)
+
+        self.assertIsInstance(task._task, WanderDropTask)
 
     def test_return_home_fails_after_drop_budget_with_held_item(self) -> None:
         from harvest.core.animal_status import ADDR_HELD_ITEM
@@ -691,3 +961,41 @@ class BuildDayPhasesHomeTests(DayPlanPhaseHelpers):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnknownHeldItemTests(unittest.TestCase):
+    """Sweep t5f_s54, Y2 Summer D18: held 0x57 after a forced-failure day; every yard tile
+    (0xA8) refused the toss and RETURN_HOME ended in 8 rescues. The pond takes anything but a
+    crop, an egg, milk, fodder or a hen."""
+
+    def _home(self, held: int):
+        from harvest.core.animal_status import ADDR_HELD_ITEM
+        from harvest.core.ram_catalog import live_wram_base
+
+        world = make_date_world(0x00, season=1, day=18, hour=18)
+        set_player_pos(world.ram, 121, 486)
+        base = live_wram_base(world.ram)
+        world.ram[ADDR_HELD_ITEM + base] = held
+        world.ram[field_spec("player_state").address + base] = 0x03
+        task = ReturnHomeTask(drop_attempt_limit=2)
+        task.reset(world)
+        task._drop_spot_visited = True
+        task._drop_attempts = 1
+        return task, world
+
+    def test_an_unrecognised_item_goes_to_the_pond_when_the_yard_refuses_it(self) -> None:
+        from harvest.planner.tasks.home_recover import PondTossTask
+
+        task, world = self._home(0x57)
+        task.step(world)
+        self.assertIsInstance(task._task, PondTossTask)
+        self.assertTrue(task._pond_tossed)
+
+    def test_a_hen_or_a_crop_is_never_thrown_in_the_pond(self) -> None:
+        from harvest.planner.tasks.home_recover import PondTossTask, WanderDropTask
+
+        for held in (0x25, 0x10, 0x14, 0x1A):
+            task, world = self._home(held)
+            task.step(world)
+            self.assertNotIsInstance(task._task, PondTossTask, hex(held))
+            self.assertIsInstance(task._task, WanderDropTask, hex(held))

@@ -1,0 +1,10 @@
+{
+  "door_steps": 0,
+  "illegal_on_path": 0,
+  "goes_south": 0,
+  "north_col": 33,
+  "north_row": 44,
+  "north_byte": 0,
+  "path": [],
+  "note": "Start (4872, 5984) is the legal 8px-phase pose at room_origin (4608, 5632). 22 stairs-kind bytes on the layer-1 copy were replaced with legend wall 0x01. Four legal poses cover door tile (31, 6), and find_path from the start reaches none of them, so door_steps is 0, the path is empty, goes_south is 0, and illegal_on_path is 0. The next 8px north step puts LINK_BODY on masked cell (33, 44), byte 0x00, tile_kind floor (column 34 of that step is the same byte). Row 44 columns 28 through 40: 28 0x01 wall, 29 0x01 wall, 30 0x04 wall, 31 0x27 unknown, 32 0x27 unknown, 33 0x00 floor, 34 0x00 floor, 35 0x00 floor, 36 0x00 floor, 37 0x00 floor, 38 0x00 floor, 39 0x04 wall, 40 0x01 wall."
+}

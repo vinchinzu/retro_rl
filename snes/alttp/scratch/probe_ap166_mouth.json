@@ -1,0 +1,2068 @@
+{
+  "tries": [
+    {
+      "name": "west_quad",
+      "walk": {
+        "result": "coast",
+        "frames": 493,
+        "xy": [
+          7249,
+          374
+        ],
+        "room": "0x0E",
+        "sub": "0x00",
+        "state": 0,
+        "doorway": 0,
+        "hp": 52,
+        "body": [
+          "0x0F",
+          "0x0F",
+          "0x0F",
+          "0x0F"
+        ]
+      }
+    },
+    {
+      "name": "stair_mouth",
+      "tile": {
+        "col": 15,
+        "row": 36,
+        "xy": [
+          7288,
+          288
+        ],
+        "value": "0x34",
+        "kind": "unknown"
+      },
+      "walk": {
+        "result": "stuck",
+        "trace": [
+          {
+            "frames": 0,
+            "xy": [
+              7249,
+              374
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 20,
+            "xy": [
+              7249,
+              365
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 40,
+            "xy": [
+              7249,
+              342
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 60,
+            "xy": [
+              7249,
+              336
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          },
+          {
+            "frames": 80,
+            "xy": [
+              7249,
+              336
+            ],
+            "room": "0x0E",
+            "sub": "0x00",
+            "state": 0,
+            "doorway": 0,
+            "hp": 52,
+            "body": [
+              "0x0F",
+              "0x0F",
+              "0x0F",
+              "0x0F"
+            ]
+          }
+        ],
+        "frames": 92,
+        "xy": [
+          7249,
+          336
+        ],
+        "room": "0x0E",
+        "sub": "0x00",
+        "state": 0,
+        "doorway": 0,
+        "hp": 52,
+        "body": [
+          "0x0F",
+          "0x0F",
+          "0x0F",
+          "0x0F"
+        ]
+      },
+      "held": 180,
+      "pose": {
+        "frames": 180,
+        "xy": [
+          7249,
+          336
+        ],
+        "room": "0x0E",
+        "sub": "0x00",
+        "state": 0,
+        "doorway": 0,
+        "hp": 52,
+        "body": [
+          "0x0F",
+          "0x0F",
+          "0x0F",
+          "0x0F"
+        ]
+      }
+    },
+    {
+      "name": "bari",
+      "ok": false,
+      "detail": "combat cycle limit",
+      "frames": 178,
+      "defeated": []
+    }
+  ],
+  "f3cc_written": false,
+  "tiles_before": [
+    {
+      "col": 15,
+      "row": 35,
+      "xy": [
+        7288,
+        280
+      ],
+      "value": "0x5E",
+      "kind": "stairs"
+    },
+    {
+      "col": 16,
+      "row": 35,
+      "xy": [
+        7296,
+        280
+      ],
+      "value": "0x5E",
+      "kind": "stairs"
+    },
+    {
+      "col": 15,
+      "row": 36,
+      "xy": [
+        7288,
+        288
+      ],
+      "value": "0x34",
+      "kind": "unknown"
+    },
+    {
+      "col": 16,
+      "row": 36,
+      "xy": [
+        7296,
+        288
+      ],
+      "value": "0x34",
+      "kind": "unknown"
+    },
+    {
+      "col": 15,
+      "row": 37,
+      "xy": [
+        7288,
+        296
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 16,
+      "row": 37,
+      "xy": [
+        7296,
+        296
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 37,
+      "xy": [
+        7544,
+        296
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 48,
+      "row": 37,
+      "xy": [
+        7552,
+        296
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 15,
+      "row": 38,
+      "xy": [
+        7288,
+        304
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 16,
+      "row": 38,
+      "xy": [
+        7296,
+        304
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 41,
+      "row": 38,
+      "xy": [
+        7496,
+        304
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 47,
+      "row": 38,
+      "xy": [
+        7544,
+        304
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 48,
+      "row": 38,
+      "xy": [
+        7552,
+        304
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 54,
+      "row": 38,
+      "xy": [
+        7600,
+        304
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 39,
+      "xy": [
+        7488,
+        312
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 41,
+      "row": 39,
+      "xy": [
+        7496,
+        312
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 54,
+      "row": 39,
+      "xy": [
+        7600,
+        312
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 39,
+      "xy": [
+        7608,
+        312
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 40,
+      "xy": [
+        7480,
+        320
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 40,
+      "xy": [
+        7488,
+        320
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 40,
+      "xy": [
+        7608,
+        320
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 40,
+      "xy": [
+        7616,
+        320
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 41,
+      "xy": [
+        7472,
+        328
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 41,
+      "xy": [
+        7480,
+        328
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 41,
+      "xy": [
+        7616,
+        328
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 41,
+      "xy": [
+        7624,
+        328
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 42,
+      "xy": [
+        7464,
+        336
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 42,
+      "xy": [
+        7472,
+        336
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 42,
+      "xy": [
+        7624,
+        336
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 42,
+      "xy": [
+        7632,
+        336
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 43,
+      "xy": [
+        7456,
+        344
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 43,
+      "xy": [
+        7464,
+        344
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 43,
+      "xy": [
+        7632,
+        344
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 59,
+      "row": 43,
+      "xy": [
+        7640,
+        344
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 27,
+      "row": 48,
+      "xy": [
+        7384,
+        384
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 28,
+      "row": 48,
+      "xy": [
+        7392,
+        384
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 29,
+      "row": 48,
+      "xy": [
+        7400,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 30,
+      "row": 48,
+      "xy": [
+        7408,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 31,
+      "row": 48,
+      "xy": [
+        7416,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 32,
+      "row": 48,
+      "xy": [
+        7424,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 33,
+      "row": 48,
+      "xy": [
+        7432,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 34,
+      "row": 48,
+      "xy": [
+        7440,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 35,
+      "row": 48,
+      "xy": [
+        7448,
+        384
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 48,
+      "xy": [
+        7456,
+        384
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 27,
+      "row": 49,
+      "xy": [
+        7384,
+        392
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 28,
+      "row": 49,
+      "xy": [
+        7392,
+        392
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 29,
+      "row": 49,
+      "xy": [
+        7400,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 30,
+      "row": 49,
+      "xy": [
+        7408,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 31,
+      "row": 49,
+      "xy": [
+        7416,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 32,
+      "row": 49,
+      "xy": [
+        7424,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 33,
+      "row": 49,
+      "xy": [
+        7432,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 34,
+      "row": 49,
+      "xy": [
+        7440,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 35,
+      "row": 49,
+      "xy": [
+        7448,
+        392
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 49,
+      "xy": [
+        7456,
+        392
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 54,
+      "xy": [
+        7456,
+        432
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 54,
+      "xy": [
+        7464,
+        432
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 54,
+      "xy": [
+        7632,
+        432
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 59,
+      "row": 54,
+      "xy": [
+        7640,
+        432
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 55,
+      "xy": [
+        7464,
+        440
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 55,
+      "xy": [
+        7472,
+        440
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 55,
+      "xy": [
+        7624,
+        440
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 55,
+      "xy": [
+        7632,
+        440
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 56,
+      "xy": [
+        7472,
+        448
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 56,
+      "xy": [
+        7480,
+        448
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 56,
+      "xy": [
+        7616,
+        448
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 56,
+      "xy": [
+        7624,
+        448
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 57,
+      "xy": [
+        7480,
+        456
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 57,
+      "xy": [
+        7488,
+        456
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 57,
+      "xy": [
+        7608,
+        456
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 57,
+      "xy": [
+        7616,
+        456
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 58,
+      "xy": [
+        7488,
+        464
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 41,
+      "row": 58,
+      "xy": [
+        7496,
+        464
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 54,
+      "row": 58,
+      "xy": [
+        7600,
+        464
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 58,
+      "xy": [
+        7608,
+        464
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 41,
+      "row": 59,
+      "xy": [
+        7496,
+        472
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 47,
+      "row": 59,
+      "xy": [
+        7544,
+        472
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 59,
+      "xy": [
+        7552,
+        472
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 54,
+      "row": 59,
+      "xy": [
+        7600,
+        472
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 47,
+      "row": 60,
+      "xy": [
+        7544,
+        480
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 60,
+      "xy": [
+        7552,
+        480
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 61,
+      "xy": [
+        7544,
+        488
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 61,
+      "xy": [
+        7552,
+        488
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 62,
+      "xy": [
+        7544,
+        496
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 62,
+      "xy": [
+        7552,
+        496
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 63,
+      "xy": [
+        7544,
+        504
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 63,
+      "xy": [
+        7552,
+        504
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    }
+  ],
+  "after_mouth": {
+    "tag": "after_mouth",
+    "room": "0x0E",
+    "module": "0x07",
+    "layer": 0,
+    "xy": [
+      7249,
+      336
+    ],
+    "origin": [
+      7168,
+      0
+    ],
+    "local": [
+      81,
+      336
+    ],
+    "control": true,
+    "hp": 52,
+    "armor": 0,
+    "big_key": 64,
+    "keys": 2,
+    "hammer": 1,
+    "magic": 80,
+    "ability": 30,
+    "follower": 5,
+    "body": [
+      "0x0F",
+      "0x0F",
+      "0x0F",
+      "0x0F"
+    ],
+    "reachable": 172,
+    "touched": {
+      "0xF0:door": 2
+    },
+    "frontier": {
+      "0x0F:ice": 23,
+      "0x04:wall": 28,
+      "0xF0:door": 3,
+      "0x02:wall": 2,
+      "0x00:floor": 12,
+      "0x01:wall": 1,
+      "0x34:unknown": 1
+    },
+    "attr_70": [],
+    "objects": [],
+    "chests": [
+      "chests room=0x000E (none)"
+    ],
+    "doors": [
+      "doors room=0x000E",
+      "  slot 0 north type=0x22 stairs pos=$121C dest=0x1E",
+      "  slot 1 west type=0x18 shutter pos=$17C4 dest=unknown",
+      "  slot 2 south type=0x0A entrance pos=$1D5C dest=screen=0x36",
+      "  slot 9 east type=0x18 shutter pos=$17B4 layer of slot 1"
+    ],
+    "sprites": [
+      {
+        "type": "0x24",
+        "xy": [
+          7231,
+          389
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7256,
+          413
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7305,
+          418
+        ],
+        "hp": 2,
+        "state": 9
+      }
+    ]
+  },
+  "after_bari": {
+    "tag": "after_bari",
+    "room": "0x0E",
+    "module": "0x07",
+    "layer": 0,
+    "xy": [
+      7249,
+      373
+    ],
+    "origin": [
+      7168,
+      0
+    ],
+    "local": [
+      81,
+      373
+    ],
+    "control": true,
+    "hp": 52,
+    "armor": 0,
+    "big_key": 64,
+    "keys": 2,
+    "hammer": 1,
+    "magic": 80,
+    "ability": 30,
+    "follower": 5,
+    "body": [
+      "0x0F",
+      "0x0F",
+      "0x0F",
+      "0x0F"
+    ],
+    "reachable": 172,
+    "touched": {
+      "0xF0:door": 2
+    },
+    "frontier": {
+      "0x0F:ice": 23,
+      "0x04:wall": 28,
+      "0xF0:door": 3,
+      "0x02:wall": 2,
+      "0x00:floor": 12,
+      "0x01:wall": 1,
+      "0x34:unknown": 1
+    },
+    "attr_70": [],
+    "objects": [],
+    "chests": [
+      "chests room=0x000E (none)"
+    ],
+    "doors": [
+      "doors room=0x000E",
+      "  slot 0 north type=0x22 stairs pos=$121C dest=0x1E",
+      "  slot 1 west type=0x18 shutter pos=$17C4 dest=unknown",
+      "  slot 2 south type=0x0A entrance pos=$1D5C dest=screen=0x36",
+      "  slot 9 east type=0x18 shutter pos=$17B4 layer of slot 1"
+    ],
+    "sprites": [
+      {
+        "type": "0x24",
+        "xy": [
+          7264,
+          385
+        ],
+        "hp": 2,
+        "state": 9
+      },
+      {
+        "type": "0x24",
+        "xy": [
+          7323,
+          419
+        ],
+        "hp": 2,
+        "state": 9
+      }
+    ]
+  },
+  "tiles_after": [
+    {
+      "col": 15,
+      "row": 35,
+      "xy": [
+        7288,
+        280
+      ],
+      "value": "0x5E",
+      "kind": "stairs"
+    },
+    {
+      "col": 16,
+      "row": 35,
+      "xy": [
+        7296,
+        280
+      ],
+      "value": "0x5E",
+      "kind": "stairs"
+    },
+    {
+      "col": 15,
+      "row": 36,
+      "xy": [
+        7288,
+        288
+      ],
+      "value": "0x34",
+      "kind": "unknown"
+    },
+    {
+      "col": 16,
+      "row": 36,
+      "xy": [
+        7296,
+        288
+      ],
+      "value": "0x34",
+      "kind": "unknown"
+    },
+    {
+      "col": 15,
+      "row": 37,
+      "xy": [
+        7288,
+        296
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 16,
+      "row": 37,
+      "xy": [
+        7296,
+        296
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 37,
+      "xy": [
+        7544,
+        296
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 48,
+      "row": 37,
+      "xy": [
+        7552,
+        296
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 15,
+      "row": 38,
+      "xy": [
+        7288,
+        304
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 16,
+      "row": 38,
+      "xy": [
+        7296,
+        304
+      ],
+      "value": "0xF0",
+      "kind": "door"
+    },
+    {
+      "col": 41,
+      "row": 38,
+      "xy": [
+        7496,
+        304
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 47,
+      "row": 38,
+      "xy": [
+        7544,
+        304
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 48,
+      "row": 38,
+      "xy": [
+        7552,
+        304
+      ],
+      "value": "0x54",
+      "kind": "unknown"
+    },
+    {
+      "col": 54,
+      "row": 38,
+      "xy": [
+        7600,
+        304
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 39,
+      "xy": [
+        7488,
+        312
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 41,
+      "row": 39,
+      "xy": [
+        7496,
+        312
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 54,
+      "row": 39,
+      "xy": [
+        7600,
+        312
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 39,
+      "xy": [
+        7608,
+        312
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 40,
+      "xy": [
+        7480,
+        320
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 40,
+      "xy": [
+        7488,
+        320
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 40,
+      "xy": [
+        7608,
+        320
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 40,
+      "xy": [
+        7616,
+        320
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 41,
+      "xy": [
+        7472,
+        328
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 41,
+      "xy": [
+        7480,
+        328
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 41,
+      "xy": [
+        7616,
+        328
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 41,
+      "xy": [
+        7624,
+        328
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 42,
+      "xy": [
+        7464,
+        336
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 42,
+      "xy": [
+        7472,
+        336
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 42,
+      "xy": [
+        7624,
+        336
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 42,
+      "xy": [
+        7632,
+        336
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 43,
+      "xy": [
+        7456,
+        344
+      ],
+      "value": "0x18",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 43,
+      "xy": [
+        7464,
+        344
+      ],
+      "value": "0x10",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 43,
+      "xy": [
+        7632,
+        344
+      ],
+      "value": "0x11",
+      "kind": "unknown"
+    },
+    {
+      "col": 59,
+      "row": 43,
+      "xy": [
+        7640,
+        344
+      ],
+      "value": "0x19",
+      "kind": "unknown"
+    },
+    {
+      "col": 27,
+      "row": 48,
+      "xy": [
+        7384,
+        384
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 28,
+      "row": 48,
+      "xy": [
+        7392,
+        384
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 29,
+      "row": 48,
+      "xy": [
+        7400,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 30,
+      "row": 48,
+      "xy": [
+        7408,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 31,
+      "row": 48,
+      "xy": [
+        7416,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 32,
+      "row": 48,
+      "xy": [
+        7424,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 33,
+      "row": 48,
+      "xy": [
+        7432,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 34,
+      "row": 48,
+      "xy": [
+        7440,
+        384
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 35,
+      "row": 48,
+      "xy": [
+        7448,
+        384
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 48,
+      "xy": [
+        7456,
+        384
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 27,
+      "row": 49,
+      "xy": [
+        7384,
+        392
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 28,
+      "row": 49,
+      "xy": [
+        7392,
+        392
+      ],
+      "value": "0xF9",
+      "kind": "unknown"
+    },
+    {
+      "col": 29,
+      "row": 49,
+      "xy": [
+        7400,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 30,
+      "row": 49,
+      "xy": [
+        7408,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 31,
+      "row": 49,
+      "xy": [
+        7416,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 32,
+      "row": 49,
+      "xy": [
+        7424,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 33,
+      "row": 49,
+      "xy": [
+        7432,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 34,
+      "row": 49,
+      "xy": [
+        7440,
+        392
+      ],
+      "value": "0x83",
+      "kind": "unknown"
+    },
+    {
+      "col": 35,
+      "row": 49,
+      "xy": [
+        7448,
+        392
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 49,
+      "xy": [
+        7456,
+        392
+      ],
+      "value": "0xF1",
+      "kind": "unknown"
+    },
+    {
+      "col": 36,
+      "row": 54,
+      "xy": [
+        7456,
+        432
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 54,
+      "xy": [
+        7464,
+        432
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 54,
+      "xy": [
+        7632,
+        432
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 59,
+      "row": 54,
+      "xy": [
+        7640,
+        432
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 37,
+      "row": 55,
+      "xy": [
+        7464,
+        440
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 55,
+      "xy": [
+        7472,
+        440
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 55,
+      "xy": [
+        7624,
+        440
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 58,
+      "row": 55,
+      "xy": [
+        7632,
+        440
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 38,
+      "row": 56,
+      "xy": [
+        7472,
+        448
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 56,
+      "xy": [
+        7480,
+        448
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 56,
+      "xy": [
+        7616,
+        448
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 57,
+      "row": 56,
+      "xy": [
+        7624,
+        448
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 39,
+      "row": 57,
+      "xy": [
+        7480,
+        456
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 57,
+      "xy": [
+        7488,
+        456
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 57,
+      "xy": [
+        7608,
+        456
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 56,
+      "row": 57,
+      "xy": [
+        7616,
+        456
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 40,
+      "row": 58,
+      "xy": [
+        7488,
+        464
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 41,
+      "row": 58,
+      "xy": [
+        7496,
+        464
+      ],
+      "value": "0x12",
+      "kind": "unknown"
+    },
+    {
+      "col": 54,
+      "row": 58,
+      "xy": [
+        7600,
+        464
+      ],
+      "value": "0x13",
+      "kind": "unknown"
+    },
+    {
+      "col": 55,
+      "row": 58,
+      "xy": [
+        7608,
+        464
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 41,
+      "row": 59,
+      "xy": [
+        7496,
+        472
+      ],
+      "value": "0x1A",
+      "kind": "unknown"
+    },
+    {
+      "col": 47,
+      "row": 59,
+      "xy": [
+        7544,
+        472
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 59,
+      "xy": [
+        7552,
+        472
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 54,
+      "row": 59,
+      "xy": [
+        7600,
+        472
+      ],
+      "value": "0x1B",
+      "kind": "unknown"
+    },
+    {
+      "col": 47,
+      "row": 60,
+      "xy": [
+        7544,
+        480
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 60,
+      "xy": [
+        7552,
+        480
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 61,
+      "xy": [
+        7544,
+        488
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 61,
+      "xy": [
+        7552,
+        488
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 62,
+      "xy": [
+        7544,
+        496
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 62,
+      "xy": [
+        7552,
+        496
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 47,
+      "row": 63,
+      "xy": [
+        7544,
+        504
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    },
+    {
+      "col": 48,
+      "row": 63,
+      "xy": [
+        7552,
+        504
+      ],
+      "value": "0x8E",
+      "kind": "door"
+    }
+  ],
+  "armor": 0,
+  "room": "0x0E"
+}

@@ -6,7 +6,7 @@ from dataclasses import replace
 
 from retro_harness.combat import PreferredFlank
 from retro_harness.ram_state import EnemyState
-from tmnt_iv.grind_knobs import GrindKnobs
+from tmnt_iv.tactics.knobs import TacticKnobs
 from tmnt_iv.policy import Stage1Policy
 from tmnt_iv.tactics.fight import CombatProfile
 from tmnt_iv.tactics.raph_air import raph_starbase_jump_action
@@ -65,7 +65,7 @@ def test_combat_profile_table_pins_stage_rows() -> None:
 
 
 def test_slash_spin_dodge_adx_stays_52_and_never_presses_a() -> None:
-    assert GrindKnobs().slash_spin_dodge_adx == 52
+    assert TacticKnobs().slash_spin_dodge_adx == 52
     tactics = SlashTactics()
     close = tactics.next(_slash_state(player_x=80, slash_x=120, animation=0xEE))
     assert close is not None
@@ -240,3 +240,15 @@ def test_raph_starbase_close_gap_period_is_at_least_4() -> None:
         assert gap.reason == "raph_starbase_close_gap"
         assert gap.action[A] == 0
         assert not (gap.action[B] and gap.action[Y])
+
+
+def test_technodrome_align_gives_up_when_y_cannot_move() -> None:
+    tactic = TechnodromeTactics()
+    foot = enemy(87, 144, 7, slot=0, kind=0x6C)
+    reasons = []
+    for frame in range(60):
+        state = playing(player_x=47, player_y=160, stage=3, frame=frame, enemies=(foot,), extras={"event": 0x0A, "char_id": 2})
+        action = tactic.next(state)
+        reasons.append(action.reason if action else None)
+    assert reasons[0] == "technodrome_align"
+    assert "technodrome_align" not in reasons[30:]

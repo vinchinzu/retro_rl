@@ -1,0 +1,1208 @@
+{
+  "bead": "PR-012",
+  "kind": "adult_barn_night",
+  "pin": "LN_mgr-f3_whatif_barn0",
+  "pin_note": "RAM what-if copied from the care3 adult. Not route evidence.",
+  "pin_write": {
+    "source": "LN_mgr-f3_whatif_care3",
+    "status": 9,
+    "map_before": 39,
+    "map_after": 39,
+    "happiness": 1,
+    "buy_cow_end_status": 5,
+    "buy_cow_end_map": 39,
+    "buy_cow_end_happiness": 1
+  },
+  "result": "PROBE_BARN_FAIL feed",
+  "frame": 611,
+  "presses": [
+    {
+      "start": {
+        "x": 113,
+        "y": 277
+      },
+      "a_at": {
+        "frame": 281,
+        "x": 113,
+        "y": 277,
+        "dir": 2,
+        "front": [
+          135,
+          277
+        ],
+        "front_tile": [
+          8,
+          17,
+          164
+        ]
+      },
+      "samples": [
+        {
+          "i": 0,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 1,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 2,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 3,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 4,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 5,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 6,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 7,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 8,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 9,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 10,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 11,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 12,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 13,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 14,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 15,
+          "x": 113,
+          "y": 277,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "end": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 178,
+        "held": 0,
+        "cow_feed": 0,
+        "tool": 15
+      }
+    },
+    {
+      "start": {
+        "x": 217,
+        "y": 185
+      },
+      "a_at": {
+        "frame": 576,
+        "x": 217,
+        "y": 185,
+        "dir": 2,
+        "front": [
+          239,
+          185
+        ],
+        "front_tile": [
+          14,
+          11,
+          161
+        ]
+      },
+      "samples": [
+        {
+          "i": 0,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 1,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 2,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 3,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 4,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 5,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 6,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 7,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 8,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 9,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 10,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 11,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 12,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 13,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 14,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "i": 15,
+          "x": 217,
+          "y": 185,
+          "dir": 2,
+          "held": 26,
+          "flags": 0,
+          "a": false,
+          "action": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "end": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 177,
+        "held": 0,
+        "cow_feed": 0,
+        "tool": 15
+      }
+    }
+  ],
+  "marks": [
+    {
+      "name": "boot",
+      "frame": 0,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 179,
+        "held": 0,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 167,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "after_pickup",
+      "frame": 164,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "direction": 2,
+        "player_action": 4,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 178,
+        "held": 26,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 167,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "before_press_1",
+      "frame": 276,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "direction": 0,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 178,
+        "held": 26,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 167,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "after_press_1",
+      "frame": 316,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 113,
+        "y": 277,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 178,
+        "held": 0,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 8,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 167,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "after_pickup_2",
+      "frame": 480,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "direction": 2,
+        "player_action": 4,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 177,
+        "held": 26,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 8,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "before_press_2",
+      "frame": 571,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 177,
+        "held": 26,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "after_press_2",
+      "frame": 611,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 177,
+        "held": 0,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    },
+    {
+      "name": "feed_fail",
+      "frame": 611,
+      "clock": {
+        "year": 0,
+        "season": 0,
+        "day": 16,
+        "weekday": 2,
+        "hour": 18,
+        "minute": 0,
+        "tilemap": 39,
+        "x": 217,
+        "y": 185,
+        "direction": 2,
+        "player_action": 0,
+        "weather_flags": 192,
+        "weather_tomorrow": 0,
+        "fed_cows_flags": 0,
+        "fed_cows_n": 0,
+        "hay": 177,
+        "held": 0,
+        "cow_feed": 0,
+        "tool": 15
+      },
+      "cow": {
+        "slot": 0,
+        "status": 9,
+        "flags": 0,
+        "map": 39,
+        "age": 0,
+        "happiness": 1,
+        "cow_x": 150,
+        "cow_y": 278
+      }
+    }
+  ],
+  "map_var": 1,
+  "stride": 16,
+  "front_tile_game": {
+    "tx": 8,
+    "ty": 17,
+    "id": 47
+  },
+  "troughs": [
+    {
+      "tx": 8,
+      "ty": 5,
+      "id": 231,
+      "flag": 32
+    },
+    {
+      "tx": 8,
+      "ty": 7,
+      "id": 230,
+      "flag": 16
+    },
+    {
+      "tx": 8,
+      "ty": 9,
+      "id": 229,
+      "flag": 8
+    },
+    {
+      "tx": 8,
+      "ty": 13,
+      "id": 228,
+      "flag": 4
+    },
+    {
+      "tx": 8,
+      "ty": 15,
+      "id": 227,
+      "flag": 2
+    },
+    {
+      "tx": 5,
+      "ty": 5,
+      "id": 237,
+      "flag": 2048
+    },
+    {
+      "tx": 5,
+      "ty": 7,
+      "id": 236,
+      "flag": 1024
+    },
+    {
+      "tx": 5,
+      "ty": 9,
+      "id": 235,
+      "flag": 512
+    },
+    {
+      "tx": 5,
+      "ty": 13,
+      "id": 234,
+      "flag": 256
+    },
+    {
+      "tx": 5,
+      "ty": 15,
+      "id": 233,
+      "flag": 128
+    },
+    {
+      "tx": 5,
+      "ty": 17,
+      "id": 232,
+      "flag": 64
+    }
+  ],
+  "e2_only": {
+    "tx": 2,
+    "ty": 34,
+    "note": "tileset swatch row E2..ED, outside the stalls"
+  },
+  "slot0_mask": 1,
+  "note": "Press 1 at (113, 277) facing right. Game index ($0181=1) reads tile (8, 17) as 0x2F. Fed flags stayed 0 and held fodder cleared. Press 2 used a 64-wide scan and was not a property match. No stall tile is 0xE2, so Cow_Feed_Flags word 0 ($0001) cannot be set."
+}

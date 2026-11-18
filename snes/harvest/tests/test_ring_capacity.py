@@ -27,7 +27,9 @@ def _field() -> np.ndarray:
 
 
 def _plant(ram, center, tid=PLANTED_DRY) -> None:
-    for tx, ty in plot_tiles(center, include_center=False):
+    from harvest.maps.farm_pond import plot_crop_tiles
+
+    for tx, ty in plot_crop_tiles(center):     # the ring's 8, or a notch block's 8
         set_tile(ram, tx, ty, tid)
 
 

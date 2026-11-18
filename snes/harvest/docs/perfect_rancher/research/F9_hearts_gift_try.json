@@ -1,0 +1,1107 @@
+{
+  "pin": "LN_mgr-hearts_whatif_maria_flower",
+  "whatif": true,
+  "route_evidence": false,
+  "log": [
+    {
+      "frame": 0,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 17,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 18,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 35,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 36,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 53,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 54,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 71,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 72,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 89,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 90,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 107,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 108,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 125,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 126,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 143,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 144,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 161,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 162,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 179,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 180,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 197,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 198,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 215,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 216,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 233,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 234,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 251,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 252,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 269,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 270,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 287,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 288,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 305,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 306,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 323,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 324,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 341,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 342,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 359,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 360,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 377,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 378,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 395,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 396,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 413,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 414,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 431,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 432,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 449,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 450,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 467,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 468,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 485,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 0,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    },
+    {
+      "frame": 486,
+      "hearts": {
+        "maria": 0,
+        "ann": 0,
+        "nina": 0,
+        "ellen": 0,
+        "eve": 0
+      },
+      "happiness": 0,
+      "text": 249,
+      "choice": 0,
+      "held": 5,
+      "old": 5,
+      "action": 5,
+      "x": 108,
+      "y": 409,
+      "tilemap": 27,
+      "lock": 1
+    }
+  ]
+}

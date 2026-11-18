@@ -1,0 +1,298 @@
+schema_version: 1
+slug: mire
+name: Misery Mire (Entrance)
+z3_id: 187
+room_type: Dungeon
+source_file: regions/dungeons/mire/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+regions:
+- name: Misery Mire (Entrance)
+  nodes:
+  - Misery Mire Entrance Gap
+  - Misery Mire Exit
+- name: Misery Mire (Main)
+  nodes:
+  - Misery Mire (West)
+  - Misery Mire Big Key Door
+  - Misery Mire - Big Chest
+  - Misery Mire - Map Chest
+  - Misery Mire - Main Lobby
+  - Misery Mire - Bridge Chest
+  - Misery Mire - Spike Chest
+- name: Misery Mire (West)
+  nodes:
+  - Misery Mire - Compass Chest
+  - Misery Mire - Big Key Chest
+- name: Misery Mire (Final Area)
+  nodes:
+  - Misery Mire (Vitreous)
+- name: Misery Mire (Vitreous)
+  nodes:
+  - Misery Mire - Vitreous
+  - Misery Mire - Prize
+locations:
+- id: 5
+  name: Misery Mire - Big Chest
+  region: Misery Mire (Main)
+  node_type: item
+  item: CaneOfSomaria
+  address: '0xEA67'
+  requires:
+  - BigKeyD6
+  keys:
+  - name: BigKeyD6
+    count: 1
+  items: []
+- id: 6
+  name: Misery Mire - Map Chest
+  region: Misery Mire (Main)
+  node_type: item
+  item: MapD6
+  address: '0xEA6A'
+  requires:
+  - KeyD6
+  - BigKeyD6
+  keys:
+  - name: KeyD6
+    count: 1
+  - name: BigKeyD6
+    count: 1
+  items: []
+- id: 7
+  name: Misery Mire - Main Lobby
+  region: Misery Mire (Main)
+  node_type: item
+  item: KeyD6
+  address: '0xEA5E'
+  requires:
+  - KeyD6
+  - BigKeyD6
+  keys:
+  - name: KeyD6
+    count: 1
+  - name: BigKeyD6
+    count: 1
+  items: []
+- id: 8
+  name: Misery Mire - Bridge Chest
+  region: Misery Mire (Main)
+  node_type: item
+  item: KeyD6
+  address: '0xEA61'
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Misery Mire - Spike Chest
+  region: Misery Mire (Main)
+  node_type: item
+  item: KeyD6
+  address: '0xE9DA'
+  requires:
+  - or:
+    - not:
+      - mods.ohko
+    - canInvul
+  keys: []
+  items:
+  - mods.ohko
+  - canInvul
+- id: 10
+  name: Misery Mire - Compass Chest
+  region: Misery Mire (West)
+  node_type: item
+  item: CompassD6
+  address: '0xEA64'
+  requires:
+  - canLightTorches
+  keys: []
+  items:
+  - canLightTorches
+  note: 'FIXME: Changes based on key placement'
+- id: 11
+  name: Misery Mire - Big Key Chest
+  region: Misery Mire (West)
+  node_type: item
+  item: BigKeyD6
+  address: '0xEA6D'
+  requires:
+  - canLightTorches
+  keys: []
+  items:
+  - canLightTorches
+  note: 'FIXME: Changes based on key placement'
+- id: 13
+  name: Misery Mire - Vitreous
+  region: Misery Mire (Vitreous)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180158'
+  requires:
+  - hasLightCone
+  - CaneOfSomaria
+  - BigKeyD6
+  keys:
+  - name: BigKeyD6
+    count: 1
+  items:
+  - hasLightCone
+  - CaneOfSomaria
+- id: 14
+  name: Misery Mire - Prize
+  region: Misery Mire (Vitreous)
+  node_type: item
+  item: Crystal6
+  address:
+  - '0x120A2'
+  - '0x53F48'
+  - '0x53F49'
+  - '0x180057'
+  - '0x180075'
+  - '0xC703'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Misery Mire Entrance Gap
+  region: Misery Mire (Entrance)
+  node_type: obstacle
+  requires:
+  - RescueZelda
+  - MoonPearl
+  - or:
+    - canDash
+    - canGrapple
+  - hasProperMedallion
+  keys: []
+  items:
+  - RescueZelda
+  - MoonPearl
+  - canDash
+  - canGrapple
+  - hasProperMedallion
+- id: 2
+  name: Misery Mire Exit
+  region: Misery Mire (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - MoonPearl
+  - or:
+    - canDash
+    - canGrapple
+  - hasProperMedallion
+  keys: []
+  items:
+  - RescueZelda
+  - MoonPearl
+  - canDash
+  - canGrapple
+  - hasProperMedallion
+- id: 3
+  name: Misery Mire (West)
+  region: Misery Mire (Main)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 4
+  name: Misery Mire Big Key Door
+  region: Misery Mire (Main)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 12
+  name: Misery Mire (Vitreous)
+  region: Misery Mire (Final Area)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD6
+    count: 1
+    nodes:
+    - Misery Mire - Big Chest
+    - Misery Mire - Map Chest
+    - Misery Mire - Main Lobby
+    - Misery Mire - Vitreous
+  - name: KeyD6
+    count: 1
+    nodes:
+    - Misery Mire - Map Chest
+    - Misery Mire - Main Lobby
+  items:
+  - name: CaneOfSomaria
+    nodes:
+    - Misery Mire - Vitreous
+  - name: MoonPearl
+    nodes:
+    - Misery Mire Entrance Gap
+    - Misery Mire Exit
+  - name: RescueZelda
+    nodes:
+    - Misery Mire Entrance Gap
+    - Misery Mire Exit
+  - name: canDash
+    nodes:
+    - Misery Mire Entrance Gap
+    - Misery Mire Exit
+  - name: canGrapple
+    nodes:
+    - Misery Mire Entrance Gap
+    - Misery Mire Exit
+  - name: canInvul
+    nodes:
+    - Misery Mire - Spike Chest
+  - name: canLightTorches
+    nodes:
+    - Misery Mire - Compass Chest
+    - Misery Mire - Big Key Chest
+  - name: hasLightCone
+    nodes:
+    - Misery Mire - Vitreous
+  - name: hasProperMedallion
+    nodes:
+    - Misery Mire Entrance Gap
+    - Misery Mire Exit
+  - name: mods.ohko
+    nodes:
+    - Misery Mire - Spike Chest
+connections:
+- connection_type: Obstacle
+  description: Obstacle connection between Misery Mire Entrance Gap and Misery Mire (Main)
+  origin: Misery Mire Entrance Gap
+  destination: Misery Mire (Main)
+  internal: true
+- connection_type: Door
+  description: Door connection between Misery Mire (West) and Misery Mire (West)
+  origin: Misery Mire (West)
+  destination: Misery Mire (West)
+  internal: true
+- connection_type: Door
+  description: Door connection between Misery Mire Big Key Door and Misery Mire (Final Area)
+  origin: Misery Mire Big Key Door
+  destination: Misery Mire (Final Area)
+  internal: true
+- connection_type: Door
+  description: Door connection between Misery Mire (Vitreous) and Misery Mire (Vitreous)
+  origin: Misery Mire (Vitreous)
+  destination: Misery Mire (Vitreous)
+  internal: true
+- connection_type: Door
+  description: Door connection between Misery Mire and Misery Mire (Entrance)
+  origin: Misery Mire
+  destination: Misery Mire (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Misery Mire Exit and Dark Desert
+  origin: Misery Mire Exit
+  destination: Dark Desert
+  internal: false
+strats: []
+notes: []

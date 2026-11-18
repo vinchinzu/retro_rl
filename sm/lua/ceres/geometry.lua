@@ -46,8 +46,8 @@ M._CERES_ELEV_BOTTOM_Y = 640  -- bottom floor band after a missed door jump
 -- jumps — a full ground spin jump rises 111px and the gaps are 112/96/96.
 -- Each launch x is the middle of its measured band; outside the band the jump
 -- clips a ledge lip and drops back down the shaft.
-M._CERES_ELEV_ENTRY_RISE_FRAMES = 16  -- RIGHT+A up the wall before the kick
-M._CERES_ELEV_WJ_RELEASE_FRAMES = 2  -- LEFT without A; 1f reads as a jump cut
+M._CERES_ELEV_ENTRY_RISE_FRAMES = 16  -- RIGHT+B up the wall before the kick
+M._CERES_ELEV_WJ_RELEASE_FRAMES = 2  -- LEFT without B; 1f reads as a jump cut
 M._CERES_ELEV_WJ_KICK_FRAMES = 8
 M._CERES_ELEV_WJ_RIDE_FRAMES = 34  -- pose 132 / movement type 20 carries to 474
 M._CERES_ELEV_475_LAUNCH_X = 137  -- band 130-144, RIGHT onto 363

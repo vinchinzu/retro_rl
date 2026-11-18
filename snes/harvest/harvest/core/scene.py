@@ -60,6 +60,7 @@ SHOP_VARIANTS = {
 }
 LOCATION_BY_TILEMAP = {
     0x0C: SceneLocation.PATH,
+    0x0F: SceneLocation.PATH,  # Winter; the overnight fade is classified first
     0x04: SceneLocation.TOWN,
     0x05: SceneLocation.TOWN,
     0x10: SceneLocation.MOUNTAIN,
@@ -73,7 +74,15 @@ LOCATION_BY_TILEMAP = {
     0x29: SceneLocation.MOUNTAIN,  # MapMountainCave (west hole) — not outdoor spa
 }
 FESTIVAL_EVENT_CODES = frozenset({6, 7, 8, 9, 10, 11})
+# Outdoor hot spring on the mountain (water tile (39,12)). A soak sets
+# player_state 0x21; on a festival eve the festival "location" holds there too,
+# and that state read as a cutscene: the spa task pressed dismiss for 20k
+# frames and the run wedged (Spring D22, pin LN_spa_whatif_soak_stall_FAIL).
+SPA_POOL_TILEMAP = 0x10
+SPA_POOL_TILE_BOX = (38, 11, 42, 13)
 SLEEP_TRANSITION_TILEMAP = 0x0F
+# Clock byte on the path: 0 while a map loads or an event holds it, 1 walking.
+PATH_CLOCK_STATES = frozenset({0, 1})
 PLAYER_STATE_TRANSITION_BIT = 0x80
 MAX_TILE_COORD = 63
 
@@ -274,7 +283,7 @@ def _classify(facts: _SceneFacts) -> Scene:
             f"ending_index=0x{facts.ending_scene_index:02X} "
             f"aux=0x{facts.ending_aux_scene_index:02X}"
         )
-    elif facts.tilemap == SLEEP_TRANSITION_TILEMAP or facts.time_running == 2:
+    elif is_sleep_transition(facts.tilemap, facts.time_running):
         mode = SceneMode.SLEEP_WAKE_TRANSITION
         location = SceneLocation.SLEEP_ROOM
         reason = "sleep/wake transition"
@@ -301,7 +310,7 @@ def _classify(facts: _SceneFacts) -> Scene:
     elif facts.input_lock != 1:
         mode = SceneMode.INPUT_LOCKED
         reason = f"input_lock={facts.input_lock}"
-    elif location == SceneLocation.FESTIVAL and facts.player_state not in {0, 1}:
+    elif location == SceneLocation.FESTIVAL and not _walking_state(facts.player_state) and not _in_spa_pool(facts):
         # The festival "location" comes from the tomorrow-weather byte, so it
         # is true the whole eve of a festival. Stale dialogue registers
         # (text_id left over from an earlier chat) must not turn a free
@@ -338,6 +347,22 @@ def _classify(facts: _SceneFacts) -> Scene:
     )
 
 
+def is_sleep_transition(tilemap: int, time_running: int) -> bool:
+    """The overnight fade: tilemap 0x0F with the clock byte at 6 (measured), or byte 2.
+
+    The Winter path is also 0x0F, with the clock byte at 0 or 1.
+    """
+    if int(time_running) == 2:
+        return True
+    return int(tilemap) == SLEEP_TRANSITION_TILEMAP and int(time_running) not in PATH_CLOCK_STATES
+
+
+def in_sleep_transition(ram: np.ndarray) -> bool:
+    return is_sleep_transition(
+        read_ram_value(ram, "tilemap", raw=True), read_ram_value(ram, "time_running", raw=True)
+    )
+
+
 def _known_tilemap(tilemap: int) -> bool:
     return tilemap in FARM_TILEMAP_IDS or tilemap in MAP_REGISTRY or tilemap == SLEEP_TRANSITION_TILEMAP
 
@@ -359,6 +384,25 @@ def _location_for(facts: _SceneFacts) -> tuple[SceneLocation, str]:
     if tilemap in SHOP_VARIANTS:
         return SceneLocation.SHOP, SHOP_VARIANTS[tilemap]
     return LOCATION_BY_TILEMAP.get(tilemap, SceneLocation.UNKNOWN), ""
+
+
+def _walking_state(player_state: int) -> bool:
+    """player_state 0/1, or walking (bit 0x01) plus carry/tired/ride/bath modifiers.
+
+    Seen free: 3 (carrying a hen), 9 (tired, walks ~4x slower), 0x11 (on the horse),
+    0x21 (spa bath). Bit 0x04 is the busy tool animation (5) and 0x40/0x80 mark event
+    and transition states (0x43, 0x83, 0x81). On a festival eve the location reads
+    FESTIVAL on the town, path and mountain maps, and calling a tired farmer a
+    cutscene mashed A/B for 8 rescues (Y2 Fall D19).
+    """
+    return player_state in (0, 1) or bool(player_state & 0x01 and not player_state & 0xC4)
+
+
+def _in_spa_pool(facts: _SceneFacts) -> bool:
+    if facts.tilemap != SPA_POOL_TILEMAP:
+        return False
+    x0, y0, x1, y1 = SPA_POOL_TILE_BOX
+    return x0 <= facts.player_x // 16 <= x1 and y0 <= facts.player_y // 16 <= y1
 
 
 def _invalid_coordinates(facts: _SceneFacts) -> bool:
@@ -489,6 +533,40 @@ class SceneGuard:
             return ("b",)
         # A only: B on a plain dialogue can answer "No" to a prompt.
         return ("a",)
+
+
+# Year 2+ farm-road peddler (event 13/0, wallet >= 30,000G on a clear 6:00):
+# text $014D offers a money-tree seed, row 0 "Buy it" adds -2000 raw (20,000G)
+# and row 1 "Not buy it" changes nothing. Every dismiss pulses A, so the row
+# is steered here, ahead of whatever task owns the frame. The text ends with
+# $019B bit 0x80 about 12 frames before the menu goes live (bit 0x10), and an
+# A in that gap answers row 0 (pin LN_y23_whatif_peddler_y2w1), so the pad is
+# held. A Down edge toggles the row in $018F.
+PEDDLER_OFFER_TEXT_ID = 0x014D
+PEDDLER_DECLINE_ROW = 1
+_CHOICE_LIVE_ADDR = 0x019B
+_CHOICE_LIVE_BIT = 0x10
+_CHOICE_PENDING_BIT = 0x80
+
+
+def peddler_decline_action(ram: np.ndarray, step: int) -> np.ndarray | None:
+    """The press that answers the peddler's offer with "Not buy it", or None."""
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.tasks.nav import make_action
+
+    if len(ram) <= _CHOICE_LIVE_ADDR:
+        return None
+    flags = int(ram[_CHOICE_LIVE_ADDR])
+    if not flags & (_CHOICE_LIVE_BIT | _CHOICE_PENDING_BIT):
+        return None
+    if int(read_ram_value(ram, "dialog_text_id", raw=True)) != PEDDLER_OFFER_TEXT_ID:
+        return None
+    if not flags & _CHOICE_LIVE_BIT:
+        return make_action()
+    pressed = step % 12 < 3
+    if int(read_ram_value(ram, "dialog_choice_result", raw=True)) != PEDDLER_DECLINE_ROW:
+        return make_action(down=pressed)
+    return make_action(a=pressed)
 
 
 def _dog_a_blocked(ram: np.ndarray) -> bool:
@@ -640,6 +718,8 @@ __all__ = [
     "SceneMode",
     "classify_scene",
     "classify_scene_from_ram",
+    "in_sleep_transition",
+    "is_sleep_transition",
     "morning_scene_ready",
     "cow_name_awaits_gate",
     "name_entry_press",

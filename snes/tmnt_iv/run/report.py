@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shlex
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -17,86 +18,8 @@ from tmnt_iv.assist import (
     FORM2_IFRAME_VALUE,
     assist_integrity,
 )
-from tmnt_iv.paths import GAME, RECORDINGS_DIR, ROMS_DIR
+from tmnt_iv.paths import GAME, ROMS_DIR
 from tmnt_iv.run.metrics import HARD_VALUE, RunMetrics, format_duration, metrics_dict
-
-BASELINE_INDEX_NAME = "baseline_index.json"
-BASELINE_INDEX_SCHEMA = {
-    "schema_version": 1,
-    "baselines": {},
-}
-
-
-def _git_short() -> str:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return "nogit"
-    digest = (result.stdout or "").strip()
-    return digest or "nogit"
-
-
-def immutable_artifact_stem(*, contract: str, digest: str) -> str:
-    """Date + short git + contract + digest; used for scratch evidence."""
-    date = datetime.now().strftime("%Y%m%d")
-    return f"{date}_{_git_short()}_{contract}_{digest[:8]}"
-
-
-def scratch_report_path(*, contract: str, payload: bytes | str = b"") -> Path:
-    """Scratch JSON path under recordings/. Does not overwrite named baselines."""
-    raw = payload.encode("utf-8") if isinstance(payload, str) else payload
-    digest = hashlib.sha256(raw).hexdigest()
-    stem = immutable_artifact_stem(contract=contract, digest=digest)
-    return RECORDINGS_DIR / f"scratch_{stem}.json"
-
-
-def baseline_index_path() -> Path:
-    """Gitignored index that points STATUS/BASELINE names at a digest."""
-    return RECORDINGS_DIR / BASELINE_INDEX_NAME
-
-
-def load_baseline_index(path: Path | None = None) -> dict[str, Any]:
-    """Load ``recordings/baseline_index.json``, or an empty schema-1 index."""
-    target = path if path is not None else baseline_index_path()
-    if not target.is_file():
-        return {"schema_version": 1, "baselines": {}}
-    payload = json.loads(target.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        return {"schema_version": 1, "baselines": {}}
-    payload.setdefault("schema_version", 1)
-    payload.setdefault("baselines", {})
-    return payload
-
-
-def promote_baseline(
-    *,
-    name: str,
-    digest: str,
-    path: Path,
-    contract: str | None = None,
-    frames: int | None = None,
-    damage: int | None = None,
-) -> dict[str, Any]:
-    """Return an updated index row. Does not write STATUS or the index file."""
-    index = load_baseline_index()
-    row: dict[str, Any] = {
-        "digest": digest,
-        "path": str(path),
-    }
-    if contract is not None:
-        row["contract"] = contract
-    if frames is not None:
-        row["frames"] = frames
-    if damage is not None:
-        row["damage"] = damage
-    index.setdefault("baselines", {})[name] = row
-    return index
-
 
 def audit_run_fields(
     *,
@@ -148,7 +71,7 @@ def probe_video(path: Path) -> dict[str, Any]:
             "-v",
             "error",
             "-show_entries",
-            "format=duration,size:stream=index,codec_name,codec_type,width,height,avg_frame_rate,sample_rate,channels",
+            "format=duration,size:stream=index,codec_name,codec_type,width,height,avg_frame_rate,nb_frames,duration,sample_rate,channels",
             "-of",
             "json",
             str(path),
@@ -193,17 +116,30 @@ def build_full_run_report(
     lives_writes: int = 0,
     forbidden_a_special_uses: int = 0,
     post_boot_start_presses: int = 0,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the schema-1 full-run JSON payload."""
     class_name = intervention_class(
         emergency_hp=emergency_hp, iframe_hold=iframe_hold
     )
     rom_name, rom_digest = rom_sha256()
-    command = "uv run python -m tmnt_iv.scripts.record_full_hard_run"
-    if clean_mode:
-        command += " --clean"
-    if dry_run:
-        command += " --dry-run"
+    extra = dict(extra or {})
+    command = "uv run python -m tmnt_iv.scripts.run"
+    if not clean_mode:
+        command += " --assisted"
+    source_tape = extra.get("source_tape") or {}
+    if extra.get("replay") and source_tape.get("path"):
+        command += f" --replay {shlex.quote(source_tape['path'])}"
+        if extra.get("finish_credits"):
+            command += " --finish-credits"
+        if not dry_run:
+            command += " --video"
+            if capture_config.layout == "native":
+                command += " --native-video"
+    elif extra.get("lookahead") is None:
+        command += " --no-lookahead"
+    if extra.get("turtle"):
+        command += f" --turtle {extra['turtle']}"
     audit = audit_run_fields(
         save_state_loads=save_state_loads,
         stage_writes=stage_writes,
@@ -264,6 +200,11 @@ def build_full_run_report(
             "lives": final_state.lives,
         },
         "artifact": None,
+        "lookahead": extra.pop("lookahead", None),
+        "tape": extra.pop("tape", None),
+        "turtle": extra.pop("turtle", None),
+        "replay": extra.pop("replay", False),
+        "summary": extra,
     }
     if video_path is not None:
         report["artifact"] = {
@@ -310,6 +251,7 @@ def finalize_full_run(
     lives_writes: int = 0,
     forbidden_a_special_uses: int = 0,
     post_boot_start_presses: int = 0,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate, build, write, and print the success report."""
     assert_run_complete(metrics, hard_confirmed=hard_confirmed)
@@ -363,6 +305,7 @@ def finalize_full_run(
         lives_writes=lives_writes,
         forbidden_a_special_uses=forbidden_a_special_uses,
         post_boot_start_presses=post_boot_start_presses,
+        extra=extra,
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(

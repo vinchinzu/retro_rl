@@ -1,13 +1,8 @@
-"""RAM-closed shelf buys: seeds (flower shop 0x1C) and cow tools (general store 0x22).
+"""Shelf buys closed by wallet and stock/ownership receipts.
 
-Spring D2: MultNav to ``shop_door`` face-up, enter 0x1C, A at the clerk
-until potato stock rises and money falls, then nav back onto farm 0x00.
-CrossMap "returned to origin" without those deltas is a miss.
-
-The brush and milker are shelf objects in the general store (0x22, town door
-0xC6 at tile (25,53)), not in the seed shop. ``tool_ids`` selects that shop
-(``ShopSpec``): same door/stand/A loop, receipt is the wallet drop of exactly
-the shelf price plus the shed row-2 bit ($7F1F01) once the box closes.
+Seeds use the flower shop (0x1C); brush/milker use the general store
+(0x22); medicine uses the animal shop (0x24), delivered to the shed.
+A menu or return to the farm alone never proves a purchase.
 """
 
 from __future__ import annotations
@@ -21,7 +16,7 @@ from retro_harness import ActionResult, Task, TaskResult, TaskStatus, WorldState
 from harvest.core.carry import tool_in_carry_pair
 from harvest.core.ram_catalog import read_ram_u8, read_ram_value
 from harvest.core.task_progress import ProgressSnapshot, task_progress_snapshot
-from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, Tool
+from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, Tool, is_path_tilemap
 from harvest.planner.livestock_econ import (
     SHED_ROW_2_ADDR,
     SHED_ROW_2_BRUSH_BIT,
@@ -42,6 +37,7 @@ from harvest.planner.tasks.inventory import ExitToFarmTask
 from harvest.planner.tasks.navigation import MultiMapNavTask
 from harvest.tasks.nav import get_pos_from_ram, make_action
 from harvest.tasks.primitives import drain_action_queue, press_a_sequence
+from harvest.tasks.relationships import ErrandSocial
 
 PATH_TILEMAP = 0x0C
 TOWN_TILEMAP = 0x04
@@ -52,18 +48,9 @@ COOP_TILEMAP = 0x28
 
 TOOL_SHOP_TILEMAP = 0x22
 
-SHOP_NAV_SEGMENTS: Tuple[str, ...] = (
-    "farm_to_path",
-    "path_to_town_shop",
-    "town_to_shop_door",
-)
+SHOP_NAV_SEGMENTS: Tuple[str, ...] = ("farm_to_path", "path_to_town_shop", "town_to_shop_door")
 SHOP_BUY_SEGMENTS: Tuple[str, ...] = ("shop_to_counter",)
-SHOP_RETURN_SEGMENTS: Tuple[str, ...] = (
-    "shop_to_town",
-    "town_shop_to_path",
-    "path_to_farm",
-)
-
+SHOP_RETURN_SEGMENTS: Tuple[str, ...] = ("shop_to_town", "town_shop_to_path", "path_to_farm")
 
 @dataclass(frozen=True)
 class ShopSpec:
@@ -75,7 +62,6 @@ class ShopSpec:
     town_segments: FrozenSet[str]  # hops that wait for a settled town read
     exit_min_y: int = 0  # town y the exit pixels must reach after the buy (the flip leaks mid-map coords)
     door_clear_y: int = 0  # >0: after the buy hold Down off the door while the town y is above this
-
 
 FLOWER_SHOP = ShopSpec(
     SHOP_TILEMAP,
@@ -89,9 +75,14 @@ TOOL_SHOP = ShopSpec(
     ("farm_to_path", "path_to_town_shop", "town_to_tool_door"),
     ("tool_shop_to_town", "town_tool_shop_to_path", "path_to_farm"),
     frozenset({"town_to_tool_door", "town_tool_shop_to_path"}),
-    exit_min_y=850,  # the door apron is (408,872); the flip passes through (408,408)
+    exit_min_y=850,
 )
 
+ANIMAL_SHOP = ShopSpec(
+    0x24, ("farm_to_path", "path_to_town_shop", "town_to_animal_door"),
+    ("animal_shelf_to_town", "town_animal_shop_to_path", "path_to_farm"),
+    frozenset({"town_to_animal_door", "town_animal_shop_to_path"}), exit_min_y=850,
+)
 
 @dataclass(frozen=True)
 class ToolShelf:
@@ -108,10 +99,14 @@ class ToolShelf:
     stand: Tuple[int, int]
     shed_bit: int  # $7F1F01 (shed row 2)
     counter_segment: str
-
+    face: str = "right"
+    shed_addr: int = SHED_ROW_2_ADDR
 
 TOOL_SHED_ROW_ADDR = SHED_ROW_2_ADDR
 TOOL_SHELVES: Dict[int, ToolShelf] = {
+    int(Tool.SPRINKLER): ToolShelf(int(Tool.SPRINKLER), SHOP_PRICE_G["sprinkler"], (216, 342),
+                                   0x10, "tool_shop_to_milker", "up", 0x11F02),
+    9: ToolShelf(9, SHOP_PRICE_G["medicine"], (58, 134), 0x01, "animal_shop_to_medicine", "up"),
     int(Tool.BRUSH): ToolShelf(int(Tool.BRUSH), TOOL_PRICE[int(Tool.BRUSH)], (217, 358),
                                SHED_ROW_2_BRUSH_BIT, "tool_shop_to_brush"),
     int(Tool.MILKER): ToolShelf(int(Tool.MILKER), TOOL_PRICE[int(Tool.MILKER)], (217, 344),
@@ -125,8 +120,8 @@ SEED_CLERK_PX = (182, 342)
 # streams its description, then the buy prompt (cursor 0 = buy). One stand per
 # bag along y=342 (measured Summer D13: corn x=152 and tomato x=168 each took
 # 300 G and added one bag; potato x=182 in spring).
-SEED_STAND_X = {"potato_seeds": 182, "corn_seeds": 152, "tomato_seeds": 168, "grass_seeds": 216}
-SEED_BAG_PRICE = {f"{kind}_seeds": SHOP_PRICE_G[f"{kind}_seed"] for kind in ("potato", "corn", "tomato", "grass")}
+SEED_STAND_X = {"turnip_seeds": 200, "potato_seeds": 182, "corn_seeds": 152, "tomato_seeds": 168, "grass_seeds": 216}
+SEED_BAG_PRICE = {f"{kind}_seeds": SHOP_PRICE_G[f"{kind}_seed"] for kind in ("turnip", "potato", "corn", "tomato", "grass")}
 SEED_STAND_Y = 342
 SEED_CLERK_RADIUS = 10
 SHOP_INTERIOR_SETTLE = 45
@@ -138,17 +133,17 @@ TOWN_SETTLE_FRAMES = 480
 # bags stream a 3-page description first (~17 pulses measured Summer D13).
 BUY_ATTEMPT_LIMIT = 28
 ENTER_PULSE_LIMIT = 90
+# An inbound town hop that ends back on the path (a villager on the east gate
+# push-faced it out, Summer D27) walks back in this many times before failing.
+TOWN_BOUNCE_RETRIES = 2
 POTATO_BAG_PRICE = 200
-
 
 def _tilemap(world: WorldState) -> int:
     ram = world.ram
     return int(ram[ADDR_TILEMAP]) if ADDR_TILEMAP < len(ram) else 0
 
-
 def _needs_building_exit(tilemap: int) -> bool:
     return is_house_tilemap(tilemap) or tilemap in (SHED_TILEMAP, BARN_TILEMAP, COOP_TILEMAP)
-
 
 def _stock(ram, field: str = "potato_seeds") -> int:
     try:
@@ -156,21 +151,18 @@ def _stock(ram, field: str = "potato_seeds") -> int:
     except Exception:
         return 0
 
-
 def _money(ram) -> int:
     try:
         return int(read_ram_value(ram, "money") or 0)
     except Exception:
         return 0
 
-
 def tool_owned(ram, tool_id: int) -> bool:
     """On the shed shelf (row-2 bit) or in the carry pair."""
     shelf = TOOL_SHELVES[int(tool_id)]
-    if read_ram_u8(ram, TOOL_SHED_ROW_ADDR) & shelf.shed_bit:
+    if read_ram_u8(ram, shelf.shed_addr) & shelf.shed_bit:
         return True
     return tool_in_carry_pair(ram, int(tool_id))
-
 
 def plan_tool_buys(ram, tool_ids: Sequence[int]) -> List[int]:
     """Shelf tools to buy this trip: unowned and affordable, in the order given.
@@ -190,18 +182,15 @@ def plan_tool_buys(ram, tool_ids: Sequence[int]) -> List[int]:
         plan.append(int(tool_id))
     return plan
 
-
 def shop_door_px() -> Tuple[int, int]:
     found = find_landmark("shop_door", tilemap_id=TOWN_TILEMAP)
     if found is None:
         return (37 * 16 + 8, 13 * 16 + 8)
     return found[1].target_px
 
-
 def seed_stand_px(stock_field: str = "potato_seeds") -> Tuple[int, int]:
     """Shop-floor stand under the shelf bag for ``stock_field``."""
     return (SEED_STAND_X.get(stock_field, SEED_CLERK_PX[0]), SEED_STAND_Y)
-
 
 def at_seed_clerk(
     ram,
@@ -215,20 +204,22 @@ def at_seed_clerk(
         and abs(int(pos.y) - stand[1]) <= radius
     )
 
-
 def shop_interior_coords_settled(ram) -> bool:
     """Town door pixels linger on 0x1C for a few frames after the flip."""
     pos = get_pos_from_ram(ram)
     return int(pos.x) < 400 or int(pos.y) > 250
 
-
 def town_coords_settled(ram) -> bool:
     """Path-left entry leaks ~(10,128) before the east-gate stand ~(756,422)."""
+    from harvest.planner.tasks.transitions import screen_faded_in
+    if ADDR_TILEMAP < len(ram):
+        tilemap = int(ram[ADDR_TILEMAP])
+        if tilemap != 0 and tilemap != TOWN_TILEMAP:
+            return False
     pos = get_pos_from_ram(ram)
-    if int(pos.x) <= 200:
+    if int(pos.x) <= 200 or int(pos.y) <= 100:
         return False
-    return not (int(ram[0xD3]) & 0x80)  # game_state 0x8000: transition scene
-
+    return not (int(ram[0xD3]) & 0x80) and screen_faded_in(ram)
 
 def first_shop_nav_segment(
     tilemap: int,
@@ -240,10 +231,10 @@ def first_shop_nav_segment(
         return None
     if is_farm_tilemap(tilemap):
         return "farm_to_path" if "farm_to_path" in segments else None
-    if tilemap == PATH_TILEMAP:
+    if is_path_tilemap(tilemap):
         for name in segments:
             hops = SEGMENTS.get(name, [])
-            if hops and hops[-1].tilemap in (PATH_TILEMAP, TOWN_TILEMAP) and name != "farm_to_path":
+            if hops and is_path_tilemap(hops[0].tilemap) and name != "farm_to_path":
                 return name
         return None
     if tilemap == TOWN_TILEMAP:
@@ -256,7 +247,6 @@ def first_shop_nav_segment(
         return None
     return segments[0] if segments else None
 
-
 def first_shop_return_segment(
     tilemap: int,
     segments: Sequence[str] = SHOP_RETURN_SEGMENTS,
@@ -266,14 +256,12 @@ def first_shop_return_segment(
         return segments[0]
     if tilemap == TOWN_TILEMAP:
         return segments[1]
-    if tilemap == PATH_TILEMAP:
+    if is_path_tilemap(tilemap):
         return segments[2]
     return None
 
-
 def purchase_closed(*, stock_before: int, stock_after: int, money_before: int, money_after: int) -> bool:
     return stock_after > stock_before and money_after < money_before
-
 
 @dataclass
 class BuyShelfItemTask(Task):
@@ -290,13 +278,15 @@ class BuyShelfItemTask(Task):
     nav_timeout: int = 6_000
     stock_field: str = "potato_seeds"
     bag_price: int = POTATO_BAG_PRICE
-    # Bags to buy in one trip. The clerk A-pulse loop is already a "keep
-    # pressing until bought" loop, so N bags is the same loop with a later
-    # stop condition — one 2480f round trip instead of N. Capped by the
-    # wallet read at reset(), so it can never overspend.
+    # Buy several bags in one trip, capped by the wallet at reset().
     bags: int = 1
+    # Seed crops bought after this one on the same visit, ``(stock_field, bags)``: the shelf is one row, a few steps apart.
+    then: Tuple[Tuple[str, int], ...] = ()
     # General-store shelf tools (Tool ids) instead of a seed bag.
     tool_ids: Tuple[int, ...] = ()
+    # The day composer shares this ledger across its shopping phases.
+    social_visits: set = field(default_factory=set, repr=False)
+    _social: ErrandSocial = field(default_factory=lambda: ErrandSocial(set()), init=False, repr=False)
 
     shop: ShopSpec = field(default=FLOWER_SHOP, init=False)
     _plan: List[int] = field(default_factory=list, init=False, repr=False)
@@ -324,13 +314,18 @@ class BuyShelfItemTask(Task):
     _last_reason: str = field(default="start", init=False)
     _path_settle: int = field(default=0, init=False)
     _align_steps: int = field(default=0, init=False)
+    _town_bounces: int = field(default=0, init=False)
+    _then: List[Tuple[str, int]] = field(default_factory=list, init=False, repr=False)
+    _seed_receipts: List[str] = field(default_factory=list, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.tool_ids:
             unknown = [t for t in self.tool_ids if int(t) not in TOOL_SHELVES]
             if unknown:
                 raise ValueError(f"no general-store shelf for tool ids {unknown}")
-            self.shop = TOOL_SHOP
+            if 9 in self.tool_ids and tuple(self.tool_ids) != (9,):
+                raise ValueError("medicine requires its own animal-shop trip")
+            self.shop = ANIMAL_SHOP if 9 in self.tool_ids else TOOL_SHOP
             if self.name == "buy_seeds":
                 self.name = "buy_tools"
         elif self.bag_price == POTATO_BAG_PRICE:
@@ -344,7 +339,7 @@ class BuyShelfItemTask(Task):
 
     @property
     def face(self) -> str:
-        return "right" if self._cur_tool else "up"
+        return TOOL_SHELVES[self._cur_tool].face if self._cur_tool else "up"
 
     @property
     def counter_segment(self) -> str:
@@ -371,6 +366,7 @@ class BuyShelfItemTask(Task):
         self._buy_queue.clear()
 
     def reset(self, world: WorldState) -> None:
+        self._social = ErrandSocial(visited=self.social_visits)
         self._align_steps = 0
         self._step_count = 0
         self._child = None
@@ -382,6 +378,8 @@ class BuyShelfItemTask(Task):
         self._cur_tool = self._plan[0] if self._plan else 0
         self._receipts = []
         self._got = []
+        self._then = [(str(f), int(n)) for f, n in self.then if int(n) > 0 and f in SEED_STAND_X]
+        self._seed_receipts = []
         self._seen_shop = _tilemap(world) == self.shop.tilemap
         self._activate_item(world.ram)
         self._enter_pulses = 0
@@ -390,6 +388,7 @@ class BuyShelfItemTask(Task):
         self._buy_queue.clear()
         self._last_reason = "start"
         self._path_settle = 0
+        self._town_bounces = 0
         self._arm_nav(world)
 
     def can_start(self, world: WorldState) -> bool:
@@ -419,8 +418,7 @@ class BuyShelfItemTask(Task):
         stock = self._held(ram)
         money = _money(ram)
         if self._cur_tool:
-            # Payment posts with the thank-you box; the shed bit lands when it
-            # closes. Exactly the shelf price, so a wrong shelf is not a receipt.
+            # The wallet debit proves payment; the shed bit follows at box close.
             return self._money_before - money == int(self.bag_price)
         if purchase_closed(
             stock_before=self._stock_before,
@@ -445,7 +443,7 @@ class BuyShelfItemTask(Task):
         if self._cur_tool:
             return int(self._purchase_ok(ram))
         by_stock = _stock(ram, self.stock_field) - self._stock_before
-        by_money = max(0, self._money_before - _money(ram)) // max(
+        by_money = max(0, self._money_before - _money(ram) - self._social.gold_spent) // max(
             1, int(self.bag_price)
         )
         return max(0, int(by_stock), int(by_money))
@@ -461,15 +459,18 @@ class BuyShelfItemTask(Task):
                 status=TaskStatus.SUCCESS,
                 reason=f"bought tools {'; '.join(self._receipts)}",
             )
-        stock = _stock(ram, self.stock_field)
-        money = _money(ram)
         return TaskResult(
             status=TaskStatus.SUCCESS,
             reason=(
-                f"bought {self.stock_field} {self._stock_before}->{stock} "
-                f"money {self._money_before}->{money} "
-                f"bags={self._bags_done(ram)}/{self._bags_target()}"
+                "bought " + " then ".join([*self._seed_receipts, self._seed_receipt(ram)])
+                + (f" social={self._social.receipts}" if self._social.receipts else "")
             ),
+        )
+
+    def _seed_receipt(self, ram) -> str:
+        return (
+            f"{self.stock_field} {self._stock_before}->{_stock(ram, self.stock_field)} "
+            f"money {self._money_before}->{_money(ram)} bags={self._bags_done(ram)}/{self._bags_target()}"
         )
 
     def _town_ready(self, ram) -> bool:
@@ -489,7 +490,10 @@ class BuyShelfItemTask(Task):
                 hops = segment_waypoints(name)
         # Path-leak town pixels would slice to the shop door and walk off
         # the east gate. Keep the full east-to-door list until coords settle.
-        if name in self.shop.town_segments and not self._town_ready(world.ram):
+        # Inbound town hops start from the east gate; never slice against unsettled coords.
+        if name in self.shop.town_segments and not self._bought:
+            sliced = hops
+        elif name in self.shop.town_segments and not self._town_ready(world.ram):
             sliced = hops
         else:
             sliced = slice_route_from_position(hops, pos.x, pos.y, tilemap=tilemap)
@@ -501,6 +505,7 @@ class BuyShelfItemTask(Task):
             waypoints=sliced or hops,
             timeout=timeout,
             initial_settle_frames=12,
+            allow_opportunistic_clear=not self._social.pending_gift,
         )
         task.reset(world)
         return task
@@ -575,6 +580,11 @@ class BuyShelfItemTask(Task):
                 self._child_name = "farm_exit_walk"
                 self._last_reason = "farm exit walk"
                 return
+            if is_path_tilemap(tilemap):
+                self._child = None
+                self._child_name = "path_exit_walk"
+                self._last_reason = "path exit walk"
+                return
             self._child = None
             self._child_name = "enter"
             self._phase = "enter"
@@ -583,6 +593,26 @@ class BuyShelfItemTask(Task):
         self._child = self._nav_for(nxt, world)
         self._child_name = nxt
         self._last_reason = f"nav {nxt}"
+
+    def _bounced_to_path(self, name: str, tilemap: int) -> bool:
+        """Re-walk path -> town after an inbound town hop lands back on the path."""
+        if (
+            self._bought
+            or name not in self.shop.town_segments
+            or name not in self.shop.nav_segments
+            or not is_path_tilemap(tilemap)
+            or self._town_bounces >= TOWN_BOUNCE_RETRIES
+        ):
+            return False
+        self._town_bounces += 1
+        self._town_wait = 0
+        self._done_nav.discard(name)
+        self._done_nav.discard("path_to_town_shop")
+        print(
+            f"[BUY_SEEDS] {name} bounced to the path; walking back into town "
+            f"({self._town_bounces}/{TOWN_BOUNCE_RETRIES})"
+        )
+        return True
 
     def _align_to_stand(self, world: WorldState) -> Optional[TaskResult]:
         """Walk along the shelf from the proven potato hop to this seed's stand.
@@ -599,7 +629,9 @@ class BuyShelfItemTask(Task):
         self._align_steps += 1
         if self._align_steps > 240:
             return None  # let the buy loop fail with its own reason
-        if row_off:
+        if row_off and self.face == "up":
+            direction = "down" if y < want_y else "up"
+        elif row_off:
             # The shelf column is solid: hugging the wall (x>=217) blocks the
             # row change, so back off to x<=215 before moving up or down.
             if x > want - 2:
@@ -635,12 +667,23 @@ class BuyShelfItemTask(Task):
             self._plan.pop(0)
         self._bought = True
 
+    def _next_seed(self, ram) -> None:
+        """Book the finished crop and arm the next one; its shelf bag is a short walk along the same row."""
+        self._seed_receipts.append(self._seed_receipt(ram))
+        self.stock_field, self.bags = self._then.pop(0)
+        self.bag_price = SEED_BAG_PRICE.get(self.stock_field, POTATO_BAG_PRICE)
+        self._activate_item(ram)
+        self._child = None
+        self._child_name = "buy"
+        self._phase = "buy"
+
     def _queue_buy(self, world: WorldState, *, lock: int) -> TaskResult:
-        if self._cur_tool and self._buy_attempts == 0:
+        if self._buy_attempts == 0:
+            self._stock_before = self._held(world.ram)
             # The wallet can move between reset and the shelf (the Y2+ peddler
             # takes 20,000G on the farm road), so the price delta is measured here.
             self._money_before = _money(world.ram)
-            if self._money_before < TOOL_SHELVES[self._cur_tool].price:
+            if self._cur_tool and self._money_before < TOOL_SHELVES[self._cur_tool].price:
                 self._receipts.append(f"{self._cur_tool:#04x} skipped, wallet {self._money_before}")
                 self._next_tool(world.ram)
                 return TaskResult(
@@ -648,6 +691,12 @@ class BuyShelfItemTask(Task):
                     action=ActionResult(make_action()),
                     reason="shelf tool unaffordable at the shelf",
                 )
+        if self._buy_attempts >= BUY_ATTEMPT_LIMIT * self._bags_target() and self._seed_receipts:
+            # A follow-on crop that will not close must not cost the crop already bought: walk home with it.
+            print(f"[BUY] {self.stock_field} did not close after {self._buy_attempts} A presses; leaving with {self._seed_receipts}")
+            self._then.clear()
+            self._bought = True
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason="follow-on crop unverified")
         if self._buy_attempts >= BUY_ATTEMPT_LIMIT * self._bags_target():
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -691,6 +740,9 @@ class BuyShelfItemTask(Task):
 
     def step(self, world: WorldState) -> TaskResult:
         self._step_count += 1
+        social = self._social.step(self, world)
+        if social is not None:
+            return social
         if self._step_count > self.timeout:
             return TaskResult(
                 status=TaskStatus.FAILURE,
@@ -714,12 +766,12 @@ class BuyShelfItemTask(Task):
         ):
             # Fresh settle after the shop→town flip (inbound wait already spent).
             self._town_wait = 0
-        done = self._bags_done(world.ram)
+        done = self._bags_done(world.ram) if self._seen_shop and self._buy_attempts else 0
         if done > self._bags_seen:
             self._bags_seen = done
             self._attempts_at_last_bag = self._buy_attempts
         if done >= self._bags_target() or (
-            self._bags_target() <= 1 and self._purchase_ok(world.ram)
+            self._seen_shop and self._buy_attempts > 0 and self._bags_target() <= 1 and self._purchase_ok(world.ram)
         ):
             self._bought = True
         elif (
@@ -765,6 +817,8 @@ class BuyShelfItemTask(Task):
                             f"{_money(world.ram)} but the shed bit never set"
                         ),
                     )
+        if self._then and self._bought and tilemap == self.shop.tilemap and lock == 1 and not self._cur_tool:
+            self._next_seed(world.ram)
         if (
             self._bought
             and self._seen_shop
@@ -775,26 +829,26 @@ class BuyShelfItemTask(Task):
 
         if self._child_name == "farm_exit_walk":
             pos = get_pos_from_ram(world.ram)
-            if tilemap == PATH_TILEMAP and not path_coords_leaked(pos.x, pos.y):
+            if is_path_tilemap(tilemap) and not path_coords_leaked(pos.x, pos.y):
                 self._done_nav.add("farm_to_path")
                 self._arm_nav(world)
             else:
                 self._last_reason = "farm exit walk"
-                return TaskResult(
-                    status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action(left=True, b=True)),
-                    reason=self._last_reason,
-                )
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(left=True, b=True)), reason=self._last_reason)
+
+        if self._child_name == "path_exit_walk":
+            if tilemap == TOWN_TILEMAP and town_coords_settled(world.ram):
+                self._child = None
+                self._arm_nav(world)
+            else:
+                self._last_reason = "path exit walk"
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(left=True, b=True)), reason=self._last_reason)
 
         if self._child_name == "leave_door":
             pos = get_pos_from_ram(world.ram)
             if int(pos.y) >= 268 or _tilemap(world) != TOWN_TILEMAP:
                 self._arm_nav(world)
-            return TaskResult(
-                status=TaskStatus.RUNNING,
-                action=ActionResult(make_action(down=True, b=True)),
-                reason=self._last_reason,
-            )
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(down=True, b=True)), reason=self._last_reason)
 
         if self._child_name == "town_settle":
             self._town_wait += 1
@@ -804,7 +858,9 @@ class BuyShelfItemTask(Task):
             inbound = not self._bought
             if ready or (inbound and self._town_wait >= TOWN_SETTLE_FRAMES):
                 self._arm_nav(world)
-            elif self._bought and self._town_wait > 180:
+            elif self._bought and self._town_wait > TOWN_SETTLE_FRAMES:
+                # The town fade-in alone runs ~190 frames after the shop door; a 180-frame
+                # cap failed the power-on D2 seed buy and stranded D2_FARM_CLEAR in town.
                 return TaskResult(
                     status=TaskStatus.FAILURE,
                     reason="town coords never settled after shop exit",
@@ -868,7 +924,7 @@ class BuyShelfItemTask(Task):
         pos = get_pos_from_ram(world.ram)
         if (
             not self._bought
-            and tilemap == PATH_TILEMAP
+            and is_path_tilemap(tilemap)
             and path_coords_leaked(pos.x, pos.y)
             and self._path_settle <= 180
         ):
@@ -882,7 +938,7 @@ class BuyShelfItemTask(Task):
                 reason="path coords settle",
             )
         if self._path_settle and not (
-            tilemap == PATH_TILEMAP and path_coords_leaked(pos.x, pos.y)
+            is_path_tilemap(tilemap) and path_coords_leaked(pos.x, pos.y)
         ):
             self._path_settle = 0
             self._done_nav.add("farm_to_path")
@@ -905,11 +961,7 @@ class BuyShelfItemTask(Task):
                 self._done_nav.add(finished)
                 self._child = None
                 self._arm_nav(world)
-                return TaskResult(
-                    status=TaskStatus.RUNNING,
-                    action=ActionResult(make_action()),
-                    reason=f"{finished} clipped",
-                )
+                return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason=f"{finished} clipped")
 
         if self._child is not None:
             result = self._child.step(world)
@@ -918,10 +970,10 @@ class BuyShelfItemTask(Task):
             name = self._child_name
             self._child = None
             if result.status == TaskStatus.FAILURE:
-                return TaskResult(
-                    status=TaskStatus.FAILURE,
-                    reason=f"{name} failed: {result.reason}",
-                )
+                if self._bounced_to_path(name, tilemap):
+                    self._arm_nav(world)
+                    return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason=f"{name} bounced to the path; walking back in")
+                return TaskResult(status=TaskStatus.FAILURE, reason=f"{name} failed: {result.reason}")
             if (
                 name in self.shop.nav_segments
                 or name == self.counter_segment
@@ -931,66 +983,29 @@ class BuyShelfItemTask(Task):
             if name == self.counter_segment:
                 self._phase = "buy"
             self._arm_nav(world)
-            return TaskResult(
-                status=TaskStatus.RUNNING,
-                action=ActionResult(make_action()),
-                reason=self._last_reason,
-            )
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason=self._last_reason)
 
         if self._bought and not is_farm_tilemap(tilemap):
             self._arm_nav(world)
-            return TaskResult(
-                status=TaskStatus.RUNNING,
-                action=ActionResult(make_action()),
-                reason=self._last_reason,
-            )
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()), reason=self._last_reason)
 
         if not self._bought and tilemap == TOWN_TILEMAP:
             self._phase = "enter"
-            return TaskResult(
-                status=TaskStatus.RUNNING,
-                action=ActionResult(make_action(up=True)),
-                reason="shop_door walk up",
-            )
+            return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action(up=True)), reason="shop_door walk up")
 
         return TaskResult(
             status=TaskStatus.FAILURE,
-            reason=(
-                f"shop unfinished tm=0x{tilemap:02X} seen={self._seen_shop} "
-                f"bought={self._bought}"
-            ),
+            reason=f"shop unfinished tm=0x{tilemap:02X} seen={self._seen_shop} bought={self._bought}",
         )
-
 
 # Seed-only callers predate the tool shelves.
 BuySeedsTask = BuyShelfItemTask
 
-
 __all__ = [
-    "BuySeedsTask",
-    "BuyShelfItemTask",
-    "FLOWER_SHOP",
-    "ShopSpec",
-    "TOOL_SHELVES",
-    "TOOL_SHOP",
-    "TOOL_SHOP_TILEMAP",
-    "ToolShelf",
-    "plan_tool_buys",
-    "tool_owned",
-    "PATH_TILEMAP",
-    "POTATO_BAG_PRICE",
-    "SEED_CLERK_PX",
-    "SEED_BAG_PRICE",
-    "SEED_STAND_X",
-    "seed_stand_px",
-    "SHOP_NAV_SEGMENTS",
-    "SHOP_RETURN_SEGMENTS",
-    "SHOP_TILEMAP",
-    "TOWN_TILEMAP",
-    "at_seed_clerk",
-    "first_shop_nav_segment",
-    "first_shop_return_segment",
-    "purchase_closed",
-    "shop_door_px",
-    "town_coords_settled",
+    "BuySeedsTask", "BuyShelfItemTask", "ANIMAL_SHOP", "FLOWER_SHOP", "ShopSpec", "TOOL_SHELVES",
+    "TOOL_SHOP", "TOOL_SHOP_TILEMAP", "ToolShelf", "plan_tool_buys", "tool_owned",
+    "PATH_TILEMAP", "POTATO_BAG_PRICE", "SEED_CLERK_PX", "SEED_BAG_PRICE",
+    "SEED_STAND_X", "seed_stand_px", "SHOP_NAV_SEGMENTS", "SHOP_RETURN_SEGMENTS",
+    "SHOP_TILEMAP", "TOWN_TILEMAP", "at_seed_clerk", "first_shop_nav_segment",
+    "first_shop_return_segment", "purchase_closed", "shop_door_px", "town_coords_settled",
 ]

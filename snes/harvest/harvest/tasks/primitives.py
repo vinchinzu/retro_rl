@@ -287,13 +287,17 @@ class TaskSequence(Task):
     name: str = "task_sequence"
     tasks: Sequence[Task] = field(default_factory=tuple)
     idle_between_tasks: bool = True
+    # Report the last child's own success reason instead of "sequence complete" (the day plan reads ``stamina_low``).
+    keep_last_reason: bool = False
 
     _index: int = field(default=0, init=False)
     _active_started: bool = field(default=False, init=False)
+    _last_reason: str = field(default="", init=False)
 
     def reset(self, world: WorldState) -> None:
         self._index = 0
         self._active_started = False
+        self._last_reason = ""
 
     def can_start(self, world: WorldState) -> bool:
         if not self.tasks:
@@ -357,12 +361,14 @@ class TaskSequence(Task):
                     meta=result.meta,
                 )
 
+            self._last_reason = result.reason or ""
             self._index += 1
             self._active_started = False
             if self.idle_between_tasks and self._index < len(self.tasks):
                 return idle_result(reason=f"{getattr(task, 'name', self._index - 1)} complete")
 
-        return TaskResult(status=TaskStatus.SUCCESS, reason="sequence complete")
+        return TaskResult(
+            status=TaskStatus.SUCCESS, reason=(self._last_reason if self.keep_last_reason and self._last_reason else "sequence complete"))
 
 
 @dataclass

@@ -1,6 +1,6 @@
 # Human tape → green room skills
 
-**Epic:** [rr-7thf](../../../.beads/issues.jsonl) — late spine (WS→credits,
+**Epic:** rr-7thf — late spine (WS→credits,
 esp. G4/MB) converted into per-room **pure dual-green** skills.
 
 **Board:** [`tasks/LATE_SPINE_HOP_BOARD.json`](../../tasks/LATE_SPINE_HOP_BOARD.json)  

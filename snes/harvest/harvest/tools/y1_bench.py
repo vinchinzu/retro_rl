@@ -32,6 +32,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from harvest.core.shipping_credit import SHIPPED_CROP_FIELDS
 from harvest.planner.livestock_econ import CHICKEN_PRICE, CHICKEN_SALE_PRICE, COW_PRICE, SHIP_PRICE_G
 from harvest.tools.pr999_report import SEASONS, calendar_index
 
@@ -43,6 +44,7 @@ _ANIMAL_BUY = re.compile(r"^(cow|chicken) (\d+)->(\d+) money (\d+)->(\d+)")
 _SEED_BUY = re.compile(r"^bought (\w+?)_seeds (\d+)->(\d+) money (\d+)->(\d+)")
 _COW_CHORES = re.compile(r"milk=(\d+) ship=(\d+) fed=(\d+)")
 _COOP_CHORES = re.compile(r"fed=(\d+) egg=(\w+) ship=(\w+)")
+_HEN_SALE = re.compile(r"chickens (\d+)->(\d+) ")
 _PLANTED = re.compile(r"planted=(\d+)")
 _END_DATE = re.compile(r"^Y(\d+)S(\d+)D(\d+)$")
 
@@ -120,6 +122,19 @@ def _purchases(row: Mapping[str, Any]) -> list[dict[str, Any]]:
     return found
 
 
+def _hens_sold(row: Mapping[str, Any]) -> int:
+    """Hens the day's sale events took.
+
+    The event succeeds on a drop it saw, or on a request flag the ROM already
+    cleared on the walk home, which reads ``n->n``: one hen either way.
+    """
+    sold = 0
+    for reason in _phase_reasons(row, "SELL_CHICKEN"):
+        match = _HEN_SALE.search(reason)
+        sold += max(1, int(match.group(1)) - int(match.group(2))) if match else 1
+    return sold
+
+
 def _planted(row: Mapping[str, Any]) -> int:
     total = _int(row.get("establish_planted")) or 0
     for pr in row.get("phase_results") or []:
@@ -141,19 +156,22 @@ def _forage_gold(row: Mapping[str, Any]) -> int:
     return total
 
 
-def _crop_gold(prev: Mapping[str, Any] | None, now: Mapping[str, Any] | None) -> int | None:
-    """Gold of the crops dropped between two morning reads (lifetime counters)."""
-
+def _crop_counts(prev: Mapping[str, Any] | None, now: Mapping[str, Any] | None) -> dict[str, int] | None:
     if not prev or not now:
         return None
     before, after = prev.get("shipped"), now.get("shipped")
     if not isinstance(before, Mapping) or not isinstance(after, Mapping):
         return None
-    return sum(
-        max(0, int(after.get(kind, 0)) - int(before.get(kind, 0))) * SHIP_PRICE_G[kind]
-        for kind in before
-        if kind in SHIP_PRICE_G
-    )
+    if any(_int(snap.get(kind)) is None for snap in (before, after) for kind in SHIPPED_CROP_FIELDS):
+        return None
+    counts = {kind: int(after[kind]) - int(before[kind]) for kind in SHIPPED_CROP_FIELDS}
+    return counts if all(value >= 0 for value in counts.values()) else None
+
+
+def _crop_gold(prev: Mapping[str, Any] | None, now: Mapping[str, Any] | None) -> int | None:
+    """Gold of the crops dropped between two morning reads (lifetime counters)."""
+    counts = _crop_counts(prev, now)
+    return None if counts is None else sum(n * SHIP_PRICE_G[kind] for kind, n in counts.items())
 
 
 def day_rows(report: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -162,7 +180,7 @@ def day_rows(report: Mapping[str, Any]) -> list[dict[str, Any]]:
     start = report.get("start") if isinstance(report.get("start"), Mapping) else {}
     year = _int(start.get("year")) or 0
     previous_season: int | None = None
-    previous_eco: Mapping[str, Any] | None = None
+    previous_eco = _snapshot(report, "start_economy")
     flock_log = _int(start.get("num_chickens"))
     rows: list[dict[str, Any]] = []
     for raw in report.get("day_journal") or []:
@@ -201,6 +219,7 @@ def day_rows(report: Mapping[str, Any]) -> list[dict[str, Any]]:
             "planted": _planted(raw),
             "bin_gold": bin_gold,
             "crop_gold": crop_gold,
+            "crop_shipped": _crop_counts(previous_eco, eco),
             "forage_gold": forage_gold,
             "animal_gold": (bin_gold - crop_gold - forage_gold
                             if None not in (bin_gold, crop_gold) and animal_day else None),
@@ -208,6 +227,7 @@ def day_rows(report: Mapping[str, Any]) -> list[dict[str, Any]]:
             "coop_day": bool(coop_chores),
             "milk_shipped": sum(int(m.group(2)) for m in cow_match),
             "egg_ship_day": any(m.group(3) == "True" for m in coop_match),
+            "hens_sold": _hens_sold(raw),
             "cows": _int(cows),
             "chickens": _int(end_of_day.get("chickens")) if end_of_day else None,
             "hens": _int(hens),
@@ -323,6 +343,9 @@ def headline(report: Mapping[str, Any], rows: list[dict[str, Any]]) -> dict[str,
 
 def seasons(report: Mapping[str, Any], rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     start = report.get("start") if isinstance(report.get("start"), Mapping) else {}
+    ledger = _snapshot(report, "sales_ledger") or {}
+    observed = {(item["year"], item["season"]): item["bin_gold"]
+                for item in ledger.get("seasons", []) if ledger.get("source") == "per_frame_ram"}
     prior = _int(start.get("money"))
     out: list[dict[str, Any]] = []
     keys = list(dict.fromkeys((row["year"], row["season"]) for row in rows))
@@ -340,7 +363,7 @@ def seasons(report: Mapping[str, Any], rows: list[dict[str, Any]]) -> list[dict[
             "planted": None if planted == 0 and harvested > 0 else planted,
             "harvested": harvested,
             "shipped": sum(row["shipped"] for row in chunk),
-            "bin_gold": _sum([row["bin_gold"] for row in chunk]),
+            "bin_gold": observed.get((year, season), _sum([row["bin_gold"] for row in chunk])),
             "animal_gold": _sum([row["animal_gold"] for row in chunk]),
             "cows": last["morning_cows"],
             "chickens": _first(last["morning_chickens"], last["flock_log"]),
@@ -395,6 +418,8 @@ def animals(report: Mapping[str, Any], rows: list[dict[str, Any]]) -> dict[str, 
         "economy_fields": any(row["brush"] is not None for row in rows),
         "milk_shipped": milk,
         "egg_ship_days": sum(1 for row in rows if row["egg_ship_day"]),
+        "hens_sold": sum(row["hens_sold"] for row in rows),
+        "first_hen_sale": _first_label(rows, lambda row: row["hens_sold"] > 0),
         "animal_gold_est": _sum(gold_rows),
         "animal_gold_days": sum(1 for value in gold_rows if value is not None),
         "animal_days": len(animal_rows),
@@ -478,8 +503,185 @@ def spending(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"seed_bags": dict(bags), "seed_gold": dict(gold), "seed_gold_total": sum(gold.values())}
 
 
+def completion(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Credits with a score and Perfect are separate checks."""
+    ending = _snapshot(report, "ending") or {}
+    final = _snapshot(ending, "final") or {}
+    audit = _snapshot(report, "clean_run") or {}
+    power_on = _snapshot(report, "power_on") or {}
+    credits = bool(report.get("success") and report.get("terminal") and ending.get("finished")
+                   and final.get("terminal") and final.get("scene_index") == 0x25)
+    score = _int(final.get("ranch_mastery_0x25"))
+    clean = (power_on.get("completed") is True
+             and all(_int(audit.get(key)) == 0 for key in
+                     ("initial_state_loads", "mid_run_state_loads", "ram_writes"))
+             and audit.get("assists") == {} and audit.get("intervention_class") == "Clean")
+    return {"credits_complete": credits, "score": score, "clean_power_on": clean,
+            "power_on_credits_with_score": credits and clean and score is not None,
+            "perfect_999": credits and clean and score == 999}
+
+
+def sales(report: Mapping[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Seasonal gross shipping, receipt sales, and wallet reconciliation.
+
+    Per-frame RAM beats sparse end-of-day snapshots. Legacy reports retain
+    observed subtotals and coverage; they cannot claim complete sales totals.
+    Milk/egg gold remains a residual, never a measured split of the two.
+    """
+    ledger = _snapshot(report, "sales_ledger") or {}
+    measured = ledger.get("source") == "per_frame_ram" and bool(ledger.get("observations"))
+    live = {(item["year"], item["season"]): item for item in ledger.get("seasons", [])}
+    keys = sorted({*((row["year"], row["season"]) for row in rows), *live})
+    first, last = _snapshot(report, "start") or {}, _snapshot(report, "end") or {}
+    bounds_known = all(_int(snap.get(key)) is not None for snap in (first, last) for key in ("year", "season"))
+    excluded = []
+    if bounds_known:
+        lo, hi = (first["year"], first["season"]), (last["year"], last["season"])
+        excluded = [live[key] for key in keys if key in live and not lo <= key <= hi]
+        keys = [key for key in keys if lo <= key <= hi]
+    prior = _int((_snapshot(report, "start") or {}).get("money"))
+    closing_bin = _int((_snapshot(report, "end_economy") or {}).get("bin_gold"))
+    out = []
+    for index, (year, season) in enumerate(keys):
+        chunk = [row for row in rows if (row["year"], row["season"]) == (year, season)]
+        observed = live.get((year, season)) if measured else None
+        counts = (dict(observed["crop_shipped"]) if observed else {
+            kind: _sum([row["crop_shipped"][kind] if row["crop_shipped"] else None for row in chunk])
+            for kind in SHIPPED_CROP_FIELDS})
+        crop_gold = {kind: None if n is None else n * SHIP_PRICE_G[kind] for kind, n in counts.items()}
+        crops = _sum(list(crop_gold.values()))
+        bin_gold = observed["bin_gold"] if observed else _sum([row["bin_gold"] for row in chunk])
+        forage = sum(row["forage_gold"] for row in chunk)
+        animal = _sum([row["animal_gold"] for row in chunk])
+        if not any(row["animal_day"] for row in chunk):
+            animal = 0
+        hens = sum(row["hens_sold"] for row in chunk)
+        gross = None if bin_gold is None else bin_gold + hens * CHICKEN_SALE_PRICE
+        unpaid = closing_bin if index == len(keys) - 1 else 0
+        paid = None if None in (bin_gold, closing_bin) else max(0, bin_gold - unpaid) + hens * CHICKEN_SALE_PRICE
+        bought = sum(buy["spent"] for row in chunk for buy in row["purchases"])
+        wallet = chunk[-1]["money"] if chunk else None
+        if index == len(keys) - 1:
+            wallet = _first((_snapshot(report, "end") or {}).get("money"), wallet)
+        delta = None if None in (wallet, prior) else wallet - prior
+        out.append({
+            "year": year, "season": season, "label": f"Y{year + 1} {SEASONS[season]}",
+            "source": "frame ledger" if observed else "journal subtotal",
+            "bin_days": sum(row["bin_gold"] is not None for row in chunk), "journal_days": len(chunk),
+            "crop_shipped": counts, "crop_gold": crop_gold, "crop_gold_total": crops,
+            "bin_gold": bin_gold, "forage_gold_receipts": forage,
+            "milk_egg_gold_est": animal,
+            "unattributed_bin_gold": (None if None in (bin_gold, crops, animal)
+                                      else bin_gold - crops - forage - animal),
+            "hens_sold_receipts": hens, "hen_sales_gold_receipts": hens * CHICKEN_SALE_PRICE,
+            "gross_sales_gold": gross, "purchases_gold_receipts": bought,
+            "paid_sales_gold": paid,
+            "wallet_start": prior, "wallet_end": wallet, "wallet_delta": delta,
+            "other_net_cash": None if None in (delta, gross) else delta - gross + bought,
+        })
+        prior = wallet
+    endpoints_match = all(
+        all((_snapshot(report, endpoint) or {}).get(key) == (_snapshot(ledger, endpoint) or {}).get(key)
+            for key in ("year", "season", "day"))
+        for endpoint in ("start", "end")
+    )
+    bin_total = _sum([item["bin_gold"] for item in out])
+    hen_total = sum(item["hen_sales_gold_receipts"] for item in out)
+    paid_bin = None if None in (bin_total, closing_bin) else max(0, bin_total - closing_bin)
+    outside_sales = any(item["bin_gold"] or any(item["crop_shipped"].values()) for item in excluded)
+    return {"seasons": out, "counter_decreases": ledger.get("counter_decreases", []),
+            "excluded_calendar_rows": excluded, "closing_unpaid_bin_gold": closing_bin,
+            "paid_shipping_gold": paid_bin,
+            "paid_sales_gold": None if paid_bin is None else paid_bin + hen_total,
+            "complete_shipping_observation": bool(measured and endpoints_match and set(keys) <= live.keys()
+                                                  and not outside_sales and not ledger.get("counter_decreases")),
+            "bin_gold": bin_total,
+            "hen_sales_gold_receipts": hen_total,
+            "gross_sales_gold": _sum([item["gross_sales_gold"] for item in out])}
+
+
+def farm_work(report: Mapping[str, Any]) -> dict[str, Any]:
+    """Frame budgets and explicit crop gates; missing receipts stay unknown."""
+    phases: dict[str, dict[str, Any]] = {}
+    ledger = report.get("work_metrics", {})
+    seen: set[tuple] = set()
+    duplicates: list[dict] = []
+    for day in report.get("day_journal", ()):
+        for row in day.get("phase_results", ()):
+            name = str(row.get("phase", ""))
+            work = row.get("work")
+            if not work:
+                continue
+            start, end = row.get("start_frame"), row.get("end_frame")
+            ident = (name, start, end)
+            if isinstance(start, int) and isinstance(end, int) and end > start:
+                if ident in seen:
+                    duplicates.append({"phase": name, "start_frame": start, "end_frame": end, "plan_day": day.get("plan_day")})
+                    continue
+                seen.add(ident)
+            stats = phases.setdefault(name, {"visits": 0, "frames": 0, "counts": {},
+                                              "wet_gate_pass": 0, "wet_gate_fail": 0,
+                                              "wet_gate_unknown": 0, "interrupted": 0,
+                                              "plant_gate_pass": 0, "plant_gate_fail": 0,
+                                              "plant_gate_unknown": 0})
+            stats["visits"] += 1
+            stats["frames"] += int(row.get("frames", 0))
+            stats["interrupted"] += row.get("status") == "interrupted"
+            for key, value in work.get("counts", {}).items():
+                stats["counts"][key] = stats["counts"].get(key, 0) + int(value)
+            if name == "CROP_ESTABLISH":
+                before, after = work.get("before", {}).get("crops"), work.get("after", {}).get("crops")
+                planted = None if before is None or after is None else max(0, after["crop"] - before["crop"])
+                if planted is not None:
+                    stats["counts"]["planted_tiles"] = stats["counts"].get("planted_tiles", 0) + planted
+                gate = "unknown" if planted is None or row.get("status") == "no_work" else "pass" if planted > 0 and row.get("status") == "success" else "fail"
+                stats[f"plant_gate_{gate}"] += 1
+            wet = work.get("after", {}).get("gates", {}).get("all_growing_crops_wet")
+            stats["wet_gate_pass" if wet is True else "wet_gate_fail" if wet is False else "wet_gate_unknown"] += 1
+    sales = report.get("sales_ledger")
+    confirmed = (sum(sum(row.get("crop_shipped", {}).values()) for row in sales.get("seasons", ()))
+                 if sales and not sales.get("counter_decreases") else None)
+    harvest = phases.get("HARVEST_ROUTE")
+    if harvest is not None:
+        harvest["counts"]["confirmed_shipped_count"] = confirmed
+        reported = harvest["counts"].get("shipped_count", 0)
+        harvest["shipment_delta"] = reported - confirmed if confirmed is not None else None
+    for name, stats in phases.items():
+        stats["receipt_frames"] = stats["frames"]
+        stats["frames"] = ledger.get("phase_frames", {}).get(name, stats["frames"])
+        key = ("confirmed_shipped_count" if name == "HARVEST_ROUTE" else
+               next((key for key in ("watered_count", "planted_tiles") if stats["counts"].get(key)), None))
+        units = stats["counts"].get(key, 0)
+        stats["unit"] = {"confirmed_shipped_count": "confirmed_shipped_crop", "watered_count": "watered_tile", "planted_tiles": "planted_tile"}.get(key)
+        stats["frames_per_unit"] = round(stats["frames"] / units, 1) if units else None
+    wallet: dict[str, int] = {}
+    for row in ledger.get("segments", ()):
+        before, after = row.get("before", {}).get("money"), row.get("after", {}).get("money")
+        if before is not None and after is not None and before != after:
+            wallet[row["phase"]] = wallet.get(row["phase"], 0) + after - before
+    opening, closing = report.get("start", {}).get("money"), report.get("end", {}).get("money")
+    balanced = sum(wallet.values()) == closing - opening if ledger.get("segments") and opening is not None and closing is not None else None
+    return {"phases": phases, "attributed_frames": ledger.get("frames"),
+            "phase_frames": ledger.get("phase_frames", {}), "duplicate_receipts": duplicates,
+            "wallet_delta_by_phase": wallet, "wallet_balanced": balanced}
+
+
+def relationships(report: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Measured affection and the ROM's wrapped score; absent old fields stay unknown."""
+    start, end = report.get("start", {}), report.get("end", {})
+    result = {}
+    for girl in ("maria", "ann", "nina", "ellen", "eve"):
+        before, after = _int(start.get(f"{girl}_hearts")), _int(end.get(f"{girl}_hearts"))
+        result[girl] = {"before": before, "after": after,
+                        "delta": None if before is None or after is None else after - before,
+                        "points": None if after is None else (after & 0x1FF) >> 4,
+                        "in_window": None if after is None else 496 <= after <= 511}
+    return result
+
+
 def scorecard(report: Mapping[str, Any], name: str = "") -> dict[str, Any]:
     rows = day_rows(report)
+    seasonal = seasons(report, rows)
     return {
         "name": name,
         "integrity": integrity(report),
@@ -487,16 +689,20 @@ def scorecard(report: Mapping[str, Any], name: str = "") -> dict[str, Any]:
         "headline": headline(report, rows),
         "journal_days": len(rows),
         "eod_days": sum(1 for row in rows if row["bin_gold"] is not None),
-        "seasons": seasons(report, rows),
+        "seasons": seasonal,
         "animals": animals(report, rows),
         "gates": gates(rows),
         "care": care(rows),
         "reliability": reliability(report, rows),
         "spending": spending(rows),
+        "completion": completion(report),
+        "sales": sales(report, rows),
+        "farm_work": farm_work(report),
+        "relationships": relationships(report),
         "totals": {
             "harvested": sum(row["harvested"] for row in rows),
             "shipped": sum(row["shipped"] for row in rows),
-            "bin_gold": _sum([row["bin_gold"] for row in rows]),
+            "bin_gold": _sum([season["bin_gold"] for season in seasonal]),
         },
     }
 
@@ -512,6 +718,43 @@ def _when(item: Mapping[str, Any] | None, *, absent: str = NA) -> str:
 
 def _buys(items: list[dict[str, Any]]) -> str:
     return ", ".join(f"{b['label']} {b['before']}->{b['after']}" for b in items[:6]) or "none"
+
+
+def render_sales(card: Mapping[str, Any]) -> str:
+    done, sold = card["completion"], card["sales"]
+    out = [f"# Seasonal sales: {card['name']}", "",
+           f"Clean power-on credits with score: {done['power_on_credits_with_score']}. "
+           f"Score: {_num(done['score'])}. Perfect 999: {done['perfect_999']}.", "",
+           "All gold is G. Crop cells are quantity / gold. Gross is bin shipping plus "
+           "receipted hen sales, before spending. Milk + eggs is a residual estimate on measured chore days; "
+           "forage and hen sales come from phase receipts.", "",
+           "| Season | Turnip | Potato | Tomato | Corn | Crop G | Forage G | Milk + egg G (est.) | Unattributed bin G | Bin G | Hen sales G | Gross G | Paid G |",
+           "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+    for season in sold["seasons"]:
+        crops = [f"{_num(season['crop_shipped'][kind])} / {_num(season['crop_gold'][kind])}"
+                 for kind in ("turnip", "potato", "tomato", "corn")]
+        values = [season[key] for key in ("crop_gold_total", "forage_gold_receipts", "milk_egg_gold_est", "unattributed_bin_gold",
+                                          "bin_gold", "hen_sales_gold_receipts", "gross_sales_gold", "paid_sales_gold")]
+        out.append("| " + " | ".join([season["label"], *crops, *map(_num, values)]) + " |")
+    out += ["", f"Total bin shipping: {_num(sold['bin_gold'])}G; receipted hen sales: "
+            f"{_num(sold['hen_sales_gold_receipts'])}G; recorded gross sales: {_num(sold['gross_sales_gold'])}G.", "",
+            f"Closing unpaid bin: {_num(sold['closing_unpaid_bin_gold'])}G. "
+            f"Paid shipping from observed deposits: {_num(sold['paid_shipping_gold'])}G; "
+            f"paid sales including receipted hens: {_num(sold['paid_sales_gold'])}G.", "",
+            "| Season | Source | Bin snapshots / journal rows | Wallet start | Wallet end | Wallet change | Purchase receipts G | Other net cash G |",
+            "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |"]
+    for season in sold["seasons"]:
+        out.append("| " + " | ".join([
+            season["label"], season["source"], f"{season['bin_days']}/{season['journal_days']}",
+            _num(season["wallet_start"]), _num(season["wallet_end"]), _signed(season["wallet_delta"]),
+            _num(season["purchases_gold_receipts"]), _signed(season["other_net_cash"]),
+        ]) + " |")
+    out += ["", "Other net cash = wallet change - recorded gross sales + purchase receipts. "
+            "It includes unitemized spending and income, so it is not a profit figure.", ""]
+    if not sold["complete_shipping_observation"]:
+        out += ["**Incomplete shipping observation:** missing snapshots, unjournaled days, "
+                "counter decreases or sales outside the run's calendar prevent a complete total.", ""]
+    return "\n".join(out)
 
 
 def render(card: Mapping[str, Any]) -> str:
@@ -544,6 +787,8 @@ def render(card: Mapping[str, Any]) -> str:
         f"   pasture grass {_num(hl['planted_grass'])}, hay {_num(hl['hay'])}"
     )
     out.append(f"  at resale ({CHICKEN_SALE_PRICE} per hen) {_num(hl['resale_net_worth'])}")
+    out.append("  affection / ROM points: " + ", ".join(
+        f"{girl} {_num(row['after'])}/{_num(row['points'])}" for girl, row in card.get("relationships", {}).items()))
     out.append("")
     head = f"  {'season':<10}{'days':>5}{'wallet':>9}{'+gold':>9}{'plant':>6}{'harv':>6}{'ship':>6}{'binG':>8}{'animG':>7}{'cow':>4}{'chk':>4}{'bad':>4}"
     out.append(head)
@@ -556,7 +801,9 @@ def render(card: Mapping[str, Any]) -> str:
         )
     out.append(
         f"  total: harvested {card['totals']['harvested']} shipped {card['totals']['shipped']} "
-        f"bin gold {_num(card['totals']['bin_gold'])} ({card['eod_days']}/{card['journal_days']} days read pre-sleep)"
+        f"bin gold {_num(card['totals']['bin_gold'])} "
+        f"({'frame ledger; ' if card['sales']['complete_shipping_observation'] else ''}"
+        f"{card['eod_days']}/{card['journal_days']} days read pre-sleep; --sales for breakdown)"
     )
     if any(s["chickens_from_log"] for s in card["seasons"]):
         out.append("  ~ flock from hen purchase receipts (no economy fields): excludes hatches and sales")
@@ -573,7 +820,10 @@ def render(card: Mapping[str, Any]) -> str:
             f"  brush owned {NA}   milker owned {NA}   (no economy fields; first used: brush "
             f"{_when(an['brush_first_used'], absent='never')}, milker {_when(an['milker_first_used'], absent='never')})"
         )
-    out.append(f"  cow buys {_buys(an['cow_buys'])}   hen buys {_buys(an['hen_buys'])}")
+    out.append(
+        f"  cow buys {_buys(an['cow_buys'])}   hen buys {_buys(an['hen_buys'])}   "
+        f"hens sold {an['hens_sold']}" + (f", first {_when(an['first_hen_sale'])}" if an["hens_sold"] else "")
+    )
     gold = _num(an["animal_gold_est"])
     note = f"{an['animal_gold_days']}/{an['animal_days']} chore days measured" if an["animal_gold_est"] is not None else "needs eod fields"
     out.append(
@@ -614,6 +864,21 @@ def render(card: Mapping[str, Any]) -> str:
     out.append(f"  phase skips {rl['phase_skips_total']}: {skipped}")
     seeds = ", ".join(f"{k} {n} bags/{sp['seed_gold'][k]:,}G" for k, n in sp["seed_bags"].items()) or "none seen"
     out.append(f"  seeds bought: {seeds}")
+    work = card.get("farm_work", {})
+    out.append(f"WORK attributed frames {_num(work.get('attributed_frames'))}")
+    out.append(f"  wallet trace balances: {work.get('wallet_balanced')}; changes {work.get('wallet_delta_by_phase', {})}")
+    if work.get("duplicate_receipts"):
+        out.append(f"  duplicate receipts excluded: {len(work['duplicate_receipts'])}")
+    for name, row in work.get("phases", {}).items():
+        if name in {"CROP_WATER", "CROP_ESTABLISH", "HARVEST_ROUTE"}:
+            out.append(f"  {name}: {row['frames']}f, {row['counts']}, "
+                       f"{_num(row['frames_per_unit'])}f/{row['unit'] or 'unit'}")
+            gate = "wet" if name == "CROP_WATER" else "plant" if name == "CROP_ESTABLISH" else None
+            if gate:
+                out.append(f"    {gate} gate pass/fail/unknown "
+                           f"{row[gate + '_gate_pass']}/{row[gate + '_gate_fail']}/{row[gate + '_gate_unknown']}")
+            elif name == "HARVEST_ROUTE":
+                out.append(f"    reported minus native shipments {_num(row.get('shipment_delta'))}")
     return "\n".join(out) + "\n"
 
 
@@ -624,7 +889,7 @@ def flat(card: Mapping[str, Any]) -> dict[str, Any]:
     hl, co, an, ca, rl = (card[key] for key in ("headline", "cost", "animals", "care", "reliability"))
     metrics: dict[str, Any] = {
         "net worth": hl["net_worth"], "net worth (resale)": hl["resale_net_worth"], "wallet": hl["wallet"],
-        "cows": hl["cows"], "chickens": hl["chickens"],
+        "cows": hl["cows"], "chickens": hl["chickens"], "hens sold": an["hens_sold"],
         "frames/day": co["frames_per_day"], "wall s": co["wall_seconds"],
         "harvested": card["totals"]["harvested"], "shipped": card["totals"]["shipped"],
         "bin gold": card["totals"]["bin_gold"], "milk+egg gold est": an["animal_gold_est"],
@@ -635,6 +900,13 @@ def flat(card: Mapping[str, Any]) -> dict[str, Any]:
     }
     for s in card["seasons"]:
         metrics[f"wallet {s['label']}"] = s["wallet"]
+    for girl, row in card.get("relationships", {}).items():
+        metrics[f"{girl} affection"] = row["after"]
+    for name, row in card.get("farm_work", {}).get("phases", {}).items():
+        if name in {"CROP_WATER", "CROP_ESTABLISH", "HARVEST_ROUTE"}:
+            metrics[f"frames {name}"] = row["frames"]
+            metrics[f"frames/unit {name}"] = row["frames_per_unit"]
+            metrics[f"wet gate fails {name}"] = row["wet_gate_fail"]
     return metrics
 
 
@@ -682,13 +954,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Year-1 benchmark scorecard from run_to_day2 report(s).")
     parser.add_argument("reports", nargs="+", type=Path, help="report.json [other.json]")
     parser.add_argument("--out", type=Path, default=None, help="write .json (data) or .md/.txt (text)")
+    parser.add_argument("--sales", action="store_true", help="seasonal sales breakdown and completion checks")
     args = parser.parse_args(argv)
     if len(args.reports) > 2:
         parser.error("give one report or two")
     cards = [scorecard(load_report(path), path.stem) for path in args.reports]
-    text = "".join(render(card) + "\n" for card in cards)
+    text = "".join((render_sales(card) if args.sales else render(card)) + "\n" for card in cards)
     if len(cards) == 2:
-        text += render_compare(*cards)
+        comparison = render_compare(*cards)
+        text += "```text\n" + comparison + "```\n" if args.sales else comparison
     sys.stdout.write(text)
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -696,7 +970,7 @@ def main(argv: list[str] | None = None) -> int:
             body: Any = cards[0] if len(cards) == 1 else {"a": cards[0], "b": cards[1], "delta": deltas(*cards)}
             args.out.write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
         else:
-            args.out.write_text("```text\n" + text.rstrip("\n") + "\n```\n", encoding="utf-8")
+            args.out.write_text(text if args.sales else "```text\n" + text.rstrip("\n") + "\n```\n", encoding="utf-8")
     return 0
 
 

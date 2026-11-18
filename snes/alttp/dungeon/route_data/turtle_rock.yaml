@@ -1,0 +1,632 @@
+schema_version: 1
+slug: turtle_rock
+name: Turtle Rock (Entrance)
+z3_id: 192
+room_type: Dungeon
+source_file: regions/dungeons/trock/main.json
+data_root: refs
+pin: 1eb7a785bda0d671136316c24f223c7ce12257e6
+revision: 1eb7a785bda0d671136316c24f223c7ce12257e6
+note: Also requires access to East Death Mountain
+regions:
+- name: Turtle Rock (Entrance)
+  nodes:
+  - Turtle Rock Entrance Gap
+  - Turtle Rock Exit (Front)
+- name: Turtle Rock (First Section)
+  nodes:
+  - Turtle Rock Pokey Room
+  - Turtle Rock Entrance Gap Reverse
+  - Turtle Rock - Compass Chest
+  - Turtle Rock - Roller Room - Left
+  - Turtle Rock - Roller Room - Right
+- name: Turtle Rock (Chain Chomp Room)
+  nodes:
+  - Turtle Rock (Chain Chomp Room) (North)
+  - Turtle Rock (Chain Chomp Room) (South)
+  - Turtle Rock - Chain Chomps
+- name: Turtle Rock (Second Section)
+  nodes:
+  - Turtle Rock Ledge Exit (West)
+  - Turtle Rock Chain Chomp Staircase
+  - Turtle Rock Big Key Door
+  - Turtle Rock - Big Key Chest
+- name: Turtle Rock (Big Chest)
+  nodes:
+  - Turtle Rock (Big Chest) (North)
+  - Turtle Rock Ledge Exit (East)
+  - Turtle Rock - Big Chest
+- name: Turtle Rock (Crystaroller Room)
+  nodes:
+  - Turtle Rock Dark Room Staircase
+  - Turtle Rock Big Key Door Reverse
+  - Turtle Rock - Crystaroller Room
+- name: Turtle Rock (Dark Room)
+  nodes:
+  - Turtle Rock (Dark Room) (North)
+  - Turtle Rock (Dark Room) (South)
+- name: Turtle Rock (Eye Bridge)
+  nodes:
+  - Turtle Rock Dark Room (South)
+  - Turtle Rock (Trinexx)
+  - Turtle Rock Isolated Ledge Exit
+  - Turtle Rock - Eye Bridge - Bottom Left
+  - Turtle Rock - Eye Bridge - Bottom Right
+  - Turtle Rock - Eye Bridge - Top Left
+  - Turtle Rock - Eye Bridge - Top Right
+- name: Turtle Rock (Trinexx)
+  nodes:
+  - Turtle Rock - Trinexx
+  - Turtle Rock - Prize
+locations:
+- id: 5
+  name: Turtle Rock - Compass Chest
+  region: Turtle Rock (First Section)
+  node_type: item
+  item: CompassD7
+  address: '0xEA22'
+  requires:
+  - CaneOfSomaria
+  keys: []
+  items:
+  - CaneOfSomaria
+- id: 6
+  name: Turtle Rock - Roller Room - Left
+  region: Turtle Rock (First Section)
+  node_type: item
+  item: MapD7
+  address: '0xEA1C'
+  requires:
+  - CaneOfSomaria
+  - FireRod
+  keys: []
+  items:
+  - CaneOfSomaria
+  - FireRod
+- id: 7
+  name: Turtle Rock - Roller Room - Right
+  region: Turtle Rock (First Section)
+  node_type: item
+  item: KeyD7
+  address: '0xEA1F'
+  requires:
+  - CaneOfSomaria
+  - FireRod
+  keys: []
+  items:
+  - CaneOfSomaria
+  - FireRod
+- id: 10
+  name: Turtle Rock - Chain Chomps
+  region: Turtle Rock (Chain Chomp Room)
+  node_type: item
+  item: KeyD7
+  address: '0xEA16'
+  requires:
+  - KeyD7
+  keys:
+  - name: KeyD7
+    count: 1
+  items: []
+- id: 14
+  name: Turtle Rock - Big Key Chest
+  region: Turtle Rock (Second Section)
+  node_type: item
+  item: BigKeyD7
+  address: '0xEA25'
+  requires: []
+  keys: []
+  items: []
+  note: 'FIXME: Changes based on key placement'
+- id: 17
+  name: Turtle Rock - Big Chest
+  region: Turtle Rock (Big Chest)
+  node_type: item
+  item: MirrorShield
+  address: '0xEA19'
+  requires:
+  - or:
+    - canGrapple
+    - CaneOfSomaria
+  - BigKeyD7
+  - KeyD7:2
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 2
+  items:
+  - canGrapple
+  - CaneOfSomaria
+- id: 20
+  name: Turtle Rock - Crystaroller Room
+  region: Turtle Rock (Crystaroller Room)
+  node_type: item
+  item: KeyD7
+  address: '0xEA34'
+  requires:
+  - BigKeyD7
+  - KeyD7:2
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 2
+  items: []
+- id: 26
+  name: Turtle Rock - Eye Bridge - Bottom Left
+  region: Turtle Rock (Eye Bridge)
+  node_type: item
+  item: KeyD7
+  address: '0xEA31'
+  requires:
+  - or:
+    - canBlockLasers
+    - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+  - BigKeyD7
+  - KeyD7:3
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 3
+  items:
+  - canBlockLasers
+  - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+- id: 27
+  name: Turtle Rock - Eye Bridge - Bottom Right
+  region: Turtle Rock (Eye Bridge)
+  node_type: item
+  item: TwentyRupees
+  address: '0xEA2E'
+  requires:
+  - or:
+    - canBlockLasers
+    - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+  - BigKeyD7
+  - KeyD7:3
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 3
+  items:
+  - canBlockLasers
+  - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+- id: 28
+  name: Turtle Rock - Eye Bridge - Top Left
+  region: Turtle Rock (Eye Bridge)
+  node_type: item
+  item: FiveRupees
+  address: '0xEA2B'
+  requires:
+  - or:
+    - canBlockLasers
+    - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+  - BigKeyD7
+  - KeyD7:3
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 3
+  items:
+  - canBlockLasers
+  - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+- id: 29
+  name: Turtle Rock - Eye Bridge - Top Right
+  region: Turtle Rock (Eye Bridge)
+  node_type: item
+  item: OneRupee
+  address: '0xEA28'
+  requires:
+  - or:
+    - canBlockLasers
+    - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+  - BigKeyD7
+  - KeyD7:3
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 3
+  items:
+  - canBlockLasers
+  - canInvul
+  - hasLightCone
+  - CaneOfSomaria
+- id: 30
+  name: Turtle Rock - Trinexx
+  region: Turtle Rock (Trinexx)
+  node_type: item
+  item: BossHeartContainer
+  address: '0x180159'
+  requires:
+  - hasLightCone
+  - BigKeyD7
+  - KeyD7:4
+  - CaneOfSomaria
+  keys:
+  - name: BigKeyD7
+    count: 1
+  - name: KeyD7
+    count: 4
+  items:
+  - hasLightCone
+  - CaneOfSomaria
+- id: 31
+  name: Turtle Rock - Prize
+  region: Turtle Rock (Trinexx)
+  node_type: item
+  item: Crystal7
+  address:
+  - '0x120A7'
+  - '0x53F24'
+  - '0x53F25'
+  - '0x18005C'
+  - '0x180079'
+  - '0xC708'
+  requires: []
+  keys: []
+  items: []
+gates:
+- id: 1
+  name: Turtle Rock Entrance Gap
+  region: Turtle Rock (Entrance)
+  node_type: obstacle
+  requires:
+  - RescueZelda
+  - canLiftDarkRocks
+  - hasProperMedallion
+  - isDarkLink
+  - CaneOfSomaria
+  - Hammer
+  keys: []
+  items:
+  - RescueZelda
+  - canLiftDarkRocks
+  - hasProperMedallion
+  - isDarkLink
+  - CaneOfSomaria
+  - Hammer
+- id: 2
+  name: Turtle Rock Exit (Front)
+  region: Turtle Rock (Entrance)
+  node_type: door
+  requires:
+  - RescueZelda
+  - canLiftDarkRocks
+  - hasProperMedallion
+  - isDarkLink
+  - CaneOfSomaria
+  - Hammer
+  keys: []
+  items:
+  - RescueZelda
+  - canLiftDarkRocks
+  - hasProperMedallion
+  - isDarkLink
+  - CaneOfSomaria
+  - Hammer
+- id: 3
+  name: Turtle Rock Pokey Room
+  region: Turtle Rock (First Section)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 4
+  name: Turtle Rock Entrance Gap Reverse
+  region: Turtle Rock (First Section)
+  node_type: obstacle
+  requires: []
+  keys: []
+  items: []
+- id: 8
+  name: Turtle Rock (Chain Chomp Room) (North)
+  region: Turtle Rock (Chain Chomp Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 9
+  name: Turtle Rock (Chain Chomp Room) (South)
+  region: Turtle Rock (Chain Chomp Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 11
+  name: Turtle Rock Ledge Exit (West)
+  region: Turtle Rock (Second Section)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 12
+  name: Turtle Rock Chain Chomp Staircase
+  region: Turtle Rock (Second Section)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 13
+  name: Turtle Rock Big Key Door
+  region: Turtle Rock (Second Section)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 15
+  name: Turtle Rock (Big Chest) (North)
+  region: Turtle Rock (Big Chest)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 16
+  name: Turtle Rock Ledge Exit (East)
+  region: Turtle Rock (Big Chest)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 18
+  name: Turtle Rock Dark Room Staircase
+  region: Turtle Rock (Crystaroller Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 19
+  name: Turtle Rock Big Key Door Reverse
+  region: Turtle Rock (Crystaroller Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 21
+  name: Turtle Rock (Dark Room) (North)
+  region: Turtle Rock (Dark Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 22
+  name: Turtle Rock (Dark Room) (South)
+  region: Turtle Rock (Dark Room)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 23
+  name: Turtle Rock Dark Room (South)
+  region: Turtle Rock (Eye Bridge)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 24
+  name: Turtle Rock (Trinexx)
+  region: Turtle Rock (Eye Bridge)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+- id: 25
+  name: Turtle Rock Isolated Ledge Exit
+  region: Turtle Rock (Eye Bridge)
+  node_type: door
+  requires: []
+  keys: []
+  items: []
+requirements:
+  keys:
+  - name: BigKeyD7
+    count: 1
+    nodes:
+    - Turtle Rock - Big Chest
+    - Turtle Rock - Crystaroller Room
+    - Turtle Rock - Eye Bridge - Bottom Left
+    - Turtle Rock - Eye Bridge - Bottom Right
+    - Turtle Rock - Eye Bridge - Top Left
+    - Turtle Rock - Eye Bridge - Top Right
+    - Turtle Rock - Trinexx
+  - name: KeyD7
+    count: 4
+    nodes:
+    - Turtle Rock - Chain Chomps
+    - Turtle Rock - Big Chest
+    - Turtle Rock - Crystaroller Room
+    - Turtle Rock - Eye Bridge - Bottom Left
+    - Turtle Rock - Eye Bridge - Bottom Right
+    - Turtle Rock - Eye Bridge - Top Left
+    - Turtle Rock - Eye Bridge - Top Right
+    - Turtle Rock - Trinexx
+  items:
+  - name: CaneOfSomaria
+    nodes:
+    - Turtle Rock Entrance Gap
+    - Turtle Rock Exit (Front)
+    - Turtle Rock - Compass Chest
+    - Turtle Rock - Roller Room - Left
+    - Turtle Rock - Roller Room - Right
+    - Turtle Rock - Big Chest
+    - Turtle Rock - Eye Bridge - Bottom Left
+    - Turtle Rock - Eye Bridge - Bottom Right
+    - Turtle Rock - Eye Bridge - Top Left
+    - Turtle Rock - Eye Bridge - Top Right
+    - Turtle Rock - Trinexx
+  - name: FireRod
+    nodes:
+    - Turtle Rock - Roller Room - Left
+    - Turtle Rock - Roller Room - Right
+  - name: Hammer
+    nodes:
+    - Turtle Rock Entrance Gap
+    - Turtle Rock Exit (Front)
+  - name: RescueZelda
+    nodes:
+    - Turtle Rock Entrance Gap
+    - Turtle Rock Exit (Front)
+  - name: canBlockLasers
+    nodes:
+    - Turtle Rock - Eye Bridge - Bottom Left
+    - Turtle Rock - Eye Bridge - Bottom Right
+    - Turtle Rock - Eye Bridge - Top Left
+    - Turtle Rock - Eye Bridge - Top Right
+  - name: canGrapple
+    nodes:
+    - Turtle Rock - Big Chest
+  - name: canInvul
+    nodes:
+    - Turtle Rock - Eye Bridge - Bottom Left
+    - Turtle Rock - Eye Bridge - Bottom Right
+    - Turtle Rock - Eye Bridge - Top Left
+    - Turtle Rock - Eye Bridge - Top Right
+  - name: canLiftDarkRocks
+    nodes:
+    - Turtle Rock Entrance Gap
+    - Turtle Rock Exit (Front)
+  - name: hasLightCone
+    nodes:
+    - Turtle Rock - Eye Bridge - Bottom Left
+    - Turtle Rock - Eye Bridge - Bottom Right
+    - Turtle Rock - Eye Bridge - Top Left
+    - Turtle Rock - Eye Bridge - Top Right
+    - Turtle Rock - Trinexx
+  - name: hasProperMedallion
+    nodes:
+    - Turtle Rock Entrance Gap
+    - Turtle Rock Exit (Front)
+  - name: isDarkLink
+    nodes:
+    - Turtle Rock Entrance Gap
+    - Turtle Rock Exit (Front)
+connections:
+- connection_type: Obstacle
+  description: Obstacle connection between Turtle Rock Entrance Gap and Turtle Rock (First Section)
+  origin: Turtle Rock Entrance Gap
+  destination: Turtle Rock (First Section)
+  internal: true
+- connection_type: Obstacle
+  description: Obstacle connection between Turtle Rock Entrance Gap Reverse and Turtle Rock (Entrance)
+  origin: Turtle Rock Entrance Gap Reverse
+  destination: Turtle Rock (Entrance)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock Pokey Room and Turtle Rock (Chain Chomp Room)
+  origin: Turtle Rock Pokey Room
+  destination: Turtle Rock (Chain Chomp Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock (Chain Chomp Room) (North) and Turtle Rock (Second Section)
+  origin: Turtle Rock (Chain Chomp Room) (North)
+  destination: Turtle Rock (Second Section)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock (Chain Chomp Room) (South) and Turtle Rock (First Section)
+  origin: Turtle Rock (Chain Chomp Room) (South)
+  destination: Turtle Rock (First Section)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock Chain Chomp Staircase and Turtle Rock (Chain Chomp Room)
+  origin: Turtle Rock Chain Chomp Staircase
+  destination: Turtle Rock (Chain Chomp Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock (Big Chest) (North) and Turtle Rock (Second Section)
+  origin: Turtle Rock (Big Chest) (North)
+  destination: Turtle Rock (Second Section)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock Big Key Door and Turtle Rock (Crystaroller Room)
+  origin: Turtle Rock Big Key Door
+  destination: Turtle Rock (Crystaroller Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock Big Key Door Reverse and Turtle Rock (Second Section)
+  origin: Turtle Rock Big Key Door Reverse
+  destination: Turtle Rock (Second Section)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock Dark Room Staircase and Turtle Rock (Dark Room)
+  origin: Turtle Rock Dark Room Staircase
+  destination: Turtle Rock (Dark Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock (Dark Room) (North) and Turtle Rock (Crystaroller Room)
+  origin: Turtle Rock (Dark Room) (North)
+  destination: Turtle Rock (Crystaroller Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock (Dark Room) (South) and Turtle Rock (Eye Bridge)
+  origin: Turtle Rock (Dark Room) (South)
+  destination: Turtle Rock (Eye Bridge)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock Dark Room (South) and Turtle Rock (Dark Room)
+  origin: Turtle Rock Dark Room (South)
+  destination: Turtle Rock (Dark Room)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock (Trinexx) and Turtle Rock (Trinexx)
+  origin: Turtle Rock (Trinexx)
+  destination: Turtle Rock (Trinexx)
+  internal: true
+- connection_type: Door
+  description: Door connection between Turtle Rock and Turtle Rock (Entrance)
+  origin: Turtle Rock
+  destination: Turtle Rock (Entrance)
+  internal: false
+- connection_type: Door
+  description: Door connection between Turtle Rock Exit (Front) and Dark Death Mountain (Top)
+  origin: Turtle Rock Exit (Front)
+  destination: Dark Death Mountain (Top)
+  internal: false
+- connection_type: Door
+  description: Door connection between Turtle Rock Ledge Exit (West) and Dark Death Mountain Ledge
+  origin: Turtle Rock Ledge Exit (West)
+  destination: Dark Death Mountain Ledge
+  internal: false
+- connection_type: Door
+  description: Door connection between Turtle Rock Ledge Exit (East) and Dark Death Mountain Ledge
+  origin: Turtle Rock Ledge Exit (East)
+  destination: Dark Death Mountain Ledge
+  internal: false
+- connection_type: Door
+  description: Door connection between Dark Death Mountain Ledge (West) and Turtle Rock (Second Section)
+  origin: Dark Death Mountain Ledge (West)
+  destination: Turtle Rock (Second Section)
+  internal: false
+- connection_type: Door
+  description: Door connection between Dark Death Mountain Ledge (East) and Turtle Rock (Big Chest)
+  origin: Dark Death Mountain Ledge (East)
+  destination: Turtle Rock (Big Chest)
+  internal: false
+- connection_type: Door
+  description: Door connection between Turtle Rock Isolated Ledge Exit and Dark Death Mountain Isolated Ledge
+  origin: Turtle Rock Isolated Ledge Exit
+  destination: Dark Death Mountain Isolated Ledge
+  internal: false
+- connection_type: Door
+  description: Door connection between Turtle Rock Isolated Ledge Entrance and Turtle Rock (Eye Bridge)
+  origin: Turtle Rock Isolated Ledge Entrance
+  destination: Turtle Rock (Eye Bridge)
+  internal: false
+strats: []
+notes: []

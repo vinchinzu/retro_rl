@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 116,
+  "roomHex": "0x74",
+  "name": "Desert Palace map room",
+  "measured": "2026-09-30",
+  "sourceState": "Scan_desert_0x74",
+  "points": [],
+  "doors": [
+    {
+      "label": "left_mouth",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x00 pos $121C tile (14,36), mouth cols 15-16. From the west aisle, UP at x=2168 stays in 0x74 and reaches the north wall at (2168,3632). Not a room change."
+    },
+    {
+      "label": "right_mouth",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x00 pos $125C tile (46,36), mouth cols 47-48. Same room. Not stood in. Center landing has no layer-0 path: 0x27 statues at cols 43-44."
+    }
+  ],
+  "notes": [
+    "Door-only skeleton. Chest 0 is MapP2, z3=0xE9B6, tile (31,15), unopened. Keys stayed 0.",
+    "Center landing Scan_desert_0x74 is (2272,4052). 0x27 statues at cols 19-20 and 43-44 seal that pocket from both mouths. The west aisle is the way in, from 0x84 after one pot lift. A pot on the north lip raised magic 0 to 16. The north wall is solid."
+  ]
+}

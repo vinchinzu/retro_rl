@@ -398,15 +398,15 @@ def farm_select_carry_skill(tool_id: int, *, timeout: int = 90):
     from harvest.tasks.crop_skills import SelectCarrySkill
     return SelectCarrySkill( name=f"select_carry_0x{int(tool_id):02X}", wanted=int(tool_id), timeout=timeout, )
 
-def farm_nav_pocket_plant_skill(*, center=None, timeout: int = 4000) -> NavSkill:
+def farm_nav_pocket_plant_skill(*, center=None, timeout: int = 4000, radius: int = 5) -> NavSkill:
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.nav import TILE_SIZE
     tx, ty = center or WEST_POCKET_PLANT_CENTER
     return NavSkill(
         name="nav_pocket_plant",
         target_px=(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8),
-        radius=5,
-        soft_radius=5,
+        radius=radius,
+        soft_radius=radius,
         timeout=timeout,
         require_tilemap=0x00,
     )
@@ -444,6 +444,7 @@ def farm_water_one_skill(*, timeout: int = 240):
 def farm_pocket_plant_skill(
     *,
     seed_type: str = "potato",
+    layout_name: str = "eight_tile_ring",
     center=None,
     ram=None,
     include_water: bool = False,
@@ -455,11 +456,16 @@ def farm_pocket_plant_skill(
     from harvest.maps.farm_pond import WEST_POCKET_PLANT_CENTER
     from harvest.tasks.crop_skills import ( plant_until_plot_skill, pocket_hoe_ring_skills, )
     center = center or WEST_POCKET_PLANT_CENTER
+    from harvest.planner.crop_planner import CROP_LAYOUTS
+    layout = CROP_LAYOUTS[layout_name]
+    opening = next((tile for tile in layout.access_offsets if tile != (0, 0)), None)
+    if opening is not None and include_water:
+        raise ValueError("side-notch watering uses CropWaterTask water mode")
     skills: list = [
         farm_fence_jump_toss_skill(),
         farm_nav_pocket_hoe_stand_skill(center=center, ram=ram),
         farm_select_carry_skill(int(Tool.HOE)),
-        *pocket_hoe_ring_skills(center, ram=ram),
+        *pocket_hoe_ring_skills(center, ram=ram, opening=opening, plant_center=(0, 0) in layout.crop_offsets),
     ]
     if ram is not None:
         from harvest.tasks.farm_clearer import FarmClearer
@@ -478,11 +484,21 @@ def farm_pocket_plant_skill(
                 prefer_lift_for_stones=True, farm_bounds=(cx - 3, cy - 3, cx + 2, cy + 2),
                 handoff="type_clear", timeout=6000),)))
     if include_plant:
+        if opening is not None:
+            # A notch block is entered through its bare notch, sideways onto the hoed centre. A straight
+            # walk in over an edge cell stopped a pixel short when an object sat on the next cell
+            # (PR_blocks_Y1_Spring_D9: farmer (198,640) under (12,39), sprite 0x0116 on (11,39), two
+            # nav timeouts). The bag sows around the farmer's tile, so any pixel in the centre tile will do.
+            from harvest.tasks.nav import TILE_SIZE
+
+            nx, ny = center[0] + opening[0], center[1] + opening[1]
+            skills.append(NavSkill(name="nav_block_notch", target_px=(nx * TILE_SIZE + 8, ny * TILE_SIZE + 8),
+                                   radius=5, soft_radius=5, timeout=4000, require_tilemap=0x00))
         skills.extend(
             [
-                farm_nav_pocket_plant_skill(center=center),
+                farm_nav_pocket_plant_skill(center=center, radius=7 if opening is not None else 5),
                 farm_select_carry_skill(seed_item_id(seed_type)),
-                plant_until_plot_skill(seed_type=seed_type, center=center),
+                plant_until_plot_skill(seed_type=seed_type, center=center, layout_name=layout_name, min_planted=layout.crop_count),
             ]
         )
     if include_water:

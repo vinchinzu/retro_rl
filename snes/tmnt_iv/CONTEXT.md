@@ -1,69 +1,81 @@
 # TMNT IV
 
 Scriptable TMNT IV: Turtles in Time (SNES). One continuous Hard session from
-power-on through staff/cast credits. First credits is assisted Bronze; Clean
-(pizza-only) is the parallel track. Maturity stays M8.
+power-on through the staff/cast credits, played Clean under ROM lookahead.
 
 ## Language
 
-**Continuous hard run**:
-One emulator session from power-on through Hard staff/cast credits. No state
-loads, no stage/lives writes, no A-special.
-_Avoid_: checkpoint concat as the clear, mid-run save loads, labeling assisted
-credits as Clean
-
 **Clean**:
-Zero emergency HP writes and zero form-2 iframe holds. Natural pizza is the
-only heal. Parallel to the assisted contract, not a new maturity gate.
-_Avoid_: emergency HP as Clean, iframe hold as Clean, A-special, global pizza
-seek
+The target contract. Zero RAM writes (no HP, iframe, stage, or lives
+pokes), zero state loads, zero life losses, no A-special. Natural pizza is
+the only heal. ROM lookahead is allowed and disclosed.
+_Avoid_: calling an assisted or resumed run Clean
 
-**Assist**:
-The production contract: emergency HP (HP ≤ 16 → 80) and Super Shredder form-2
-iframe hold at 1. Counted in the manifest. Default continuous CLI stays
-assisted until Clean is proven per stage.
-_Avoid_: full-bar HP spam, item unlocks, stage writes, calling Assist a pizza
-pickup
+**Continuous run**:
+One emulator session from power-on to the credits. Lookahead restores do not
+break it; any other `set_state` does.
+_Avoid_: concatenating stage pins as a clear
 
-**Pizza**:
-Ground box char `0x30`. Collecting it with Y is play, not an Assist. Full seek
-is Big Apple only; Alleycat/Sewer grab underfoot or between waves.
-_Avoid_: emergency HP as pizza, global seek on Skull & Crossbones, empty-screen
-RIGHT+Y
+**Lookahead**:
+Playing candidate futures on the emulator itself and restoring. The ROM is
+exact (restore + replay is bit-exact), so a rollout *is* the future.
+_Avoid_: modelling enemy motion by hand
 
-**Stage byte**:
-RAM stage at `0x0082`. Byte 0 is Big Apple (human Stage 1). Human stage numbers
-in docs are byte+1.
-_Avoid_: calling byte 1 “Stage 1”, treating Mode-7 Neon as a side-scroller Y
+**Guard** (`GuardedPolicy`):
+The production wrapper. Commits only frames whose next `horizon` frames the
+ROM has shown hit-free.
+_Avoid_: a second policy beside it
 
-**Stage1Policy**:
-The one production tick for every stage. The name is historical.
-_Avoid_: a second policy per stage, a Leo-only policy as the continuous path
+**Verified plan**:
+The guard's queue of future frames, each with the RAM CRC it expects to
+start from, extended a chunk at a time past the live frame.
+
+**Rescue**:
+On a predicted hit, branching every macro from a snapshot node inside the
+verified plan and splicing in the best hit-free branch. **Lead** is how many
+frames before the hit the branch starts.
+
+**Forced**:
+A rescue with no hit-free branch; the guard takes the least damage. Every
+forced line is a defect to work, not noise.
+
+**Stall budget**:
+When a fight has made no progress for 1800 frames, the guard accepts a
+predicted hit that leaves HP at or above half the bar (`accepted`). Some
+progress (the Technodrome tank throw) needs a trade.
+
+**Unstick**:
+While stalled, a 120-frame search over every macro for a branch that
+damages an enemy. Breaks base-policy deadlocks without a per-tactic patch.
+
+**Macro**:
+A literal button prefix (walk, jump, jump-kick, poke) the guard tries before
+handing control back to the base policy.
+
+**Base policy** (`Stage1Policy`):
+The behavior tree + `tactics/` that walks, fights, seeks pizza, and handles
+bosses. Its job is progress. The name is historical; it covers stages 1-9.
 
 **Tactic**:
-A stage- or boss-specific next(state) that may return a frame or fall through.
-Production tick order is pizza → pack → spikes → Baxter → Technodrome → cave →
-Slash → form-2 → combat tree → stall escape. HazardAvoid is not in that order.
-_Avoid_: fight_action as a second undocumented dispatcher, KEEP traces as
-production Slash
+A stage- or boss-specific `next(state)` inside the base policy that returns a
+frame or falls through.
 
-**CombatProfile**:
-Per-frame poke-band, flank, and jump overlay for the shared fight. Grind knobs
-overlay a subset; Alleycat/Sewer bands are not grindable.
-_Avoid_: treating GrindKnobs as the live alley/sewer standoff
+**Tape**:
+The committed button vectors of one trial plus RAM CRC checkpoints
+(`*.tape.npz`). **Replay** plays a tape with no policy and no lookahead; the
+published video is a replay.
 
-**Slash**:
-Prehistoric boss char `0x50`. Production is SlashTactics, spin dodge adx 52.
-Lab patterns are research adapters, not a second policy.
-_Avoid_: rewriting production from a KEEP trace, porting probe spin=40 into
-the continuous run
+**Natural pin**:
+A save state written at a stage entry of a real run (`--save-points`). The
+dev entry for that stage. Not evidence on its own.
+_Avoid_: hand-crafted HP pins as Clean evidence
 
-**KEEP**:
-A grind trial that beat its baseline on a short probe. It is not production
-until a stage suite and a continuous dry-run both hold.
-_Avoid_: merging KEEP into policy.py automatically, checkpoint-only KEEP
+**Assist**:
+The old contract: emergency HP (HP ≤ 16 → 80) and the Super Shredder form-2
+iframe hold. Previous M8 baseline, retained for comparison; never Clean.
 
-**Path-RNG suite**:
-Clean proof: fight-ready checkpoint plus at least one power-on or
-continuous-faithful entry, heal=none, zero life losses.
-_Avoid_: a single fight-ready pin as Clean, mid-wave Clear_w* as the gate
+**Pizza**:
+Ground box char `0x30`. Picking it up with Y is play.
+
+**Stage byte**:
+RAM `0x0082`. Byte 0 is Big Apple (human Stage 1); human stage = byte + 1.

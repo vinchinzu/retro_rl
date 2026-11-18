@@ -14,7 +14,7 @@ from retro_harness.combat import AttackCadence, PreferredFlank, fight_nearest_ac
 from retro_harness.controls import SNES_LEFT, SNES_RIGHT
 from retro_harness.input_script import FrameAction
 from retro_harness.ram_state import GameState
-from tmnt_iv.grind_knobs import active_knobs
+from tmnt_iv.tactics.knobs import active_knobs
 from tmnt_iv.stages import (
     DUO_BOSS_CHARS,
     KRANG_CHAR,
@@ -93,7 +93,7 @@ _RAT_KING_ATTACK_HOLD = 2
 _RAT_KING_ATTACK_GAP = 1
 _BOSS_LEFT_CHIP_X = 80
 # Leo weapon reach is generous (~50–68); keep a modest poke band.
-# Runtime values come from ``active_knobs()`` so local grind can A/B.
+# Runtime values come from ``active_knobs()`` .
 _ATTACK_RANGE = 56
 _MIN_RANGE = 8
 _STANDOFF = 24

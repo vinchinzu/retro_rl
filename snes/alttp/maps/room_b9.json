@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 185,
+  "roomHex": "0xB9",
+  "name": "Eastern Palace cannonball hall",
+  "measured": "2026-09-30",
+  "sourceState": "Scan_eastern_0xb9",
+  "points": [
+    {
+      "label": "south_landing",
+      "xy": [
+        4856,
+        6104
+      ],
+      "role": "spawn",
+      "notes": "Play_eog9_7 from room_c9 north_to_0xb9. Replay recordings/eog9_lobby_20261023/replay.json, 602 frames, desync 0, loads 0, writes 0. Not an approach for the north door."
+    },
+    {
+      "label": "west_drop_mouth",
+      "xy": [
+        4808,
+        6056
+      ],
+      "role": "waypoint",
+      "notes": "Layer 0 floor tile (25,53). From Play_eog9_7, north on column 31 to row 54, west to column 25, then north to here stayed layer 0. UP set submodule 0x10. Not a north-door approach."
+    },
+    {
+      "label": "west_drop_land",
+      "xy": [
+        4808,
+        6006
+      ],
+      "role": "waypoint",
+      "notes": "After submodule 0x10, control returned here on layer 1, room 0xB9, HP 28/32, sword 1, lamp 1, keys 0, follower 0. The pose was not saved. North is wall on row 45. Not a north-door approach."
+    },
+    {
+      "label": "drop_lineup",
+      "xy": [
+        4856,
+        6064
+      ],
+      "role": "waypoint",
+      "notes": "Known layer-0 approach on column 31, row 54."
+    },
+    {
+      "label": "drop_cross",
+      "xy": [
+        4808,
+        6064
+      ],
+      "role": "waypoint",
+      "notes": "Known west drop approach, column 25."
+    },
+    {
+      "label": "lower_cross",
+      "xy": [
+        4872,
+        6006
+      ],
+      "role": "waypoint",
+      "notes": "Development transit east of the west drop landing."
+    },
+    {
+      "label": "channel_start",
+      "xy": [
+        4872,
+        5984
+      ],
+      "role": "waypoint",
+      "notes": "Play_eog9_9 measured pocket; lower layer."
+    },
+    {
+      "label": "channel_clear",
+      "xy": [
+        4888,
+        5744
+      ],
+      "role": "waypoint",
+      "notes": "Measured lower-layer clear area. Reached from Play_eog9_7 in 396 frames; forward replay desync 0, loads/writes 0, HP 28. Not a door approach."
+    },
+    {
+      "label": "north_east_stair_foot",
+      "xy": [
+        4952,
+        5760
+      ],
+      "role": "waypoint",
+      "notes": "2026-10-25 ROM measured: east stair bypass and upper platform. From channel_clear, 318 frames to A9 with HP 28; whole room 714 frames from Play_eog9_7, independent forward replay desync/loads/writes 0. Geometry belongs to this map."
+    },
+    {
+      "label": "north_east_stair_top",
+      "xy": [
+        4952,
+        5696
+      ],
+      "role": "waypoint",
+      "notes": "2026-10-25 ROM measured: east stair bypass and upper platform. From channel_clear, 318 frames to A9 with HP 28; whole room 714 frames from Play_eog9_7, independent forward replay desync/loads/writes 0. Geometry belongs to this map."
+    },
+    {
+      "label": "north_upper_lineup",
+      "xy": [
+        4856,
+        5696
+      ],
+      "role": "waypoint",
+      "notes": "2026-10-25 ROM measured: east stair bypass and upper platform. From channel_clear, 318 frames to A9 with HP 28; whole room 714 frames from Play_eog9_7, independent forward replay desync/loads/writes 0. Geometry belongs to this map."
+    },
+    {
+      "label": "north_east_clear",
+      "xy": [
+        4920,
+        5744
+      ],
+      "role": "waypoint",
+      "notes": "2026-10-25 ROM measured: east stair bypass and upper platform. From channel_clear, 318 frames to A9 with HP 28; whole room 714 frames from Play_eog9_7, independent forward replay desync/loads/writes 0. Geometry belongs to this map."
+    },
+    {
+      "label": "north_east_bypass",
+      "xy": [
+        4920,
+        5760
+      ],
+      "role": "waypoint",
+      "notes": "2026-10-25 ROM measured: east stair bypass and upper platform. From channel_clear, 318 frames to A9 with HP 28; whole room 714 frames from Play_eog9_7, independent forward replay desync/loads/writes 0. Geometry belongs to this map."
+    }
+  ],
+  "doors": [
+    {
+      "label": "south_to_0xc9",
+      "direction": "DOWN",
+      "toRoom": 201,
+      "role": "backtrack",
+      "notes": "Scan_eastern_0xb9 slot 2 type 0x00 pos $1D3C. DOWN from the south landing returns to 0xC9."
+    },
+    {
+      "label": "north",
+      "direction": "UP",
+      "toRoom": 169,
+      "role": "primary",
+      "notes": "Slot 1 type 0x00 pos $023C. Verified after east stair ascent to layer 0; UP from north_upper_lineup reaches A9 control ready, layer 0. Whole-room predecessor replay 714 frames, HP 28, keys 0, no loads/writes/desync; recordings/b9_exit_20261025/predecessor_replay.json.",
+      "approachXy": [
+        4856,
+        5696
+      ],
+      "landingXy": [
+        4856,
+        5592
+      ]
+    },
+    {
+      "label": "west",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 3 type 0x00 pos $0784. No floor path from the south landing or the upper floor. A layer-1 walk toward the door timed out. Door not entered."
+    },
+    {
+      "label": "east_type_0x1c",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Stopping lock. Slot 0 type 0x1C pos $07F4 tile (58,15). Engine small-key door. eastern.yaml has no small key. Scan pin keys=0. Not walked."
+    }
+  ],
+  "notes": [
+    "Live frontier and withdrawals: docs/tasks/residual.md. Historical detailed notes preserved in recordings/b9_controller_20261024/room_b9.json.before.",
+    "2026-10-24: Play_eog9_7 south landing to channel_clear on layer 1, 396 committed frames, HP 28 throughout; forward replay desync 0, loads 0, writes 0. Endpoint Dev_B9Channel20261024. This is not the north-door approach or entry into 0xA9.",
+    "Chest 0 is OneHundredRupees, z3=0xE9B3, tile (50,36). An earlier A press earned rupees, not a key. Retain the no-A constraint.",
+    "Layer-0 gaps at columns 25 and 43 drop to layer 1. The measured west drop controller uses drop_lineup, drop_cross and west_drop_mouth before lower_cross and channel_start.",
+    "The 202 overlapping layer-1 floor tiles are not drops. The 105-step line is not body-legal; 109-step paths go south. The withdrawn 29-step x=4872 line caused damage. Byte 0x1E remains unclassified. Do not infer a stair or north-door approach from it.",
+    "2026-10-25: east north stair triggers submodule 0x08, layer 1\u21920 at (4952,5742); control returns at (4952,5703). Bypass stair side wall below y=5744: north_east_clear \u2192 north_east_bypass \u2192 north_east_stair_foot \u2192 north_east_stair_top \u2192 north_upper_lineup. Byte 0x1E here is supported by this live transition only; no global tile classification changed."
+  ]
+}

@@ -170,6 +170,7 @@ class FlowerFestivalTask(Task):
 
     name: str = "flower_festival"
     partner: str = "eve"
+    buy_snow_seed: bool = False
     timeout: int = 60000
     settle_frames: int = SETTLE_FRAMES
 
@@ -419,7 +420,7 @@ class FlowerFestivalTask(Task):
             live = len(ram) > _CHOICE_FLAG and bool(int(ram[_CHOICE_FLAG]) & 0x10)
             if live:
                 row = int(read_ram_value(ram, "dialog_choice_result", raw=True))
-                if row != 1:
+                if row != (0 if self.buy_snow_seed else 1):
                     return {"down": pressed}
                 return {"a": pressed}
         return {"a": pressed}

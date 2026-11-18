@@ -1,0 +1,10 @@
+{
+  "door_steps": 0,
+  "illegal_on_path": 0,
+  "goes_south": 0,
+  "north_col": 33,
+  "north_row": 44,
+  "north_byte": 0,
+  "path": [],
+  "note": "No find_path on masked layer 1 from legal start (4872, 5984) to a legal pose whose body covers door tile (31, 6). Stair bytes 0x1c, 0x3e replaced with legend wall 0x01. The next 8px north step puts LINK_BODY on masked cell (33, 44), byte 0x00 floor. Row 44 columns 28-40: 28:0x01 wall, 29:0x01 wall, 30:0x04 wall, 31:0x27 unknown, 32:0x27 unknown, 33:0x00 floor, 34:0x00 floor, 35:0x00 floor, 36:0x00 floor, 37:0x00 floor, 38:0x00 floor, 39:0x04 wall, 40:0x01 wall."
+}

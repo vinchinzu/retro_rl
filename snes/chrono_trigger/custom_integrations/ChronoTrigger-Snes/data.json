@@ -1,0 +1,6 @@
+{
+  "info": {
+    "location": {"address": 256, "type": "<u2"},
+    "crono_hp": {"address": 8267267, "type": "<u2"}
+  }
+}

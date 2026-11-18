@@ -23,9 +23,12 @@ KPDR prefix.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from itertools import chain, product
 from typing import Any
 
+from retro_harness.actions import buttons
 from super_metroid.combat.features import kraid_catalog
 from super_metroid.combat.primitives import (
     ensure_weapon,
@@ -33,7 +36,13 @@ from super_metroid.combat.primitives import (
     settle_standing,
     spray_action,
 )
-from super_metroid.ram import GameplayPhase, SuperMetroidState, read_bank7e_wram
+from super_metroid.ram import (
+    GameplayPhase,
+    SuperMetroidState,
+    parse_env_state,
+    read_bank7e_wram,
+    read_wram_u16,
+)
 from super_metroid.routes.controller_common import select_weapon, unmorph
 from super_metroid.routes.runtime import ControllerSession, hold
 
@@ -46,6 +55,11 @@ KRAID_BOSS_BIT = 0x01
 # Selected item index for Super Missiles / beams.
 WEAPON_SUPERS = 2
 WEAPON_BEAM = 0
+KRAID_FUNCTION = 0x0FA8
+KRAID_ANIMATION = 0x0FAA
+KRAID_ANIMATION_TIMER = 0x0FAC
+KRAID_PHASE_ONE_THINKING = 0xAEA4
+KRAID_HALF_OPEN_MOUTH = 0x96F4
 
 
 @dataclass(frozen=True)
@@ -153,6 +167,168 @@ def fight_kraid_action(
         jump_hold_frames=strategy.jump_hold_frames,
         dash_when_not_jumping=True,
     )
+
+
+@dataclass(frozen=True)
+class KraidCleanFightEvidence:
+    kill_frame: int
+    boss_bit_frame: int
+    rollout_restores: int
+
+
+@dataclass(frozen=True)
+class KraidCleanLeaveEvidence:
+    fight: KraidCleanFightEvidence
+    final_health: int
+    final_missiles: int
+    final_supers: int
+
+
+def _kraid_volley(
+    delay: int,
+    jump: int,
+    shots: tuple[int, ...],
+    frames: int,
+    *,
+    select_at: int | None = None,
+) -> list[list[int]]:
+    actions = [buttons()] * delay
+    for frame in range(frames):
+        names = []
+        if frame < jump:
+            names.append("A")
+        if frame == select_at:
+            names.append("SELECT")
+        if frame in shots:
+            names.append("X")
+        actions.append(buttons(*names))
+    return actions
+
+
+def _search_kraid_volley(
+    session: ControllerSession,
+    candidates: Iterable[list[list[int]]],
+    accept: Callable[[SuperMetroidState], bool],
+    *,
+    reason: str,
+    stop_on_hit: bool = True,
+) -> int:
+    """Try volleys in the emulator, then commit a damage-free result."""
+    env = session.env
+    original = env.em.get_state()
+    energy = session.state.health
+    restores = 0
+    winner = None
+    try:
+        for actions in candidates:
+            env.em.set_state(original)
+            restores += 1
+            for index, action in enumerate(actions):
+                env.step(action)
+                state = parse_env_state(env, mode="nav")
+                if state.health < energy or state.room_id != ROOM_KRAID:
+                    break
+                if (stop_on_hit or index == len(actions) - 1) and accept(state):
+                    winner = actions[: index + 1]
+                    break
+            if winner is not None:
+                break
+    finally:
+        env.em.set_state(original)
+        restores += 1
+    if winner is None:
+        raise RuntimeError(f"{reason} failed from {session.state}")
+    for action in winner:
+        session.step(action, reason)
+    return restores
+
+
+def play_clean_kraid_leave(session: ControllerSession) -> KraidCleanLeaveEvidence:
+    """Quick-kill Kraid with two missiles and three Supers, then reach Varia."""
+    state = session.state
+    if state.room_id != ROOM_KRAID or state.missiles < 2 or state.super_missiles < 3:
+        raise RuntimeError("Kraid quick kill needs a Kraid entry with two missiles and three Supers")
+
+    # Set up on the blue block ledge and wait for the ROM's phase-one cue.
+    hold(session, 2, reason="kraid_entry_release")
+    select_weapon(session, 1)
+    hold(session, 2, reason="kraid_entry_settle")
+    for _ in range(30):
+        if session.state.samus_x >= 59:
+            break
+        hold(session, 1, "RIGHT", reason="kraid_entry_ledge")
+    for _ in range(1500):
+        if read_wram_u16(session.env, KRAID_FUNCTION) == KRAID_PHASE_ONE_THINKING:
+            break
+        hold(session, 1, reason="kraid_rise")
+    else:
+        raise RuntimeError("Kraid never reached his first phase")
+
+    # The first missile hits the eye. The second arrives while it glows.
+    openers = chain(
+        [_kraid_volley(14, 8, (5, 17), 42)],
+        (_kraid_volley(delay, jump, (shot, shot + gap), 42)
+         for delay, jump, shot, gap in product((8, 12, 16, 20), (5, 8, 11, 14), (3, 5, 7, 9), (10, 12))),
+    )
+    restores = _search_kraid_volley(
+        session, openers, lambda state: body_hp(state) == 900,
+        reason="kraid_missile_opener", stop_on_hit=False,
+    )
+
+    # A Super that connects at the half-open animation extends that window.
+    supers = chain(
+        [_kraid_volley(0, 8, (11,), 46, select_at=1)],
+        (_kraid_volley(0, jump, (shot,), shot + 35, select_at=1)
+         for jump, shot in product(range(8, 22, 2), range(7, 34, 2))),
+    )
+    restores += _search_kraid_volley(
+        session,
+        supers,
+        lambda state: (
+            body_hp(state) == 600
+            and read_wram_u16(session.env, KRAID_ANIMATION) == KRAID_HALF_OPEN_MOUTH
+            and read_wram_u16(session.env, KRAID_ANIMATION_TIMER) >= 60
+        ),
+        reason="kraid_half_open_super",
+    )
+
+    finishers = chain(
+        [_kraid_volley(7, 12, (8, 28), 52)],
+        (_kraid_volley(delay, jump, (shot, shot + gap), shot + gap + 24)
+         for delay, jump, shot, gap in product(range(5, 21, 2), (10, 12, 14, 16), (8, 10, 12), (20, 22, 24))),
+    )
+    restores += _search_kraid_volley(
+        session, finishers, lambda state: body_hp(state) == 0,
+        reason="kraid_finishing_supers",
+    )
+    kill_frame = session.frame
+    for index in range(KraidStrategy().boss_bit_grace_frames):
+        if kraid_defeated(session.env):
+            break
+        hold(session, 1, *fight_kraid_action(session.state, index, body_dead=True), reason="kraid_death")
+    else:
+        raise RuntimeError("Kraid's boss bit did not set")
+    fight = KraidCleanFightEvidence(kill_frame, session.frame, restores)
+
+    # A first-phase kill leaves the right lip intact. Jump from its base,
+    # then shoot while descending onto the door's standing-height band.
+    select_weapon(session, WEAPON_BEAM)
+    for _ in range(180):
+        state = hold(session, 1, "RIGHT", "B", reason="kraid_rear_ledge")
+        if state.samus_x == 427 and state.samus_y == 427 and state.velocity_y == 0:
+            break
+    else:
+        raise RuntimeError("Kraid rear ledge approach failed")
+    hold(session, 50, "A", "RIGHT", "B", reason="kraid_rear_ledge_jump")
+    for index in range(120):
+        state = hold(session, 1, "RIGHT", "X" if index % 6 == 0 else "B", reason="kraid_rear_door")
+        if state.room_id == ROOM_VARIA or state.game_state != 8:
+            break
+    for _ in range(240):
+        state = hold(session, 1, reason="kraid_rear_settle")
+        if state.room_id == ROOM_VARIA and state.game_state == 8 and not state.door_transition:
+            return KraidCleanLeaveEvidence(fight, state.health, state.missiles, state.super_missiles)
+    raise RuntimeError("Kraid rear exit did not settle in Varia")
 
 
 def play_kraid_fight(

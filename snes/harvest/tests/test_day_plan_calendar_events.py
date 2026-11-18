@@ -277,6 +277,23 @@ class FestivalCalendarTests(unittest.TestCase):
         deferred_reasons = {item.phase: item.reason for item in decision.deferred}
         self.assertEqual(deferred_reasons.get("BUY_SEEDS"), "shop_closed_festival")
 
+    def test_flower_festival_morning_waters_before_the_dance(self) -> None:
+        """The dance rolls the day, so the crop plan behind it never ran (Spring D23)."""
+        from harvest.planner.day_phase_catalog import DYNAMIC_OUTDOOR_PLAN_PHASE, EXIT_TO_FARM_PHASE
+        from harvest.tasks.proposal import FESTIVAL_WATER_STOP_HOUR, apply_eve_phases
+
+        ram = _make_ram(season=SEASON_SPRING, day=23, hour=6, tilemap=0x15)
+        out = apply_eve_phases([EXIT_TO_FARM_PHASE, DYNAMIC_OUTDOOR_PLAN_PHASE], ram)
+        names = [p.phase for p in out]
+
+        self.assertEqual(
+            names,
+            ["EXIT_TO_FARM", "ENSURE_WATERING_CAN", "CROP_WATER", "ATTEND_FESTIVAL", "DYNAMIC_OUTDOOR_PLAN"],
+        )
+        water = out[2]
+        self.assertEqual(water.params["stop_hour"], FESTIVAL_WATER_STOP_HOUR)
+        self.assertEqual(water.failure_policy, "optional")
+
     def test_festival_attendance_is_opt_in(self) -> None:
         """The only festival macro is a whole-day Spring recording; never blind-replay it."""
         kwargs = dict(

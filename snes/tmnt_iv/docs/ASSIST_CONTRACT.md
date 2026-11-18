@@ -1,60 +1,54 @@
 # Assist contract: TMNT IV
 
-Runtime observation: **Bronze** (game-specific read-only RAM permitted).
-Intervention class: **Resource-assisted + Protection-assisted** (whole-run).
-Clean means both assists at 0. Stage 1 pizza-only is verified. Later stages
-are not. Play traps live in `AGENTS.md`.
+Runtime observation: **Bronze** (game-specific read-only RAM). Play traps
+live in [`AGENTS.md`](../AGENTS.md).
 
-## Allowed writes (production low-assist)
+## Clean (published M8 result)
+
+A Clean run, enforced by `run_trial` under `CLEAN_CONTRACT`:
+
+- zero RAM writes of any kind (HP, iframes, stage, lives, inventory)
+- zero state loads after power-on other than lookahead restores
+- zero life losses (the first lost life fails the run), no continue
+- no A-special (the trial stops on it); START is stripped after boot
+- Hard difficulty confirmed in WRAM, staff/cast credits observed
+
+Natural pizza (`char 0x30`) picked up with controller input is play, not an
+assist.
+
+### ROM lookahead (disclosed)
+
+The live policy plays candidate futures on the emulator and restores
+(`tmnt_iv.lookahead`). Adopted 2026-11-14 at the owner's direction,
+following the Zelda I ruling of 2026-09-28 (lookahead allowed; the recording
+is the tape replayed with none). Rules:
+
+- Restores land only on the live frame or its future, never earlier.
+- Reports disclose them as `rollout_restores`, separate from `state_loads`
+  (which must be 0).
+- The published video is `scripts/run.py --replay <tape> --video`: power-on,
+  the committed buttons, no policy, no lookahead, RAM CRC checked every 600
+  frames.
+
+An interrupted tape may be extended with neutral input through an already
+started ending (`--finish-credits`). Recovery replays from power-on, checks
+all original CRCs, and records the source tape hash and the added frames.
+It cannot supply missing gameplay. The complete tape must then pass a
+normal replay through the final Splinter scene and settle period.
+
+## Assisted (previous M8 baseline)
 
 | Assist | Trigger | Write | Notes |
 |--------|---------|-------|-------|
-| Emergency HP | HP ≤ 16 | restore HP to 80 | Fixed contract value; above Raphael's natural 48 HP; counted per intervention |
-| Form-2 iframe hold | Super Shredder form 2 | hold iframe timer at 1 | Counted per frame; demutation bypass |
+| Emergency HP | HP ≤ 16 | restore HP to 80 | counted per intervention |
+| Form-2 iframe hold | Super Shredder form 2 (stage 9, event `0x0A`) | hold iframe timer at 1 | counted per frame |
 
-## Forbidden writes
+`--assisted` selects this contract. Its reports carry both counters and are
+never labelled Clean. Assisted artifacts keep the `tmnt_iv_full_hard_credits*`
+names; Clean artifacts use `*_clean` / `clean_poweron_*` and never overwrite
+them.
 
-- Stage / progress / boss flags
-- Lives grants except natural pickups
-- Inventory or character unlocks
-- Mid-run save-state loads
+## Forbidden under every contract
 
-## Natural (Clean-compatible) heals
-
-Ground pizza boxes (`char 0x30`, see `ram_map.md`) fully restore HP when
-picked up with controller input. Collecting pizza is **not** an assist.
-
-**Clean** = survive on pizza + better play with:
-
-- `emergency_hp` interventions = **0**
-- form-2 iframe guard frames = **0**
-- no A-special
-
-Stage 1 Clean suite is verified pizza-only
-(`scripts/probe_clean.py --stage 1 --suite`). Later stages keep emergency
-HP until their own heal=none multi-entry suite is green.
-
-## Reporting
-
-Every continuous clear manifest must include intervention counts for HP
-restores and iframe-guard frames. Do not label assisted runs as Clean.
-
-## Clean mode (parallel track)
-
-**Clean** means both emergency HP restore and form-2 iframe hold are **off**:
-zero resource restores and zero protection writes. Observation may still be
-Bronze (read-only RAM). Natural pizza pickup is not an assist.
-
-Clean is a **parallel** privilege-reduction workstream; it does not replace
-this assisted contract or the primary M8 continuous hard clear.
-
-Artifact isolation: Clean runs use `*_clean` stems and must never
-overwrite assisted `tmnt_iv_full_hard_*` baselines. Ready work:
-`bd ready -l tmnt_iv`.
-
-Hard constraints:
-
-- Default continuous CLI remains resource + protection assisted.
-- Clean runs must not overwrite assisted `tmnt_iv_full_hard_*` baselines.
-- STATUS primary program gate stays assisted until an explicit program
-  decision changes it; Clean results are documented as a secondary track.
+Stage / progress / boss flag writes, lives grants, inventory or character
+unlocks, mid-run save-state loads.

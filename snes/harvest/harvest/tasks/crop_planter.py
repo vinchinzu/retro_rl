@@ -74,6 +74,7 @@ from harvest.tasks.crop_geometry import (  # noqa: F401
     _preferred_outward_faces,
     _water_step_variants,
     build_water_steps,
+    plan_water_route,
     FRESH_TILLED,
     DRIED_TILLED,
     WATERED_TILLED,
@@ -121,6 +122,12 @@ from harvest.tasks.crop_geometry import (  # noqa: F401
 # parked, dry and unharvested for the rest of the Summer.
 WATER_TILE_FAIL_LIMIT = 2
 WATER_PARK_DAYS = 3
+# Game minutes one watered tile costs, refills and walking included: Spring Y1
+# from the D3 pin averaged 180 frames a tile at about 14.5 frames a game minute.
+WATER_MINUTES_PER_TILE = 13
+# ``stop_hour`` arms tiles from an estimate; refill detours can blow it (Y1 Spring D23 ran 06:04 to 18:12 and
+# lost the Flower Festival). The estimate gets this many hours of grace, then the watering hands the day back.
+STOP_HOUR_GRACE_HOURS = 1
 _WATER_TILE_FAILURES: dict = {}   # tile -> [failed days, day index of the last one]
 _WATER_CLOCK = {"day": 0}         # day index of the last parked_water_tiles read
 
@@ -234,6 +241,7 @@ class CropWaterTask(Task):
 
     name: str = "crop_water"
     seed_type: str = "potato"
+    layout_name: str = "eight_tile_ring"
     work_mode: str = WORK_MODE_FULL
     bounds: Tuple[int, int, int, int] = DEFAULT_CROP_BOUNDS
     max_steps_per_target: int = 1200
@@ -241,6 +249,9 @@ class CropWaterTask(Task):
     max_failures: int = 50
     refill_bounds: Optional[Tuple[int, int, int, int]] = None
     skip_water_tiles: Set[Tuple[int, int]] = field(default_factory=set)
+    # Arm only the tiles that finish before this hour (a Flower Festival
+    # morning must reach the town's west edge before 15:00). None: no cap.
+    stop_hour: Optional[int] = None
     debug: bool = False
     debug_interval: int = 300
 
@@ -318,8 +329,13 @@ class CropWaterTask(Task):
     _child: Optional[Task] = field(default=None, init=False)
     _armed_water_tiles: int = field(default=0, init=False)
     _water_pairs: List[Task] = field(default_factory=list, init=False)
+    # Waterings today's stamina could not pay for. The terminal reason carries
+    # ``stamina_low`` so the day plan can splice a hot-spring refill and rerun.
+    _unfunded_waterings: int = field(default=0, init=False)
 
     def __post_init__(self):
+        if self.layout_name not in {"eight_tile_ring", "eight_east_notch", "eight_west_notch", "seven_east_access", "seven_west_access"}:
+            raise ValueError(f"unsupported planting layout: {self.layout_name}")
         self._pathfinder = Pathfinder(self._scanner)
         self._navigator = Navigator(self._pathfinder)
         mode = (self.work_mode or WORK_MODE_FULL).strip().lower()
@@ -415,6 +431,7 @@ class CropWaterTask(Task):
         self._child = None
         self._armed_water_tiles = 0
         self._water_pairs = []
+        self._unfunded_waterings = 0
         self._clear_crop_walkable()
         self._navigator.update(world.ram)
         self._tool_mgr.update(world.ram)
@@ -539,6 +556,10 @@ class CropWaterTask(Task):
             tile = self._pair_targets.get(getattr(pair, "name", None))
             if tile is not None and getattr(pair, "skipped", False) and tile not in self._noted_pairs:
                 self._noted_pairs.add(tile)
+                if "stamina exhausted" in str(getattr(pair, "skip_reason", "")):
+                    # The tile is reachable; the farmer was tired. Never park it.
+                    self._unfunded_waterings += 1
+                    continue
                 if note_water_tile_failure(tile) == WATER_TILE_FAIL_LIMIT:
                     print(f"[CROP] Parking unwaterable tile {tile} after {WATER_TILE_FAIL_LIMIT} failed days")
         skipped, _completed = self._best_effort_water_counts()
@@ -587,6 +608,10 @@ class CropWaterTask(Task):
         if armed and skipped == armed and status == "success":
             status = "partial"
             reason = f"partial planted={self.planted_count} watered={completed}"
+        if status == "failure" and self._unfunded_waterings and not self.watered_count:
+            # An empty stamina bar is a refill, not a broken field.
+            status = "partial"
+            reason = f"partial planted={self.planted_count} watered=0"
         extra = ""
         if self._water_pairs and skipped:
             extra += f" skipped={skipped} completed={completed}"
@@ -596,6 +621,8 @@ class CropWaterTask(Task):
             extra += f" refills={self.refill_count}"
         if self._pass_number:
             extra += f" passes={self._pass_number}"
+        if self._unfunded_waterings:
+            extra += f" stamina_low unfunded={self._unfunded_waterings}"
         full_reason = reason + extra
         print(f"[CROP] Complete ({status}): {full_reason}")
         if status == "failure":
@@ -676,12 +703,50 @@ class CropWaterTask(Task):
                 center=center,
                 ram=ram,
                 include_water=False,
+                layout_name=self.layout_name,
             )
             for center in centers
         ]
         if len(skills) == 1:
             return skills[0]
         return sequence_skills("crop_establish", *skills)
+
+    def _water_step_groups(self, ram, plots, start, skip):
+        """``(label, steps)`` groups in the order they are walked.
+
+        Legacy rings are watered one ring at a time from the stand nearest the start. The packed
+        lattice has one lane between rings, so its pocket rings are walked as a single shared-stand
+        tour (``plan_water_route``); any plot that is not a pocket ring keeps the per-ring order.
+        """
+        from harvest.maps.farm_pond import POCKET_PLANT_CENTERS, is_packed_layout, ring_layout_name
+
+        groups = []
+        rings = []
+        # The tour lost to plain stand order in every uncapped packed A/B (u_packed vs u_packed_notour),
+        # so the notch blocks run without it unless asked (HARVEST_WATER_TOUR=1).
+        tour_default = "0" if ring_layout_name() == "blocks" else "1"
+        if is_packed_layout() and os.environ.get("HARVEST_WATER_TOUR", tour_default) != "0":
+            pocket = set(POCKET_PLANT_CENTERS)
+            rings = [c for c in plots if c in pocket]
+            plots = [c for c in plots if c not in pocket]
+            rings += [
+                c for c in POCKET_PLANT_CENTERS
+                if c not in rings and any(
+                    tile_needs_watering(get_tile_at(ram, tx, ty))
+                    for tx, ty in plot_tiles(c, include_center=False)
+                )
+            ]
+        if rings:
+            groups.append((
+                (0, 0),
+                plan_water_route(ram, rings, start_tile=start, skip_tiles=skip),
+            ))
+        for center in plots:
+            groups.append((
+                center,
+                build_water_steps(ram, center, allow_crop_walkable=False, start_tile=start, skip_tiles=skip),
+            ))
+        return groups
 
     def _water_skill(self, ram: np.ndarray) -> Optional[Task]:
         from harvest.tasks.crop_skills import water_until_wet_skill
@@ -704,17 +769,10 @@ class CropWaterTask(Task):
         parked = parked_water_tiles(ram, self.bounds)
         self._pair_targets = {}
         self._noted_pairs = set()
-        for center in plots:
-            steps = build_water_steps(
-                ram,
-                center,
-                allow_crop_walkable=False,
-                start_tile=start,
-                skip_tiles=set(self.skip_water_tiles) | parked,
-            )
+        for label, steps in self._water_step_groups(ram, plots, start, set(self.skip_water_tiles) | parked):
             for index, (target, stand, face) in enumerate(steps):
                 nav = NavSkill(
-                    name=f"nav_water_{center[0]}_{center[1]}_{index}",
+                    name=f"nav_water_{label[0]}_{label[1]}_{index}",
                     target_px=(stand[0] * TILE_SIZE + 8, stand[1] * TILE_SIZE + 8),
                     radius=7,
                     soft_radius=7,
@@ -730,7 +788,7 @@ class CropWaterTask(Task):
                 # Best effort per tile: one unreachable stand (Summer weeds on
                 # (20,26) etc.) must not abort the tiles behind it.
                 pair = BestEffortSkill(
-                    name=f"nav_water_pair_{center[0]}_{center[1]}_{index}",
+                    name=f"nav_water_pair_{label[0]}_{label[1]}_{index}",
                     tasks=(nav, wet),
                 )
                 pairs.append(pair)
@@ -746,9 +804,17 @@ class CropWaterTask(Task):
         for _ in range(4):
             fills = max(0, -(-(min(budget, len(pairs)) - level) // 20))
             budget = max(0, stamina - 2 * fills) // 2
-        if 0 < budget < len(pairs):
-            print(f"[CROP] Stamina funds {budget} of {len(pairs)} waterings; rest wait a day")
+        if budget < len(pairs):
+            print(f"[CROP] Stamina funds {budget} of {len(pairs)} waterings; rest wait for a refill")
+            self._unfunded_waterings += len(pairs) - budget
             pairs, skills = pairs[:budget], skills[:budget]
+        if self.stop_hour is not None:
+            hour = int(read_ram_value(ram, "hour") or 0)
+            minute = int(read_ram_value(ram, "minute") or 0)
+            fits = max(0, (int(self.stop_hour) * 60 - hour * 60 - minute) // WATER_MINUTES_PER_TILE)
+            if fits < len(pairs):
+                print(f"[CROP] {fits} of {len(pairs)} waterings fit before {int(self.stop_hour):02d}:00")
+                pairs, skills = pairs[:fits], skills[:fits]
         self._water_pairs = pairs
         self._armed_water_tiles = len(pairs)
         if not skills:
@@ -903,6 +969,13 @@ class CropWaterTask(Task):
                 return TaskResult(status=TaskStatus.SUCCESS, reason=reason)
         if self._state == CropState.DONE and self._child is None:
             return self._terminal_result()
+        if (self.stop_hour is not None and self._state != CropState.DONE
+                and int(read_ram_value(world.ram, "hour") or 0) >= int(self.stop_hour) + STOP_HOUR_GRACE_HOURS):
+            print(f"[CROP] stop_hour {int(self.stop_hour):02d}:00 passed with watering unfinished; handing the day back")
+            self._state, self._child = CropState.DONE, None
+            result = self._terminal_result()
+            # A deadline is a normal exit, not a broken field: never FAILURE, which would trigger recovery.
+            return TaskResult(status=TaskStatus.SUCCESS, reason=f"stop_hour deadline: {result.reason}")
         if self._use_legacy_dispatch():
             return self._dispatch_legacy(world)
         return self._step_mode_skill(world)

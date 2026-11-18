@@ -432,11 +432,20 @@ class FrameVideoWriter:
             "+faststart",
             str(self._video_path),
         ]
+        # stderr is a file. A pipe deadlocks once a long encode fills it.
+        log = tempfile.NamedTemporaryFile(
+            dir=self.path.parent,
+            prefix=f".{self.path.stem}.",
+            suffix=".ffmpeg.log",
+            delete=False,
+        )
+        self._stderr_handle = log
+        self._stderr_path = Path(log.name)
         self._process = subprocess.Popen(
             command,
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            stderr=log,
         )
         if self._process.stdin is None:
             raise RuntimeError("ffmpeg did not expose stdin")
@@ -496,12 +505,9 @@ class FrameVideoWriter:
         self._finalized = True
         if not self._stdin.closed:
             self._stdin.close()
-        stderr = b""
-        if self._process.stderr is not None:
-            stderr = self._process.stderr.read()
         result = self._process.wait()
+        detail = self._read_ffmpeg_log()
         if result:
-            detail = stderr.decode("utf-8", errors="replace").strip()
             self._cleanup_temporary_files()
             raise RuntimeError(
                 f"ffmpeg exited with status {result}"
@@ -542,11 +548,7 @@ class FrameVideoWriter:
                 self._process.wait(timeout=8)
             except Exception:
                 pass
-        if self._process.stderr is not None:
-            try:
-                self._process.stderr.read()
-            except Exception:
-                pass
+        self._read_ffmpeg_log()
         if self._audio_handle is not None:
             try:
                 self._audio_handle.close()
@@ -604,6 +606,17 @@ class FrameVideoWriter:
                 f"ffmpeg failed ({result.returncode}) muxing {self.path}: {detail}"
             )
 
+    def _read_ffmpeg_log(self) -> str:
+        handle = getattr(self, "_stderr_handle", None)
+        if handle is not None and not handle.closed:
+            handle.close()
+        path = getattr(self, "_stderr_path", None)
+        if path is None or not path.is_file():
+            return ""
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+        path.unlink(missing_ok=True)
+        return text
+
     def _cleanup_temporary_files(self) -> None:
         for path in (self._video_path, self._audio_path):
             if path is not None and path != self.path:
@@ -634,6 +647,7 @@ class VideoRecorder:
         height: int,
         config: VideoCaptureConfig | None = None,
         audio_rate: int | float | None = None,
+        segment_frames: int | None = None,
     ) -> None:
         self.config = config or VideoCaptureConfig()
         self._recording_started = (
@@ -644,22 +658,35 @@ class VideoRecorder:
             # Caller may fill audio per-frame without a pre-known rate only if
             # they pass audio_rate explicitly; require it when audio is on.
             raise ValueError("audio_rate is required when config.audio is True")
-        self._writer = FrameVideoWriter(
-            path,
-            width=width,
-            height=height,
-            fps=self.config.fps,
-            scale=self.config.scale,
-            crf=self.config.crf,
-            preset=self.config.preset,
-            audio_rate=resolved_rate if self.config.audio else None,
-            audio_bitrate=self.config.audio_bitrate,
-            footer=self.config.footer,
-            layout=self.config.layout,
-            canvas_width=self.config.canvas_width,
-            canvas_height=self.config.canvas_height,
-            buttons=self.config.buttons,
+        if segment_frames is not None and segment_frames < 1:
+            raise ValueError("segment_frames must be >= 1")
+        self._base_path = Path(path)
+        self._audio_rate = resolved_rate if self.config.audio else None
+        self.segment_frames = segment_frames
+        self.parts: list[Path] = []
+        self._part_index = 0
+        self._closed_frames = 0
+        self._finalized = False
+        self._writer_kwargs = dict(
+            width=width, height=height, fps=self.config.fps, scale=self.config.scale,
+            crf=self.config.crf, preset=self.config.preset, audio_rate=self._audio_rate,
+            audio_bitrate=self.config.audio_bitrate, footer=self.config.footer,
+            layout=self.config.layout, canvas_width=self.config.canvas_width,
+            canvas_height=self.config.canvas_height, buttons=self.config.buttons,
         )
+        self._open_part()
+
+    def _open_part(self) -> None:
+        self._part_index += 1
+        path = self._base_path
+        if self.segment_frames is not None:
+            path = path.with_name(f"{path.stem}_part{self._part_index:03d}{path.suffix}")
+        self._writer = FrameVideoWriter(path, **self._writer_kwargs)
+
+    def _rotate_part(self) -> None:
+        self._closed_frames += self._writer.frames
+        self.parts.append(self._writer.close())
+        self._open_part()
 
     @property
     def path(self) -> Path:
@@ -667,11 +694,13 @@ class VideoRecorder:
 
     @property
     def frames(self) -> int:
-        return self._writer.frames
+        if self._finalized:
+            return self._closed_frames
+        return self._closed_frames + self._writer.frames
 
     @property
     def frames_written(self) -> int:
-        return self._writer.frames_written
+        return self.frames
 
     @property
     def audio_bytes_written(self) -> int:
@@ -696,6 +725,10 @@ class VideoRecorder:
         )
         if not write:
             return False
+        if self.segment_frames is not None and self._writer.frames >= self.segment_frames:
+            self._rotate_part()
+            if frame_index is None:
+                idx = self.frames
         self._writer.write(
             frame,
             audio=audio,
@@ -728,10 +761,21 @@ class VideoRecorder:
         )
 
     def close(self) -> Path:
-        return self._writer.close()
+        if self._finalized:
+            return self.parts[-1] if self.parts else self._base_path
+        self._finalized = True
+        if self._writer.frames or not self.parts:
+            self._closed_frames += self._writer.frames
+            self.parts.append(self._writer.close())
+        else:
+            self._writer.abort()
+        return self.parts[-1] if self.parts else self._base_path
 
     def abort(self) -> None:
-        """Close a failed capture without publishing the output MP4."""
+        """Drop the open part. Parts already rotated stay on disk."""
+        if self._finalized:
+            return
+        self._finalized = True
         self._writer.abort()
 
     def __enter__(self) -> VideoRecorder:

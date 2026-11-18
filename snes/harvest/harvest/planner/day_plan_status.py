@@ -12,6 +12,7 @@ from harvest.core.tile_catalog import (
     ADDR_TILEMAP,
     CLEARABLE_DEBRIS_TYPES,
     MOUNTAIN_TILEMAP_IDS,
+    is_path_tilemap,
 )
 from harvest.tasks.nav import get_tile_at
 from harvest.tasks.farm_ops import TileScanner
@@ -68,7 +69,7 @@ def is_mountain_tilemap(tilemap: int) -> bool:
 
 
 def tilemaps_match(actual: int, expected: int) -> bool:
-    """Compare tilemaps while treating seasonal farm and mountain maps as equivalent."""
+    """Compare tilemaps while treating seasonal farm, mountain and path maps as equivalent."""
     actual = int(actual)
     expected = int(expected)
     if actual == expected:
@@ -76,6 +77,8 @@ def tilemaps_match(actual: int, expected: int) -> bool:
     if is_farm_tilemap(actual) and is_farm_tilemap(expected):
         return True
     if is_mountain_tilemap(actual) and is_mountain_tilemap(expected):
+        return True
+    if is_path_tilemap(actual) and is_path_tilemap(expected):
         return True
     return False
 
@@ -362,12 +365,57 @@ def resolve_seed_type_from_ram(ram: np.ndarray) -> str | None:
     from harvest.planner.crop_planner import resolve_seed_type_for_date
 
     season, day = read_world_date(ram)
+    shipped = ram_shipped_crop_totals(ram)
+    from harvest.planner import run_strategy
+
+    if season == 0 and run_strategy.active().caps_shipping:
+        shipped = run_strategy.spring_committed_totals(ram)
+    elif season == 1 and run_strategy.active().balance_crops:
+        shipped = run_strategy.summer_committed_totals(ram)
+    inventory = ram_seed_inventory(ram)
+    if (season == 0 and read_world_year(ram) == 0 and run_strategy.active().balance_crops
+            and not any(inventory.get(crop, 0) for crop in ("potato", "turnip"))):
+        # Year 1 cash compounds into Summer crops and the first cow. Balance Spring score crops from Year 2;
+        # use any already-bought bags first, and still allow turnips if potatoes have no room left.
+        inventory = {"potato": 1}
     return resolve_seed_type_for_date(
         season,
         day,
-        inventory=ram_seed_inventory(ram),
-        shipped=ram_shipped_crop_totals(ram),
+        inventory=inventory,
+        shipped=shipped,
+        quota_bags=_summer_quota_bags(ram, season, inventory),
     )
+
+
+# The first two Summers keep the historical pick (the power-on timeline up to Year 3 must not move). Year 3's last
+# Summer is where one crop's quota was left short because the other always ranked first: tomatoes stood at 470 of
+# 496 because "most room left" kept naming corn until corn passed them, which was too late to grow a tomato.
+SUMMER_QUOTA_PICK_FROM_YEAR = 2
+
+
+def _summer_quota_bags(ram: np.ndarray, season: int, inventory: dict[str, int]) -> dict[str, int] | None:
+    """Crops the next shop trip must start, or None when the plain "most room left" ranking applies.
+
+    Once one Summer crop is in the ground, a crop that still has shipment room and nothing standing is
+    sown next, so every kind has its growing days. Read from the standing-crop totals, which are valid
+    from inside the house at the morning plan (the farm-tile planner is not).
+    """
+    from harvest.planner import run_strategy
+
+    if season != 1 or read_world_year(ram) < SUMMER_QUOTA_PICK_FROM_YEAR or not run_strategy.active().balance_crops:
+        return None
+    try:
+        strategy = run_strategy.active()
+        committed = run_strategy.summer_committed_totals(ram)
+        shipped = run_strategy.shipped_totals(ram)
+        needy = [crop for crop in ("corn", "tomato") if (strategy.room(crop, committed) or 0) > 0]
+    except Exception:
+        return None
+    started = [crop for crop in needy if committed[crop] > shipped[crop]]
+    unstarted = [crop for crop in needy if crop not in started]
+    if not started or not unstarted:
+        return None
+    return {crop: int(crop in unstarted) for crop in ("corn", "tomato")}
 
 
 def ram_seed_count(ram: np.ndarray, seed_type: str = "potato") -> int:
@@ -467,6 +515,7 @@ __all__ = [
     "ram_shipped_crop_totals",
     "resolve_seed_type_from_ram",
     "is_farm_tilemap",
+    "is_path_tilemap",
     "is_house_tilemap",
     "is_mountain_tilemap",
     "MOUNTAIN_TILEMAP_IDS",

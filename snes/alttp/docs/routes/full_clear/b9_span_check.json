@@ -1,0 +1,133 @@
+{
+  "door_steps": 0,
+  "span_steps": 29,
+  "illegal_on_path": 0,
+  "goes_south": 0,
+  "edge_row": 15,
+  "stair_col": -1,
+  "stair_row": -1,
+  "stair_byte": -1,
+  "path": [
+    [
+      4872,
+      5976
+    ],
+    [
+      4872,
+      5968
+    ],
+    [
+      4872,
+      5960
+    ],
+    [
+      4872,
+      5952
+    ],
+    [
+      4872,
+      5944
+    ],
+    [
+      4872,
+      5936
+    ],
+    [
+      4872,
+      5928
+    ],
+    [
+      4872,
+      5920
+    ],
+    [
+      4872,
+      5912
+    ],
+    [
+      4872,
+      5904
+    ],
+    [
+      4872,
+      5896
+    ],
+    [
+      4872,
+      5888
+    ],
+    [
+      4872,
+      5880
+    ],
+    [
+      4872,
+      5872
+    ],
+    [
+      4872,
+      5864
+    ],
+    [
+      4872,
+      5856
+    ],
+    [
+      4872,
+      5848
+    ],
+    [
+      4872,
+      5840
+    ],
+    [
+      4872,
+      5832
+    ],
+    [
+      4872,
+      5824
+    ],
+    [
+      4872,
+      5816
+    ],
+    [
+      4872,
+      5808
+    ],
+    [
+      4872,
+      5800
+    ],
+    [
+      4872,
+      5792
+    ],
+    [
+      4872,
+      5784
+    ],
+    [
+      4872,
+      5776
+    ],
+    [
+      4872,
+      5768
+    ],
+    [
+      4872,
+      5760
+    ],
+    [
+      4872,
+      5752
+    ],
+    [
+      4872,
+      5744
+    ]
+  ],
+  "note": "Start (4872, 5976) is the legal 8px-phase pose within 8px of (4872, 5977); room_origin (4608, 5632). Masked 22 stairs-kind bytes to legend wall 0x01. Unmasked row 14, component columns 8-51 expanded by two (columns 6-53): 6 0x01 wall, 7 0x04 wall, 8 0x04 wall, 9 0x04 wall, 10 0x04 wall, 11 0x04 wall, 12 0x04 wall, 13 0x04 wall, 14 0x04 wall, 15 0x04 wall, 16 0x04 wall, 17 0x04 wall, 18 0x04 wall, 19 0x04 wall, 20 0x04 wall, 21 0x04 wall, 22 0x04 wall, 23 0x04 wall, 24 0x01 wall, 25 0x1e unknown, 26 0x1e unknown, 27 0x01 wall, 28 0x04 wall, 29 0x04 wall, 30 0x04 wall, 31 0x04 wall, 32 0x02 wall, 33 0x02 wall, 34 0x02 wall, 35 0x02 wall, 36 0x02 wall, 37 0x02 wall, 38 0x04 wall, 39 0x04 wall, 40 0x04 wall, 41 0x04 wall, 42 0x01 wall, 43 0x1e unknown, 44 0x1e unknown, 45 0x01 wall, 46 0x04 wall, 47 0x04 wall, 48 0x04 wall, 49 0x04 wall, 50 0x04 wall, 51 0x04 wall, 52 0x04 wall, 53 0x01 wall."
+}

@@ -352,8 +352,37 @@ def visit_sahasrahla_hut(env: BootEnv, *, source: str = "state_load_dev") -> Seg
     )
 
 
+def walk_to_eastern_grounds(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
+    from alttp.overworld import walk_to_screen
+    from alttp.ram import SANCTUARY_SCREEN, SRAM_PROGRESS, SRAM_PROGRESS_FLAGS, wram_index
+    from alttp.startup import snapshot_env
+
+    snap = snapshot_env(env)
+    ram = env.get_ram()
+    ready = (
+        not snap.indoors and not snap.dark_world and snap.screen_id == SANCTUARY_SCREEN
+        and snap.has_control and snap.max_hp == 32 and snap.hp > 0 and snap.follower == 0
+        and int(ram[wram_index(SRAM_PROGRESS)]) == 2
+        and int(ram[wram_index(SRAM_PROGRESS_FLAGS)]) & 4
+    )
+    walked = walk_to_screen(env, 0x1E, max_frames=12000, guard=True) if ready else None
+    snap = snapshot_env(env) if walked else snap
+    ok = bool(walked and walked["ok"] and not snap.indoors and snap.screen_id == 0x1E
+              and snap.has_control and snap.hp > 0 and snap.follower == 0)
+    blocker = "" if ok else (
+        "requires the completed four-heart Sanctuary exit" if not ready
+        else f"leg to 0x1E failed: {walked['reason']}" if walked and not walked["ok"]
+        else "Eastern grounds leave was not loaded screen 0x1E")
+    trace = ",".join(f"0x{s:02X}" for s in (walked or {}).get("trace", ()))
+    return SegmentResult(
+        ok=ok, phase="eastern_grounds" if ok else "eastern_grounds_failed",
+        frames=0 if not walked else int(walked["frames"]), snapshot=snap, source=source,
+        acceptance={"eastern_grounds": ok}, blocker=blocker,
+        notes=[f"Guarded walker to loaded screen 0x1E. trace={trace}"])
+
+
 def approach_eastern_palace(env: BootEnv, *, source: str = "state_load_dev") -> SegmentResult:
-    """Follow live outdoor collision paths from the completed hut to the plaza."""
+    """Follow the hedge to the mapped door, then enter room 0xC9."""
     from dataclasses import asdict
 
     from alttp.overworld import read_overworld_tiles, standing_screen, walk_to_screen
@@ -388,31 +417,44 @@ def approach_eastern_palace(env: BootEnv, *, source: str = "state_load_dev") -> 
         env, target, target_xy=(point.x, point.y), tolerance=4,
         max_frames=6000, guard=True,
     )
+    door = outdoor.door("eastern_door_to_0xc9")
+    door_frames, door_note = 0, ""
+    if walked["ok"] and door is not None and door.to_room is not None:
+        from alttp import primitives
+        from alttp.startup import action_for, step_frames
+        for _ in range(max(1, (int(door.push_frames) + 2) // 3)):
+            step_frames(env, action_for(door.direction), 3)
+            door_frames += 3
+            pose = snapshot_env(env)
+            if pose.indoors and pose.room_base_id == door.to_room:
+                break
+        if not pose.has_control:
+            settled = primitives.settle_control(env, max_frames=480)
+            door_frames += int(settled.frames)
+            door_note = "" if settled.ok else settled.reason
     snap = snapshot_env(env)
     after = read_inventory(env.get_ram())
     after_story = tuple(int(env.get_ram()[wram_index(a)]) for a in (0xF3C5, 0xF3C6, 0xF3C7))
     after_fields = asdict(after)
+    land = None if door is None else door.landing_xy
+    lobby = bool(
+        land and snap.indoors and snap.room_base_id == door.to_room and snap.has_control
+        and snap.hp > 0 and snap.follower == 0 and snap.max_hp == 32
+        and max(abs(snap.link_x - land[0]), abs(snap.link_y - land[1])) <= 4)
     acceptance = {
-        "mapped_approach": bool(walked["ok"] and snap.has_control and not snap.indoors
-                                and not snap.dark_world and snap.screen_id == outdoor.screen_id
-                                and snap.hp > 0 and snap.follower == 0
-                                and max(abs(snap.link_x - point.x), abs(snap.link_y - point.y)) <= 4),
-        "inventory_preserved": all(value == after_fields[name]
+        "mapped_approach": bool(walked["ok"]),
+        "eastern_lobby": bool(walked["ok"] and not door_note and lobby),
+        "inventory_preserved": all(value == after_fields[name] or name == "keys" and {value, after_fields[name]} == {255, 0}
                                    for name, value in asdict(before).items() if name != "hp"),
         "story_preserved": after_story == story,
     }
-    acceptance["eastern_approach"] = all(acceptance.values())
-    ok = acceptance["eastern_approach"]
+    ok = acceptance["eastern_approach"] = all(acceptance.values())
     return SegmentResult(
-        ok=ok, phase="eastern_approach", frames=int(walked["frames"]), snapshot=snap,
-        source=source, acceptance=acceptance,
-        blocker="" if ok else f"Eastern approach failed: {walked['reason']}; {acceptance}",
-        phases=[RoutePhaseResult(
-            phase="hedge_to_eastern_door", ok=ok, frames=int(walked["frames"]), snapshot=snap,
-            detail=str(walked["line"]), diag={**snapshot_to_diag(snap), "walk": walked},
-        )],
-        notes=[f"HP {before.hp}->{after.hp}; damage events={walked['hits']}. Loaded screen and standing quadrant are distinct.",
-               "Mapped target with live hedge, boulder and stair collisions; guarded button path. Development evidence; no Clean tip promotion."],
+        ok=ok, phase="eastern_lobby" if ok else "eastern_approach",
+        frames=int(walked["frames"]) + door_frames, snapshot=snap, source=source,
+        acceptance=acceptance,
+        blocker="" if ok else door_note or f"Eastern approach failed: {walked['reason']}; {acceptance}",
+        notes=[f"HP {before.hp}->{after.hp}; hits={walked['hits']}. Mapped eastern_door_to_0xc9."],
     )
 
 
@@ -626,6 +668,21 @@ def _build_registry() -> dict[str, ScriptSegment]:
     )
 
     return {
+        "eastern_grounds": ScriptSegment(
+            segment_id="eastern_grounds", play_fn=walk_to_eastern_grounds,
+            entry=EntryRequirement(
+                description="Four-heart Sanctuary exterior on screen 0x13",
+                screen_id=SANCTUARY_SCREEN, require_indoors=False,
+                require_fighter_sword=True, require_lamp=True,
+                graph_node_id="sanctuary_exit",
+            ),
+            exit=ExitPredicate(
+                description="Loaded Eastern screen 0x1E, control ready",
+                acceptance_keys=("eastern_grounds",), graph_node_id="eastern_grounds",
+                verification="planned",
+            ),
+            label="Sanctuary exterior → Eastern grounds",
+        ),
         "eastern_approach": ScriptSegment(
             segment_id="eastern_approach", play_fn=approach_eastern_palace,
             entry=EntryRequirement(
@@ -634,11 +691,11 @@ def _build_registry() -> dict[str, ScriptSegment]:
                 require_lamp=True, graph_node_id="sahasrahla_hut",
             ),
             exit=ExitPredicate(
-                description="Controllable at the mapped Eastern entrance approach",
-                acceptance_keys=("eastern_approach",), graph_node_id="eastern_approach",
+                description="Room 0xC9 lobby via the mapped Eastern door",
+                acceptance_keys=("eastern_lobby",), graph_node_id="room_c9",
                 verification="planned",
             ),
-            label="Sahasrahla hut exit → Eastern Palace entrance plaza",
+            label="Sahasrahla hut exit → Eastern Palace lobby",
         ),
         "sahasrahla_hut": ScriptSegment(
             segment_id="sahasrahla_hut", play_fn=visit_sahasrahla_hut,

@@ -237,18 +237,52 @@ def test_eastern_approach_from_completed_hut_predecessor() -> None:
         raw.close()
 
     assert result.ok, result.blocker
-    assert result.acceptance["eastern_approach"]
-    assert not snap.indoors and snap.screen_id == 0x1E and snap.has_control
-    assert snap.follower == 0 and 0 < snap.hp <= before["hp"]
-    point = load_room_map("screen_1e_eastern").point("eastern_door")
-    assert point is not None
-    assert abs(snap.link_x - point.x) <= 4 and abs(snap.link_y - point.y) <= 4
+    assert result.acceptance["eastern_lobby"]
+    assert snap.indoors and snap.room_base_id == 0xC9 and snap.has_control
+    assert snap.follower == 0 and snap.max_hp == 32 and 0 < snap.hp <= before["hp"]
+    door = load_room_map("screen_1e_eastern").door("eastern_door_to_0xc9")
+    assert door is not None and door.landing_xy is not None
+    assert abs(snap.link_x - door.landing_xy[0]) <= 4
+    assert abs(snap.link_y - door.landing_xy[1]) <= 4
     assert after_story == story == (2, 0x15, 3)
     assert {k: v for k, v in after.items() if k != "hp"} == {
         k: v for k, v in before.items() if k != "hp"
     }
     assert audit.writes == 0 and audit.set_state == audit.rollout_restores
     assert 0 < result.frames <= 6000
+
+
+def test_eastern_door_hop_from_hedge_replay() -> None:
+    """rr-eog9.6 pushed the mapped door from Play_eog9_5, not EasternPalaceEntry."""
+    import json
+
+    from alttp.paths import RECORDINGS_DIR
+    from alttp.room_map import load_room_map
+    from alttp.scripts.audit_power_on import replay_goal_accepted
+
+    path = RECORDINGS_DIR / "eog9_door_20261023" / "replay.json"
+    if not path.is_file():
+        pytest.skip("requires the Play_eog9_5 door replay")
+    report = json.loads(path.read_text(encoding="utf-8"))
+    door = load_room_map("screen_1e_eastern").door("eastern_door_to_0xc9")
+    assert door is not None and door.landing_xy is not None and door.to_room == 0xC9
+    final = report["final"]
+    assert report["boot_state"] == "Play_eog9_5"
+    assert "EasternPalaceEntry" not in report["saved_state"]
+    assert report["desynced"] == 0
+    assert report["audit"]["set_state"] == report["audit"]["writes"] == 0
+    assert final["game_mode"] == 0x07 and final["submodule"] == 0
+    assert final["indoors"] and final["has_control"]
+    assert final["room_base_id"] == door.to_room
+    assert final["follower"] == 0 and final["has_fighter_sword"] and final["has_lamp"]
+    assert final["max_hp"] == 32 and final["hp"] == 28 and final["keys"] == 0
+    assert max(
+        abs(final["link_x"] - door.landing_xy[0]),
+        abs(final["link_y"] - door.landing_xy[1]),
+    ) <= 4
+    assert replay_goal_accepted(
+        {"through": "eastern_entry", "source_ok": True}, final, report["story"],
+    )
 
 
 def test_porch_escape_then_north() -> None:

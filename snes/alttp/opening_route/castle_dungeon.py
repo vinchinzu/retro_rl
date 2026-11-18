@@ -31,6 +31,7 @@ from alttp.opening_route.room_engine import (
 from alttp.primitives import (
     SPRITE_BALL_AND_CHAIN,
     SPRITE_BIG_KEY,
+    SPRITE_GREEN_SOLDIER,
     SPRITE_SMALL_KEY,
     PrimitiveResult,
     collect_nearby,
@@ -48,6 +49,7 @@ from alttp.ram import (
     ZELDA_CELL_ROOM,
     AlttpSnapshot,
     read_inventory,
+    snapshot_to_diag,
     zelda_rescued_accepted,
 )
 from alttp.room_map import load_room_map
@@ -64,6 +66,16 @@ _AXIS_STUCK_STEPS = 40
 
 
 @dataclass(frozen=True)
+class EdgeStand:
+    """Living sprite_type with y < y_below; idle until x <= x_max."""
+
+    sprite_type: int
+    x_max: int
+    y_below: int
+    wait: int
+
+
+@dataclass(frozen=True)
 class DungeonRoomEdge:
     """One measured room-engine edge in the castle dungeon prefix."""
 
@@ -75,6 +87,7 @@ class DungeonRoomEdge:
     graph_edge_id: str
     verification: str = "continuous"
     clear: bool = True
+    stand: EdgeStand | None = None
 
 
 MAIN_HALL_TO_NW_PREFIX: tuple[DungeonRoomEdge, ...] = (
@@ -85,6 +98,8 @@ MAIN_HALL_TO_NW_PREFIX: tuple[DungeonRoomEdge, ...] = (
         source_room=HYRULE_CASTLE_MAIN_HALL_ROOM,
         target_room=HYRULE_CASTLE_MAIN_WEST_ROOM,
         graph_edge_id="main_hall_west_to_0x60",
+        # Bush lift leaves the soldier at x=705; x<=704 crosses clean.
+        stand=EdgeStand(SPRITE_GREEN_SOLDIER, 704, 3340, 800),
     ),
     DungeonRoomEdge(
         edge_id="room_60_north_to_0x50",
@@ -156,6 +171,21 @@ def _prefix_result(
     )
 
 
+def _stand_until_clear(env: BootEnv, stand: EdgeStand) -> tuple[int, AlttpSnapshot]:
+    """Idle until the stand's living sprite is at x<=x_max. No RAM waits 0."""
+    snap = snapshot_env(env)
+    if not hasattr(env, "get_ram"):
+        return 0, snap
+    frames = 0
+    for _ in range(stand.wait):
+        north = [s.x for s in sprites_of_type(env, (stand.sprite_type,)) if s.hp > 0 and s.y < stand.y_below]
+        if not north or min(north) <= stand.x_max:
+            return frames, snapshot_env(env)
+        step_frames(env, no_action(), 1)
+        frames += 1
+    return frames, snapshot_env(env)
+
+
 def run_room_edge_sequence(
     env: BootEnv,
     edges: Sequence[DungeonRoomEdge],
@@ -164,10 +194,9 @@ def run_room_edge_sequence(
 ) -> SegmentResult:
     """Run measured room edges in order, failing before a wrong-room action.
 
-    ``run_room_edge`` owns combat, geometry and door pushes.  This thin
-    composition layer owns only ordering, room-boundary assertions and a
-    cumulative report.  That keeps every future castle-door addition local and
-    auditable.
+    ``run_room_edge`` owns combat, geometry and door pushes.  This layer
+    orders edges, runs an optional stand from the edge row, checks room
+    boundaries, and reports.  Future castle doors stay on the edge row.
     """
     if not edges:
         snap = snapshot_env(env)
@@ -199,6 +228,16 @@ def run_room_edge_sequence(
                 ),
                 notes=notes,
             )
+
+        if edge.stand is not None:
+            stood, stood_snap = _stand_until_clear(env, edge.stand)
+            frames += stood
+            if stood:
+                phases.append(RoutePhaseResult(
+                    phase="stand_for_hall_guard", ok=True, frames=stood,
+                    snapshot=stood_snap, diag=snapshot_to_diag(stood_snap),
+                    detail=f"stood {stood}f until x<={edge.stand.x_max}",
+                ))
 
         result = run_room_edge(
             env,

@@ -408,6 +408,25 @@ def read_wram_u16(env: Any, address: int) -> int:
     return lo | (hi << 8)
 
 
+def credits_complete(env: Any) -> bool:
+    """Recognize the final post-credits screen in the vanilla NTSC ROM."""
+    wram = env.data.memory.blocks[SNES_WRAM_BANK]
+
+    def word(address: int) -> int:
+        return int.from_bytes(wram[address : address + 2], "little")
+
+    # $8B:E797 scrolls the item percentage to Y=$FFB0, spawns the final
+    # message, and sets the cinematic function to $E7BA. Earlier stages also
+    # use $E7BA. The object script at $8C:E0AF deletes itself after drawing
+    # the entire message, clearing its entry in the BG instruction list.
+    return (
+        word(ADDR_GAME_STATE) == 39
+        and word(0x1F51) == 0xE7BA
+        and word(0x1997) == 0xFFB0
+        and not any(wram[0x19CD:0x19D5])
+    )
+
+
 def peek_wram(env: Any, addresses: dict[str, int]) -> dict[str, int]:
     """Selective WRAM peeks: ``{name: address}`` → ``{name: u8_or_u16}``.
 

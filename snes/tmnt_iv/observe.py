@@ -27,7 +27,7 @@ class HpDelta:
     """Accumulate natural HP drops across frames.
 
     ``count_zero=True`` also counts the frame that hits 0 (full-run / capture).
-    Probe loops that ignore the KO frame leave it false (Clean / grind).
+    Probe loops that ignore the KO frame leave it false.
     """
 
     prev: int | None = None

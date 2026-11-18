@@ -250,6 +250,12 @@ def resolve_anchor_path(
             candidates.append(anchors_dir / name)
     if task_path is not None:
         tp = Path(task_path)
+        # Segment archives retain their index while states stay beside the
+        # original task. Its recorded absolute directory may predate a move.
+        archive = tp.parent.parent
+        if tp.name == "tape.json" and archive.name.endswith("_segments"):
+            task = archive.name.removesuffix("_segments")
+            candidates.append(archive.with_name(task + "_anchors") / name)
         candidates.append(tp.with_name(tp.stem + "_anchors") / name)
         if anchors_dir is None:
             candidates.append(tp.parent / (tp.stem + "_anchors") / name)

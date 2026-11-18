@@ -25,7 +25,7 @@ import numpy as np
 from harvest.paths import DECOMP_DIR
 from harvest.core.ram_catalog import read_ram_u16, read_ram_u8, read_ram_value, write_mutable_field
 from harvest.runtime.rom_tools import MutableSaveState, parse_save_state, resolve_state_path
-from harvest.core.tile_catalog import TILE_SIZE
+from harvest.core.tile_catalog import ADDR_TILEMAP, TILE_SIZE
 
 
 TEXT_POINTER_TABLE_PATH = DECOMP_DIR / "src" / "code_banks" / "bank_83.asm"
@@ -45,6 +45,14 @@ KNOWN_ENTITY_SPRITES = {
     **{sprite: ("cow", "animal", "recording") for sprite in range(0x018B, 0x01D9)},
     **{sprite: ("chicken", "animal", "recording") for sprite in range(0x0212, 0x021A)},
 }
+
+# The farm dog cycles through these sprite ids as it animates (sampled on the farm,
+# Winter D13: 0x01D9-0x01F3 at its tile); only 0x01D9 was labelled, so the
+# navigators missed a sitting dog and pushed into it. 0x01E1 is a dog frame on
+# the farm map too, though the coop's chicken table lists it.
+FARM_TILEMAP = 0x00
+FARM_DOG_SPRITES = range(0x01D9, 0x01F8)
+FARM_HORSE_SPRITES = range(0x01F8, 0x0212)
 
 ROMANCE_NPCS = ("maria", "ann", "nina", "ellen", "eve")
 ROMANCE_HEART_FIELDS = {
@@ -151,8 +159,31 @@ class StatusFlagBank:
 
 
 STATUS_FLAG_BANKS: Tuple[StatusFlagBank, ...] = (
-    StatusFlagBank("event_flags_1f5a", 0x11F5A, "Event Flags 1F5A", {0x0002: "event_gate_1f5a_0002"}),
-    StatusFlagBank("event_flags_1f5c", 0x11F5C, "Event Flags 1F5C", {0x0020: "player_input_event_lock"}),
+    StatusFlagBank(
+        "event_flags_1f5a",
+        0x11F5A,
+        "Event Flags 1F5A",
+        {
+            0x0002: "event_gate_1f5a_0002",
+            0x0020: "animal_bought_today",
+            0x1000: "farm_mole_seen",
+            0x2000: "summer_sickle_frog_seen",
+        },
+    ),
+    StatusFlagBank(
+        "event_flags_1f5c",
+        0x11F5C,
+        "Event Flags 1F5C",
+        {
+            0x0020: "player_input_event_lock",
+            0x0080: "cave_statue_struck_today",
+            0x0100: "farm_power_berry_dug_today",
+            0x0200: "farm_gold_dug_today",
+            0x2000: "spring_wild_animal_seen",
+            0x4000: "fall_wild_animal_seen",
+            0x8000: "winter_wild_animal_seen",
+        },
+    ),
     StatusFlagBank("event_flags_1f5e", 0x11F5E, "Event Flags 1F5E", {}),
     StatusFlagBank("event_flags_1f60", 0x11F60, "Event Flags 1F60", {0x0800: "save_slot_failure_seen"}),
     StatusFlagBank("event_flags_1f62", 0x11F62, "Event Flags 1F62", {}),
@@ -161,8 +192,14 @@ STATUS_FLAG_BANKS: Tuple[StatusFlagBank, ...] = (
         0x11F64,
         "Upgrade Flags",
         {
+            0x0001: "thunderstorm_seen",
+            0x0002: "blizzard_seen",
             0x0040: "house_upgraded_once",
             0x0080: "house_level_2",
+            0x0200: "power_berry_cave_statue",
+            0x0400: "power_berry_mountain_stump",
+            0x0800: "power_berry_farm_hoe_1",
+            0x1000: "power_berry_farm_hoe_2",
         },
     ),
     StatusFlagBank(
@@ -202,6 +239,7 @@ STATUS_FLAG_BANKS: Tuple[StatusFlagBank, ...] = (
             0x0010: "eve_200_heart_event_seen",
             0x0020: "eve_event_blocker",
             0x0080: "wife_about_to_give_birth",
+            0x1000: "turtle_shell_owned",
         },
     ),
     StatusFlagBank(
@@ -212,6 +250,9 @@ STATUS_FLAG_BANKS: Tuple[StatusFlagBank, ...] = (
             0x0004: "first_child_born_or_expected",
             0x0008: "second_child_born_or_expected",
             0x0040: "cow_funeral",
+            0x0080: "thunderstorm_event",
+            0x0100: "blizzard_event",
+            0x0200: "wild_dog_fence_breach",
             0x1000: "cow_born",
             0x2000: "egg_incubating",
         },
@@ -239,6 +280,7 @@ def _low_u16(ram: np.ndarray, address: int) -> int:
 
 def iter_game_objects(ram: np.ndarray) -> Iterable[GameObjectSnapshot]:
     player_slot = _low_u16(ram, ADDR_PLAYER_GOBJ_INDEX)
+    on_farm = ADDR_TILEMAP < len(ram) and int(ram[ADDR_TILEMAP]) == FARM_TILEMAP
     for slot in range(GOBJ_STRUCT_COUNT):
         offset = GOBJ_STRUCT_BASE + slot * GOBJ_STRUCT_STRIDE
         if _low_u16(ram, offset) != GOBJ_INITIALIZED:
@@ -246,6 +288,10 @@ def iter_game_objects(ram: np.ndarray) -> Iterable[GameObjectSnapshot]:
         sprite_table_idx = _low_u16(ram, offset + 0x02)
         is_player = slot == player_slot or sprite_table_idx in PLAYER_SPRITE_TABLE_IDS
         label, kind, source = _entity_name(sprite_table_idx, is_player=is_player)
+        if on_farm and not is_player and sprite_table_idx in FARM_DOG_SPRITES:
+            label, kind, source = "dog", "animal", "probe"
+        if on_farm and not is_player and sprite_table_idx in FARM_HORSE_SPRITES:
+            label, kind, source = "horse", "animal", "probe"
         x = _low_u16(ram, offset + 0x08)
         y = _low_u16(ram, offset + 0x0A)
         component_total = _low_u8(ram, offset + 0x13)

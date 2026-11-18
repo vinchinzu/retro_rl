@@ -13,7 +13,7 @@ from types import SimpleNamespace
 _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
-from crop_planter_test_helpers import blank_ram, set_player_tile, set_tile
+from crop_planter_test_helpers import blank_ram, set_player_tile, set_stamina, set_tile
 
 from harvest.tasks.crop_planter import (
     CropState,
@@ -133,6 +133,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_TOOL] = 0x07  # seed, not can
         ram[0x0923] = 0x02
         ram[ADDR_TILEMAP] = 0x00
+        set_stamina(ram, 100)
         px = center[0] * 16 + 8
         py = center[1] * 16 + 8
         ram[ADDR_X] = px & 0xFF
@@ -252,6 +253,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_INPUT_LOCK] = 1
         # Full can so we attempt water rather than immediate refill thrash.
         ram[0x0926] = 20
+        set_stamina(ram, 100)
         px, py = 17 * 16 + 8, 29 * 16 + 8
         ram[ADDR_X] = px & 0xFF
         ram[ADDR_X + 1] = (px >> 8) & 0xFF
@@ -267,6 +269,89 @@ class CropPlanterLogicTests(unittest.TestCase):
         self.assertGreaterEqual(task._dry_crop_tiles_at_start, 2)
         self.assertTrue(task._plots, msg="sparse dry tiles must yield water plots")
 
+    def _sparse_dry_world(self, stamina: int):
+        ram = blank_ram()
+        set_tile(ram, 17, 29, 0x54)
+        set_tile(ram, 16, 29, 0x54)
+        ram[ADDR_TOOL] = 0x10
+        ram[ADDR_TILEMAP] = 0x00
+        ram[ADDR_INPUT_LOCK] = 1
+        ram[0x0926] = 20
+        set_stamina(ram, stamina)
+        set_player_tile(ram, (17, 30))
+        return SimpleNamespace(ram=ram, info={}, obs=None)
+
+    def test_empty_stamina_reports_refill_not_failure(self) -> None:
+        """A tired farmer is a spa refill (``stamina_low``), not a broken field."""
+        world = self._sparse_dry_world(stamina=1)
+        task = CropWaterTask(work_mode="water", bounds=(3, 14, 40, 50))
+        task.reset(world)
+
+        result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS, msg=result.reason)
+        self.assertIn("stamina_low unfunded=2", result.reason)
+        self.assertTrue(result.reason.startswith("partial"), msg=result.reason)
+
+    def test_stamina_exhausted_skip_is_never_parked(self) -> None:
+        from harvest.tasks import crop_planter
+
+        crop_planter.reset_water_failure_memory()
+        world = self._sparse_dry_world(stamina=100)
+        task = CropWaterTask(work_mode="water", bounds=(3, 14, 40, 50))
+        task.reset(world)
+        task.step(world)
+        pair = task._water_pairs[0]
+        pair.skipped = True
+        pair.skip_reason = "water_until_wet stamina exhausted tid=0x54 at (16, 29)"
+        for _ in range(3):
+            task._noted_pairs.clear()
+            task._note_skipped_water_pairs()
+
+        self.assertEqual(crop_planter._WATER_TILE_FAILURES, {})
+        self.assertGreater(task._unfunded_waterings, 0)
+
+    def test_stop_hour_arms_only_the_tiles_that_fit(self) -> None:
+        from unittest import mock
+        from harvest.tasks import crop_planter
+
+        world = self._sparse_dry_world(stamina=100)
+        real = crop_planter.read_ram_value
+        clock = {"hour": 11, "minute": 40}  # 20 minutes left: one tile
+        task = CropWaterTask(work_mode="water", bounds=(3, 14, 40, 50), stop_hour=12)
+        with mock.patch.object(crop_planter, "read_ram_value",
+                               side_effect=lambda ram, name: clock.get(name, None) or real(ram, name)):
+            task.reset(world)
+            task.step(world)
+
+        self.assertEqual(task._armed_water_tiles, 1)
+        self.assertEqual(task._unfunded_waterings, 0)
+
+    def test_stop_hour_is_a_runtime_deadline_not_only_an_arming_estimate(self) -> None:
+        """Y1 Spring D23 (score_policy_final): refill detours ran the capped watering from 06:04 to 18:12.
+
+        The festival's west-edge trigger needs town before 15:00, so a watering that has an hour of
+        grace past ``stop_hour`` and is still going must hand the day back.
+        """
+        from unittest import mock
+        from harvest.tasks import crop_planter
+
+        world = self._sparse_dry_world(stamina=100)
+        real = crop_planter.read_ram_value
+        clock = {"hour": 7, "minute": 5}
+        task = CropWaterTask(work_mode="water", bounds=(3, 14, 40, 50), stop_hour=12)
+        with mock.patch.object(crop_planter, "read_ram_value",
+                               side_effect=lambda ram, name: clock.get(name, None) or real(ram, name)):
+            task.reset(world)
+            self.assertEqual(task.step(world).status, TaskStatus.RUNNING)
+            clock["hour"], clock["minute"] = 12, 59  # inside the grace hour: keep watering
+            self.assertEqual(task.step(world).status, TaskStatus.RUNNING)
+            clock["hour"], clock["minute"] = 13, 0   # past stop_hour + grace
+            result = task.step(world)
+
+        self.assertEqual(result.status, TaskStatus.SUCCESS, msg=result.reason)
+        self.assertIn("stop_hour", result.reason)
+
     def test_water_only_operates_sparse_one_cell_plot(self) -> None:
         """rr-rzpd: a single dry crop tile at (13,28) must be detected as a work plot and watered."""
         ram = blank_ram()
@@ -276,6 +361,7 @@ class CropPlanterLogicTests(unittest.TestCase):
         ram[ADDR_TILEMAP] = 0x00
         ram[ADDR_INPUT_LOCK] = 1
         ram[0x0926] = 20  # full can
+        set_stamina(ram, 100)
         px, py = 13 * 16 + 8, 29 * 16 + 8
         ram[ADDR_X] = px & 0xFF
         ram[ADDR_X + 1] = (px >> 8) & 0xFF

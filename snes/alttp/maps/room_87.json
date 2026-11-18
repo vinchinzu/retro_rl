@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "roomBaseId": 135,
+  "roomHex": "0x87",
+  "name": "Tower of Hera 1F",
+  "measured": "2026-09-30",
+  "sourceState": "Scan_hera_0x87",
+  "points": [],
+  "doors": [
+    {
+      "label": "stair_to_0x77",
+      "direction": "UP",
+      "toRoom": 119,
+      "role": "backtrack",
+      "notes": "Return mouth toward room 0x77. Scan entered by holding tile 0x5E (17,43) in 0x77 at $C172=01 and landed (3721,4424) layer 0. The return push was not walked. Nearby mouth tiles are 0x5E (17,40) and (18,40)."
+    },
+    {
+      "label": "west_regular",
+      "direction": "LEFT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 0 type 0x00 pos $07C4 col 34 row 15. No floor path from the landing at $C172 00 or 01. Inward cells are wall; at peg 00 the last one is 0x66 and still disconnected."
+    },
+    {
+      "label": "north_regular",
+      "direction": "UP",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 1 type 0x00 pos $125C col 46 row 36. No path from the landing at either peg. The floor past the mouth is the east component."
+    },
+    {
+      "label": "east_shutter",
+      "direction": "RIGHT",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 8 type 0x18 pos $07B4, other layer of the west mouth. Landing is layer 0. Far side not entered."
+    },
+    {
+      "label": "south_regular",
+      "direction": "DOWN",
+      "toRoom": null,
+      "role": "primary",
+      "notes": "Slot 9 type 0x00 pos $0D5C, other layer of the north mouth. Landing is layer 0. Far side not entered."
+    }
+  ],
+  "notes": [
+    "Door-only skeleton. Pin Scan_hera_0x87, landing (3721,4424), layer 0, floor 0x00, $C172=01, keys=0, big_key=0, hp=24, lamp=1, magic=0.",
+    "Chest 0 is BigKeyP3, z3=0xE9E6, tile (47,52), layer 0, opened=0. East component. No path from the landing at either peg.",
+    "Small-key sprite 0xE4 at (3712,4512) tile (16,52) is on the landing component when $C172=00. A later stand collected it and was not saved. The pin still has keys=0."
+  ]
+}

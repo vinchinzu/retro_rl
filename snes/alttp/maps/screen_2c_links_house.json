@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "mapId": "screen_2c_links_house",
+  "outdoors": true,
+  "screenId": 44,
+  "roomBaseId": 0,
+  "roomHex": "0x00",
+  "name": "Link's house (screen 0x2C)",
+  "measured": "2026-09-30",
+  "sourceState": "LinksHouseWake",
+  "z3Label": "Links House",
+  "points": [
+    {
+      "label": "house_door",
+      "xy": [2232, 2811],
+      "role": "approach",
+      "notes": "Outdoor control after RIGHT to x=2425 indoors, then DOWN out."
+    }
+  ],
+  "doors": [
+    {
+      "label": "house_door_to_0x04",
+      "direction": "UP",
+      "toRoom": 4,
+      "outdoors": false,
+      "approachXy": [2232, 2811],
+      "landingXy": [2424, 8664],
+      "role": "entrance",
+      "path": ["house_door"],
+      "pushFrames": 40,
+      "notes": "Isolated walk-in UP from (2232,2811) to room 0x04 (2424,8664) control frame 132, hp 0x18. Not continuous."
+    }
+  ],
+  "clearPolicy": {
+    "maxDistance": 80,
+    "attackDistance": 40,
+    "maxCycles": 50,
+    "skirmishMaxDistance": 60,
+    "skirmishPad": 12,
+    "skirmishMaxCycles": 40
+  },
+  "walkBbox": [2216, 2795, 2248, 2827],
+  "hostilesAtEntry": [],
+  "notes": [
+    "LinksHouseWake spawn is west of the door. RIGHT until x>=2424, then DOWN, leaves to this stand.",
+    "Buttons only. Not continuous."
+  ]
+}

@@ -97,16 +97,23 @@ WATER_PLAN = [
 
 # ── helper functions ─────────────────────────────────────────────────
 
-def hoe_plan(center: Tuple[int, int]) -> List[Tuple[Tuple[int, int], Tuple[int, int], str]]:
+def hoe_plan(center: Tuple[int, int], *, opening: Optional[Tuple[int, int]] = None, plant_center: bool = True) -> List[Tuple[Tuple[int, int], Tuple[int, int], str]]:
     """Return absolute (target_tile, stand_tile, face_dir) for hoeing a 3x3 plot.
 
     >>> plan = hoe_plan((35, 20))
     >>> target, stand, face = plan[0]
     """
     cx, cy = center
+    steps = list(HOE_PLAN)
+    if opening is not None:
+        if opening not in {(-1, 0), (1, 0)}:
+            raise ValueError("eight-crop notch must open east or west")
+        steps = [step for step in steps if step[:2] != opening]
+        if plant_center:
+            steps.append((0, 0, *opening, "left" if opening[0] > 0 else "right"))
     return [
         ((cx + tdx, cy + tdy), (cx + sdx, cy + sdy), face)
-        for tdx, tdy, sdx, sdy, face in HOE_PLAN
+        for tdx, tdy, sdx, sdy, face in steps
     ]
 
 
@@ -632,3 +639,132 @@ def build_water_steps(
     return steps
 
 
+
+
+# ── shared-stand watering route ──────────────────────────────────────
+
+WaterStep = Tuple[Tuple[int, int], Tuple[int, int], str]
+_STAND_DELTAS = (("up", (0, 1)), ("down", (0, -1)), ("left", (1, 0)), ("right", (-1, 0)))
+
+
+def _lane_distances(ram: np.ndarray, source: Tuple[int, int], limit: int = 120) -> dict:
+    """Walking steps from ``source`` over open ground. Crops block, grown or not."""
+    seen = {source: 0}
+    queue = deque([source])
+    while queue:
+        x, y = queue.popleft()
+        if seen[(x, y)] >= limit:
+            continue
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if (nx, ny) in seen or not (0 <= nx < MAP_WIDTH and 0 <= ny < MAP_WIDTH):
+                continue
+            tid = get_tile_at(ram, nx, ny)
+            if tid in WALKABLE_TILES and not is_crop_tile(tid):
+                seen[(nx, ny)] = seen[(x, y)] + 1
+                queue.append((nx, ny))
+    return seen
+
+
+def plan_water_route(
+    ram: np.ndarray,
+    centers: List[Tuple[int, int]],
+    *,
+    start_tile: Tuple[int, int],
+    skip_tiles: Optional[Set[Tuple[int, int]]] = None,
+    allow_unknown_tiles: bool = False,
+    include_fresh_tilled: bool = False,
+) -> List[WaterStep]:
+    """One walking tour that waters every dry tile of ``centers``.
+
+    ``build_water_steps`` picks a stand per tile and sorts by distance from where the farmer
+    started, so the same lane tile is reached once per crop it touches and the order jumps between
+    rings (``y1b``: 263 frames a tile, 76% of it walking). In a packed lattice a lane tile touches a
+    crop on each side, and a lane runs past three tiles of two rings. This picks the fewest stands
+    that cover every tile (greedy by tiles served, then by walk from the start), orders them by
+    nearest neighbour over real lane distances with a 2-opt pass, and emits the tiles of a stand
+    together. Step format is ``build_water_steps``': ``(target, stand, face)``.
+    """
+    skip = set(skip_tiles or ())
+    targets: List[Tuple[int, int]] = []
+    seen_targets: Set[Tuple[int, int]] = set()
+    for center in centers:
+        for tile in _water_target_tiles(
+            ram, center, allow_unknown_tiles, skip, include_fresh_tilled
+        ):
+            if tile not in seen_targets:
+                seen_targets.add(tile)
+                targets.append(tile)
+    if not targets:
+        return []
+
+    serves: dict = {}
+    for target in targets:
+        for face, (dx, dy) in _STAND_DELTAS:
+            stand = (target[0] + dx, target[1] + dy)
+            if not (0 <= stand[0] < MAP_WIDTH and 0 <= stand[1] < MAP_WIDTH):
+                continue
+            tid = get_tile_at(ram, stand[0], stand[1])
+            if tid in WALKABLE_TILES and not is_crop_tile(tid):
+                serves.setdefault(stand, []).append((target, face))
+
+    from_start = _lane_distances(ram, start_tile)
+    uncovered = set(targets)
+    chosen: dict = {}
+    while uncovered:
+        best = None
+        for stand, options in serves.items():
+            gain = sum(1 for target, _face in options if target in uncovered)
+            if not gain:
+                continue
+            key = (-gain, from_start.get(stand, 999), stand[1], stand[0])
+            if best is None or key < best[0]:
+                best = (key, stand)
+        if best is None:
+            break  # a tile with no open neighbour: build_water_steps would not reach it either
+        stand = best[1]
+        take = [(t, f) for t, f in serves[stand] if t in uncovered]
+        chosen[stand] = take
+        uncovered.difference_update(t for t, _f in take)
+    if not chosen:
+        return []
+
+    stands = list(chosen)
+    dist = {stand: _lane_distances(ram, stand) for stand in stands}
+
+    def hop(a: Tuple[int, int], b: Tuple[int, int]) -> int:
+        d = dist[a].get(b)
+        return d if d is not None else abs(a[0] - b[0]) + abs(a[1] - b[1]) + 60
+
+    def start_hop(stand: Tuple[int, int]) -> int:
+        d = from_start.get(stand)
+        return d if d is not None else abs(start_tile[0] - stand[0]) + abs(start_tile[1] - stand[1]) + 60
+
+    order = [min(stands, key=lambda s: (start_hop(s), s[1], s[0]))]
+    left = set(stands) - set(order)
+    while left:
+        here = order[-1]
+        nxt = min(left, key=lambda s: (hop(here, s), s[1], s[0]))
+        order.append(nxt)
+        left.remove(nxt)
+
+    def tour_cost(path: List[Tuple[int, int]]) -> int:
+        return start_hop(path[0]) + sum(hop(a, b) for a, b in zip(path, path[1:]))
+
+    best_cost = tour_cost(order)
+    improved = len(order) > 3
+    passes = 0
+    while improved and passes < 8:
+        improved = False
+        passes += 1
+        for i in range(1, len(order) - 1):
+            for j in range(i + 1, len(order)):
+                trial = order[:i] + order[i:j + 1][::-1] + order[j + 1:]
+                cost = tour_cost(trial)
+                if cost < best_cost:
+                    order, best_cost, improved = trial, cost, True
+
+    steps: List[WaterStep] = []
+    for stand in order:
+        for target, face in sorted(chosen[stand], key=lambda item: item[0]):
+            steps.append((target, stand, face))
+    return steps

@@ -14,8 +14,8 @@ from harvest.core.animal_status import read_held_item
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, DebrisType
 from harvest.maps.map_config import FARM_POND_ACCESS_FENCE_ROW
 from harvest.tasks.carry_toss import CarryToPondStand
-from harvest.tasks.farm_clear_quota import farm_map_loaded
-from harvest.tasks.farm_ops import Target, TileScanner, shed_door_step_off_actions
+from harvest.tasks.farm_clear_quota import farm_map_loaded, yard_load_action
+from harvest.tasks.farm_ops import Target, TileScanner
 from harvest.tasks.fence_corridor import (
     ACTION_CARRYING_BIT,
     ACTION_DROPPING,
@@ -328,7 +328,7 @@ class FenceClearLoopTask(Task):
             if self.pond_dump or self.max_fences is None:
                 if not farm_map_loaded(world.ram):
                     if not self._action_queue:
-                        self._action_queue.extend(shed_door_step_off_actions())
+                        self._action_queue.append(yard_load_action(world.ram))
                     action = (
                         self._action_queue.popleft()
                         if self._action_queue

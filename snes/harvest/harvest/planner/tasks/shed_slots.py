@@ -17,7 +17,7 @@ from harvest.core.carry import (
     selected_tool,
     tool_in_carry_pair,
 )
-from harvest.core.ram_catalog import read_ram_u8
+from harvest.core.ram_catalog import read_ram_u8, read_ram_value
 from harvest.core.tile_catalog import ADDR_INPUT_LOCK, ADDR_TILEMAP, Tool
 from harvest.maps.map_config import WEST_POCKET_PLANT_CENTER
 from harvest.planner.day_plan_status import FARM_TILEMAP, SHED_TILEMAP
@@ -104,13 +104,17 @@ def _tool_shelf(
 
 
 SHED_TOOL_SPECS: Dict[int, ShedShelfSpec] = {
+    0x17: ShedShelfSpec(item_id=0x17, inside_stand_px=(48, 185), inside_face="down"),
+    9: ShedShelfSpec(item_id=9, inside_stand_px=(56, 118), inside_settle_frames=40),
     # DATA16_81BE0F (tool_id*8: sprite x,y). Stand y = sprite_y+24.
     int(Tool.MILKER): _tool_shelf(Tool.MILKER, (64, 168)),
     int(Tool.BRUSH): _tool_shelf(Tool.BRUSH, (80, 168)),
+    int(Tool.SPRINKLER): _tool_shelf(Tool.SPRINKLER, (96, 168)),
     int(Tool.WATERING_CAN): _tool_shelf(Tool.WATERING_CAN, (96, 168)),
     int(Tool.SICKLE): _tool_shelf(Tool.SICKLE, (144, 168)),
     int(Tool.HOE): _tool_shelf(Tool.HOE, (168, 166)),
     int(Tool.HAMMER): _tool_shelf(Tool.HAMMER, (176, 168)),
+    0x13: ShedShelfSpec(item_id=0x13, inside_stand_px=(176, 168)),  # gold hammer, same shelf
     int(Tool.AXE): _tool_shelf(Tool.AXE, (192, 168)),
     # DATA16_81BE0F tool $18 sprite (176, 192). get_engaged frame 460 stands
     # at (176, 185) facing down (above the shelf). Row-3 bit $80 at $7F1F02.
@@ -383,7 +387,10 @@ class ShedShelfToolTask(Task):
             if self._take_tries >= self.take_attempts:
                 return TaskResult(
                     status=TaskStatus.FAILURE,
-                    reason=f"tool 0x{self.tool_id:02X} missing after shelf",
+                    reason=f"tool 0x{self.tool_id:02X} missing after shelf "
+                           f"(selected=0x{selected_tool(world.ram):02X} backpack=0x{backpack_tool(world.ram):02X} "
+                           f"held=0x{int(read_ram_value(world.ram, 'held_item')):02X} pos={get_pos_from_ram(world.ram)} "
+                           f"shed_rows={[hex(int(world.ram[0x4000 + 0x11F00 + i])) for i in range(4)]} lock={int(world.ram[ADDR_INPUT_LOCK])} tries={self._take_tries})",
                 )
             if input_lock != 1:
                 return TaskResult(status=TaskStatus.RUNNING, action=ActionResult(make_action()))

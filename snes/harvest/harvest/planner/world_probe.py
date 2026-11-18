@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 
 from harvest.core.tile_catalog import ADDR_TILEMAP
+from harvest.planner import run_strategy
 from harvest.planner.day_plan_status import (
     _read_state_ram,
     count_chicken_slots,
@@ -215,9 +216,38 @@ class WorldProbe:
             ram, state_name=self.state_name
         )
 
+    @staticmethod
+    def _live_ripe_tiles(ram: np.ndarray) -> list:
+        from harvest.tasks.harvest_task import live_harvestable_crop_tiles
+
+        return live_harvestable_crop_tiles(ram, None)
+
+    @staticmethod
+    def _unparked_ripe_tiles(ram: np.ndarray) -> list:
+        from harvest.tasks.harvest_task import live_harvestable_crop_tiles, unparked_harvest_tiles
+
+        return unparked_harvest_tiles(live_harvestable_crop_tiles(ram, None))
+
+    def ripe_crop_count(self) -> int:
+        """Ripe tiles the harvest would pick this morning (0 when the strategy's ship cap is already met)."""
+        if self.ram is None or not self.has_harvestable_crops():
+            return 0
+        ripe = self._unparked_ripe_tiles(self.ram)
+        # Tiles the ship cap leaves on the plant are not work: counting them kept the cover trip off every
+        # morning of Y3 Summer D22-D29 ("busy morning (80 ripe)") while the harvest detected 0 targets.
+        return len(run_strategy.within_ship_cap(self.ram, ripe)[0])
+
     def has_harvestable_crops(self) -> bool:
         if self.ram is not None and ram_has_harvestable_crops(self.ram):
-            return True
+            if run_strategy.active().caps_shipping and not run_strategy.within_ship_cap(
+                self.ram, self._live_ripe_tiles(self.ram),
+            )[0]:
+                return False  # every ripe tile is past its crop's ship cap
+            if self.calendar_date()[0] < 2 or self._unparked_ripe_tiles(self.ram):
+                return True
+            # Fall and Winter plant nothing, so a ripe tile the harvest has
+            # parked is never coming back: do not spend the morning on it.
+            return False
         if self.state_name is not None:
             return state_has_harvestable_crops(self.state_name)
         return False

@@ -7,12 +7,13 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import pytest
 
 _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
-from harvest.core.ram_catalog import field_spec
+from harvest.core.ram_catalog import field_spec, live_wram_base
 from harvest.maps.map_config import ROUTES, SEGMENTS, find_landmark
 from harvest.planner.day_phase_catalog import (
     BUY_SEEDS_PHASE,
@@ -27,6 +28,8 @@ from harvest.tasks.buy_seeds import (
     SEED_BAG_PRICE,
     SEED_CLERK_PX,
     TOOL_SHELVES,
+    TOWN_BOUNCE_RETRIES,
+    TOWN_SETTLE_FRAMES,
     TOOL_SHOP,
     BuySeedsTask,
     BuyShelfItemTask,
@@ -58,7 +61,53 @@ def _set_stock(ram, count: int) -> None:
     ram[ADDR_POTATO] = count
 
 
+@pytest.mark.rom
+def test_d3_seed_buy_from_the_natural_morning_returns_with_a_receipt():
+    from retro_harness import AuditCapabilities, AuditedEnv, WorldState
+    from harvest.runtime.retro_setup import make_harvest_env
+    from harvest.planner.day_plan import DayPlanTask
+    from harvest.planner.day_phase_catalog import EXIT_TO_FARM_PHASE, NAV_FARM_EXIT_PHASE
+    from harvest.core.ram_catalog import read_ram_value
+    from harvest.tasks.farm_clear_quota import farm_map_loaded
+    from harvest.tasks.nav import make_action
+
+    env = AuditedEnv(make_harvest_env("PR_spring_final_Y1_Spring_D3", lean_step=True),
+                     capabilities=AuditCapabilities.all("harvest.d3_seed_buy"))
+    try:
+        env.reset()
+        money = read_ram_value(env.get_ram(), "money")
+        stock = read_ram_value(env.get_ram(), "potato_seeds")
+        task = DayPlanTask(phase_sequence=[EXIT_TO_FARM_PHASE, NAV_FARM_EXIT_PHASE, BUY_SEEDS_PHASE])
+        task.reset(WorldState(frame=0, ram=env.get_ram(), info={}, obs=None))
+        for frame in range(8000):
+            result = task.step(WorldState(frame=frame, ram=env.get_ram(), info={}, obs=None))
+            bought = next((row for row in task.phase_results if row["phase"] == "BUY_SEEDS"), None)
+            if bought is not None:
+                break
+            if result.status != TaskStatus.RUNNING:
+                break
+            env.step(result.action.action if result.action else make_action())
+        ram = env.get_ram()
+        assert bought and bought["status"] == "success", (frame, result.reason, task.phase_results)
+        assert read_ram_value(ram, "potato_seeds") == stock + 1, task.phase_results
+        assert read_ram_value(ram, "money") == money - 200, task.phase_results
+        assert farm_map_loaded(ram)
+        assert env.audit().ram_writes == env.audit().mid_run_loads == 0
+    finally:
+        env.close()
+
+
 class ShopRouteTests(unittest.TestCase):
+    def test_east_gate_coordinates_do_not_prove_input_is_ready(self):
+        from harvest.core.ram_catalog import live_wram_base
+        world = make_transition_world(0x04)
+        set_player_pos(world.ram, 744, 424)
+        brightness = live_wram_base(world.ram) + 0x25
+        world.ram[brightness] = 1
+        self.assertFalse(town_coords_settled(world.ram))
+        world.ram[brightness] = 15
+        self.assertTrue(town_coords_settled(world.ram))
+
     def test_east_gate_shop_corridor_force_runs(self) -> None:
         """D2 town east-gate approach stalls on walk; force-run on the verified corridor."""
         force = [
@@ -109,6 +158,7 @@ class ShopRouteTests(unittest.TestCase):
 
     def test_path_leak_town_pixels_are_not_settled(self) -> None:
         world = make_transition_world(0x04, current_tile=(0, 8))
+        world.ram[live_wram_base(world.ram) + 0x25] = 15
         set_player_pos(world.ram, 10, 134)
         self.assertFalse(town_coords_settled(world.ram))
         set_player_pos(world.ram, 756, 422)
@@ -116,6 +166,7 @@ class ShopRouteTests(unittest.TestCase):
 
     def test_transition_scene_is_not_settled(self) -> None:
         world = make_transition_world(0x04, current_tile=(0, 8))
+        world.ram[live_wram_base(world.ram) + 0x25] = 15
         set_player_pos(world.ram, 744, 424)
         world.ram[0xD3] = 0xC4  # game_state 0xC4xx: 0x8000 scene running
         self.assertFalse(town_coords_settled(world.ram))
@@ -136,6 +187,70 @@ class ShopRouteTests(unittest.TestCase):
         self.assertEqual(first_shop_return_segment(0x0C), "path_to_farm")
         self.assertEqual(SEGMENTS["path_to_farm"][0].target_px, (132, 128))
         self.assertEqual(SEGMENTS["path_to_farm"][-1].exit_direction, "right")
+
+
+class TownBounceTests(unittest.TestCase):
+    """Summer D27: a villager on the east gate pushed the shop walk back out."""
+
+    def _bounced(self, task: BuySeedsTask, world) -> object:
+        class _Fail:
+            def step(self, _world):
+                from retro_harness import TaskResult
+
+                return TaskResult(status=TaskStatus.FAILURE, reason="expected tilemap 0x04, got 0x0C")
+
+        task._child = _Fail()
+        task._child_name = "town_to_shop_door"
+        task._done_nav.update({"farm_to_path", "path_to_town_shop"})
+        world.ram[field_spec("tilemap").address] = 0x0C
+        return task.step(world)
+
+    def test_inbound_town_hop_back_on_the_path_walks_in_again(self) -> None:
+        world = make_transition_world(0x0C, current_tile=(2, 8))
+        task = BuySeedsTask()
+        task.reset(world)
+        for attempt in range(TOWN_BOUNCE_RETRIES):
+            result = self._bounced(task, world)
+            self.assertEqual(result.status, TaskStatus.RUNNING, attempt)
+            self.assertEqual(task._child_name, "path_to_town_shop")
+        result = self._bounced(task, world)
+        self.assertEqual(result.status, TaskStatus.FAILURE)
+        self.assertIn("town_to_shop_door failed", result.reason or "")
+
+
+class ShopExitFadeTests(unittest.TestCase):
+    """The seed-shop exit lands on the door apron and the town fades in for ~190 frames."""
+
+    def test_slow_town_fade_after_the_buy_is_waited_out(self) -> None:
+        # e2e base1/base0 (power-on, Y1 Spring D2): the apron (600,232) read settled at
+        # fade 2 but not faded in; the 180-frame cap fired at fade 14, BUY_SEEDS failed and
+        # the farmer stood in town for D2_FARM_CLEAR ("stale_farm_map", whole run lost).
+        world = make_transition_world(0x04, current_tile=(0, 8))
+        task = BuySeedsTask()
+        task.reset(world)
+        task._bought = True
+        task._seen_shop = True
+        task._child = None
+        task._child_name = "town_settle"
+        set_player_pos(world.ram, 600, 232)
+        fade = live_wram_base(world.ram) + 0x25
+        for frame in range(200):
+            world.ram[fade] = 1 if frame < 190 else 15
+            result = task.step(world)
+            self.assertNotEqual(result.status, TaskStatus.FAILURE, f"frame {frame}: {result.reason}")
+
+    def test_a_town_that_never_fades_in_still_fails(self) -> None:
+        world = make_transition_world(0x04, current_tile=(0, 8))
+        task = BuySeedsTask()
+        task.reset(world)
+        task._bought = True
+        task._seen_shop = True
+        task._child = None
+        task._child_name = "town_settle"
+        set_player_pos(world.ram, 600, 232)
+        world.ram[live_wram_base(world.ram) + 0x25] = 1
+        statuses = [task.step(world).status for _ in range(TOWN_SETTLE_FRAMES + 5)]
+        self.assertIn(TaskStatus.FAILURE, statuses)
 
 
 class PurchaseCloseTests(unittest.TestCase):
@@ -356,6 +471,7 @@ class ToolShelfTests(unittest.TestCase):
 
         task = BuyShelfItemTask(tool_ids=(BRUSH,))
         ram = np.zeros(0x2000, dtype=np.uint8)
+        ram[0x25] = 15
         set_player_pos(ram, 408, 408)
         self.assertTrue(task._town_ready(ram))  # inbound: east-gate coords are fine
         task._bought = True
@@ -403,3 +519,53 @@ class ToolShelfTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_unrelated_wallet_debit_before_the_shelf_is_not_a_seed_receipt():
+    from unittest.mock import patch
+
+    world = _store_world(money=5000)
+    task = BuySeedsTask(stock_field="turnip_seeds")
+    with patch.object(task, "_arm_nav"):
+        task.reset(world)
+        set_money(world.ram, 4000)  # unrelated event on the way to the shop
+        world.ram[field_spec("tilemap").address] = task.shop.tilemap
+        task.step(world)
+    assert not task._bought
+    assert task._bags_seen == 0
+
+
+def test_medicine_has_a_separate_shop_trip_and_a_shed_receipt():
+    world = _store_world(money=5000)
+    task = BuyShelfItemTask(tool_ids=(9,))
+    assert task.shop.tilemap == 0x24
+    assert TOOL_SHELVES[9].price == 1000
+    assert TOOL_SHELVES[9].shed_bit == 1
+    assert not tool_owned(world.ram, 9)
+    world.ram[SHED_ROW_2] |= 1
+    assert tool_owned(world.ram, 9)
+    with pytest.raises(ValueError, match="own animal-shop trip"):
+        BuyShelfItemTask(tool_ids=(9, BRUSH))
+
+
+# Ellen's weekday stand in front of the animal shop door (calendar_schedule: ellen 0x023C-0x0241 at town (648,904)).
+ELLEN_STAND_PX = (648, 904)
+
+
+@pytest.mark.parametrize("route", ["town_animal_shop_to_path", "animal_shop_town_to_farm"])
+def test_animal_shop_exit_routes_keep_clear_of_ellens_stand(route):
+    """A tight waypoint on her pixel never arrives; the replan then walks back into the shop door.
+
+    Y2 Winter D19 (BUY_MEDICINE, power-on run ``perfect999b``): the medicine trip's exit route started on her
+    pixel with radius 4, the day was lost, four sick cows were left uncured and died. No town waypoint of an
+    animal-shop exit route may be centred within one tile (16 px) of her pixel; the working routes stop 16 px short
+    at (632,904) and swing south of her.
+    """
+    from harvest.maps.map_routes import ROUTES as MAP_ROUTES, SEGMENTS
+
+    ex, ey = ELLEN_STAND_PX
+    for wp in {**SEGMENTS, **MAP_ROUTES}[route]:
+        if wp.tilemap != 0x04:
+            continue
+        dx, dy = wp.target_px[0] - ex, wp.target_px[1] - ey
+        assert (dx * dx + dy * dy) ** 0.5 >= 16, (route, wp)
