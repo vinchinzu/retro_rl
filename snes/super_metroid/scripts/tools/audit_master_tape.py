@@ -9,9 +9,9 @@ load, RAM write, assist or harness code can have contributed.
 
     uv run python snes/super_metroid/scripts/tools/audit_master_tape.py
     uv run python snes/super_metroid/scripts/tools/audit_master_tape.py --headed
-    uv run python snes/super_metroid/scripts/tools/audit_master_tape.py --headed --from-frame 220000 --fps 60
+    uv run python snes/super_metroid/scripts/tools/audit_master_tape.py --headed --from-frame 220000
 
-``--headed`` opens a window and runs at ``--fps`` (default 60 = real time).
+``--headed`` opens the shared viewer at real time; use [ and ] to change speed.
 Skipped frames before ``--from-frame`` still run, unrendered and unthrottled.
 """
 
@@ -21,7 +21,6 @@ import argparse
 import hashlib
 import json
 import sys
-import time
 from pathlib import Path
 
 import numpy as np
@@ -41,7 +40,6 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stem", default="master_tape_clean")
     ap.add_argument("--headed", action="store_true")
-    ap.add_argument("--fps", type=float, default=60.0)
     ap.add_argument("--from-frame", type=int, default=0)
     ap.add_argument("--max-frames", type=int, default=0)
     args = ap.parse_args()
@@ -62,27 +60,27 @@ def main() -> int:
         state=retro.State.NONE,  # true power-on, no save state
         inttype=retro.data.Integrations.CUSTOM,
         use_restricted_actions=retro.Actions.ALL,
-        render_mode="human" if args.headed else "rgb_array",
+        render_mode="rgb_array",
     )
     env.reset()
     frames = len(tape) if not args.max_frames else min(args.max_frames, len(tape))
-    period = 1.0 / args.fps if args.headed else 0.0
-    t0 = time.perf_counter()
+    tail_frames = int(report.get("credits_tail_frames", 0))
+    row_end = len(tape) - tail_frames
     deaths = 0
+    leave_got: tuple[int, int, int, int] | None = None
     for i in range(frames):
+        if args.headed and i == args.from_frame:
+            from retro_harness.headed import attach_headed
+            attach_headed(env, title="Super Metroid tape replay", speed=1.0)
         env.step(tape[i])
+        if i + 1 == row_end:
+            ram = env.get_ram()
+            leave_got = (word(ram, 0x79B), word(ram, 0xAF6), word(ram, 0xAFA), word(ram, 0x9C2))
         if i % 30 == 0:
             ram = env.get_ram()
             gs = word(ram, 0x0998)
             if 0x13 <= gs <= 0x1A:
                 deaths += 1
-        if args.headed and i >= args.from_frame:
-            env.render()
-            wait = t0 + (i - args.from_frame + 1) * period - time.perf_counter()
-            if wait > 0:
-                time.sleep(wait)
-        elif args.headed and i == args.from_frame - 1:
-            t0 = time.perf_counter()
         if i % 20000 == 0:
             ram = env.get_ram()
             print(f"frame {i:>7} room 0x{word(ram, 0x79B):04X} "
@@ -108,12 +106,24 @@ def main() -> int:
         endpoint = hashlib.sha256(env.em.get_state()).hexdigest()
         same = endpoint == report["endpoint_sha256"]
         print(f"emulator snapshot sha256 matches build report: {same}")
+        print(f"  audit {endpoint}\n  report {report['endpoint_sha256']}")
         ok &= same
         last = report["rows"][-1]
         want_room = int(last["room"], 16) if not last.get("to_room") else int(last["to_room"], 16)
         want = (want_room, last["leave_x"], last["leave_y"], last["energy"])
-        print("report leave (room, x, y, energy):", tuple(hex(want[0]) if i == 0 else v for i, v in enumerate(want)))
-        ok &= (got["room"], got["x"], got["y"], got["energy"]) == want
+        print(f"report leave at frame {row_end} (room, x, y, energy):", tuple(hex(want[0]) if i == 0 else v for i, v in enumerate(want)))
+        if leave_got != want:
+            print(f"FAIL: leave mismatch at frame {row_end}: got {leave_got} != want {want}")
+            ok = False
+        if report.get("credits_complete"):
+            final_credits = (
+                word(ram, 0x998) == 39
+                and word(ram, 0x1F51) == 0xE7BA
+                and word(ram, 0x1997) == 0xFFB0
+                and not any(ram[0x19CD:0x19D5])
+            )
+            print(f"final credits screen verified in WRAM: {final_credits}")
+            ok &= final_credits
         fs = report.get("final_state") or {}
         if fs:
             field_pairs = [

@@ -1,0 +1,30 @@
+{
+  "policy_id": "speed_halfie",
+  "parent": "speed_v2_tourian",
+  "description": "Full Halfie and direct Precious Room development profile",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "full_halfie_r206",
+      "name": "Full Halfie shinespark",
+      "start_row": 206,
+      "end_row": 208,
+      "from_room": "0xD7E4",
+      "to_room": "0xD78F",
+      "mode": "skill",
+      "target": "maridia.full_halfie",
+      "follow_rows": 1
+    },
+    {
+      "rule_id": "precious_direct_r209",
+      "name": "Precious Room direct to Draygon",
+      "start_row": 209,
+      "end_row": 209,
+      "from_room": "0xD78F",
+      "to_room": "0xDA60",
+      "mode": "skill",
+      "target": "maridia.precious_direct",
+      "follow_rows": 1
+    }
+  ]
+}

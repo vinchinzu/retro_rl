@@ -102,6 +102,8 @@ def _steer_x(x: int, target: int) -> tuple[str, ...]:
 def parlor_moonfall_action(
     state,
     track: ParlorMoonfallTrack,
+    *,
+    fast_drop: bool = False,
 ) -> tuple[tuple[str, ...], ParlorMoonfallTrack]:
     """One-frame Parlor moonfall policy (ROM-free).
 
@@ -165,6 +167,8 @@ def parlor_moonfall_action(
             return ("LEFT", "A"), replace(track, phase="fall", held=0)
         moonwalking = is_moonwalking(state)
         lip = LIP_X if y < 160 else SHAFT_LIP_X
+        if fast_drop and y >= 160:
+            lip = 363
         if moonwalking and x <= lip:
             return ("LEFT", "X", "L", "A"), replace(track, phase="jump", held=0)
         if held > 90 and x <= lip + 12:
@@ -195,7 +199,9 @@ def parlor_moonfall_action(
         if y >= AIM_Y:
             steer = _steer_x(x, DOOR_X)
             return steer + ("L", "X"), replace(track, held=held + 1)
-        steer = _steer_x(x, SHAFT_X)
+        # Aim left of the grass platforms in the middle of the shaft.
+        shaft_x = 403 if fast_drop and 480 <= y < 820 else SHAFT_X
+        steer = _steer_x(x, shaft_x)
         return steer if steer else ("RIGHT",), replace(track, held=held + 1)
 
     if phase == "downback":
@@ -223,13 +229,16 @@ def play_parlor_to_climb_moonfall(
     *,
     max_frames: int = 1800,
     restore_moonwalk: bool = True,
+    use_menu_setting: bool = False,
 ) -> None:
-    """RAM-driven Parlor → Climb using spinning moonfall. Pokes $09E4 on."""
-    env = getattr(session, "env", None)
-    if env is None:
-        raise RuntimeError("parlor moonfall needs session.env for $09E4 poke")
-    set_moonwalk(env, True)
-    session.state = parse_state(env.get_ram(), frame=session.frame)
+    """Cross Parlor into Climb using spinning Moonfall."""
+    env = None
+    if not use_menu_setting:
+        env = getattr(session, "env", None)
+        if env is None:
+            raise RuntimeError("parlor moonfall needs session.env for $09E4 poke")
+        set_moonwalk(env, True)
+        session.state = parse_state(env.get_ram(), frame=session.frame)
     require_moonwalk_on(session.state, label="parlor_moonfall")
     if session.state.room_id != ROOM_PARLOR and session.state.game_state not in (8, 11):
         raise RuntimeError(
@@ -238,7 +247,7 @@ def play_parlor_to_climb_moonfall(
 
     track = ParlorMoonfallTrack()
     for _ in range(max_frames):
-        names, track = parlor_moonfall_action(session.state, track)
+        names, track = parlor_moonfall_action(session.state, track, fast_drop=use_menu_setting)
         action = buttons(*names) if names else idle_action()
         session.step(action, f"parlor_moonfall_{track.phase}")
         if track.phase == "done" or session.state.room_id == ROOM_CLIMB:
@@ -250,14 +259,20 @@ def play_parlor_to_climb_moonfall(
         )
 
     if session.state.room_id != ROOM_CLIMB or session.state.game_state == 11:
-        session.wait_until(  # type: ignore[attr-defined]
-            lambda s: s.room_id == ROOM_CLIMB and s.game_state == 8,
-            timeout=CLIMB_SETTLE,
-            reason="parlor_moonfall_climb_settle",
-        )
-    if restore_moonwalk:
+        for _ in range(CLIMB_SETTLE):
+            state = session.step(idle_action(), "parlor_moonfall_climb_settle")
+            if state.room_id == ROOM_CLIMB and state.game_state == 8:
+                break
+        else:
+            raise TimeoutError(f"moonfall leave did not settle: {session.state}")
+    if env is not None and restore_moonwalk:
         set_moonwalk(env, False)
         session.state = parse_state(env.get_ram(), frame=session.frame)
+
+
+def play_parlor_to_climb_moonfall_clean(session: ControllerSession) -> None:
+    """Run the descent with Moon Walk enabled through the menu."""
+    play_parlor_to_climb_moonfall(session, use_menu_setting=True)
 
 
 def setup_then_fall(session: ControllerSession) -> None:

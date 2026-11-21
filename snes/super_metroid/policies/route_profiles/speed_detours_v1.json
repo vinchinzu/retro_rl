@@ -1,0 +1,60 @@
+{
+  "policy_id": "speed_detours_v1",
+  "parent": "baseline_tape",
+  "description": "Wave 1 speed policy: replaces wasteful save-room and map-room detours with restore-free RAM-driven Skills while keeping untouched segments on the verified baseline.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "bubble_direct_r88",
+      "name": "Bubble Mountain direct climb to Bat Cave (skip double Save Room)",
+      "start_row": 88,
+      "end_row": 93,
+      "from_room": "0xACB3",
+      "to_room": "0xB07A",
+      "mode": "skill",
+      "target": "norfair.bubble_to_bat_cave",
+      "enabled": false,
+      "follow_rows": 3,
+      "notes": "Replaces rows 88-93 (double Bubble Mountain Save Room loop, 1,927f detour + climb). Enable after local A/B PASS."
+    },
+    {
+      "rule_id": "business_to_ice_gate_r169",
+      "name": "Business Center direct drop to Ice Beam Gate (skip 9-row wandering loop)",
+      "start_row": 169,
+      "end_row": 177,
+      "from_room": "0xA7DE",
+      "to_room": "0xA815",
+      "mode": "skill",
+      "target": "norfair.business_to_ice_gate",
+      "enabled": true,
+      "follow_rows": 3,
+      "notes": "Local A/B PASS (+4,842f / +80.70s, +5 E, rows 178-180 saved+idle:0). Full-chain blocker: row 181 (Crocomire's Room open-loop tape diverges on shifted RNG; convert Crocomire to a Skill or skip Crocomire in Wave 4)."
+    },
+    {
+      "rule_id": "business_to_frog_r237",
+      "name": "Business Center direct drop to Frog Savestation (skip Map Room loop)",
+      "start_row": 237,
+      "end_row": 239,
+      "from_room": "0xA7DE",
+      "to_room": "0xB167",
+      "mode": "skill",
+      "target": "norfair.business_to_frog",
+      "enabled": true,
+      "follow_rows": 4,
+      "notes": "Local A/B PASS (+5,478f / +91.30s; rows 240-250 all sync verbatim tape+idle:0 to (39,139) in 0xB283). Full-chain blocker: row 251 (Golden Torizo open-loop tape diverges on shifted RNG / E=31, S=2; convert GT to a Skill or skip GT in Wave 3)."
+    },
+    {
+      "rule_id": "tourian_direct_r313",
+      "name": "Tourian First Room direct to Metroid Room 1 (skip Upper Tourian Save Room)",
+      "start_row": 313,
+      "end_row": 315,
+      "from_room": "0xDAAE",
+      "to_room": "0xDAE1",
+      "mode": "skill",
+      "target": "tourian.first_room_direct",
+      "enabled": true,
+      "follow_rows": 2,
+      "notes": "Local A/B PASS (+1,056f / +17.60s; rows 316-330 all clear into Mother Brain's door at (984,139) E=488/499). Full-chain blocker: row 331 enters with S=11/15, R=0 (needs Metroid Room 2-4 drop Skill or MB1/2 Skill)."
+    }
+  ]
+}

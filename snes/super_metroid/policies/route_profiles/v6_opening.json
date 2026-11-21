@@ -1,0 +1,172 @@
+{
+  "policy_id": "v6_opening",
+  "description": "Clean Moon Walk, faster Ceres and Crateria descents, running jumps across Pit, and a single Missile pack through Bomb Torizo.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "moonwalk_menu_r01",
+      "name": "Enable Moon Walk in Special Setting Mode",
+      "start_row": 1,
+      "end_row": 1,
+      "from_room": "0x0000",
+      "to_room": "0xDF45",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.ceres.spine:play_boot_to_ceres_with_moonwalk"
+    },
+    {
+      "rule_id": "ceres_moonfall_r02",
+      "name": "Ceres Elevator spinning Moonfall",
+      "start_row": 2,
+      "end_row": 2,
+      "from_room": "0xDF45",
+      "to_room": "0xDF8D",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.ceres.outbound:play_ceres_first_room_moonfall_clean"
+    },
+    {
+      "rule_id": "ceres_ridley_fast_r03",
+      "name": "Ceres outbound arm pumps and Ridley tail tank",
+      "start_row": 3,
+      "end_row": 9,
+      "from_room": "0xDF8D",
+      "to_room": "0xDFD7",
+      "mode": "skill",
+      "target": "ceres.falling_through_ridley",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "ceres_magnet_return_r10",
+      "name": "Ceres Magnet Stairs return",
+      "start_row": 10,
+      "end_row": 10,
+      "from_room": "0xDFD7",
+      "to_room": "0xDF8D",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_opening/ceres_magnet_return_clean.npz"
+    },
+    {
+      "rule_id": "ceres_falling_return_r11",
+      "name": "Ceres Falling Tile return",
+      "start_row": 11,
+      "end_row": 11,
+      "from_room": "0xDF8D",
+      "to_room": "0xDF45",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_opening/ceres_falling_return_clean.npz"
+    },
+    {
+      "rule_id": "ceres_elevator_fast_r12",
+      "name": "Right-wall kick up Ceres Elevator",
+      "start_row": 12,
+      "end_row": 12,
+      "from_room": "0xDF45",
+      "to_room": "0x91F8",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_opening/ceres_elevator_return_clean.npz",
+      "follow_rows": 3
+    },
+    {
+      "rule_id": "parlor_moonfall_r14",
+      "name": "Parlor shaft Moonfall",
+      "start_row": 14,
+      "end_row": 14,
+      "from_room": "0x92FD",
+      "to_room": "0x96BA",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.crateria.parlor_descent:play_parlor_to_climb_moonfall_clean"
+    },
+    {
+      "rule_id": "climb_moonfall_r15",
+      "name": "Climb shaft Moonfall into a running exit",
+      "start_row": 15,
+      "end_row": 15,
+      "from_room": "0x96BA",
+      "to_room": "0x975C",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.crateria.climb_descent:play_climb_to_pit_moonfall_clean"
+    },
+    {
+      "rule_id": "pit_crossing_r16",
+      "name": "Carry Climb exit speed through Pit",
+      "start_row": 16,
+      "end_row": 16,
+      "from_room": "0x975C",
+      "to_room": "0x97B5",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.early_spine:play_pit_to_elevator_fast"
+    },
+    {
+      "rule_id": "blue_brinstar_elevator_r17",
+      "name": "Brake on the Blue Brinstar elevator and board",
+      "start_row": 17,
+      "end_row": 17,
+      "from_room": "0x97B5",
+      "to_room": "0x9E9F",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.early_spine:play_blue_brinstar_elevator_fast"
+    },
+    {
+      "rule_id": "one_missile_pack_r22",
+      "name": "Return through Construction Zone without the second Missile pack",
+      "start_row": 22,
+      "end_row": 24,
+      "from_room": "0x9F11",
+      "to_room": "0x9E9F",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_opening/construction_skip_probe_clean.npz"
+    },
+    {
+      "rule_id": "climb_ascent_r28",
+      "name": "Climb platform jumps to Parlor",
+      "start_row": 28,
+      "end_row": 28,
+      "from_room": "0x96BA",
+      "to_room": "0x92FD",
+      "mode": "skill",
+      "target": "crateria.climb_ascent",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "parlor_flyway_r29",
+      "name": "Climb Parlor with Moon Walk enabled and shoot the Flyway hatch",
+      "start_row": 29,
+      "end_row": 29,
+      "from_room": "0x92FD",
+      "to_room": "0x9879",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_opening/parlor_flyway_join_clean.npz"
+    },
+    {
+      "rule_id": "flyway_five_missiles_r30",
+      "name": "Open Flyway hatch with five Missiles",
+      "start_row": 30,
+      "end_row": 30,
+      "from_room": "0x9879",
+      "to_room": "0x9804",
+      "mode": "skill",
+      "target": "super_metroid.combat.bomb_torizo:play_flyway_to_bomb_torizo"
+    },
+    {
+      "rule_id": "bombs_pickup_r31",
+      "name": "Jump to the Bombs pedestal",
+      "start_row": 31,
+      "end_row": 31,
+      "from_room": "0x9804",
+      "to_room": null,
+      "mode": "skill",
+      "target": "crateria.bombs_pickup",
+      "follow_rows": 1
+    },
+    {
+      "rule_id": "bomb_torizo_fast_r32",
+      "name": "Bomb Torizo on natural ammunition drops",
+      "start_row": 32,
+      "end_row": 32,
+      "from_room": "0x9804",
+      "to_room": "0x9879",
+      "mode": "skill",
+      "target": "super_metroid.combat.bomb_torizo:play_bomb_torizo_one_pack_leave",
+      "follow_rows": 8
+    }
+  ]
+}

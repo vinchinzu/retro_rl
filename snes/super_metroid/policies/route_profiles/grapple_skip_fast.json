@@ -1,0 +1,32 @@
+{
+  "policy_id": "grapple_skip_fast",
+  "parent": "no_crocomire",
+  "route_variant": "early_ice",
+  "description": "Grapple Skip with the direct Red Tower return and Mother Brain inputs matched to that entry.",
+  "rules": [
+    {
+      "rule_id": "red_tower_space_jump_r301",
+      "name": "Red Tower direct to Hellway via Space Jump",
+      "start_row": 299,
+      "end_row": 301,
+      "from_room": "0xA253",
+      "to_room": "0xA2F7",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/red_tower_direct_r299.npz",
+      "follow_rows": 9,
+      "notes": "Keep the lower climb through the Noob Bridge floor, then take the upper shaft directly. This joins the top door without the pause or the Noob Bridge loop."
+    },
+    {
+      "rule_id": "mb_tourian_v2_r331",
+      "name": "Mother Brain from the direct Red Tower return",
+      "start_row": 331,
+      "end_row": 331,
+      "from_room": "0xDD58",
+      "to_room": null,
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/red_tower_mb331.npz",
+      "follow_rows": 1,
+      "notes": "Retain the original Zebetite and glass inputs, then replay the re-solved MB1 and MB2 inputs from the changed Tourian entry."
+    }
+  ]
+}

@@ -126,6 +126,7 @@ def top_super_door(
     track: ClimbTrack,
     *,
     policy: DoorPolicy | None = None,
+    single_super: bool = False,
 ) -> SuperMetroidState:
     """Phase E: top-right Super door → ordinary exit room.
 
@@ -164,6 +165,7 @@ def top_super_door(
             break
         hold(session, 1, reason=f"{label}_door_uncrouch")
 
+    last_super_frame = -100
     for frame in range(pol.DOOR_FRAMES):
         state = session.state
         if state.room_id == exit_id:
@@ -179,14 +181,27 @@ def top_super_door(
             continue
 
         # Stay on Supers for the whole Phase E (beam swap was a prior regress).
-        if state.selected_item != 2:
+        if state.selected_item != 2 and (not single_super or state.super_missiles > 0):
             select_weapon(session, 2)
 
         x = int(state.samus_x)
         y = int(state.samus_y)
         if y <= pol.DOOR_SUPER_Y and x >= pol.DOOR_SUPER_X:
             track.door_reached = True
-            if frame % 5 < 2:
+            if single_super:
+                grounded = (
+                    126 <= y <= 146
+                    and x >= 435
+                    and state.velocity_y == 0
+                    and state.facing_right
+                    and int(state.pose) in pol.STANDING_POSES
+                )
+                if grounded and frame - last_super_frame >= 45 and state.super_missiles > 0:
+                    hold(session, 2, "RIGHT", "X", reason=f"{label}_door_super")
+                    last_super_frame = frame
+                else:
+                    hold(session, 1, "RIGHT", "B", reason=f"{label}_door_press")
+            elif frame % 5 < 2:
                 hold(session, 1, "RIGHT", "X", reason=f"{label}_door_super")
             else:
                 hold(session, 1, "RIGHT", "B", reason=f"{label}_door_press")

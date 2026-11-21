@@ -230,10 +230,12 @@ harvest/tasks/
 
 # Super Metroid — recorded policies, maps, vendor refs, local demos.
 # Paths use **/super_metroid/ so both legacy root layout and snes/super_metroid/
-# are covered. Curated room_clears policies + maps/README stay tracked.
+# are covered. Curated room clears and route profiles stay tracked.
 **/super_metroid/policies/*
 !**/super_metroid/policies/room_clears/
 !**/super_metroid/policies/room_clears/*.json
+!**/super_metroid/policies/route_profiles/
+!**/super_metroid/policies/route_profiles/*.json
 **/super_metroid/custom_integrations/*/*.provenance.json
 **/super_metroid/maps/*
 !**/super_metroid/maps/README.md

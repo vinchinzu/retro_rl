@@ -36,7 +36,8 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_LANDING_SITE,
 )
 from super_metroid.routes.kpdr.spine import SpineHop
-from super_metroid.routes.runtime import ActionSpan, RouteSession
+from super_metroid.routes.runtime import ActionSpan, ControllerSession, RouteSession, hold
+from super_metroid.routes.skills.moonfall import require_moonwalk_on
 
 # Open-loop title/intro mash. TAS-style START/A mash is play_boot_to_ceres_tas
 # (probe only) — it is not a product fallback.
@@ -273,6 +274,29 @@ def play_boot_to_ceres(session: RouteSession) -> None:
     session.spans(_boot_spans())
     if not (session.state.room_id == ROOM_CERES_ELEVATOR and session.state.game_state == 8):
         raise RuntimeError(f"boot missed first Ceres control: {session.state}")
+
+
+def play_boot_to_ceres_with_moonwalk(session: ControllerSession) -> None:
+    """Enable Moon Walk in Special Setting Mode before starting a new file."""
+    # Sniq's any% menu inputs, verified on snes9x from power-on.
+    for tick in range(327):
+        hold(session, 1, "START" if tick % 2 == 0 else "A", reason="boot_title_mash")
+    for frames, names in (
+        (34, ()), (1, ("A",)), (69, ()), (1, ("START",)), (1, ()),
+        (1, ("A",)), (53, ()), (1, ("UP", "A")), (30, ()),
+        (1, ("DOWN", "LEFT")), (1, ("B",)), (31, ()), (1, ("A",)), (16, ()),
+    ):
+        hold(session, frames, *names, reason="boot_enable_moonwalk")
+    require_moonwalk_on(session.state, label="boot_special_settings")
+
+    for tick in range(_BOOT_MAX_FRAMES):
+        state = session.state
+        if state.room_id == ROOM_CERES_ELEVATOR and state.game_state == 8:
+            require_moonwalk_on(state, label="boot_ceres_control")
+            return
+        action = buttons("A") if tick % 2 == 0 else idle_action()
+        session.step(action, "boot_intro")
+    raise RuntimeError(f"boot missed first Ceres control: {session.state}")
 
 
 CERES_SPINE: tuple[SpineHop, ...] = (

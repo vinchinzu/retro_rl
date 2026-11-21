@@ -1,0 +1,189 @@
+{
+  "policy_id": "v7_early_supers",
+  "route_variant": "early_ice",
+  "description": "V7 Moon Walk opening, Early Supers mockball and Charge route with the Grapple Skip finish.",
+  "rules": [
+    {
+      "rule_id": "early_supers_r39",
+      "name": "Main Shaft via Early Supers mockball into Dachora",
+      "start_row": 39,
+      "end_row": 39,
+      "from_room": "0x9AD9",
+      "to_room": "0x9CB3",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.brinstar.early_supers:play_early_supers_to_dachora"
+    },
+    {
+      "rule_id": "dachora_r40",
+      "name": "Dachora to Big Pink with beam selected",
+      "start_row": 40,
+      "end_row": 40,
+      "from_room": "0x9CB3",
+      "to_room": "0x9D19",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/big_pink_entry.npz"
+    },
+    {
+      "rule_id": "charge_to_ghz_r41",
+      "name": "Big Pink Charge Beam to Green Hill Zone",
+      "start_row": 41,
+      "end_row": 47,
+      "from_room": "0x9D19",
+      "to_room": "0x9E52",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.brinstar.pink_to_ghz:play_dachora_entry_charge_to_ghz"
+    },
+    {
+      "rule_id": "skree_refill_r51",
+      "name": "Sloaters refill on the first Red Tower descent",
+      "start_row": 51,
+      "end_row": 51,
+      "from_room": "0xA3DD",
+      "to_room": "0xA408",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/skree_refill.npz"
+    },
+    {
+      "rule_id": "warehouse_direct_r61",
+      "name": "Warehouse Entrance to Zeela without Hi-Jump",
+      "start_row": 61,
+      "end_row": 68,
+      "from_room": "0xA6A1",
+      "to_room": "0xA471",
+      "mode": "skill",
+      "target": "kraid.warehouse_direct",
+      "follow_rows": 6
+    },
+    {
+      "rule_id": "zeela_hatch_r69",
+      "name": "Zeela Room into Warehouse Kihunter",
+      "start_row": 69,
+      "end_row": 69,
+      "from_room": "0xA471",
+      "to_room": "0xA4DA",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_kraid_first/zeela_hatch_clean.npz",
+      "notes": "Retimed the floor shot for the standing entry and used a full up-aimed jump through the vertical hatch."
+    },
+    {
+      "rule_id": "kraid_eye_r72",
+      "name": "Cancel item selection before Kraid\u2019s eye-door approach",
+      "start_row": 72,
+      "end_row": 72,
+      "from_room": "0xA56B",
+      "to_room": "0xA59F",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/kraid_eye.npz"
+    },
+    {
+      "rule_id": "bubble_bat_r93",
+      "name": "Bubble Mountain running leap to Bat Cave",
+      "start_row": 93,
+      "end_row": 93,
+      "from_room": "0xACB3",
+      "to_room": "0xB07A",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/bubble_bat.npz"
+    },
+    {
+      "rule_id": "bat_ammo_r99",
+      "name": "Bat Cave farm timed for Missiles and a Super",
+      "start_row": 99,
+      "end_row": 99,
+      "from_room": "0xB07A",
+      "to_room": "0xACB3",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/bat_ammo_shots.npz"
+    },
+    {
+      "rule_id": "frog_refill_r109",
+      "name": "Frog Speedway Beetom pickup turn",
+      "start_row": 109,
+      "end_row": 110,
+      "from_room": "0xB106",
+      "to_room": "0xA7DE",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/frog_farm_business.npz"
+    },
+    {
+      "rule_id": "red_ascent_r127",
+      "name": "Sloaters refill and Red Tower wall kick",
+      "start_row": 127,
+      "end_row": 127,
+      "from_room": "0xA253",
+      "to_room": "0xA2F7",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.red_tower.red_stack:play_first_red_ascent"
+    },
+    {
+      "rule_id": "waver_supers_r134",
+      "name": "Crateria Waver drops for Moat and Wrecked Ship",
+      "start_row": 134,
+      "end_row": 134,
+      "from_room": "0x948C",
+      "to_room": "0x95FF",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/waver_supers.npz"
+    },
+    {
+      "rule_id": "phantoon_r140",
+      "name": "Phantoon charge fight and loot exit",
+      "start_row": 140,
+      "end_row": 140,
+      "from_room": "0xCD13",
+      "to_room": "0xCC6F",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/phantoon_defeat_exit.npz"
+    },
+    {
+      "rule_id": "ws_ascent_r142",
+      "name": "Wrecked Ship Main Shaft ascent to Attic",
+      "start_row": 142,
+      "end_row": 142,
+      "from_room": "0xCAF6",
+      "to_room": "0xCA52",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/ws_ascent_rejoin.npz"
+    },
+    {
+      "rule_id": "attic_r143",
+      "name": "Attic beam clear with energy sweep",
+      "start_row": 143,
+      "end_row": 143,
+      "from_room": "0xCA52",
+      "to_room": "0x93FE",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/attic_west_ocean.npz"
+    },
+    {
+      "rule_id": "kihunter_pb_r152",
+      "name": "Kihunter Power Bomb drop for Caterpillar Room",
+      "start_row": 152,
+      "end_row": 152,
+      "from_room": "0x948C",
+      "to_room": "0x962A",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/kihunter_route.npz"
+    },
+    {
+      "rule_id": "red_geega_stock_r158",
+      "name": "Red Tower refill and Geega Power Bomb stock",
+      "start_row": 158,
+      "end_row": 158,
+      "from_room": "0xA253",
+      "to_room": "0xA293",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/geega_stock_exit.npz"
+    },
+    {
+      "rule_id": "botwoon_r205",
+      "name": "Botwoon charged beam fight and drop sweep",
+      "start_row": 205,
+      "end_row": 205,
+      "from_room": "0xD95E",
+      "to_room": "0xD7E4",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v7_early_supers_overrides/botwoon_direct_exit.npz"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "policy_id": "baseline_tape",
+  "description": "Verified Clean full-game finish baseline (master_tape_clean, 339 rows, 100% original buttons). Always available for instant rollback.",
+  "route_variant": "early_ice",
+  "rules": []
+}

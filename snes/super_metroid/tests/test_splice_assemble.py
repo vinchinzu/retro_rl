@@ -623,3 +623,77 @@ def test_failed_chain_commit_keeps_last_replayable_prefix(tmp_path: Path, monkey
     assert report["total_frames"] == 12_096
     assert report["final_state"]["room_id"] == 0xDF8D
     assert report["proof"]["success"]
+
+
+def test_policy_coverage_separates_stored_buttons_from_controllers() -> None:
+    from super_metroid.splice.__main__ import policy_coverage
+
+    rows = [
+        {"method": "tape+idle:0", "frames": 600},
+        {"method": "tape+idle:3", "frames": 100},
+        {"method": "tape-trim:2", "frames": 50},
+        {"method": "entry-pulse:32:(0,)", "frames": 50},
+        {"method": "searched-inputs", "frames": 50},
+        {"method": "room-controller", "frames": 100},
+        {"method": "runway-detour", "frames": 50, "controller_id": "moat_cross"},
+    ]
+    got = policy_coverage(rows)
+    assert {k: v["frames"] for k, v in got.items() if k != "basis"} == {
+        "human_verbatim": 600, "human_retimed": 150, "searched_buttons": 100, "controller": 150,
+    }
+    assert got["human_verbatim"]["share"] == 0.6 and got["basis"] == "ledger_labels"
+    assert policy_coverage([])["controller"]["frames"] == 0
+
+
+def test_policy_coverage_does_not_trust_a_tape_label_over_the_buttons() -> None:
+    import numpy as np
+    from super_metroid.splice.__main__ import policy_coverage
+
+    def buttons(n: int, bit: int) -> "np.ndarray":
+        out = np.zeros((n, 12), dtype=np.int8)
+        out[:, bit] = 1
+        return out
+
+    human, other = buttons(10, 0), buttons(10, 1)
+    rows = [
+        {"row": 1, "method": "tape+idle:0", "frames": 10},   # really the human slice
+        {"row": 2, "method": "tape+idle:0", "frames": 10},   # label lies: an override replaced it
+        {"row": 3, "method": "tape+idle:2", "frames": 12},   # delayed human slice
+        {"row": 4, "method": "override:tape+idle:0", "frames": 10},
+    ]
+    tape = np.concatenate((human, other, np.zeros((2, 12), dtype=np.int8), human, other))
+    got = policy_coverage(rows, tape, {1: human, 2: human, 3: human, 4: human})
+    assert got["basis"] == "button_diff"
+    assert got["human_verbatim"]["frames"] == 10
+    assert got["human_retimed"]["frames"] == 12
+    assert got["searched_buttons"]["frames"] == 20
+
+
+@pytest.mark.rom
+def test_from_row_cuts_a_copy_and_leaves_the_source_master_alone(tmp_path: Path) -> None:
+    import numpy as np
+    from super_metroid.human_tape.product_chain import write_clean_chain_board
+    from super_metroid.splice.assemble import solve_tape_chain
+
+    board = tmp_path / "board.json"
+    write_clean_chain_board(out=board)
+    source = tmp_path / "source_clean"
+    full = solve_tape_chain(board=board, stem=source, through_row=5, max_delay=0, resume=False)
+    assert full["proof"]["success"] and [r["row"] for r in full["rows"]] == [1, 2, 3, 4, 5]
+    before = source.with_suffix(".npz").read_bytes()
+
+    cut = tmp_path / "cut_clean"
+    again = solve_tape_chain(
+        board=board, stem=cut, through_row=5, max_delay=0, from_row=4, source=source,
+    )
+    assert again["stopped"] is None and again["proof"]["success"]
+    assert [r["row"] for r in again["rows"]] == [1, 2, 3, 4, 5]
+    assert again["proof"]["state_loads"] == again["proof"]["ram_writes"] == 0
+    # Search is deterministic, so re-solving rows 4-5 reproduces the buttons.
+    assert np.array_equal(np.load(cut.with_suffix(".npz"))["actions"], np.load(source.with_suffix(".npz"))["actions"])
+    assert source.with_suffix(".npz").read_bytes() == before  # the verified master is never rewritten
+
+    with pytest.raises(ValueError, match="already exists"):
+        solve_tape_chain(board=board, stem=cut, through_row=5, max_delay=0, from_row=4, source=source)
+    with pytest.raises(ValueError, match="different _clean source"):
+        solve_tape_chain(board=board, stem=source, through_row=5, max_delay=0, from_row=4, source=source)

@@ -1,0 +1,29 @@
+{
+  "policy_id": "kraid_first",
+  "route_variant": "early_ice",
+  "description": "V6 candidate that takes Warehouse Entrance to Zeela before the first Norfair visit.",
+  "rules": [
+    {
+      "rule_id": "warehouse_direct_r61",
+      "name": "Warehouse Entrance to Zeela without Hi-Jump",
+      "start_row": 61,
+      "end_row": 68,
+      "from_room": "0xA6A1",
+      "to_room": "0xA471",
+      "mode": "skill",
+      "target": "kraid.warehouse_direct",
+      "follow_rows": 6
+    },
+    {
+      "rule_id": "zeela_hatch_r69",
+      "name": "Zeela Room into Warehouse Kihunter",
+      "start_row": 69,
+      "end_row": 69,
+      "from_room": "0xA471",
+      "to_room": "0xA4DA",
+      "mode": "override",
+      "target": "recordings/search_development_clean/v6_kraid_first/zeela_hatch_clean.npz",
+      "notes": "Retimed the floor shot for the standing entry and used a full up-aimed jump through the vertical hatch."
+    }
+  ]
+}

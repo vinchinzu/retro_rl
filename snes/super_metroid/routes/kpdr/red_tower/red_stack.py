@@ -6,6 +6,8 @@ from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
     ensure_morph,
     hold,
+    hold_until,
+    is_wall_latch,
     play_run_shoot_exit,
     require_room,
     select_weapon,
@@ -26,6 +28,7 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_EAST_TUNNEL,
     ROOM_GHZ,
     ROOM_GLASS,
+    ROOM_HELLWAY,
     ROOM_HJ,
     ROOM_HJ_SHAFT,
     ROOM_KRAID,
@@ -38,6 +41,172 @@ from super_metroid.routes.kpdr.rooms import (
     ROOM_ZEELA,
 )
 from super_metroid.routes.runtime import ControllerSession
+
+_ITEM_SPACE_JUMP = 0x0200
+_SPACE_JUMP_POSES = frozenset({0x81, 0x82})
+_ROOM_SLOATERS_REFILL = 0xA618
+
+
+def _play_sloaters_refill(session: ControllerSession) -> None:
+    """Open the lower green hatch and return from the energy station."""
+    hold_until(session, lambda s: s.samus_x <= 120, "LEFT", "B", reason="red_refill_approach")
+    hold(session, 1, "UP", reason="red_refill_brake")
+    select_weapon(session, 2)
+    hold(session, 1, "LEFT", "X", reason="red_refill_green_hatch")
+    hold_until(
+        session,
+        lambda s: s.room_id == _ROOM_SLOATERS_REFILL,
+        "LEFT", "B",
+        timeout=230,
+        reason="red_refill_enter",
+    )
+    wait_ordinary_room(session, _ROOM_SLOATERS_REFILL, label="red_refill")
+    if session.state.selected_item:
+        hold(session, 1, "Y", reason="red_refill_beam")
+    hold_until(session, lambda s: s.samus_x <= 101, "LEFT", reason="red_refill_station")
+    # The station takes a moment to accept the shoot input after docking.
+    hold(session, 36, "LEFT", reason="red_refill_dock")
+    hold_until(
+        session,
+        lambda s: s.health == s.max_health,
+        "X",
+        timeout=230,
+        reason="red_refill_charge",
+    )
+    hold_until(session, lambda s: s.samus_x >= 150, "RIGHT", reason="red_refill_exit_approach")
+    hold_until(session, lambda s: s.samus_y <= 112, "A", reason="red_refill_ledge_jump")
+    hold_until(session, lambda s: s.samus_x >= 177, "RIGHT", reason="red_refill_cross_ledge")
+    hold(session, 1, "X", reason="red_refill_blue_hatch")
+    hold_until(
+        session,
+        lambda s: s.room_id == ROOM_RED_TOWER,
+        "RIGHT", "B", "X",
+        reason="red_refill_return",
+    )
+    wait_ordinary_room(session, ROOM_RED_TOWER, label="red_refill_return")
+
+
+def play_red_bottom_wall_jump(session: ControllerSession) -> SuperMetroidState:
+    """Freeze the first Ripper and use one right-wall kick to land on it."""
+    from super_metroid.routes.kpdr.red_tower.red_ice_climb import (
+        BOTTOM_RIPPER_Y,
+        LOWER_RIPPER_1,
+        can_attach_bottom_edge,
+        checkpoint_supported,
+        ripper_at_height,
+    )
+
+    require_room(session, ROOM_RED_TOWER, "red_wj")
+    hold_until(session, lambda s: s.samus_x >= 110, "RIGHT", reason="red_wj_ice_column")
+    hold(session, 1, "UP", reason="red_wj_aim")
+    if not can_attach_bottom_edge(session.state):
+        raise RuntimeError("Red Tower wall jump needs grounded Samus with Ice and Hi-Jump")
+    for _ in range(310):
+        ripper = ripper_at_height(session.env, BOTTOM_RIPPER_Y)
+        if ripper is not None and ripper.freeze_timer > 40:
+            break
+        aligned = ripper is not None and abs(session.state.samus_x - ripper.x) <= 4
+        keys = ("UP", "X") if aligned else ("UP",)
+        hold(session, 1, *keys, reason="red_wj_freeze")
+    else:
+        raise TimeoutError("Red Tower wall jump could not freeze the first Ripper")
+
+    hold_until(
+        session,
+        lambda s: s.samus_x >= max(167, ripper.x + 28),
+        "RIGHT", "B",
+        reason="red_wj_runup",
+    )
+    hold_until(
+        session,
+        lambda s: s.samus_x == 219 and s.samus_y <= 2330 and s.movement_type == 3,
+        "RIGHT", "B", "A",
+        timeout=65,
+        reason="red_wj_wall_contact",
+    )
+    hold(session, 2, "LEFT", reason="red_wj_release")
+    if not is_wall_latch(hold(session, 1, "LEFT", "A", reason="red_wj_kick")):
+        raise RuntimeError("Red Tower missed the right-wall kick")
+
+    for _ in range(135):
+        state = session.state
+        if checkpoint_supported(session.env, state, LOWER_RIPPER_1):
+            return settle_hold(session, 8, reason="red_wj_ledge_settle")
+        if state.samus_y > 2360 or state.room_id != ROOM_RED_TOWER:
+            break
+        dx = state.samus_x - ripper.x
+        steer = ("LEFT",) if dx > 8 else ("RIGHT",) if dx < -8 else ()
+        if state.vertical_direction == 2 and state.samus_y >= 2270:
+            # Cancel spin so Samus lands with the standing hitbox.
+            keys = (*steer, "UP")
+        else:
+            keys = (*steer, "B", "A") if steer else ("A",)
+        hold(session, 1, *keys, reason="red_wj_land")
+    raise TimeoutError(f"Red Tower missed the first frozen ledge: {session.state}")
+
+
+def play_first_red_ascent(session: ControllerSession) -> SuperMetroidState:
+    """Refill on the early Ice return, then kick off the wall and climb to Hellway."""
+    from super_metroid.routes.kpdr.red_tower.red_ice_climb import play_ripper1_to_hellway
+
+    require_room(session, ROOM_RED_TOWER, "red_first_ascent")
+    _play_sloaters_refill(session)
+    play_red_bottom_wall_jump(session)
+    play_ripper1_to_hellway(session)
+    # Match the low Hellway entry used by the next row's damage-boost line.
+    ensure_morph(session)
+    return session.state
+
+
+def play_red_upper_space_jump(session: ControllerSession) -> SuperMetroidState:
+    """Climb from around the Noob Bridge floor to the settled Hellway door."""
+    label = "red_upper_space_jump"
+    require_room(session, ROOM_RED_TOWER, label)
+    state = session.state
+    if not state.equipped_items & _ITEM_SPACE_JUMP or not 1000 <= state.samus_y <= 1330:
+        raise ValueError(f"{label}: need Space Jump and the upper shaft entry")
+
+    if state.selected_item:
+        hold(session, 1, "Y", reason=f"{label}_beam")
+    unmorph(session)
+    jump_held = False
+    shooting_ceiling = False
+    cleared_ceiling = False
+    shots = 0
+    for frame in range(900):
+        state = session.state
+        if state.door_transition or state.room_id == ROOM_HELLWAY:
+            return wait_ordinary_room(session, ROOM_HELLWAY, settle_frames=320, label=label)
+        cleared_ceiling |= state.samus_y <= 125
+        if cleared_ceiling:
+            buttons = ("RIGHT", "B", "X") if frame % 8 == 0 else ("RIGHT", "B")
+        elif shooting_ceiling and state.samus_y <= 165:
+            buttons = ("RIGHT", "A")
+        elif shooting_ceiling:
+            buttons = ("UP", "A", "X") if shots % 3 == 0 else ("UP", "A")
+            shots += 1
+        else:
+            # Keep the spin aligned beneath the center ceiling blocks.
+            direction = "RIGHT" if state.samus_x < 124 else "LEFT" if state.samus_x > 126 else ""
+            buttons = (direction,) if direction else ()
+            spin = state.pose in _SPACE_JUMP_POSES
+            climbing = state.vertical_direction == 1
+            if spin:
+                # Release jump at the apex, then tap on the falling window.
+                jump = climbing or (not jump_held and state.velocity_y >= 2)
+            else:
+                jump = not jump_held and (climbing or 120 <= state.samus_x <= 136)
+            if jump:
+                if not spin and not direction:
+                    buttons = ("RIGHT",)
+                buttons += ("A",)
+            if 190 <= state.samus_y <= 222 and spin and climbing and state.velocity_y >= 5:
+                buttons = ("UP", "A")
+                shooting_ceiling = True
+            jump_held = jump
+        hold(session, 1, *buttons, reason=label)
+    raise TimeoutError(f"{label}: failed to reach Hellway: {session.state}")
+
 
 # Re-export for callers that import west runner from red_stack.
 __all__ = [

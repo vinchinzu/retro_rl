@@ -103,8 +103,8 @@ def list_air_enemies(env) -> list[tuple[int, int, int, int, int]]:
             continue
         x = _u16(ram, base + _ENEMY_X_OFF)
         y = _u16(ram, base + _ENEMY_Y_OFF)
-        # Ignore deep-pit Scisers (y large).
-        if y > 350:
+        # Defeated Kihunter parts can retain HP at (0, 0). Scisers are in the pit.
+        if (x == 0 and y == 0) or y > 350:
             continue
         out.append((i, x, y, hp, enemy_id))
     return out

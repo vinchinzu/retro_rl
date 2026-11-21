@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from super_metroid.progression import SPEED_GRAPH
+from super_metroid.routes.kpdr.wrecked_ship.moat import list_air_enemies
 
 
 CAPS = frozenset(
@@ -139,6 +142,17 @@ def test_ice_to_moat_path_uses_k5_k6_spine() -> None:
     assert summary["reachable"] is True
     assert summary["all_continuous"] is True
     assert summary["blocking"] is None
+
+
+def test_kihunter_scan_skips_defeated_part_at_origin() -> None:
+    ram = bytearray(0x2000)
+    for slot, (x, y) in enumerate(((0, 0), (240, 170))):
+        base = 0x0F78 + slot * 0x40
+        for offset, value in ((0, 0xEAFF), (2, x), (6, y), (0x14, 60)):
+            ram[base + offset : base + offset + 2] = value.to_bytes(2, "little")
+
+    env = SimpleNamespace(get_ram=lambda: ram)
+    assert list_air_enemies(env) == [(1, 240, 170, 60, 0xEAFF)]
 
 
 def test_west_ocean_to_ws_path_is_spine_hop() -> None:

@@ -19,6 +19,7 @@ from super_metroid.progression.types import (
     ProgressionMilestone,
 )
 from super_metroid.ram import MORPH_BALL_MASK
+from super_metroid.routes.controller_common import hold_until
 from super_metroid.routes.kpdr.ceres import (
     _CERES_ARM_PUMP_PERIOD,
     _arm_pump_dash_spans,
@@ -45,7 +46,7 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_PIT,
 )
 from super_metroid.routes.kpdr.spine import SpineHop
-from super_metroid.routes.runtime import Action, ActionSpan, RouteSession, Split
+from super_metroid.routes.runtime import Action, ActionSpan, ControllerSession, RouteSession, Split, hold
 
 __all__ = [
     "MORPH_SPINE",
@@ -156,6 +157,66 @@ def play_pit_to_elevator(session: RouteSession) -> None:
     )
 
 
+def play_pit_to_elevator_fast(session: ControllerSession) -> None:
+    """Carry the Climb exit speed across Pit's upper platforms."""
+    if session.state.room_id != ROOM_PIT:
+        raise RuntimeError(f"Pit crossing requires the Climb entrance: {session.state}")
+
+    def run_to(x: int, *aim: str) -> None:
+        hold_until(
+            session,
+            lambda state: state.samus_x >= x,
+            "RIGHT", "B", *aim,
+            timeout=100,
+            reason=f"pit_run_to_{x}",
+        )
+
+    def jump(frames: int) -> None:
+        hold(session, frames, "RIGHT", "B", "A", reason="pit_spin_jump")
+
+    # Cross the first low ceiling and land on the narrow shelf.
+    run_to(64, "L", "X")
+    run_to(89)
+    run_to(114, "X")
+    run_to(138, "L", "X")
+    jump(15)
+    run_to(258)
+    run_to(274, "X")
+    jump(5)
+    run_to(308)
+    run_to(314, "X")
+    run_to(321, "L", "X")
+
+    # Two jumps across the center pillars and one onto the last platform.
+    jump(20)
+    run_to(415)
+    run_to(424, "X")
+    run_to(431)
+    run_to(449, "L", "X")
+    jump(15)
+    run_to(556)
+    run_to(563, "X")
+    run_to(571, "L", "X")
+    jump(10)
+    run_to(649)
+    run_to(655, "DOWN")
+    run_to(710)
+    run_to(719, "X")
+    run_to(725, "L", "X")
+
+    for _ in range(220):
+        state = session.state
+        if (
+            state.room_id == ROOM_BLUE_BRINSTAR_ELEVATOR
+            and state.game_state == 8
+            and not state.door_transition
+        ):
+            return
+        names = ("RIGHT", "B") if state.room_id == ROOM_PIT and state.game_state == 8 else ()
+        hold(session, 1, *names, reason="pit_exit")
+    raise TimeoutError(f"Pit missed the Blue Brinstar elevator: {session.state}")
+
+
 def play_elevator_to_morph_room(session: RouteSession) -> None:
     """BB elev → Morph. Prefer product seed; re-pin if elev status phase misses.
 
@@ -215,6 +276,29 @@ def _elev_status(session: RouteSession) -> int:
     """Samus-on-elevator flag at WRAM ``$0E16`` (toggles while standing on pad)."""
     ram = session.env.get_ram()  # type: ignore[attr-defined]
     return int(ram[0x0E16])
+
+
+def play_blue_brinstar_elevator_fast(session: RouteSession) -> None:
+    """Brake on the pad with angle-up and board on the first ready frame."""
+    for _ in range(400):
+        state = session.state
+        if state.room_id == ROOM_MORPH:
+            if state.game_state == 8 and not state.door_transition:
+                return
+            hold(session, 1, reason="blue_brinstar_elevator_transition")
+        elif state.room_id != ROOM_BLUE_BRINSTAR_ELEVATOR:
+            break
+        elif state.pose == 0 or state.game_state in (9, 11):
+            hold(session, 1, reason="blue_brinstar_elevator_ride")
+        elif _elev_status(session) == 1 and not (state.velocity_x or state.momentum_x):
+            hold(session, 1, "DOWN", reason="blue_brinstar_elevator_board")
+        elif state.samus_x < 121:
+            hold(session, 1, "RIGHT", "B", reason="blue_brinstar_elevator_run")
+        elif state.samus_x > 135:
+            hold(session, 1, "LEFT", reason="blue_brinstar_elevator_center")
+        else:
+            hold(session, 1, "L", reason="blue_brinstar_elevator_brake")
+    raise TimeoutError(f"Blue Brinstar elevator missed Morph: {session.state}")
 
 
 def _play_bb_elev_reactive(session: RouteSession) -> None:

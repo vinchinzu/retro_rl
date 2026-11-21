@@ -56,8 +56,9 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_ELEVATOR,
     ROOM_CERES_FALLING,
     ROOM_CERES_MAGNET,
+    ROOM_LANDING_SITE,
 )
-from super_metroid.routes.runtime import RouteSession
+from super_metroid.routes.runtime import ControllerSession, RouteSession
 from super_metroid.routes.skills.geometry import (
     CROUCH_POSES,
     LAND_POSES,
@@ -660,6 +661,10 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
         raise TimeoutError(
             f"ceres 475 plant missed overlay={overlay}: {session.state}"
         )
+    _ceres_elev_from_475(session, start)
+
+
+def _ceres_elev_from_475(session: ControllerSession, start: int) -> None:
     _ceres_elev_budget(session, start)
     for target_y, launch_x, side in (
         (363, _CERES_ELEV_475_LAUNCH_X, "RIGHT"),
@@ -671,6 +676,39 @@ def _ceres_reactive_elev_climb(session: RouteSession) -> None:
         _ceres_elev_budget(session, start)
     _ceres_elev_top_to_ship(session)
     _ceres_elev_budget(session, start)
+
+
+def play_ceres_elevator_to_landing(session: ControllerSession) -> None:
+    """Use the right-wall kick from the door spin or the settled right ledge."""
+    start = session.frame
+    state = session.state
+    if state.room_id != ROOM_CERES_ELEVATOR or state.game_state != GS_ORDINARY:
+        raise RuntimeError("Ceres ascent requires the settled elevator return")
+    if _ceres_fast_entry_window(state):
+        planted = _ceres_entry_to_475(session)
+    else:
+        # The return door can put Samus on the right ledge at y=651. Recreate
+        # the same wall contact from a fresh jump before the kick.
+        if not 203 <= state.samus_x <= 225 or not 647 <= state.samus_y <= 655:
+            raise RuntimeError(f"Ceres ascent missed the right ledge: {state}")
+        session.step(idle_action(), "ceres_elev_jump_release")
+        for _ in range(40):
+            state = session.state
+            if state.samus_x <= 212 and state.samus_y <= 576 and state.vertical_direction == 1:
+                break
+            session.step(buttons("RIGHT", "A"), "ceres_elev_ledge_spin")
+        else:
+            raise TimeoutError(f"Ceres ascent missed the right wall: {session.state}")
+        planted = _ceres_wall_kick_to_475(session)
+    if not planted:
+        raise TimeoutError(f"Ceres ascent missed the y=475 ledge: {session.state}")
+    _ceres_elev_from_475(session, start)
+    for _ in range(2400):
+        state = session.state
+        if state.room_id == ROOM_LANDING_SITE and state.game_state == GS_ORDINARY and not state.door_transition:
+            return
+        session.step(idle_action(), "ceres_to_zebes")
+    raise TimeoutError(f"Ceres ascent missed Landing Site: {session.state}")
 
 
 def _ceres_planted_at(state, target_y: int, *, slack: int = 18) -> bool:
@@ -748,6 +786,10 @@ def _ceres_entry_to_475(session: RouteSession) -> bool:
         return False
     for _ in range(_CERES_ELEV_ENTRY_RISE_FRAMES):
         session.step(buttons("RIGHT", "A"), "ceres_elev_entry_rise")
+    return _ceres_wall_kick_to_475(session)
+
+
+def _ceres_wall_kick_to_475(session: ControllerSession) -> bool:
     for _ in range(_CERES_ELEV_WJ_RELEASE_FRAMES):
         session.step(buttons("LEFT"), "ceres_elev_entry_release")
     latched = False

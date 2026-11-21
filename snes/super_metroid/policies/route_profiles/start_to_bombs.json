@@ -1,0 +1,62 @@
+{
+  "policy_id": "start_to_bombs",
+  "description": "Reactive movement and combat for the opening of Grapple Skip.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "ceres_ridley_fast_r03",
+      "name": "Ceres outbound arm pumps and Ridley tail tank",
+      "start_row": 3,
+      "end_row": 9,
+      "from_room": "0xDF8D",
+      "to_room": "0xDFD7",
+      "mode": "skill",
+      "target": "ceres.falling_through_ridley",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "ceres_elevator_fast_r12",
+      "name": "Right-wall kick up Ceres Elevator",
+      "start_row": 12,
+      "end_row": 12,
+      "from_room": "0xDF45",
+      "to_room": "0x91F8",
+      "mode": "skill",
+      "target": "ceres.elevator_to_landing",
+      "follow_rows": 3
+    },
+    {
+      "rule_id": "climb_ascent_r28",
+      "name": "Climb platform jumps to Parlor",
+      "start_row": 28,
+      "end_row": 28,
+      "from_room": "0x96BA",
+      "to_room": "0x92FD",
+      "mode": "skill",
+      "target": "crateria.climb_ascent",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "bombs_pickup_r31",
+      "name": "Jump to the Bombs pedestal",
+      "start_row": 31,
+      "end_row": 31,
+      "from_room": "0x9804",
+      "to_room": null,
+      "mode": "skill",
+      "target": "crateria.bombs_pickup",
+      "follow_rows": 1
+    },
+    {
+      "rule_id": "bomb_torizo_fast_r32",
+      "name": "Statue-side Bomb Torizo fight and Flyway exit",
+      "start_row": 32,
+      "end_row": 32,
+      "from_room": "0x9804",
+      "to_room": "0x9879",
+      "mode": "skill",
+      "target": "crateria.bomb_torizo",
+      "follow_rows": 8
+    }
+  ]
+}

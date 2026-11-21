@@ -1,0 +1,299 @@
+{
+  "policy_id": "no_crocomire",
+  "parent": "speed_halfie",
+  "description": "Grappleless Maridia from the west tube door through Full Halfie, Draygon, and Space Jump",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "tube_direct_r164",
+      "name": "Maridia Tube direct to Main Street",
+      "start_row": 164,
+      "end_row": 199,
+      "from_room": "0xCEFB",
+      "to_room": "0xCFC9",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.maridia.entry:play_tube_direct",
+      "follow_rows": 1
+    },
+    {
+      "rule_id": "everest_short_sparks_r201",
+      "start_row": 201,
+      "end_row": 201,
+      "from_room": "0xD0B9",
+      "to_room": "0xD1A3",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.maridia.entry:play_everest_short_sparks"
+    },
+    {
+      "rule_id": "crab_shaft_direct_r202",
+      "start_row": 202,
+      "end_row": 202,
+      "from_room": "0xD1A3",
+      "to_room": "0xD5A7",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.maridia.entry:play_crab_shaft_direct"
+    },
+    {
+      "rule_id": "aqueduct_short_spark_r203",
+      "start_row": 203,
+      "end_row": 203,
+      "from_room": "0xD5A7",
+      "to_room": "0xD617",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.maridia.entry:play_aqueduct_short_spark"
+    },
+    {
+      "rule_id": "botwoon_hallway_direct_r204",
+      "start_row": 204,
+      "end_row": 204,
+      "from_room": "0xD617",
+      "to_room": "0xD95E",
+      "mode": "skill",
+      "target": "super_metroid.routes.kpdr.maridia.entry:play_botwoon_hallway_direct"
+    },
+    {
+      "rule_id": "botwoon_grappleless_r205",
+      "name": "Botwoon fight and loot from the direct Maridia route",
+      "start_row": 205,
+      "end_row": 205,
+      "from_room": "0xD95E",
+      "to_room": "0xD7E4",
+      "mode": "override",
+      "target": "recordings/search_development_clean/grappleless_botwoon_exit_clean.npz",
+      "notes": "Input tape searched from botwoon_hallway_direct_r204. Leaves with 186 energy and three Supers for Full Halfie and the eye door."
+    },
+    {
+      "rule_id": "draygon_grappleless_r210",
+      "name": "Draygon charge-beam fight and Space Jump Room exit",
+      "start_row": 210,
+      "end_row": 210,
+      "from_room": "0xDA60",
+      "to_room": "0xD9AA",
+      "mode": "override",
+      "target": "recordings/search_development_clean/draygon_grappleless_exit_clean.npz",
+      "follow_rows": 1,
+      "notes": "Searched from the Full Halfie route's 59-energy entry. Finishes with 27 energy and retains all missiles, Supers, and Power Bombs for the following rooms."
+    },
+    {
+      "rule_id": "oasis_direct_r229",
+      "name": "Oasis direct to West Sand Hall",
+      "start_row": 229,
+      "end_row": 229,
+      "from_room": "0xD48E",
+      "to_room": "0xD461",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override229.npz",
+      "notes": "Bypass Pants Room and the Spring Ball detour. The breakaway floor leads straight to the west exit."
+    },
+    {
+      "rule_id": "business_to_frog_r237",
+      "name": "Business Center direct to Frog Savestation",
+      "start_row": 237,
+      "end_row": 239,
+      "from_room": "0xA7DE",
+      "to_room": "0xB167",
+      "mode": "skill",
+      "target": "norfair.business_to_frog",
+      "notes": "Use the existing elevator and floor descent controller from the no-crocomire entry."
+    },
+    {
+      "rule_id": "purple_gamet_farm_r244",
+      "name": "Purple Shaft via the Gamet farm",
+      "start_row": 244,
+      "end_row": 244,
+      "from_room": "0xAEDF",
+      "to_room": "0xAEB4",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override244.npz",
+      "notes": "From 108 energy, collect Gamet drops through a full energy refill before Lava Dive, then return to the shaft and exit to Magdollite Tunnel."
+    },
+    {
+      "rule_id": "golden_torizo_no_crocomire_r251",
+      "name": "Golden Torizo charge fight",
+      "start_row": 251,
+      "end_row": 251,
+      "from_room": "0xB283",
+      "to_room": "0xB6C1",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override251.npz",
+      "notes": "Collect the missile pack and search charged Plasma shots from the recovered Acid Statue entry."
+    },
+    {
+      "rule_id": "golden_torizo_supers_r254",
+      "name": "Golden Torizo Super Missile expansion",
+      "start_row": 254,
+      "end_row": 254,
+      "from_room": "0xB283",
+      "to_room": "0xB6C1",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override254.npz",
+      "notes": "Climb from the actual Screw Attack return position and take the Super Missile pack."
+    },
+    {
+      "rule_id": "kihunter_descent_r265",
+      "name": "Red Kihunter Shaft with normal bombs",
+      "start_row": 265,
+      "end_row": 265,
+      "from_room": "0xB585",
+      "to_room": "0xB5D5",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override265.npz",
+      "notes": "Use regular bombs through the descent and morph tunnel. Spend one Power Bomb on the yellow hatch and carry the spare into Wasteland."
+    },
+    {
+      "rule_id": "wasteland_descent_r266",
+      "name": "Wasteland descent without Spring Ball or Grapple",
+      "start_row": 266,
+      "end_row": 266,
+      "from_room": "0xB5D5",
+      "to_room": "0xB62B",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override266.npz",
+      "notes": "Spends the carried Power Bomb on the upper Wasteland morph blocks and replaces the Grapple SELECT wrap with Item Cancel."
+    },
+    {
+      "rule_id": "metal_pirates_r268",
+      "name": "Metal Pirates Room Item Cancel entry",
+      "start_row": 268,
+      "end_row": 268,
+      "from_room": "0xB62B",
+      "to_room": "0xB482",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override268.npz",
+      "notes": "Replaces the opening Grapple SELECT wrap with Item Cancel (Y) on frame 0."
+    },
+    {
+      "rule_id": "ridley_no_crocomire_r271",
+      "name": "Ridley charge-beam fight with Power Bomb drop sweep",
+      "start_row": 271,
+      "end_row": 271,
+      "from_room": "0xB32E",
+      "to_room": "0xB698",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override271.npz",
+      "notes": "Charge+Ice+Wave+Plasma kill with a short pause RNG shift before death explosion to drop Power Bombs and collect 4/5 PB for Wasteland and Red Kihunter Shaft return."
+    },
+    {
+      "rule_id": "wasteland_return_r278",
+      "name": "Wasteland return without Spring Ball",
+      "start_row": 278,
+      "end_row": 278,
+      "from_room": "0xB5D5",
+      "to_room": "0xB585",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override278.npz",
+      "notes": "Unmorphs and jumps to the upper ceiling green door ledge (1397, 91) without Spring Ball."
+    },
+    {
+      "rule_id": "kihunter_return_r279",
+      "name": "Red Kihunter Shaft return with Item Cancel",
+      "start_row": 279,
+      "end_row": 279,
+      "from_room": "0xB585",
+      "to_room": "0xB6EE",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override279.npz",
+      "notes": "Replaces Grapple SELECT wraps with Item Cancel (Y) while spending 2 Power Bombs on the return climb."
+    },
+    {
+      "rule_id": "maze_missile_pack_r281",
+      "name": "Lower Norfair Spring Ball Maze +5 Missile pickup",
+      "start_row": 281,
+      "end_row": 281,
+      "from_room": "0xB510",
+      "to_room": "0xB656",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override281.npz",
+      "notes": "Collects the +5 Missile pack (raising max missiles from 30 to 35 for the Tourian budget) and matches door exit speed into Three Musketeers' Room."
+    },
+    {
+      "rule_id": "bubble_floor_r284",
+      "name": "Bubble Mountain floor exit without Spring Ball",
+      "start_row": 284,
+      "end_row": 284,
+      "from_room": "0xACB3",
+      "to_room": "0xAEDF",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override284.npz",
+      "notes": "Shoots the bottom floor door open downward into Purple Shaft without Spring Ball."
+    },
+    {
+      "rule_id": "red_tower_space_jump_r301",
+      "name": "Red Tower Space Jump climb with midair ceiling break",
+      "start_row": 301,
+      "end_row": 301,
+      "from_room": "0xA253",
+      "to_room": "0xA2F7",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override301.npz",
+      "notes": "Direct Space Jump ascent with midair upward shot through the top shot blocks (836f vs 2,004f baseline)."
+    },
+    {
+      "rule_id": "hellway_space_jump_r302",
+      "name": "Hellway direct Space Jump crossing",
+      "start_row": 302,
+      "end_row": 302,
+      "from_room": "0xA2F7",
+      "to_room": "0xA322",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override302.npz",
+      "notes": "Direct Space Jump + Screw Attack crossing to Caterpillar Room (478f vs 1,751f baseline)."
+    },
+    {
+      "rule_id": "green_pirates_detour_r310",
+      "name": "Brinstar Reserve + Early Supers + 3x Missile detour without Spring Ball",
+      "start_row": 310,
+      "end_row": 310,
+      "from_room": "0x99BD",
+      "to_room": "0xA5ED",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override310.npz",
+      "notes": "Collects Brinstar Reserve Tank (+100R), Early Supers (+5S), both Brinstar Reserve Room missile packs, and the Early Supers floor missile pack (raising max stock from 35M to 50M/15S/100R) using air-morph and morph bombs without Spring Ball."
+    },
+    {
+      "rule_id": "statues_room_r312",
+      "name": "Statues Room Item Cancel",
+      "start_row": 312,
+      "end_row": 312,
+      "from_room": "0xA66A",
+      "to_room": "0xDAAE",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override312.npz",
+      "notes": "Replaces the post-statue Grapple SELECT wrap with Item Cancel (Y)."
+    },
+    {
+      "rule_id": "seaweed_super_door_r326",
+      "name": "Seaweed Room 1-Super red door",
+      "start_row": 326,
+      "end_row": 326,
+      "from_room": "0xDCFF",
+      "to_room": "0xDDC4",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override326.npz",
+      "notes": "Opens the Seaweed Room red door with 1 Super instead of 5 Missiles (+2 missile-eq into Mother Brain Room: 50M/12S = 86 eq)."
+    },
+    {
+      "rule_id": "tourian_eye_door_r327",
+      "name": "Tourian Eye Door Room Item Cancel",
+      "start_row": 327,
+      "end_row": 327,
+      "from_room": "0xDDC4",
+      "to_room": "0xDDF3",
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override327.npz",
+      "notes": "Replaces the opening Grapple SELECT wrap with Item Cancel (Y)."
+    },
+    {
+      "rule_id": "mb_tourian_v2_r331",
+      "name": "Mother Brain 1+2 Clean solve for no_crocomire (0xDD58)",
+      "start_row": 331,
+      "end_row": 331,
+      "from_room": "0xDD58",
+      "to_room": null,
+      "mode": "override",
+      "target": "recordings/search_development_clean/no_crocomire/override331.npz",
+      "follow_rows": 1,
+      "notes": "Clean Zebetites + Glass + MB1 + MB2 + Rainbow kneel solve from the no_crocomire 50M/12S entry using morph bombs (no Spring Ball); feeds directly into live escape controllers r332-339."
+    }
+  ]
+}

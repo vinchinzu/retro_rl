@@ -78,19 +78,20 @@ Status legend:
 
 ### Project-core (Map Rando Hard / Very Hard, bot still builds them)
 
-Moonfall is a first-credits skill, not a rando-tier luxury. Map Rando
-labels stay Hard / Very Hard; `PROJECT_CORE_TECHS` promotes the builders.
+`PROJECT_CORE_TECHS` makes these builders available for movement experiments.
+Map Rando labels stay Hard / Very Hard.
 
 | Tech | Map Rando | Status | Bot surface |
 |------|-----------|--------|-------------|
-| `canMoonwalk` | Hard | partial | `ram.set_moonwalk` (`$09E4`) + `skills/moonfall.moonwalk_buttons` |
-| `canMoonfall` | Very Hard | partial | `skills/moonfall.initiate_moonfall`; Climb warp-pin **503f** vs seed 895f (`kpdr/climb_descent`); Parlor handoff **1067f** vs seed 1095f (`kpdr/parlor_descent`). Both `*_MOONFALL_ON_CLEAN` still False |
+| `canMoonwalk` | Hard | partial | `skills/moonfall.moonwalk_buttons`. V6 enables the option from the new-file menu. |
+| `canMoonfall` | Very Hard | partial | `skills/moonfall.initiate_moonfall`. V6 uses uncapped descents in Ceres and Climb. |
 | `ledge_grab` | — | partial | `basic_moves.ledge_grab` — spin then shoulder **L** (aim-down; **R** allowed) with A released to snap onto a lip ([Hitbox Manipulation](https://wiki.supermetroid.run/Hitbox_Manipulation)). Not `canDownGrab` (D-pad DOWN). Live proof: parlor mid-ledge from the post-Torizo pin (`play_parlor_mid_ledge_grab`). Product Alcatraz chimney still gun-jumps (WJ seat). Climb later. |
 
-Wiki: [Moonwalk / Moonfall](https://wiki.supermetroid.run/Moonwalk). Climb
-`0x96BA` and Parlor `0x92FD` first descents on the Morph path (clean poke
-on, restore off so later seeds stay valid). A/B:
-`kpdr.py pure climb-to-pit-moonfall` / `parlor-to-climb-moonfall`.
+V6 uses controller inputs for the Moon Walk option and verifies the
+opening from power-on. The legacy Climb and Parlor probes use local option
+setup in their practice sessions.
+[V6 opening splits](SPEED_SPLITS.md#v6-moonfall-opening) ·
+[Moonwalk and Moonfall](https://wiki.supermetroid.run/Moonwalk)
 
 ### Medium (try)
 
@@ -154,6 +155,35 @@ deps) — see the note at the bottom of [the logic index](https://maprando.com/l
    some of that under Hard/Expert — we still use it for Moat/WO).  
 5. Wire `builder_gap_report()` into hop-optimize so missing tech is explicit
    when a strat requires it.
+
+## Speedrun references
+
+Use these runner demonstrations and TAS author notes to choose button
+sequences and RAM fields to test. Rebuild the inputs on the local vanilla
+ROM from the Clean predecessor's leave. See [TAS adaptation](TAS_ADAPT.md)
+for the observed lsnes to snes9x desync.
+
+- **Arm pumping and mockball.** ShinyZeni demonstrates shoulder inputs for
+  ground movement and mockball setups for carrying running speed into Morph
+  Ball. Time each through the next jump or door so the setup cost counts.
+  [Arm pumping demonstration](https://www.youtube.com/watch?v=jG02FglyAE4&t=1470s) · [Mockball demonstration](https://www.youtube.com/watch?v=jG02FglyAE4&t=2335s)
+- **Continuous wall jumps.** Sniq reports that Screw Attack or Space Jump lets
+  repeated continuous wall jumps retain dash speed. Record the equipment and
+  takeoff state before attempting to transfer the tactic to another shaft.
+  [Sniq's 100% TAS notes](https://tasvideos.org/6381S)
+- **Shinespark exit height and damage boosts.** Sniq's escape spark in Climb
+  deliberately starts at 170 energy to end at the desired height. His 2018
+  Lower Norfair return uses a Multiviola damage boost after a tunnel mockball.
+  Both examples depend on the resources and motion carried in from earlier
+  actions. [Sniq's 2018 any% TAS notes](https://tasvideos.org/5833S)
+- **Early door shots and positioning.** Sniq's Ice approach leaves the
+  elevator from the edge and shoots the door earlier, then centers the door
+  entry. Measure the full crossing to account for changes in setup and the
+  following room's initial pose. [Sniq's 2017 any% TAS notes](https://tasvideos.org/5403S)
+- **Phantoon Double Super.** Sniq hit Phantoon with a Super as he began moving
+  after the first Missile volley and avoided enrage. Compare against the
+  current fight through the Basement exit, including resulting drops and
+  ammo stock. [Sniq's 100% TAS notes](https://tasvideos.org/6381S)
 
 ## Related
 

@@ -17,10 +17,11 @@ tip and keeps its own artifacts. Benchmark labels:
 | Capacity, items, boss, doors, pose, timer | No |
 | State load inside the claimed run | No |
 
-Moonwalk (`$09E4`) is a file option, not a resource; the legacy
-`continuous.py --to bombs --clean` controller path may set it for Climb's
-first descent and clear it before the Pit seed. `master_tape_clean` makes
-zero RAM writes of any kind (including `$09E4`).
+The V6 opening enables Moon Walk from Special Setting Mode using controller
+buttons. The older `continuous.py --to bombs --clean` controller path can
+set the option word for Climb's descent and clear it before the Pit seed.
+Clean master tape proof requires zero RAM writes, including the option word
+at `$09E4`. [V6 opening evidence](SPEED_SPLITS.md#v6-moonfall-opening)
 
 ## Lookahead while building
 
@@ -45,6 +46,15 @@ copied into the master tape. A plain button replay cannot execute RAM writes;
 when the resulting master tape passes power-on replay on the unmodified
 vanilla ROM, every energy, ammo, item, capacity, and boss transition is
 produced natively by the game.
+
+That makes the master tape a valid **tape** claim. It is not a policy claim.
+`splice chain` prints `policy_coverage` so each milestone quotes the share,
+measured by diffing the committed buttons against each row's human source
+slice. Ledger labels are not evidence: an override replaces the slice and the
+row still reads `tape+idle:0`, so a label-based count overstated the human
+share (80.7% by labels at row 264 against 49.7% measured). CONTEXT.md reserves **Skill** for a
+RAM-driven controller. Only the `controller` share is one, and four of those
+rows use rollout lookahead.
 
 ## The claim
 
@@ -80,12 +90,27 @@ Clean reports and tapes use a `_clean` stem and never overwrite the
 assisted `<tip>.json` / `.mp4`. A red Clean run does not demote the
 assisted tip.
 
+Reading `master_tape_clean.json`:
+
+- A row's `tape` and `source_sha256` name the human slice its board row
+  started from, not necessarily the buttons it committed. About 70 rows at row 264
+  commit other buttons (rows 32-205 and 215-262, e.g. 134–148 from
+  `recordings/search_development_clean/`), and their `method` still reads
+  `tape+idle:N`. Only the `.npz` holds those buttons. Rows built from now on
+  read `override:<method>` and carry `override_sha256`.
+- `rollout_restores` counts restores the solver made. Searches run outside it
+  are not in it.
+- `endpoint_sha256` is the snapshot hash of the loadless power-on replay
+  (written after `proof.success`). A development core can differ in audio and
+  subframe fields after restores, so it never names the endpoint. The audit
+  compares a second, raw loadless run against it.
+
 ## Verified so far
 
 | Leave | Frames | Evidence |
 |-------|-------:|----------|
-| Morph | 26,824 (split on the bombs run) | `recordings/bombs_clean.json` |
-| Bomb Torizo exit, Parlor `0x92FD`, items `0x1004` | 49,321 ×2 (2026-08-06) | `recordings/bombs_clean*.json` |
+| Morph (legacy `--clean` path, may set `$09E4`; superseded by the master tape) | 26,824 (split on the bombs run) | `recordings/bombs_clean.json` |
+| Bomb Torizo exit, Parlor `0x92FD`, items `0x1004` (legacy path, as above) | 49,321 ×2 (2026-08-06) | `recordings/bombs_clean*.json` |
 | Spore Spawn Room `0x9DC7`, 114/199 energy, 0 missiles | 55,860 (2026-11-17) | `recordings/master_tape_clean.json` + `.npz` |
 | Spore Spawn defeated and Super Missiles collected in `0x9B5B`, 96/199 energy, 5 Super Missiles | 67,594 (2026-11-17) | `recordings/master_tape_clean.json` + `.npz` |
 | Kraid defeated, Varia collected, returned to Baby Kraid Room A521 after row 77 | 98,785 | `recordings/master_tape_clean.json` + `.npz` |
@@ -103,6 +128,37 @@ assisted tip.
 | Maridia reached through the broken tube and Mt. Everest `0xD0B9` reached after row 200 | 235,292 | `recordings/master_tape_clean.json` + `.npz` |
 | Botwoon defeated and Draygon's Room `0xDA60` reached after row 209 | 256,172 | `recordings/master_tape_clean.json` + `.npz` |
 | Draygon defeated and Space Jump collected in `0xD9AA` after row 211 | 261,300 | `recordings/master_tape_clean.json` + `.npz` |
+| Back through Draygon's Room to East Cactus Alley `0xDA2B` after row 216 (old master, human Colosseum slice, 69/399 energy; kept as `master_tape_row216_clean.*`) | 265,795 | `recordings/master_tape_row216_clean.json` + `.npz` |
+| Colosseum refill detour (row 215), Plasma (223), Spring Ball detour (229) and the Lower Norfair descent to Golden Torizo's Room `0xB283` after row 250, 52/399 energy | 312,019 | `recordings/master_tape_r215_clean.json` + `.npz` (built with `--from-row 215`; its prefix is the master's) |
+| Golden Torizo's Super tank, Screw Attack, the Energy Recharge and Amphitheatre into Red Kihunter Shaft `0xB585` after row 264, 265/399 energy, 2/5 Power Bombs | 326,075 | `recordings/master_tape_row264_clean.json` + `.npz` |
+| Ridley defeated and Energy Tank collected after row 272, 499/499 energy and 3/5 Power Bombs | 339,229 | Row 272 in `recordings/master_tape_clean.json` + `.npz` |
+| Returned through Wasteland, Red Kihunter Shaft, the Spring Ball Maze, and Three Musketeers' Room to Bubble Mountain `0xACB3` after row 283, 196/499 energy and 0/5 Power Bombs | 353,851 | `recordings/master_tape_row283_clean.json` + `.npz` (the former master) |
+| Statues Room opened and Tourian First Room `0xDAAE` reached after row 312, 281/499 energy, 5/10 Supers | 381,393 | Row 312 in `recordings/master_tape_clean.json` + `.npz` |
+| Tourian First Room, Upper Tourian Save Room and back into Metroid Room 1 `0xDAE1` after row 315, 266/499 energy, 40/40 Missiles, 5/10 Supers, 0/5 Power Bombs (former master) | 383,336 | `recordings/master_tape_row315_clean.json` + `.npz` |
+| Landing Site recharge (307), Brinstar Early Supers + Reserve Tank detour (310, 50M/15S/100R), Metroid Rooms 1–4 (316–319), Tourian Recharge (325), Mother Brain Room entry `0xDD58` after row 330, 488/499 energy, 100/100 Reserve, 45/50 Missiles, 13/15 Supers | 413,771 | Row 330 in `recordings/master_tape_clean.json` + `.npz` |
+| Mother Brain Rainbow kneel (`0xDD58`, row 331, 88/499 energy), live closeout + Tourian/Crateria escape + Landing Site ship launch (rows 332–339, live `room-controller`, escape timer `1:20`, 453/499 energy) | 437,121 | Row 339 in `recordings/master_tape_clean.json` + `.npz` |
+| **Full game finish**: 13,417-frame neutral credits tail through "SEE YOU NEXT MISSION" (34%, `game_state=39`, `credits_complete=true`), `2:05:08.97` @ 60 fps from power-on (`2:01:57.57` from Ceres control) | **450,538** | `recordings/master_tape_clean.json` + `.npz`, `recordings/master_tape_finish_screen_clean.png` |
+
+The full-game (rows 1–339 + credits tail) guarded power-on replay (`splice chain --from-row 307 --require-credits`, proof embedded in `master_tape_clean.json`) matches all 316 planned crossings, all 339 settled leaves, `credits_complete: true`, and the final core snapshot on the unmodified vanilla ROM (`da957f0d63d14cb441d215462904c4fa8519c613`). It records 363 room transitions (detour rows 41, 46, 127, 135, 158, 215, 229, 310) with zero state loads, zero RAM writes, and zero deaths. Measured frame coverage (`button_diff`) is 44.3% verbatim human slices (193,645f), 1.0% delayed copies (4,340f), 45.4% searched/override buttons (198,276f), and 9.3% live controllers (40,860f).
+
+The standalone zero-harness audit (`audit_master_tape.py`) ran directly on the promoted `master_tape_clean` (`.npz` SHA-256 `0be1e4ca5b7e…`, `tape_sha256` `ee7d8b5213a3…`), verified the row-339 leave at frame 437,121 (`0x91F8`, `(1152, 267)`, 453 energy), verified the final credits screen in WRAM at frame 450,538 (`game_state=39`, `items=0x732F`, `beams=0x100F`, 453/499 energy, 100/100 Reserve), matched the build report's raw snapshot SHA-256 `0f98bfacc32c1553ab0da513b5e2d2762c2d88057931b7f39ebf114ca47b2e2b`, and reported `RESULT PASS`. The audit covers rows 1–339 + credits tail; its log is `recordings/search_development_clean/tourian/audit_finish.log`. The prior row-315 master is preserved as `master_tape_row315_clean.*`. [Post-finish plan](plan.md#start-here-next-session)
+
+Rows 284–339 reuse human slices on untouched rooms, development tapes under `recordings/search_development_clean/{lower_norfair,tourian}/` where Clean's loadout or entry differs (`override:tape+idle:0` with `override_sha256`), and live `finish_controller_for` controllers (`room-controller`) for all eight post-Rainbow rows (332–339):
+
+| Row(s) | Source / Tape | Why needed |
+|---:|---|---|
+| 284 | `lower_norfair/row284_bubble_floor_clean.npz` | Waver Power Bomb opens the floor |
+| 285 | `lower_norfair/row285_purple_up_clean.npz` | Purple Shaft climb from the new entry |
+| 299 | `lower_norfair/row299_cancel_y0.npz` | Clean arrives with Supers selected; Item Cancel in frame 0 restores the slice verbatim |
+| 307 | `tourian/row307_ship_recharge.npz` | Boards the Gunship at Landing Site to recharge to 499E / 40M / 10S / 5PB and exits to Parlor |
+| 310 | `tourian/row310_early_supers_reserve.npz` | Detours through Brinstar (`0x99BD→…→0x9C07→0x9BC8→…→0xA5ED`) to collect Brinstar Reserve Tank (+100R), Early Supers (+5S), and two +5 Missile packs (raising max stock to 50M / 15S / 100R for the 82-eq Mother Brain budget) |
+| 313 | `lower_norfair/row313_cancel_y460.npz` | Grapple is selected; Item Cancel at frame 460 after the elevator ride |
+| 316–319 | `tourian/row316..319_metroid{1..4}_clean.npz` | Ice+Wave+Plasma Metroid clears; rooms 3–4 spend Missiles so natural drops top Supers to 15/15 and Reserve to 100/100 |
+| 320–321 | `tourian/row320_hopper_clean.npz`, `row321_dust_torizo_clean.npz` | High Space-Jump traversal preserving `E=33/499` + `100R` (no Auto-Reserve death frame) so Big Boy Room (322–323) replays verbatim |
+| 324–325 | `tourian/row324_Y0_clean.npz`, `row325_recharge_clean.npz` | Item Cancel into Tourian Recharge Room; floor-level refills restore 499/499E and 50/50M while keeping 15/15S and 100/100R |
+| 327, 330 | `tourian/row327_eyedoor_1super_clean.npz`, `row330_rinka_1super_clean.npz` | 1-Super Eye Door and Rinka Shaft red door, entering Mother Brain Room `0xDD58` with 488/499E, 100/100R, 45/50M, 13/15S (84 Missile-eq) |
+| 331 | `tourian/row331_mb_natural_clean.npz` | Pause-menu Screw Attack equip (`0x7327→0x732F`), 4 Zebetites (`12S+9M`), Glass + MB1 (`1S+35M`), Charge+Wave+Ice+Plasma MB2 (pre-Rainbow `E=388/499`), Rainbow kneel at `(210,165)` with `E=88/499` |
+| 332–339 | `combat/mother_brain.py` + `combat/escape.py` (`room-controller`) | Live `finish_controller_for` controllers: MB3 Hyper Beam closeout, Tourian Escape 1–4, Climb, Parlor, and Landing Site ship launch (`E=453/499`, escape clock `1:20`), followed by 13,417f neutral credits tail |
 
 The row-211 proof matches every planned crossing, every settled leave, and
 the final core snapshot on the unmodified vanilla ROM with zero loads, RAM

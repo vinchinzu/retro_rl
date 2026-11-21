@@ -22,8 +22,8 @@ Glossary: [`CONTEXT.md`](../CONTEXT.md). Working board: [plan.md](plan.md).
 | Video | `recordings/phantoon.mp4` (Ceres on tape; frames match) |
 | Shared ROM SHA-256 | `12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72` |
 | Milestone board | [routes/MILESTONES.md](routes/MILESTONES.md) |
-| Ready work | [Exit Space Jump Room on row 212 and continue to Plasma Beam](plan.md#start-here-next-session) |
-| Clean track | Defeated Draygon (`$7E:D82C` bit 0) and collected Space Jump (`0x7325`) in Space Jump Room (`0xD9AA`) after row 211. **62.1% of the 340-row board**. Both guarded harness replay and the zero-harness-import `audit_master_tape.py` verified 219 transitions and matched the final emulator snapshot on the vanilla ROM after 261,300 frames with zero loads, RAM writes, or deaths. [CLEAN_TRACK.md](CLEAN_TRACK.md) |
+| Ready work | [Speed optimization toward the 198,000-frame budget and tape-to-policy conversion](plan.md#start-here-next-session) |
+| Clean track | **Grapple Skip v5** through the final credits screen in **379,723 frames** from power-on and **`1:38:33.70`** from Ceres control to ship. Guarded replay and the independent vanilla ROM audit both passed. [Clean track](#clean-track) |
 
 ## Current verified tip: Phantoon (K6)
 
@@ -101,7 +101,62 @@ is folded into the Speed dual at **130,388f**.
 
 ## Clean track
 
-Secondary only. Does **not** change the program gate above.
+The default Clean replay and benchmark use Grapple Skip. The program gate
+above tracks the assisted route separately.
+
+The V7 Early Supers candidate crosses all three shutters with a mockball
+from the natural V6 opening. It collects Early Supers, Bridge Missile,
+Charge, Spazer, Wave, Ice, and Gravity. The power-on replay and independent
+vanilla ROM audit reach Botwoon at row 204 in **177,723 frames**,
+**7:23.45** ahead of V5, with zero loads, RAM writes, or deaths. Samus
+enters with 287/399 energy, 20 Missiles, three Supers, and three Power
+Bombs.
+[V7 splits and replay](SPEED_SPLITS.md#v7-early-supers)
+
+The v5 finish takes **`1:38:33.70` Ceres→Ship** (354,822 frames at 60 fps),
+**30.77s faster** than v4 and **43:33.70** above 55:00. Five live Space Jump
+rooms carry forward through rebuilt Ridley and Mother Brain fights. The
+guarded replay matched all 315 room transitions through row 339 with zero
+state loads, RAM writes, or deaths. The independent audit matched snapshot
+`1507fd3b589d…` on the final credits screen at frame 379,723, with items
+`0x332D` and 376/499 energy. [V5 splits and replay](SPEED_SPLITS.md#v5-through-credits)
+
+The V6 Moonfall opening reaches Big Pink (row 40) in **40,228 frames**
+from power-on. Ceres splits at **1:28.65**, 2.66s ahead of the KPDR
+56:28.88 reference, and Morph Ball at **3:10.62**, 3.51s ahead. Samus skips
+the second Missile pack and beats Bomb Torizo, returning to Parlor **2:09.02
+ahead of V5**. The guarded replay and independent vanilla ROM audit passed
+with zero loads, RAM writes, or deaths. Big Pink entry has 109/199 energy and
+0/5 Missiles.
+[V6 opening splits and replay](SPEED_SPLITS.md#v6-moonfall-opening)
+
+The Red Tower and Phantoon candidate collects Gravity Suit in **`45:16.02`** from Ceres
+control, **60.75s faster** than v4 at the pickup. The guarded replay and
+independent vanilla ROM audit both passed through row 148 in **174,633
+frames** from power-on with Phantoon defeated, Gravity collected, and zero
+loads, RAM writes, or deaths.
+Samus ends in `0xCE40` with 13/399 energy and three Power Bombs.
+[Gravity candidate splits and replay](SPEED_SPLITS.md#v5-through-gravity-suit)
+
+The reactive opening clears Ceres Station in **1:32.70** and returns to
+Parlor after Bomb Torizo in **7:24.55**, **92.37s** faster than the v4 opening.
+The power-on proof and independent audit reached the Green Brinstar elevator
+(row 38) with zero loads, RAM writes, or deaths. [Opening splits](SPEED_SPLITS.md#reactive-opening-on-grapple-skip)
+
+The `no_crocomire` policy (no Crocomire, Grapple, or Spring Ball; items
+`0x332D`) is the v3 Grapple Skip baseline at **384,844 frames
+from power-on** through the credits screen (272 rooms cleared by the policy
+build, 13,417f credits tail), **`1:39:59.05` Ceres→Ship** (359,943f @ 60 fps).
+The `policy build no_crocomire` proof passed on the vanilla ROM with zero
+state loads, RAM writes, and deaths, `endpoint_matches` and `credits_complete`
+true. The independent zero-harness audit (`audit_master_tape.py --stem
+speed_benchmarks/master_tape_no_crocomire_clean`, all 384,844f) passed:
+snapshot `c60e1eb9d86a…` matches the build report and the credits screen is
+verified in WRAM (2026-11-19). The tape ends at 476/499 energy. Benchmark
+`v3_no_crocomire`: `+43:30.17` vs the `0:56:28.88` reference, `-18:14.90` vs
+`v0_baseline`, 15.1% Skill coverage
+([v3 report](../recordings/speed_benchmarks/v3_no_crocomire.md)).
+[Grapple Skip route and replay](GRAPPLE_SKIP_SCOPE.md) · [Split history](SPEED_SPLITS.md)
 
 | Fact | Value |
 |------|-------|
@@ -109,10 +164,10 @@ Secondary only. Does **not** change the program gate above.
 | Clean bombs tip | **GREEN** **49,321f** ×2 (2026-08-06). Parlor `0x92FD`, items `0x1004`. |
 | Clean integrity | 0 energy/ammo writes; 0 loads/progression/capacity; dual reverify |
 | Evidence | `recordings/bombs_clean*.json`. Residual purged. |
-| Next | Farm Power Bombs for the Fireflea Room door in Red Tower. |
+| Next | Superseded by the master tape; see [plan.md](plan.md#start-here-next-session). |
 
 Contract: [CLEAN_TRACK.md](CLEAN_TRACK.md) · [ASSIST_CONTRACT.md](ASSIST_CONTRACT.md).
-No Clean dual / STATUS primary claim.
+No Clean dual. The master tape's full-game Clean finish claim is in the program-gate table above.
 
 ## Reproduce
 

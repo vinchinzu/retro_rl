@@ -1,11 +1,13 @@
-"""Warehouse with Hi-Jump → Zeela → Kihunter → Baby Kraid → Kraid."""
+"""Warehouse → Zeela → Kihunter → Baby Kraid → Kraid."""
 
 from __future__ import annotations
 
 from super_metroid.ram import SuperMetroidState
 from super_metroid.routes.controller_common import (
+    POSE_WALL_LATCH,
     ensure_morph,
     hold,
+    hold_until,
     play_run_shoot_exit,
     require_room,
     select_weapon,
@@ -75,6 +77,59 @@ def play_warehouse_to_zeela_with_hijump(
     return wait_ordinary_room(
         session, ROOM_ZEELA, settle_frames=280, label="warehouse_to_zeela"
     )
+
+
+def play_warehouse_to_zeela_without_hijump(
+    session: ControllerSession,
+) -> SuperMetroidState:
+    """Roll under the Super blocks, then kick up to the east ledge."""
+    label = "warehouse_direct"
+    require_room(session, ROOM_WAREHOUSE, label)
+    hold_until(session, lambda s: s.samus_x >= 160, "RIGHT", "B", reason=label)
+    hold(session, 12, reason=label)
+    hold(session, 10, "DOWN", reason=label)
+    select_weapon(session, 2)
+    hold(session, 1, "X", reason=label)
+    hold(session, 39, reason=label)
+    hold(session, 2, "Y", reason=label)
+    hold(session, 2, "DOWN", reason=label)
+    hold_until(session, lambda s: s.samus_x >= 349, "RIGHT", reason=label)
+    hold(session, 35, reason=label)
+    hold(session, 1, "UP", reason=label)
+    hold(session, 13, reason=label)
+
+    # The small shelf above the pit floor gives the run-up for the wall jump.
+    hold_until(
+        session, lambda s: s.vertical_direction == 0 and 245 <= s.samus_y <= 255,
+        "LEFT", "B", "A", reason=label,
+    )
+    hold(session, 12, reason=label)
+    hold_until(session, lambda s: s.samus_x >= 321, "RIGHT", "B", timeout=24, reason=label)
+    hold_until(
+        session, lambda s: s.samus_x >= 451 and s.vertical_direction == 2,
+        "RIGHT", "B", "A", timeout=90, reason=label,
+    )
+    hold(session, 2, "LEFT", reason=label)
+    kick = hold(session, 1, "LEFT", "A", "B", reason=label)
+    if kick.pose != POSE_WALL_LATCH or kick.vertical_direction != 1:
+        raise RuntimeError(f"{label}: east ledge wall jump missed: {kick}")
+    hold_until(
+        session, lambda s: s.samus_x >= 484 and s.samus_y <= 155,
+        "RIGHT", "A", "B", timeout=65, reason=label,
+    )
+
+    for frame in range(460):
+        state = session.state
+        if state.room_id == ROOM_ZEELA and state.game_state == 8 and not state.door_transition:
+            return state
+        buttons = ("RIGHT", "B")
+        if state.samus_x >= 677:
+            buttons += ("A",)
+            if frame % 6 == 0:
+                buttons += ("X",)
+        hold(session, 1, *buttons, reason=label)
+    raise TimeoutError(f"{label}: Zeela door did not settle: {session.state}")
+
 
 def play_zeela_to_kihunter(session: ControllerSession) -> SuperMetroidState:
     """Warehouse Zeela Room top-left → upper door to Kihunter room."""

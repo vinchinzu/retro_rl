@@ -1,7 +1,8 @@
 # Agent Instructions: Super Metroid
 
-Package `super_metroid` (disk: `snes/super_metroid/`). Goal: a Clean
-power-on run through the end of credits, then 100%. Verified facts:
+Package `super_metroid` (disk: `snes/super_metroid/`). Goal: chain reusable
+reactive skills into a sub-hour Clean speedrun. The same skills should serve
+Map Rando, SMZ3, and talk-and-play. Verified facts:
 `docs/STATUS.md`. Future work and the red-room list: `docs/plan.md`.
 Words: `CONTEXT.md`. What counts as Clean: `docs/CLEAN_TRACK.md`.
 
@@ -16,17 +17,16 @@ trying the candidates, and restoring. Do not answer it by editing a
 constant and re-running a room, and do not model enemy motion by hand.
 The ROM is the model.
 
-One room is cleared when, from the previous room's real leave state, some
-button sequence reaches the next room settled (game state 8, no door
-transition) without dying. The human tape for that room is the first
-candidate. A retimed tape is the second. A search is the third. A fight
-picks each next action by trying the options against the ROM and dropping
-any that take a hit.
+Use TAS and human tapes to find techniques and establish an A/B time.
+Implement the movement or fight as a skill driven by live pose, geometry,
+inventory, and enemies. Test from the predecessor's real leave and vary the
+entry when checking reuse. A faster skill is ready when the successor
+settles with the resources it needs and the chain shows a net gain.
 
-The result of a cleared room is its buttons, appended to the master tape,
-plus the leave state the next room starts from. Loads and restores happen
-while building. The proof has none: replay the master tape from power-on
-with zero loads and zero RAM writes.
+Splice faster skills at settled room boundaries and run the successors from
+the new leave. Treat a shifted successor as a candidate for a reactive
+skill. Record the generated buttons for the power-on proof with zero loads
+and zero RAM writes.
 
 ## Commands
 
@@ -41,6 +41,11 @@ uv run python snes/super_metroid/scripts/probe/kpdr.py pure <hop> --source <pin>
 
 # Assisted run to Phantoon (the verified tip in STATUS; not the Clean goal)
 uv run python snes/super_metroid/scripts/record/continuous.py --to phantoon --no-video
+
+# Speed benchmark vs standard 0:56:28.88 KPDR splits + swappable route policies
+uv run python -m super_metroid.splice benchmark
+uv run python -m super_metroid.splice policy list
+uv run python -m super_metroid.splice policy ab <policy> <rule_id>
 ```
 
 Prepend `QT_QPA_PLATFORM=offscreen SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy`
@@ -51,20 +56,24 @@ to anything headless.
 - One emulator: stable-retro snes9x. `sm/` (lsnes Lua) is parked. TAS
   movies do not sync on snes9x; use them for route and technique, and the
   human tapes for buttons.
-- Before tuning a room by hand, run the census row for it. If the row is
-  `as_recorded` or `retimed`, there is nothing to tune.
+- Run the census before replacing a row. Use `as_recorded` and `retimed`
+  as baselines for faster skills.
 - A red room gets a search or a rollout fight, in the existing owner
   module. Not a new runner, not a new board, not a new glossary word.
 - Count progress in rooms on the master tape from power-on. A room cleared
   from a human start state is a candidate, not progress.
+- Start speed work from the latest Clean master. Carry each improvement
+  forward on its candidate stem and repair joins from the candidate's actual
+  leave. Promote after the full power-on replay and independent audit pass.
+  Preserve prior tape pairs for explicit replay with `--stem`.
 - No energy, ammo, item, capacity, boss, door, pose, or timer writes on
   the Clean path — including Clean development probes (read-only RAM and
   save/restore lookahead only). The assisted Phantoon run keeps its own
   contract (`docs/ASSIST_CONTRACT.md`) and its artifacts are never overwritten.
-- Verify every Clean master-tape milestone with **both**
-  `uv run python -m super_metroid.splice chain --replay` and the
-  zero-harness-import audit
-  `uv run python snes/super_metroid/scripts/tools/audit_master_tape.py`.
+- Each session's gate is `uv run python -m super_metroid.splice chain --replay`.
+  Run the independent ROM audit at the Tourian entrance, boss kills, the
+  finish, and before publishing. Use the candidate stem and report the
+  audited rows. [Replay and audit commands](docs/SPEED_SPLITS.md#v5-through-credits)
 - STATUS changes only from a power-on replay.
 
 ## Traps
@@ -81,6 +90,14 @@ to anything headless.
 - The human tapes were recorded with energy and ammo refills on. A room
   that clears with a full tank on tape may not on the Clean chain. The
   census prints the energy each room ends with.
+- Human slices assume the beam is selected. Clean often arrives with Super
+  or Grapple selected, so the slice's first X fires the wrong weapon (rows
+  299, 313). OR Item Cancel (Y, index 1) into one frame; timing stays
+  identical. It does nothing while input is ignored (door, elevator ride:
+  row 313 needs frame 460, not 0).
+- Rows 307+ come from other recordings that start mid-room. Row 307 (Landing
+  Site) enters at the far door, not where the slice starts; bridge with a
+  short run-left prefix, then join the slice at the matching offset.
 - The board's `live` segment rows point at the wrong tape slice. Rebuild
   the board before trusting those 28 rows.
 - `bd` (beads) is gone from this clone. Open work lives in `docs/plan.md`.

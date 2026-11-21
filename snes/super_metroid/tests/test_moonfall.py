@@ -112,6 +112,7 @@ def test_moonfall_detects_airborne_zero_vertical_dir() -> None:
     assert not uncapped_fall(falling)
     fast = replace(falling, velocity_y=12)
     assert uncapped_fall(fast)
+    assert uncapped_fall(replace(fast, velocity_y=-12))
     ordinary_fall = replace(falling, vertical_direction=2, velocity_y=5)
     assert not is_moonfalling(ordinary_fall)
 

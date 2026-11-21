@@ -1,6 +1,6 @@
-"""Power-on Scaffold credits chain over ``tips.play_hops``.
+"""Scaffold credits planning and live finish-splice benchmarks over ``tips.play_hops``.
 
-Planning/verification only. Stitches the ten item-seam lanes plus the
+The Scaffold path stitches the ten item-seam lanes plus the
 Attic→Gravity range into one RouteManifest and drives ``splice.assemble``
 under profile=scaffold. Never boots unless a session factory is injected;
 never loads a room state mid-run; never writes bank.json; never claims
@@ -577,3 +577,169 @@ def assemble_credits(
         non_claims=chain.non_claims,
         source_notes=chain.source_notes,
     )
+
+
+def _play_finish_splice(
+    start: bytes, delay: int, *, recorded: tuple[Any, list[dict[str, Any]]] | None = None,
+) -> tuple[dict[str, Any], Any]:
+    """Run the production finish controllers or their recorded buttons from one pin."""
+    from contextlib import ExitStack
+
+    import numpy as np
+
+    from retro_harness.actions import idle_action
+    from super_metroid.combat.escape import (
+        ESCAPE_ROW_CONTROLLERS,
+        finish_controller_for,
+        play_credits_tail,
+    )
+    from super_metroid.dev.common import make_dev_env
+    from super_metroid.ram import GameplayPhase, credits_complete, parse_env_state
+    from super_metroid.routes.tips import play_hops
+    from super_metroid.splice.assemble import AssemblyHop, _chain_session, _guard_loads, _guard_writes
+
+    actions, rows, splits = [], [], []
+    replay, expected_rows = recorded if recorded is not None else (None, [])
+    loads, writes = [0], [0]
+    with ExitStack() as cleanup:
+        env = make_dev_env()
+        cleanup.callback(env.close)
+        env.reset()
+        core = env.em
+        core.set_state(start)
+
+        class CoreProxy:
+            def __getattr__(self, name: str) -> Any:
+                return getattr(core, name)
+
+        env.em = CoreProxy()  # Allow the guards to shadow the native methods.
+        cleanup.callback(setattr, env, "em", core)
+        session = _chain_session(env)
+        cleanup.callback(_guard_writes(env, writes))
+        cleanup.callback(_guard_loads(session, loads))
+        step = session.step
+
+        def checked_step(action: Any, reason: str) -> Any:
+            state = step(action, reason)
+            if state.dead or state.health <= 0:
+                raise RuntimeError(f"finish splice died in room 0x{state.room_id:04X} at frame {session.frame}")
+            if replay is None:
+                actions.append(action.copy())
+            return state
+
+        session.step = checked_step
+        idle = idle_action(dtype=np.int8)
+        for frame in range(delay):
+            session.step(idle if replay is None else replay[frame], "finish_entry_delay")
+
+        for edge in ESCAPE_ROW_CONTROLLERS:
+            source, destination, goal_phase = edge
+            origin, target = int(source, 16), int(destination or source, 16)
+            if session.state.room_id != origin:
+                continue
+            begin = session.frame
+            play = finish_controller_for(session.state, *edge)
+            if play is None:
+                raise RuntimeError(f"finish controller unavailable in {source}")
+            if replay is not None:
+                if len(rows) >= len(expected_rows) or expected_rows[len(rows)]["room"] != source:
+                    raise RuntimeError(f"finish replay diverged at {source} on frame {begin}")
+                end = begin + expected_rows[len(rows)]["frames"]
+
+                def play_recorded(live: Any) -> None:
+                    live.raw_actions(replay[begin:end], "finish_replay")
+
+                play = play_recorded
+            play_hops(session, splits, [AssemblyHop(source, play, origin, target, source, "finish_splice")])
+            state = session.state
+            phase = GameplayPhase(goal_phase) if goal_phase else GameplayPhase.ORDINARY_GAMEPLAY
+            if state.room_id != target or state.phase is not phase:
+                raise RuntimeError(f"finish splice missed {source} to {target:04X} at frame {session.frame}")
+            rows.append({
+                "room": source, "to_room": f"0x{target:04X}", "frames": session.frame - begin,
+                "energy": state.health, "x": state.samus_x, "y": state.samus_y,
+                # The timer stores packed decimal digits.
+                "escape_clock": (
+                    f"{state.escape_timer_minutes:X}:{state.escape_timer_seconds:02X}."
+                    f"{state.escape_timer_frames:02X}"
+                ),
+            })
+
+        if not rows or session.state.phase is not GameplayPhase.ENDING_OR_CREDITS:
+            raise RuntimeError("finish splice did not launch the ship")
+        ending_entry = session.frame
+        if replay is None:
+            tail = play_credits_tail(env)
+            tape = np.concatenate((np.asarray(actions, dtype=np.int8), tail))
+        else:
+            session.raw_actions(replay[ending_entry:], "finish_credits_replay")
+            tape = replay
+        if not credits_complete(env) or loads[0] or writes[0]:
+            raise RuntimeError("finish splice failed its final screen or intervention check")
+        return {
+            "rows": rows,
+            "ending_entry_frame": ending_entry,
+            "credits_tail_frames": len(tape) - ending_entry,
+            "credits_complete": True,
+            "total_frames": len(tape),
+            "final_state": parse_env_state(env, frame=len(tape)).to_dict(),
+            "state_loads_after_startup": loads[0], "ram_writes": writes[0], "deaths": 0,
+        }, tape
+
+
+def benchmark_finish_splice(
+    pin: Path, *, delay: int = 0, tape_out: Path | None = None, compare: Path | None = None,
+) -> dict[str, Any]:
+    """Time a live pin-to-credits splice and verify it in a fresh buttons-only boot."""
+    import hashlib
+    import json
+
+    import numpy as np
+
+    from retro_harness.env import read_state_bytes
+    from super_metroid.human_tape.rta_clock import fmt_time
+    from super_metroid.paths import INTEGRATION_DIR, VANILLA_ROM_SHA1
+
+    if delay < 0:
+        raise ValueError("entry delay must be nonnegative")
+    rom = (INTEGRATION_DIR / "rom.sfc").read_bytes()
+    if hashlib.sha1(rom).hexdigest() != VANILLA_ROM_SHA1:
+        raise ValueError("finish benchmark requires the vanilla ROM")
+    start = read_state_bytes(pin)
+    case = {
+        "rom_sha256": hashlib.sha256(rom).hexdigest(),
+        "pin_sha256": hashlib.sha256(start).hexdigest(),
+        "entry_delay_frames": delay,
+    }
+    baseline = None
+    if compare is not None:
+        baseline = json.loads(compare.read_text())
+        if (
+            not isinstance(baseline, dict)
+            or baseline.get("kind") != "finish_splice"
+            or baseline.get("schema_version") != 1
+            or baseline.get("case") != case
+            or baseline.get("replay_verified") is not True
+        ):
+            raise ValueError("compare needs a verified finish splice from the same ROM, pin and delay")
+    live, tape = _play_finish_splice(start, delay)
+    replay, _ = _play_finish_splice(start, delay, recorded=(tape, live["rows"]))
+    if live != replay:
+        raise RuntimeError("buttons-only finish replay did not match the live splits and endpoint")
+    report = {
+        "kind": "finish_splice", "schema_version": 1, "case": case, "pin": str(pin),
+        "replay_verified": True, "tape_sha256": hashlib.sha256(tape.tobytes()).hexdigest(),
+        "ending_entry_time_60fps": fmt_time(live["ending_entry_frame"]),
+        "final_screen_time_60fps": fmt_time(live["total_frames"]),
+        **live,
+    }
+    if baseline is not None:
+        prior_rows = {row["room"]: row for row in baseline["rows"]}
+        for row in report["rows"]:
+            row["frames_saved"] = prior_rows[row["room"]]["frames"] - row["frames"]
+        report["frames_saved_to_ending"] = baseline["ending_entry_frame"] - live["ending_entry_frame"]
+        report["frames_saved_to_final_screen"] = baseline["total_frames"] - live["total_frames"]
+    if tape_out is not None:
+        with tape_out.open("xb") as output:
+            np.savez_compressed(output, actions=tape)
+    return report

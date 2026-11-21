@@ -465,6 +465,16 @@ def play_bubble_climb_from_handoff(
     return bubble_top_super_door(session, track)
 
 
+def play_bubble_to_bat_cave_clean(session: ControllerSession) -> SuperMetroidState:
+    """Clean Bubble Mountain → Bat Cave conserving Supers (1 Super max on door)."""
+    track = _new_track(session)
+    bubble_land_and_prepare(session, track)
+    bubble_lower_to_mid_pin(session, track)
+    bubble_mid_repin(session, track)
+    bubble_run_mid(session, track, start="launch")
+    return top_super_door(session, track, policy=P, single_super=True)
+
+
 def play_bubble_from_top_door(session: ControllerSession) -> SuperMetroidState:
     """Dev: skip to Super door pressure."""
     track = _new_track(session)

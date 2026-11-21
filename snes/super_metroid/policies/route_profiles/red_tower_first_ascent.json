@@ -1,0 +1,18 @@
+{
+  "policy_id": "red_tower_first_ascent",
+  "description": "Replace the first Red Tower ascent after Ice Beam in Grapple Skip.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "red_tower_first_ascent_r127",
+      "name": "Red Tower refill and first wall-jump ascent",
+      "start_row": 127,
+      "end_row": 127,
+      "from_room": "0xA253",
+      "to_room": "0xA2F7",
+      "mode": "skill",
+      "target": "red_tower.first_ascent",
+      "follow_rows": 3
+    }
+  ]
+}

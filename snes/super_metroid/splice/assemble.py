@@ -555,8 +555,6 @@ def _try_chain_body(env: Any, body: Any, row: Mapping[str, Any], final: Mapping[
 def _chain_controller(env: Any, row: Mapping[str, Any]) -> tuple[Any, int] | None:
     """Existing room owners supply searched or reactive button candidates."""
     import importlib
-    import numpy as np
-    from super_metroid.ram import parse_env_state
 
     room, to_room, controller = int(row["room"], 16), row.get("to_room"), row.get("controller_id")
     owners = {
@@ -578,6 +576,13 @@ def _chain_controller(env: Any, row: Mapping[str, Any]) -> tuple[Any, int] | Non
     if spec is None:
         return None
     play = getattr(importlib.import_module(spec[0]), spec[1])
+    return _record_chain_controller(env, play)
+
+
+def _record_chain_controller(env: Any, play: Callable[[Any], Any]) -> tuple[Any, int]:
+    import numpy as np
+    from super_metroid.ram import GameplayPhase, parse_env_state
+
     actions = []
 
     class CandidateSession:
@@ -589,7 +594,9 @@ def _chain_controller(env: Any, row: Mapping[str, Any]) -> tuple[Any, int] | Non
             self.frame += 1
             self.state = parse_env_state(env, mode="nav")
             actions.append(np.asarray(action, dtype=np.int8).copy())
-            if self.state.health <= 0:
+            if self.state.phase is GameplayPhase.DEATH_OR_GAME_OVER or (
+                self.state.game_state == 8 and self.state.health <= 0
+            ):
                 raise RuntimeError("controller candidate died")
             return self.state
 
@@ -599,8 +606,11 @@ def _chain_controller(env: Any, row: Mapping[str, Any]) -> tuple[Any, int] | Non
     return np.asarray(actions, dtype=np.int8), restores
 
 
-def _search_chain_body(env: Any, body: Any, row: Mapping[str, Any], final: Mapping[str, Any], *, max_delay: int) -> tuple[Any, str, int]:
-    """Tape, bounded retimes, then reference-aware live entry search."""
+def _search_chain_body(
+    env: Any, body: Any, row: Mapping[str, Any], final: Mapping[str, Any], *,
+    max_delay: int, controller: Callable[[Any], Any] | None = None,
+) -> tuple[Any, str, int]:
+    """Run an assigned controller or search the tape and its entry retimes."""
     import numpy as np
     from super_metroid.ram import parse_env_state
     from super_metroid.reactive_policy import KinematicWeights, PolicyVariant, ReactivePolicyRunner, ReferenceSample, ReferenceTrajectory
@@ -617,6 +627,11 @@ def _search_chain_body(env: Any, body: Any, row: Mapping[str, Any], final: Mappi
         return _try_chain_body(env, actions, row, final)
 
     try:
+        if controller is not None:
+            actions, restores = _record_chain_controller(env, controller)
+            if not len(actions) or not _chain_goal(parse_env_state(env, mode="nav"), row, final):
+                raise RuntimeError(f"controller did not clear board row {row['row']} ({row['name']})")
+            return actions, "room-controller", restores
         for delay in range(max_delay + 1):
             actions = np.concatenate((np.repeat(idle, delay, axis=0), body))
             found = attempt(actions)
@@ -679,20 +694,25 @@ def _search_chain_body(env: Any, body: Any, row: Mapping[str, Any], final: Mappi
         env.em.set_state(original)
 
 
-def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_delay: int = 12, resume: bool = True, overrides: Mapping[int, Path] | None = None) -> dict[str, Any]:
+def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_delay: int = 12, resume: bool = True, overrides: Mapping[int, Path] | None = None, from_row: int | None = None, source: Path | None = None) -> dict[str, Any]:
     """Develop one master tape through the Composer, then prove it from power-on.
 
     Development restores never enter RouteSession's frame/split ledger. Only
     accepted actions advance the Composer. Resume replays the accepted prefix
     from power-on; it never substitutes a human room state. The post-launch
     input tail follows the ending-entry row in the same tape.
+
+    ``from_row`` with ``source`` modifies earlier work: only the source
+    master's rows before ``from_row`` replay from power-on, then the chain
+    re-solves into the new ``stem`` (which must not exist yet). An override
+    for an accepted row never touches the verified tape.
     """
     import hashlib
     import json
     import time
     from datetime import datetime, timezone
     import numpy as np
-    from super_metroid.combat.escape import play_credits_tail
+    from super_metroid.combat.escape import finish_controller_for, play_credits_tail
     from super_metroid.dev.common import make_dev_env
     from super_metroid.paths import SCRATCH_STATE_DIR, SHARED_ROM, VANILLA_ROM_SHA1
     from super_metroid.ram import credits_complete, parse_env_state
@@ -711,6 +731,13 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
     report_path, tape_path = stem.with_suffix(".json"), stem.with_suffix(".npz")
     if resume and report_path.is_file() != tape_path.is_file():
         raise ValueError("incomplete master tape artifacts; restore the pair or use --fresh")
+    cut = from_row is not None
+    if cut:
+        if source is None or not source.name.endswith("_clean") or source.with_suffix(".json") == report_path:
+            raise ValueError("from_row needs a different _clean source stem")
+        if report_path.exists() or tape_path.exists():
+            raise ValueError(f"{stem.name} already exists; from_row writes a new stem")
+    read_report, read_tape = (source or stem).with_suffix(".json"), (source or stem).with_suffix(".npz")
     rows, cache, ledger, master = _chain_rows(board), {}, [], []
     report = {
         "kind": "clean_tape_chain", "schema_version": 1, "board": str(board),
@@ -761,16 +788,18 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
         master.extend(actions)
 
     try:
-        if resume and report_path.is_file() and tape_path.is_file():
-            old = json.loads(report_path.read_text())
+        if (resume or cut) and read_report.is_file() and read_tape.is_file():
+            old = json.loads(read_report.read_text())
             report["rollout_restores"] = old.get("rollout_restores", 0)
-            report["stopped"] = old.get("stopped")
+            report["stopped"] = None if cut else old.get("stopped")
             if old.get("rom_sha256", report["rom_sha256"]) != report["rom_sha256"]:
                 raise ValueError("master tape belongs to a different ROM")
-            actions = np.load(tape_path)["actions"]
+            actions = np.load(read_tape)["actions"]
             if hashlib.sha256(actions.tobytes()).hexdigest() != old["tape_sha256"]:
                 raise ValueError("master tape digest mismatch")
             for previous in old["rows"]:
+                if cut and previous["row"] >= from_row:
+                    break
                 current = next((row for row in rows if row["row"] == previous["row"]), None)
                 identity = ("segment", "hop_index", "room", "to_room", "tape", "source_start", "source_end", "controller_id", "continuation", "goal_phase")
                 if current is None or any(current.get(key) != previous.get(key) for key in identity if key in previous):
@@ -784,9 +813,13 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
                 count = int(previous["frames"])
                 offset = len(master)
                 commit(actions[offset : offset + count], f"resume:{previous['row']}", int(previous.get("to_room") or previous["room"], 16))
+                if cut and session.state.health != previous["energy"]:
+                    raise RuntimeError(f"prefix replay left row {previous['row']} with {session.state.health} energy, ledger says {previous['energy']}")
                 ledger.append(previous)
-            tail_count = int(old.get("credits_tail_frames", 0))
-            if tail_count < 0 or len(master) + tail_count != len(actions):
+            if cut:
+                persist()  # The cut prefix is itself a replayable master.
+            tail_count = 0 if cut else int(old.get("credits_tail_frames", 0))
+            if not cut and (tail_count < 0 or len(master) + tail_count != len(actions)):
                 raise ValueError("master tape frame counts do not match its ledger")
             if tail_count:
                 if not ledger or ledger[-1].get("goal_phase") != "ending_or_credits":
@@ -796,7 +829,7 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
                     raise RuntimeError("saved credits tail no longer reaches the final screen")
                 report["credits_tail_frames"] = tail_count
             actual = parse_env_state(env, frame=session.frame) if old.get("state_parse") == "full_bank7e" else session.state
-            if not _same_chain_state(actual.to_dict(), old["final_state"]):
+            if not cut and not _same_chain_state(actual.to_dict(), old["final_state"]):
                 raise RuntimeError("power-on prefix no longer reproduces its saved game state")
         done = {r["row"] for r in ledger}
         for row in rows:
@@ -813,7 +846,12 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
                 override = (overrides or {}).get(row["row"])
                 if override:
                     body = np.load(override)["actions"]
-                chosen, method, restores = _search_chain_body(env, body, row, final, max_delay=max_delay)
+                controller = None if override else finish_controller_for(
+                    session.state, row["room"], row.get("to_room"), row.get("goal_phase"),
+                )
+                chosen, method, restores = _search_chain_body(
+                    env, body, row, final, max_delay=max_delay, controller=controller,
+                )
                 report["rollout_restores"] += restores + 1
                 commit(chosen, f"chain:{row['row']}", int(row.get("to_room") or row["room"], 16))
                 ledger.append({k: row.get(k) for k in (
@@ -821,7 +859,9 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
                     "source_start", "source_end", "controller_id", "continuation", "goal_phase",
                 )} | {
                     "source_sha256": final.get("source_sha256"), "frames": len(chosen),
-                    "method": method, "energy": session.state.health,
+                    "method": f"override:{method}" if override else method,
+                    **({"override_sha256": hashlib.sha256(Path(override).read_bytes()).hexdigest()} if override else {}),
+                    "energy": session.state.health,
                     "max_energy": session.state.max_health,
                     "leave_x": session.state.samus_x, "leave_y": session.state.samus_y,
                 })
@@ -859,10 +899,43 @@ def solve_tape_chain(*, board: Path, stem: Path, through_row: int = 9999, max_de
         restore_writes()
         env.close()
     proof = replay_tape_chain(stem=stem)
+    if proof["success"]:  # Only a loadless run names the endpoint; a restored core can differ in audio fields.
+        report["endpoint_sha256"] = proof["core_snapshot_sha256"]
     report["proof"] = proof
     report["credits_complete"] = proof["success"] and proof["credits_complete"]
     report_path.write_text(json.dumps(report, indent=2) + "\n")
     return report
+
+
+def _row_crossing_matches(
+    row: Mapping[str, Any],
+    observed: Sequence[Mapping[str, Any]],
+    source: int,
+    target: int,
+) -> tuple[bool, bool]:
+    """Return (matches, is_detour) for one ledger row's observed room transitions."""
+    expected = int(source != 0 and source != target)
+    if not expected:
+        return True, len(observed) > 0
+    if any(t["source_room_id"] == source and t["target_room_id"] == target for t in observed):
+        return True, len(observed) > 1
+    span = row.get("replaced_rows")
+    multi_span = (
+        isinstance(span, (list, tuple)) and len(span) == 2 and int(span[1]) > int(span[0])
+    )
+    if (
+        multi_span
+        and observed
+        and observed[0]["source_room_id"] == source
+        and observed[-1]["target_room_id"] == target
+        and all(
+            observed[i]["target_room_id"] == observed[i + 1]["source_room_id"]
+            for i in range(len(observed) - 1)
+        )
+    ):
+        max_hops = int(span[1]) - int(span[0]) + 1
+        return True, len(observed) > max_hops
+    return False, len(observed) > 1
 
 
 def replay_tape_chain(*, stem: Path) -> dict[str, Any]:
@@ -934,10 +1007,9 @@ def replay_tape_chain(*, stem: Path) -> dict[str, Any]:
 
             play_hops(session, splits, [AssemblyHop(str(row["row"]), play, session.state.room_id, target, row["name"], str(row["row"]))])
             observed = transitions[transition_start:]
-            expected = int(source != 0 and source != target)
-            if expected:
-                crossings_match &= any(t["source_room_id"] == source and t["target_room_id"] == target for t in observed)
-            if len(observed) > expected:
+            row_ok, is_detour = _row_crossing_matches(row, observed, source, target)
+            crossings_match &= row_ok
+            if is_detour:
                 detour_rows.append(row_number)
             state = session.state
             settled = state.game_state == 8 and not state.door_transition
@@ -957,7 +1029,8 @@ def replay_tape_chain(*, stem: Path) -> dict[str, Any]:
         credits_match = complete == bool(report.get("credits_complete", False))
         final = parse_env_state(env, frame=session.frame) if report.get("state_parse") == "full_bank7e" else session.state
         matches = _same_chain_state(final.to_dict(), report["final_state"])
-        core_matches = hashlib.sha256(env.em.get_state()).hexdigest() == report["endpoint_sha256"]
+        core_digest = hashlib.sha256(env.em.get_state()).hexdigest()
+        core_matches = core_digest == report["endpoint_sha256"]
         prior_transitions = (report.get("proof") or {}).get("transitions")
         timeline_matches = prior_transitions is None or prior_transitions == transitions
         return {
@@ -979,7 +1052,8 @@ def replay_tape_chain(*, stem: Path) -> dict[str, Any]:
             "transitions": transitions,
             "credits_tail_frames": tail_count,
             "comparison": "vanilla ROM SHA-1, planned crossings, settled leaves, final game-state fields, and terminal credits when present",
-            "core_snapshot_matches": core_matches, "final_state": final.to_dict(),
+            "core_snapshot_matches": core_matches, "core_snapshot_sha256": core_digest,
+            "final_state": final.to_dict(),
         }
     finally:
         restore_loads()

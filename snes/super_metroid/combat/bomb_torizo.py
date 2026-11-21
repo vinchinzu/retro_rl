@@ -23,15 +23,18 @@ from super_metroid.combat.features import (
     features_from_state,
 )
 from super_metroid.ram import (
+    BOMBS_MASK,
+    FACING_RIGHT,
     GameplayPhase,
     SuperMetroidState,
     parse_env_state,
     read_bank7e_wram,
 )
 from super_metroid.routes.controller_common import select_weapon
+from super_metroid.routes.kpdr.room_ids import ROOM_BOMB_TORIZO, ROOM_FLYWAY
 from super_metroid.routes.runtime import ControllerSession, hold
+from super_metroid.takeoff import walk_toward_x
 
-ROOM_BOMB_TORIZO = 0x9804
 # Idle statue spritemap (no combat AI) observed on incomplete entry states.
 STATUE_SPRITEMAP = 0x87D0
 # Room-load / chozo spawn before the idle statue settles.
@@ -122,6 +125,126 @@ class BombTorizoLeaveEvidence:
     final_missiles: int
 
 
+def play_flyway_to_bomb_torizo(session: ControllerSession) -> None:
+    """Spend one full Missile pack at the Flyway hatch from the upper ledge."""
+    if session.state.room_id != ROOM_FLYWAY or session.state.missiles < 5:
+        raise RuntimeError("Flyway requires five Missiles for the pink hatch")
+
+    if session.state.selected_item:
+        hold(session, 1, "Y", reason="flyway_select_beam")
+    jump_frame = None
+    missiles_after_hatch = None
+    for tick in range(650):
+        state = session.state
+        if state.room_id == ROOM_BOMB_TORIZO and state.game_state == 8 and not state.door_transition:
+            return
+        if (
+            state.room_id != ROOM_FLYWAY
+            or state.game_state != 8
+            or (missiles_after_hatch is not None and state.missiles <= missiles_after_hatch)
+        ):
+            names = ("RIGHT", "B")
+        elif state.samus_x < 700:
+            names = ("RIGHT", "B")
+            if state.samus_x >= 642 and jump_frame is None:
+                jump_frame = tick
+            if jump_frame is not None and tick - jump_frame < 31:
+                names += ("A",)
+            if jump_frame is None and tick % 2 == 0:
+                names += ("X", "R")
+        else:
+            if missiles_after_hatch is None:
+                missiles_after_hatch = state.missiles - 5
+            if not state.selected_item:
+                names = ("SELECT",)
+            elif state.samus_y == 139 and state.vertical_direction == 0 and tick % 2 == 0:
+                names = ("X",)
+            else:
+                names = ()
+        hold(session, 1, *names, reason="flyway_missile_hatch")
+    raise TimeoutError(f"Flyway hatch did not lead to Bomb Torizo: {session.state}")
+
+
+def play_bomb_torizo_pickup(session: ControllerSession) -> None:
+    """Clear the entry step and take Bombs from the statue on the left approach."""
+    if session.state.room_id != ROOM_BOMB_TORIZO:
+        raise RuntimeError("Bombs pickup requires Bomb Torizo's room")
+    for tick in range(700):
+        state = session.state
+        if state.collected_items & BOMBS_MASK:
+            return
+        if state.samus_x < 112:
+            names = ("RIGHT", "B")
+        else:
+            names = walk_toward_x(state.samus_x, 193, slack=1)
+            if state.samus_y > 173 and state.vertical_direction != 2:
+                names += ("A",)
+        if state.selected_item and tick % 2 == 0:
+            names += ("Y",)
+        if state.samus_x >= 166 and state.samus_y >= 157 and tick % 2 == 0:
+            names += ("X",)
+        hold(session, 1, *names, reason="bomb_torizo_pickup")
+    raise RuntimeError(f"Bombs pickup missed the statue: {session.state}")
+
+
+def play_bomb_torizo_fast_leave(
+    session: ControllerSession, *, statue_side_x: int = 165,
+) -> None:
+    """Fight from the statue side, then jump through the unlocked Flyway hatch."""
+    state = session.state
+    if state.room_id != ROOM_BOMB_TORIZO or not state.collected_items & BOMBS_MASK:
+        raise RuntimeError("Bomb Torizo fight requires the natural Bombs pickup")
+    env = session.env  # type: ignore[attr-defined]
+    # Staying near the statue keeps the beam in range of both the boss and
+    # its eggs. Pulse jump on close approaches, and use natural missile drops.
+    for tick in range(3_600):
+        state = session.state
+        if state.health <= 0:
+            raise RuntimeError("Bomb Torizo depleted Samus's energy")
+        if bomb_torizo_boss_bit_set(env):
+            break
+        if state.enemy0_hp == 0:
+            hold(session, 1, reason="bomb_torizo_unlock")
+            continue
+        dx = state.enemy0_x - state.samus_x
+        toward = "RIGHT" if dx >= 0 else "LEFT"
+        if state.samus_x > statue_side_x + 3:
+            move = "LEFT"
+        elif state.samus_x < statue_side_x - 3:
+            move = "RIGHT"
+        elif (state.facing == FACING_RIGHT) != (dx >= 0):
+            move = toward
+        else:
+            move = None
+        names = (move,) if move else ()
+        if tick % 2 == 0 and move in (None, toward):
+            names += ("X",)
+        if abs(dx) < 96 and tick % 41 < 16:
+            names += ("A",)
+        if state.missiles and state.selected_item == 0:
+            names += ("SELECT",)
+        hold(session, 1, *names, reason="bomb_torizo_statue_side")
+    else:
+        raise RuntimeError(f"Bomb Torizo fight timed out: {session.state}")
+
+    for tick in range(500):
+        state = session.state
+        if state.room_id == ROOM_FLYWAY and state.game_state == 8 and not state.door_transition:
+            return
+        names = ("LEFT",)
+        if tick % 50 < 28:
+            names += ("A",)
+        if tick % 2 == 0:
+            names += ("X",)
+        hold(session, 1, *names, reason="bomb_torizo_fast_flyway_exit")
+    raise RuntimeError(f"Bomb Torizo missed Flyway: {session.state}")
+
+
+def play_bomb_torizo_one_pack_leave(session: ControllerSession) -> None:
+    """Hold a deeper statue-side position to collect eggs on the one-pack route."""
+    play_bomb_torizo_fast_leave(session, statue_side_x=158)
+
+
 def play_clean_bomb_torizo_leave(
     session: ControllerSession,
 ) -> BombTorizoLeaveEvidence:
@@ -165,7 +288,7 @@ def play_clean_bomb_torizo_leave(
     exit_start = session.frame
     for index in range(600):
         state = session.state
-        if state.room_id == 0x9879 and state.game_state == 8 and not state.door_transition:
+        if state.room_id == ROOM_FLYWAY and state.game_state == 8 and not state.door_transition:
             return BombTorizoLeaveEvidence(
                 fight=fight,
                 recovery_frames=recovery_frames,

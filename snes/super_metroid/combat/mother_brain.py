@@ -1,9 +1,4 @@
-"""Development-only Mother Brain strategy scaffold.
-
-This module models the multi-phase fight without owning emulator setup,
-progression writes, or the post-fight escape.  It is intentionally deferred
-until natural Tourian entry and the escape/ending path are proven.
-"""
+"""Mother Brain development fight and the Clean post-Rainbow closeout."""
 
 from __future__ import annotations
 
@@ -15,7 +10,15 @@ from super_metroid.combat.features import (
     mother_brain_catalog,
 )
 from super_metroid.combat.primitives import spray_action, ensure_weapon
-from super_metroid.ram import SuperMetroidState
+from super_metroid.ram import (
+    ADDR_ENEMY0_HP,
+    ADDR_EVENT_FLAGS,
+    EVENT_MOTHER_BRAIN_DEFEATED,
+    GameplayPhase,
+    SuperMetroidState,
+    read_wram_u8,
+    read_wram_u16,
+)
 from super_metroid.routes.runtime import ControllerSession, hold
 
 ROOM_MOTHER_BRAIN = 0xDD58
@@ -24,6 +27,91 @@ WEAPON_SUPERS = 2
 PHASE_MB1 = "mb1"
 PHASE_MB2 = "mb2"
 PHASE_MB3 = "mb3"
+ROOM_FIRST_ESCAPE = 0xDE4D
+HYPER_BEAM_EQUIPPED = 0x1009
+ENEMY_SLOT_SIZE = 0x40
+ENEMY_ID_BASE = 0x0F78
+BABY_METROID_ENEMY_ID = 0xECBF
+
+
+def play_mother_brain_closeout(session: ControllerSession) -> None:
+    """From the Rainbow kneel or later, defeat MB3 and enter the escape."""
+    env = session.env
+    if session.state.room_id != ROOM_MOTHER_BRAIN:
+        raise RuntimeError("Mother Brain closeout requires the Mother Brain room")
+
+    event_byte, event_bit = divmod(EVENT_MOTHER_BRAIN_DEFEATED, 8)
+
+    def defeated() -> bool:
+        return bool(read_wram_u8(env, ADDR_EVENT_FLAGS + event_byte) & (1 << event_bit))
+
+    def step(*buttons: str) -> None:
+        hold(session, 1, *buttons, reason="mother_brain_closeout")
+        if session.state.health <= 0 or session.state.phase is GameplayPhase.DEATH_OR_GAME_OVER:
+            raise RuntimeError("Samus died during Mother Brain closeout")
+
+    if not defeated():
+        for _ in range(8500):
+            state = session.state
+            if (
+                state.equipped_beams == HYPER_BEAM_EQUIPPED
+                and state.pose not in (0xE9, 0xEB)
+                and all(
+                    read_wram_u16(env, ENEMY_ID_BASE + slot * ENEMY_SLOT_SIZE)
+                    != BABY_METROID_ENEMY_ID
+                    for slot in range(16)
+                )
+            ):
+                break
+            step()
+        else:
+            raise TimeoutError("Mother Brain closeout is waiting for Hyper Beam")
+
+        # The head is in slot 1. Aim diagonally up-left from the crater lip.
+        hp_address = ADDR_ENEMY0_HP + ENEMY_SLOT_SIZE
+        for frame in range(2500):
+            if read_wram_u16(env, hp_address) == 0:
+                break
+            state = session.state
+            if state.samus_x < 231:
+                step("RIGHT")
+            elif not state.facing_left:
+                step("LEFT")
+            else:
+                step("R", "X") if frame % 3 == 0 else step("R")
+        else:
+            raise TimeoutError("Hyper Beam did not defeat Mother Brain")
+
+        for _ in range(1800):
+            if defeated():
+                break
+            step()
+        else:
+            raise TimeoutError("Mother Brain defeat did not start the escape")
+
+    # Let the death sequence clear the floor, then jump onto the west hatch.
+    for _ in range(30):
+        step()
+    fall_frames = 0
+    jump_held = False
+    for frame in range(1200):
+        state = session.state
+        if state.room_id == ROOM_FIRST_ESCAPE and state.phase is GameplayPhase.ORDINARY_GAMEPLAY:
+            return
+        if state.phase is not GameplayPhase.ORDINARY_GAMEPLAY:
+            step()
+            continue
+        fall_frames = fall_frames + 1 if state.vertical_direction == 2 else 0
+        x, y = state.samus_x, state.samus_y
+        jump = x < 95 and y > 142 and (
+            (state.vertical_direction == 0 and not jump_held)
+            or state.vertical_direction == 1
+            or (fall_frames >= 2 and not jump_held)
+        )
+        fire = x < 85 and y <= 155 and frame % 10 == 0
+        step("LEFT", *(("A",) if jump else ()), *(("X",) if fire else ()))
+        jump_held = jump
+    raise TimeoutError("Mother Brain closeout did not reach the first escape room")
 
 
 @dataclass(frozen=True)

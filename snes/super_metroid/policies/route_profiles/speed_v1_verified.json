@@ -1,0 +1,21 @@
+{
+  "policy_id": "speed_v1_verified",
+  "parent": "baseline_tape",
+  "description": "Power-on-verified Wave 1 speed profile: applies the tuned Climb escape Skill (rows 337-339 live re-compose) on top of the verified Clean baseline without touching master_tape_clean.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "climb_fast_r337",
+      "name": "Tuned Climb escape ascent (dash-to-walk entry + compound Parlor gain)",
+      "start_row": 337,
+      "end_row": 337,
+      "from_room": "0x96BA",
+      "to_room": "0x92FD",
+      "mode": "skill",
+      "target": "escape.climb",
+      "enabled": true,
+      "follow_rows": 2,
+      "notes": "Saves +87f in Climb and +61f in Parlor (+148f / +2.47s net) on the real row-331 master leave; +277f on the archived row-331 Climb pin."
+    }
+  ]
+}

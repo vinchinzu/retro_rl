@@ -1335,6 +1335,11 @@ def play_ice_climb_to_hellway(session: ControllerSession) -> SuperMetroidState:
             f"p={session.state.pose}"
         )
     play_bottom_to_ripper1(session)
+    return play_ripper1_to_hellway(session)
+
+
+def play_ripper1_to_hellway(session: ControllerSession) -> SuperMetroidState:
+    """Continue the Ice climb from the first frozen Ripper to the settled door."""
     play_ripper1_to_ripper2(session)
     play_ripper2_to_ripper3(session)
     play_ripper3_to_ripper4(session)

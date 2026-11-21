@@ -29,7 +29,9 @@ from super_metroid.routes.skills.geometry import STANDING_POSES
 _MAX_SCAFFOLD_FRAMES = 240
 # Business Center elevator platform height after Warehouse arrival.
 _ELEVATOR_Y = 680
+_ICE_GATE_FLOOR_Y = 907
 _FLOOR_Y_MIN = 1405
+ROOM_ICE_BEAM_GATE = 0xA815
 _FROG_SPEEDWAY_DOOR_FRAMES = 400
 _FROG_SPEEDWAY_SETTLE_FRAMES = 320
 # Frog Speedway is an 8-screen horizontal tunnel (left entry → right farm door).
@@ -105,11 +107,12 @@ def play_business_to_frog_save(session: ControllerSession) -> SuperMetroidState:
     else:
         raise TimeoutError(f"{label}: floor band missed: {session.state}")
 
-    # It is a closed blue door in this source; select beam and shoot while
-    # running right so the transition starts as soon as Samus reaches its lip.
+    # It is a closed blue door in this source; select beam and pulse X while
+    # running right so Charge Beam does not hold a single un-released charge.
     select_weapon(session, 0)
-    for _ in range(400):
-        state = hold(session, 1, "RIGHT", "B", "X", reason=f"{label}_door")
+    for frame in range(400):
+        inputs = ("RIGHT", "B", "X") if (frame % 12) < 3 else ("RIGHT", "B")
+        state = hold(session, 1, *inputs, reason=f"{label}_door")
         if state.room_id == ROOM_FROG_SAVE:
             break
     else:
@@ -118,6 +121,72 @@ def play_business_to_frog_save(session: ControllerSession) -> SuperMetroidState:
     return wait_ordinary_room(
         session,
         ROOM_FROG_SAVE,
+        settle_frames=320,
+        label=label,
+    )
+
+
+def play_business_to_ice_gate(session: ControllerSession) -> SuperMetroidState:
+    """Business Center elevator → Ice Beam Gate Room (0xA815) via upper-left door.
+
+    Settles the arriving Warehouse elevator at ``y=680``, cancels any selected
+    sub-weapon so Power Bombs are preserved, drops to the ``y=907`` ledge on
+    the left wall, and beam-shots through the blue Ice Beam Gate door.
+    """
+    label = "business_to_ice_gate"
+    require_room(session, ROOM_BUSINESS, label)
+
+    # Wait for elevator to settle at y=680 (pose 155 stays active until a step).
+    stable_elevator_frames = 0
+    for _ in range(600):
+        state = hold(session, 1, reason=f"{label}_elevator_settle")
+        if state.samus_y == _ELEVATOR_Y:
+            stable_elevator_frames += 1
+            if stable_elevator_frames >= 24:
+                break
+        else:
+            stable_elevator_frames = 0
+    else:
+        raise TimeoutError(f"{label}: elevator did not settle: {session.state}")
+
+    # Exit pose 155 on the elevator pad (2f RIGHT keeps Samus on the pad).
+    # When entering with 2 Power Bombs and PB selected (skipping the Map Room
+    # yellow door), drop 1 PB on the pad before canceling to Beam so downstream
+    # Ice Gate / Crocomire Speedway weapon-cycling matches PB=0 on the tape.
+    hold(session, 2, "RIGHT", reason=f"{label}_step_off")
+    if session.state.power_bombs == 2 and session.state.selected_item == 3:
+        from super_metroid.routes.controller_common import ensure_morph, unmorph
+
+        ensure_morph(session)
+        hold(session, 4, "X", reason=f"{label}_pb_drop")
+        unmorph(session)
+    if session.state.selected_item != 0:
+        hold(session, 2, "RIGHT", "B", "Y", reason=f"{label}_cancel_weapon")
+        hold(session, 4, "RIGHT", "B", reason=f"{label}_cancel_settle")
+    if session.state.selected_item != 0:
+        select_weapon(session, 0)
+    hold(session, 10, "RIGHT", "B", reason=f"{label}_pad_leave")
+
+    # Drop through the staggered upper platforms until reaching the y=907
+    # Ice Beam Gate floor band, then run left pulsing X into the blue door.
+    for frame in range(600):
+        state = session.state
+        if state.room_id == ROOM_ICE_BEAM_GATE:
+            break
+        if state.samus_y < 860:
+            inputs = ("LEFT", "B") if (frame // 55) % 2 == 0 else ("RIGHT", "B")
+        elif state.samus_y > _ICE_GATE_FLOOR_Y + 32:
+            # Overshot below the y=907 ledge: jump back up while holding left.
+            inputs = ("LEFT", "B", "A") if (frame % 18) < 10 else ("LEFT", "B")
+        else:
+            inputs = ("LEFT", "B", "X") if (frame % 10) < 3 else ("LEFT", "B")
+        hold(session, 1, *inputs, reason=f"{label}_to_door")
+    else:
+        raise TimeoutError(f"{label}: Ice Gate door missed: {session.state}")
+
+    return wait_ordinary_room(
+        session,
+        ROOM_ICE_BEAM_GATE,
         settle_frames=320,
         label=label,
     )

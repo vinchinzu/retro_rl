@@ -247,3 +247,39 @@ def play_big_pink_to_ghz(session: ControllerSession) -> SuperMetroidState:
     play_charge_beam_collect(session)
     play_charge_beam_return(session)
     return _mass_to_ghz(session)
+
+
+def play_dachora_entry_charge_to_ghz(session: ControllerSession) -> SuperMetroidState:
+    """Descend Big Pink from Dachora and take Charge straight to Green Hill Zone."""
+    label = "dachora_entry_to_charge"
+    require_room(session, ROOM_BIG_PINK, label)
+    if session.state.selected_item:
+        select_weapon(session, 0)
+
+    # Drop along the east wall, alternating between the gaps in the
+    # platforms. The floor below the east door leads west to the Charge shaft.
+    ledges = (
+        (824, 954, 963),
+        (960, 925, 933),
+        (1050, 950, 954),
+        (1100, 935, 945),
+        (1270, 952, 970),
+        (1390, 953, 970),
+        (1460, 550, 568),
+        (1535, 550, 568),
+    )
+    for depth, left, right in ledges:
+        for frame in range(440):
+            state = session.state
+            if state.samus_y >= depth:
+                break
+            steer = ("RIGHT",) if state.samus_x < left else ("LEFT",) if state.samus_x > right else ()
+            fire = ("X",) if frame % 8 == 0 else ()
+            hold(session, 1, *steer, *fire, reason=label)
+        else:
+            raise TimeoutError(f"{label}: missed depth {depth} at ({state.samus_x}, {state.samus_y})")
+
+    state = play_big_pink_to_ghz(session)
+    if not state.collected_beams & CHARGE_BEAM_MASK:
+        raise RuntimeError(f"{label}: reached Green Hill Zone without Charge Beam")
+    return state

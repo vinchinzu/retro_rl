@@ -1,0 +1,115 @@
+{
+  "policy_id": "grapple_skip_v5",
+  "parent": "red_tower_first_ascent",
+  "description": "Grapple Skip v5 through Gravity Suit, based on the v4 master tape.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "moat_direct",
+      "name": "Crateria Kihunter Room through Wrecked Ship entrance",
+      "start_row": 134,
+      "end_row": 136,
+      "from_room": "0x948C",
+      "to_room": "0xCA08",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/moat_direct.npz",
+      "notes": "Retimed Waver drop, direct Moat spark and one Super at the West Ocean hatch."
+    },
+    {
+      "rule_id": "main_shaft_descent",
+      "name": "Wrecked Ship Main Shaft descent",
+      "start_row": 138,
+      "end_row": 138,
+      "from_room": "0xCAF6",
+      "to_room": "0xCC6F",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/main_shaft_descent.npz",
+      "notes": "Open the floor hatch with the reserved Super."
+    },
+    {
+      "rule_id": "basement_eye_door",
+      "name": "Basement to Phantoon",
+      "start_row": 139,
+      "end_row": 139,
+      "from_room": "0xCC6F",
+      "to_room": "0xCD13",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/basement_eye_door.npz",
+      "notes": "Three missiles at the eye door from the new Main Shaft leave."
+    },
+    {
+      "rule_id": "phantoon_charge",
+      "name": "Phantoon charge fight and loot exit",
+      "start_row": 140,
+      "end_row": 140,
+      "from_room": "0xCD13",
+      "to_room": "0xCC6F",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/phantoon_charge.npz",
+      "notes": "Charge shots and flame pickups found from the natural Basement entry."
+    },
+    {
+      "rule_id": "basement_return",
+      "name": "Basement return to Main Shaft",
+      "start_row": 141,
+      "end_row": 141,
+      "from_room": "0xCC6F",
+      "to_room": "0xCAF6",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/basement_return.npz",
+      "notes": "Retain the keepaway line from the new Phantoon leave."
+    },
+    {
+      "rule_id": "main_shaft_ascent",
+      "name": "Wrecked Ship Main Shaft to Attic",
+      "start_row": 142,
+      "end_row": 142,
+      "from_room": "0xCAF6",
+      "to_room": "0xCA52",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/main_shaft_ascent.npz",
+      "notes": "Climb from the new Basement return without taking damage."
+    },
+    {
+      "rule_id": "attic_and_west_ocean",
+      "name": "Attic clear through Pancakes and Wavers entry",
+      "start_row": 143,
+      "end_row": 144,
+      "from_room": "0xCA52",
+      "to_room": "0x9461",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/attic_and_west_ocean.npz",
+      "notes": "Collect Attic drops, settle the West Ocean entry, and cancel Power Bomb selection before the crossing."
+    },
+    {
+      "rule_id": "pancakes",
+      "name": "Pancakes and Wavers Room crossing",
+      "start_row": 145,
+      "end_row": 145,
+      "from_room": "0x9461",
+      "to_room": "0x968F",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/pancakes.npz"
+    },
+    {
+      "rule_id": "homing_geemer",
+      "name": "Homing Geemer Room crossing",
+      "start_row": 146,
+      "end_row": 146,
+      "from_room": "0x968F",
+      "to_room": "0xC98E",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/homing_geemer.npz"
+    },
+    {
+      "rule_id": "bowling_alley",
+      "name": "Bowling Alley through Gravity Suit Room entry",
+      "start_row": 147,
+      "end_row": 147,
+      "from_room": "0xC98E",
+      "to_room": "0xCE40",
+      "mode": "override",
+      "target": "recordings/speed_benchmarks/v5_gravity_overrides/bowling_alley.npz"
+    }
+  ]
+}

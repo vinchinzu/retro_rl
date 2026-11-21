@@ -51,7 +51,7 @@ from super_metroid.routes.kpdr.room_ids import (
     ROOM_CERES_SCIENTIST,
     ROOM_LANDING_SITE,
 )
-from super_metroid.routes.runtime import ActionSpan, ControllerSession, RouteSession
+from super_metroid.routes.runtime import ActionSpan, ControllerSession, RouteSession, hold
 from super_metroid.routes.skills.moonfall import (
     WIKI_URL,
     is_airborne,
@@ -243,6 +243,9 @@ def ceres_first_moonfall_action(
         return (away,), replace(track, phase="fall", held=max(held, 25))
 
     if phase == "ride":
+        if y == _CERES_FIRST_PAD_Y and held == 0:
+            # The elevator releases Samus one frame after reaching pad height.
+            return (), replace(track, held=1)
         if y >= _CERES_FIRST_PAD_Y or is_airborne(state):
             return CERES_FIRST_TAS_PAD[0], replace(track, phase="hop", held=1)
         return (), track
@@ -287,13 +290,16 @@ def play_ceres_first_room_moonfall(
     *,
     max_frames: int = 900,
     restore_moonwalk: bool = True,
+    use_menu_setting: bool = False,
 ) -> None:
-    """TAS-shaped Ceres 1 moonfall. Pokes $09E4 on, off after Falling settle."""
-    env = getattr(session, "env", None)
-    if env is None:
-        raise RuntimeError("ceres first moonfall needs session.env for $09E4 poke")
-    set_moonwalk(env, True)
-    session.state = parse_state(env.get_ram(), frame=session.frame)
+    """Use the TAS-shaped Ceres Moonfall from the elevator pad."""
+    env = None
+    if not use_menu_setting:
+        env = getattr(session, "env", None)
+        if env is None:
+            raise RuntimeError("ceres first moonfall needs session.env for $09E4 poke")
+        set_moonwalk(env, True)
+        session.state = parse_state(env.get_ram(), frame=session.frame)
     require_moonwalk_on(session.state, label="ceres_first_moonfall")
     if session.state.room_id != ROOM_CERES_ELEVATOR and session.state.game_state not in (
         8,
@@ -327,9 +333,14 @@ def play_ceres_first_room_moonfall(
             reason="ceres_first_falling_settle",
             timeout=FALLING_SETTLE,
         )
-    if restore_moonwalk:
+    if env is not None and restore_moonwalk:
         set_moonwalk(env, False)
         session.state = parse_state(env.get_ram(), frame=session.frame)
+
+
+def play_ceres_first_room_moonfall_clean(session: ControllerSession) -> None:
+    """Run the descent with Moon Walk enabled through the menu."""
+    play_ceres_first_room_moonfall(session, use_menu_setting=True)
 
 
 CeresFallingPhase = Literal[
@@ -747,6 +758,10 @@ def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
     reactively.
     """
     play_ceres_to_ridley_door(session)
+    _play_ceres_ridley_countdown(session)
+
+
+def _play_ceres_ridley_countdown(session: ControllerSession) -> None:
     # Late import: combat.__init__ → progression → early_spine → this module.
     from super_metroid.combat.ceres_ridley import (
         CeresRidleyStrategy,
@@ -762,6 +777,29 @@ def play_ceres_outbound_to_ridley(session: RouteSession) -> None:
         if not is_knockback(session.state):
             break
         session.step(idle_action(), "ceres_ridley_settle")
+
+
+def play_ceres_ridley_to_flat(session: ControllerSession) -> None:
+    """Tank the tail hits, then arm-pump to the settled Flat Room entrance."""
+    _play_ceres_ridley_countdown(session)
+    hold(session, 24, "LEFT", "A", reason="ceres_ridley_exit_hop")
+    for tick in range(300):
+        state = session.state
+        if state.room_id == ROOM_CERES_FLAT and state.game_state == GS_ORDINARY and not state.door_transition:
+            return
+        hold(session, 1, "LEFT", "B", shoulder_pump_button(tick), reason="ceres_ridley_exit")
+    raise TimeoutError(f"Ceres Ridley missed the Flat Room: {session.state}")
+
+
+def play_ceres_falling_through_ridley(session: ControllerSession) -> None:
+    """Use the TAS-derived Ceres routes from Falling Tile to the return stairs."""
+    play_ceres_falling_to_magnet(session)
+    play_ceres_magnet_to_scientist(session)
+    play_ceres_scientist_to_flat(session)
+    play_ceres_flat_to_ridley(session)
+    play_ceres_ridley_to_flat(session)
+    play_ceres_flat_to_scientist(session)
+    play_ceres_scientist_to_magnet(session)
 
 
 class CeresFlatEscape:

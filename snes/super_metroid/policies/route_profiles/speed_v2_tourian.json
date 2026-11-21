@@ -1,0 +1,73 @@
+{
+  "policy_id": "speed_v2_tourian",
+  "parent": "speed_v1_verified",
+  "description": "Power-on-verified Wave 2 Tourian Skill profile: replaces Upper Tourian Save detour, Metroid Rooms 1-4, Big Boy Room, and Lower Tourian Save detour with restore-free RAM Skills (+2m 04s net vs v0) plus tuned Climb escape Skill.",
+  "route_variant": "early_ice",
+  "rules": [
+    {
+      "rule_id": "tourian_direct_r313",
+      "name": "Tourian First Room direct to Metroid Room 1 (skip Upper Tourian Save Room)",
+      "start_row": 313,
+      "end_row": 315,
+      "from_room": "0xDAAE",
+      "to_room": "0xDAE1",
+      "mode": "skill",
+      "target": "tourian.first_room_direct",
+      "enabled": true,
+      "follow_rows": 2,
+      "notes": "Saves +1,056f (+17.60s) vs baseline rows 313-315; unblocked by restore-free Metroid Rooms Skill."
+    },
+    {
+      "rule_id": "metroid_rooms_r316",
+      "name": "Metroid Rooms 1-4 restore-free RAM Skill (0xDAE1 -> 0xDC19)",
+      "start_row": 316,
+      "end_row": 319,
+      "from_room": "0xDAE1",
+      "to_room": "0xDC19",
+      "mode": "skill",
+      "target": "tourian.metroid_rooms_all",
+      "enabled": true,
+      "follow_rows": 2,
+      "notes": "Replaces 9,501f open-loop overrides with 5,390f restore-free freeze+blast+drop-sweep Skill (+4,111f / +68.52s saved, exits with S=15/15)."
+    },
+    {
+      "rule_id": "big_boy_room_r322",
+      "name": "Big Boy Room restore-free RAM Skill (0xDCB1 -> 0xDCFF)",
+      "start_row": 322,
+      "end_row": 323,
+      "from_room": "0xDCB1",
+      "to_room": "0xDCFF",
+      "mode": "skill",
+      "target": "tourian.big_boy_room",
+      "enabled": true,
+      "follow_rows": 3,
+      "notes": "Energy-independent cutscene + shot-block staircase Skill (+1,545f / +25.75s saved vs baseline 4,808f)."
+    },
+    {
+      "rule_id": "rinka_shaft_direct_r328",
+      "name": "Rinka Shaft direct drop to Mother Brain (skip Lower Tourian Save Room)",
+      "start_row": 328,
+      "end_row": 330,
+      "from_room": "0xDDF3",
+      "to_room": "0xDD58",
+      "mode": "skill",
+      "target": "tourian.rinka_shaft_direct",
+      "enabled": true,
+      "follow_rows": 1,
+      "notes": "Drops directly to bottom-left red door with 1 Super (+580f / +9.67s saved vs baseline 1,027f; enters 0xDD58 at E=498, M=45, S=13)."
+    },
+    {
+      "rule_id": "mb_tourian_v2_r331",
+      "name": "Mother Brain 1+2 Clean solve from Tourian Skills entry (0xDD58)",
+      "start_row": 331,
+      "end_row": 331,
+      "from_room": "0xDD58",
+      "to_room": null,
+      "mode": "override",
+      "target": "recordings/search_development_clean/tourian/row331_tourian_v2_clean.npz",
+      "enabled": true,
+      "follow_rows": 1,
+      "notes": "Zero-damage MB2 solve (pre-Rainbow E=423 -> kneel E=123 at (210,165)) matched to the Tourian Skills entry RNG; feeds directly into live escape controllers r332-339."
+    }
+  ]
+}

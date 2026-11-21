@@ -90,7 +90,7 @@ def is_moonfalling(state: SuperMetroidState) -> bool:
 
 def uncapped_fall(state: SuperMetroidState) -> bool:
     """True once vy has passed the ordinary ~5 px/f cap."""
-    return is_moonfalling(state) and int(state.velocity_y) > NORMAL_FALL_CAP_PX
+    return is_moonfalling(state) and abs(state.velocity_y) > NORMAL_FALL_CAP_PX
 
 
 def require_moonwalk_on(state: SuperMetroidState, *, label: str = "moonfall") -> None:

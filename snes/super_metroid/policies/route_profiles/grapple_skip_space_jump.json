@@ -1,0 +1,86 @@
+{
+  "policy_id": "grapple_skip_space_jump",
+  "parent": "grapple_skip_fast",
+  "route_variant": "early_ice",
+  "description": "Grapple Skip with live Space Jump climbs, direct drops toward Plasma Beam, and fights matched to the new Ridley and Mother Brain entries.",
+  "rules": [
+    {
+      "rule_id": "space_jump_room_exit_r212",
+      "name": "Space Jump Room east exit",
+      "start_row": 212,
+      "end_row": 212,
+      "from_room": "0xD9AA",
+      "to_room": "0xDA60",
+      "mode": "skill",
+      "target": "maridia.space_jump_room_exit",
+      "follow_rows": 3
+    },
+    {
+      "rule_id": "draygon_room_exit_r213",
+      "name": "Space Jump up Draygon's empty arena",
+      "start_row": 213,
+      "end_row": 213,
+      "from_room": "0xDA60",
+      "to_room": "0xD78F",
+      "mode": "skill",
+      "target": "maridia.draygon_room_exit",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "precious_space_jump_r214",
+      "name": "Space Jump up The Precious Room",
+      "start_row": 214,
+      "end_row": 214,
+      "from_room": "0xD78F",
+      "to_room": "0xD72A",
+      "mode": "skill",
+      "target": "maridia.precious_space_jump",
+      "follow_rows": 1
+    },
+    {
+      "rule_id": "halfie_return_drop_r216",
+      "name": "Halfie Climb direct drop to East Cactus Alley",
+      "start_row": 216,
+      "end_row": 216,
+      "from_room": "0xD913",
+      "to_room": "0xDA2B",
+      "mode": "skill",
+      "target": "maridia.halfie_return_drop",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "west_cactus_drop_r218",
+      "name": "West Cactus Alley direct drop to Butterfly Room",
+      "start_row": 218,
+      "end_row": 218,
+      "from_room": "0xD9FE",
+      "to_room": "0xD5EC",
+      "mode": "skill",
+      "target": "maridia.west_cactus_drop",
+      "follow_rows": 2
+    },
+    {
+      "rule_id": "ridley_no_crocomire_r271",
+      "name": "Ridley charge-beam fight from the faster Maridia entry",
+      "start_row": 271,
+      "end_row": 271,
+      "from_room": "0xB32E",
+      "to_room": "0xB698",
+      "mode": "override",
+      "target": "recordings/search_development_clean/post_space_jump/five_ridley_pb4_4520_8.npz",
+      "follow_rows": 8,
+      "notes": "Rebuilt from the shifted entry. Leaves with four Power Bombs and ten Supers for the Lower Norfair return."
+    },
+    {
+      "rule_id": "mb_tourian_v2_r331",
+      "name": "Mother Brain from the Space Jump and Ridley route",
+      "start_row": 331,
+      "end_row": 331,
+      "from_room": "0xDD58",
+      "mode": "override",
+      "target": "recordings/search_development_clean/post_space_jump/row331_pb4_clean.npz",
+      "follow_rows": 1,
+      "notes": "Break all four Zebetites and clear MB1 with the natural 12 Supers and 50 Missiles. Finish MB2 with Charge and leave at the Rainbow kneel for the live closeout."
+    }
+  ]
+}

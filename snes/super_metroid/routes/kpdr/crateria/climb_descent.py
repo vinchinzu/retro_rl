@@ -1,4 +1,4 @@
-"""Climb (0x96BA) first descent toward Morph — moonfall policy.
+"""Crateria Climb (0x96BA), ascent to Parlor and descent toward Morph.
 
 Public policy: https://wiki.supermetroid.run/Climb and
 https://wiki.supermetroid.run/Moonwalk (Climb is the biggest moonfall save,
@@ -25,8 +25,8 @@ from typing import Literal
 
 from retro_harness.actions import buttons, idle_action
 from super_metroid.ram import FACING_RIGHT, parse_state, set_moonwalk
-from super_metroid.routes.kpdr.room_ids import ROOM_CLIMB, ROOM_PIT
-from super_metroid.routes.runtime import ControllerSession
+from super_metroid.routes.kpdr.room_ids import ROOM_CLIMB, ROOM_PARLOR, ROOM_PIT
+from super_metroid.routes.runtime import ControllerSession, hold
 from super_metroid.routes.skills.knockback import is_knockback
 from super_metroid.routes.skills.moonfall import (
     WIKI_URL,
@@ -36,6 +36,7 @@ from super_metroid.routes.skills.moonfall import (
     is_moonwalking,
     require_moonwalk_on,
 )
+from super_metroid.takeoff import walk_toward_x
 
 Phase = Literal[
     "plant",
@@ -64,6 +65,106 @@ SPIN_HOLD = 4
 # Default off: seed remains the assisted/clean product hop until the probe
 # dual-greens from a natural Climb enter pin.
 CLIMB_MOONFALL_ON_CLEAN = False
+
+
+@dataclass(frozen=True)
+class ClimbLedge:
+    x: int
+    y: int
+    step: int = 0
+    launch: Literal["toward", "away", "vertical"] = "toward"
+    steer_after: int = 6
+    shoot: bool = False
+
+
+# Platforms along the Pit-to-Parlor ascent in room coordinates.
+_ASCENT_LEDGES = (
+    ClimbLedge(420, 2131, -6, "away", shoot=True),
+    ClimbLedge(378, 2011, 3),
+    ClimbLedge(350, 1915, launch="away"),
+    ClimbLedge(330, 1843),
+    ClimbLedge(349, 1755, launch="away"),
+    ClimbLedge(343, 1659, 3, "away", shoot=True),
+    ClimbLedge(320, 1603),
+    ClimbLedge(357, 1499),
+    ClimbLedge(332, 1403, launch="away"),
+    ClimbLedge(319, 1347, launch="away"),
+    ClimbLedge(360, 1243),
+    ClimbLedge(346, 1147, 6, "away", 12),
+    ClimbLedge(323, 1091),
+    ClimbLedge(353, 987, launch="vertical", steer_after=36),
+    ClimbLedge(341, 891, launch="away", steer_after=12),
+    ClimbLedge(316, 835, 3, "away", shoot=True),
+    ClimbLedge(361, 731),
+    ClimbLedge(341, 635, launch="away"),
+    ClimbLedge(322, 579),
+    ClimbLedge(361, 475, launch="away"),
+    ClimbLedge(353, 379, launch="away"),
+    ClimbLedge(375, 267, launch="away"),
+    ClimbLedge(351, 211, 3, "away", 12),
+    ClimbLedge(322, 139),
+    ClimbLedge(366, 91),
+)
+
+
+def _jump_to_ledge(session: ControllerSession, ledge: ClimbLedge) -> None:
+    if ledge.step:
+        side = "LEFT" if ledge.step < 0 else "RIGHT"
+        hold(session, abs(ledge.step), side, reason="climb_takeoff_seat")
+    hold(session, 1, reason="climb_jump_release")
+    toward = "RIGHT" if ledge.x >= session.state.samus_x else "LEFT"
+    away = "LEFT" if toward == "RIGHT" else "RIGHT"
+    airborne = False
+    for tick in range(115):
+        state = session.state
+        if airborne and state.vertical_direction == 0 and not state.velocity_y:
+            if abs(state.samus_y - ledge.y) <= 3 and abs(state.samus_x - ledge.x) <= 22:
+                return
+            break
+        airborne |= bool(state.vertical_direction)
+        names = ("A",)
+        if tick >= ledge.steer_after:
+            names += walk_toward_x(state.samus_x, ledge.x, slack=2)
+        elif ledge.launch != "vertical":
+            names += (away if ledge.launch == "away" else toward,)
+        if (ledge.launch == "away" and tick < 3) or (ledge.launch == "toward" and tick == 0):
+            names += ("B",)
+        if ledge.shoot and tick >= 10 and tick % 6 == 0:
+            names += ("X",)
+        hold(session, 1, *names, reason="climb_ledge")
+    raise TimeoutError(f"Climb missed the ledge at y={ledge.y}: {session.state}")
+
+
+def play_climb_to_parlor(session: ControllerSession) -> None:
+    """Climb from Pit using the live platform landings and beam-opened hatch."""
+    state = session.state
+    if state.room_id != ROOM_CLIMB or state.samus_y < 2110:
+        raise RuntimeError("Climb ascent requires the lower Pit entrance")
+    if state.selected_item:
+        hold(session, 1, "Y", reason="climb_select_beam")
+    for _ in range(55):
+        state = session.state
+        if not state.vertical_direction and state.samus_x <= 418:
+            break
+        names = ("LEFT", "B") if state.samus_x > 418 else ()
+        hold(session, 1, *names, reason="climb_pit_run")
+    for ledge in _ASCENT_LEDGES:
+        if abs(session.state.samus_y - ledge.y) > 4:
+            _jump_to_ledge(session, ledge)
+
+    for tick in range(330):
+        state = session.state
+        if state.room_id == ROOM_PARLOR and state.game_state == 8 and not state.door_transition:
+            return
+        names = ()
+        if state.room_id == ROOM_CLIMB and state.game_state == 8:
+            names = ("UP",) + walk_toward_x(state.samus_x, 368, slack=2)
+            if tick % 2 == 0:
+                names += ("X",)
+            if tick % 65 >= 10:
+                names += ("A",)
+        hold(session, 1, *names, reason="climb_ceiling_hatch")
+    raise TimeoutError(f"Climb missed Parlor: {session.state}")
 
 
 @dataclass(frozen=True)
@@ -181,13 +282,16 @@ def play_climb_to_pit_moonfall(
     *,
     max_frames: int = 1200,
     restore_moonwalk: bool = True,
+    use_menu_setting: bool = False,
 ) -> None:
-    """RAM-driven Climb → Pit using spinning moonfall. Pokes $09E4 on."""
-    env = getattr(session, "env", None)
-    if env is None:
-        raise RuntimeError("climb moonfall needs session.env for $09E4 poke")
-    set_moonwalk(env, True)
-    session.state = parse_state(env.get_ram(), frame=session.frame)
+    """Drop from Climb to Pit using spinning Moonfall."""
+    env = None
+    if not use_menu_setting:
+        env = getattr(session, "env", None)
+        if env is None:
+            raise RuntimeError("climb moonfall needs session.env for $09E4 poke")
+        set_moonwalk(env, True)
+        session.state = parse_state(env.get_ram(), frame=session.frame)
     require_moonwalk_on(session.state, label="climb_moonfall")
     if session.state.room_id != ROOM_CLIMB and session.state.game_state not in (8, 11):
         raise RuntimeError(
@@ -195,8 +299,16 @@ def play_climb_to_pit_moonfall(
         )
 
     track = ClimbMoonfallTrack()
-    for _ in range(max_frames):
-        names, track = climb_moonfall_action(session.state, track)
+    for tick in range(max_frames):
+        state = session.state
+        if use_menu_setting and state.room_id == ROOM_CLIMB and state.samus_y >= 1640:
+            # Start steering toward the Pit hatch during the fall to carry
+            # rightward momentum into the run across the floor.
+            names = ("RIGHT", "B")
+            if state.samus_y >= 2174 and tick % 4 == 0:
+                names += ("X",)
+        else:
+            names, track = climb_moonfall_action(state, track)
         action = buttons(*names) if names else idle_action()
         session.step(action, f"climb_moonfall_{track.phase}")
         if track.phase == "done" or session.state.room_id == ROOM_PIT:
@@ -208,13 +320,19 @@ def play_climb_to_pit_moonfall(
         )
 
     if session.state.room_id != ROOM_PIT or session.state.game_state == 11:
-        session.wait_until(  # type: ignore[attr-defined]
-            lambda s: s.room_id == ROOM_PIT and s.game_state == 8,
-            timeout=PIT_SETTLE,
-            reason="climb_moonfall_pit_settle",
-        )
-    if restore_moonwalk:
+        for _ in range(PIT_SETTLE):
+            state = session.step(idle_action(), "climb_moonfall_pit_settle")
+            if state.room_id == ROOM_PIT and state.game_state == 8:
+                break
+        else:
+            raise TimeoutError(f"moonfall leave did not settle: {session.state}")
+    if env is not None and restore_moonwalk:
         set_moonwalk(env, False)
+
+
+def play_climb_to_pit_moonfall_clean(session: ControllerSession) -> None:
+    """Run the descent with Moon Walk enabled through the menu."""
+    play_climb_to_pit_moonfall(session, use_menu_setting=True)
 
 
 # Optional convenience: skill initiate used by the probe "setup" dump.
@@ -235,6 +353,7 @@ __all__ = [
     "LIP_X",
     "climb_moonfall_action",
     "climb_moonfall_enabled",
+    "play_climb_to_parlor",
     "play_climb_to_pit_moonfall",
     "setup_then_fall",
 ]
